@@ -43,7 +43,7 @@ test("all supported training frequencies and experience levels fit the estimated
   for(const experience of ["beginner","intermediate","advanced"])for(const sessionsPerWeek of [1,2,3,4,5,6])for(const sessionMinutes of [30,45,60,90]){
     const result=buildTraining(profile({experience,sessionsPerWeek,sessionMinutes,workoutDays:DAYS.slice(0,sessionsPerWeek)}),WEEK);
     assert.equal(result.sessions.length,sessionsPerWeek);
-    for(const session of result.sessions){assert.ok(session.estimatedDurationMinutes<=sessionMinutes);assert.equal(session.workingSets,session.exercises.reduce((sum,item)=>sum+item.sets,0));assert.ok(session.exercises.every(item=>item.sets>=1&&item.sets<=3&&item.restSeconds>=75));}
+    for(const session of result.sessions){assert.ok(session.estimatedDurationMinutes<=sessionMinutes);assert.equal(session.estimatedDurationSeconds,session.exercises.length?300+session.exercises.reduce((sum,item)=>sum+estimatedSeconds(item),0):0);assert.equal(session.estimatedDurationMinutes,Math.ceil(session.estimatedDurationSeconds/60));assert.equal(session.workingSets,session.exercises.reduce((sum,item)=>sum+item.sets,0));assert.ok(session.exercises.every(item=>item.sets>=1&&item.sets<=3&&item.restSeconds>=75));}
   }
   const one=buildTraining(profile({sessionsPerWeek:1,workoutDays:["Sunday"]}),WEEK);assert.match(one.frequencyCaveat,/at least two days/);assert.equal(one.sessions[0].date,"2026-09-20");
   assert.match(buildTraining(profile({sessionsPerWeek:2,workoutDays:["Sunday","Monday"]}),WEEK).summary.schedulingNote,/consecutive/);

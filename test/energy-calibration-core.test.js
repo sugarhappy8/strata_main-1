@@ -14,7 +14,7 @@ const calculate=(data,options={})=>calibrateMaintenance(profile(options.profile)
 function previous(result,{week=add(WEEK,-7),model=MODEL_VERSION}={}){return {weekStart:week,energyModelVersion:model,nutrition:{maintenance:{targetKcal:result.targetKcal,calibration:result}}};}
 
 test("calibration constants declare the bounded model and minimum evidence",()=>{
-  assert.equal(CALIBRATION_DAYS,42);assert.equal(MODEL_VERSION,"energy-planning-v4");assert.equal(MIN_COMPLETE_DAYS,14);assert.equal(MIN_WEIGHT_DAYS,8);assert.equal(MIN_WEIGHT_SPAN_DAYS,14);
+  assert.equal(CALIBRATION_DAYS,42);assert.equal(MODEL_VERSION,"energy-planning-v5");assert.equal(MIN_COMPLETE_DAYS,14);assert.equal(MIN_WEIGHT_DAYS,8);assert.equal(MIN_WEIGHT_SPAN_DAYS,14);
   assert.equal(calculate({}).windowDays,42);
 });
 test("aligned cumulative intake recovers known expenditure with constant or varying intake",()=>{
@@ -57,6 +57,21 @@ test("a sustained scale step and noisy weights do not become confident expenditu
   for(const input of [step,noisy]){const result=calculate(input);assert.equal(result.status,"calibrating");assert.equal(result.targetKcal,2625);assert.equal(result.quality.label,"inconsistent");assert.match(result.explanation,/inconsistent|fluid shift/);}
   const modest=calculate(evidence({noise:index=>Math.sin(index)*.15}));assert.equal(modest.status,"trend_informed");assert.ok(Math.abs(modest.observedMaintenanceKcal-2625)<100);
 });
+test("missing early or late segment fits cannot turn an apparent fluid step into a maintenance reduction",()=>{
+  for(const retained of [[0,2,4,6,8,10,12,14],[0,2,4,6,8,10,12,15]]){
+    const input=evidence({days:retained.at(-1)+1,noise:index=>index>=7?.6:0});
+    input.dailyLogs.forEach((row,index)=>{if(!retained.includes(index))row.morningWeightKg=null;});
+    const result=calculate(input);
+    assert.equal(result.evidence.morningWeightDays,8);assert.ok(result.interval.days>=14);assert.equal(result.quality.maxWeightGapDays,retained.at(-1)===14?2:3);
+    assert.equal(result.status,"calibrating");assert.equal(result.targetKcal,2625);assert.equal(result.quality.label,"insufficient");assert.equal(result.quality.segmentGapKcal,null);assert.match(result.explanation,/seven days in each half/);
+  }
+});
+test("regular alternate-day weights calibrate once both halves have seven-day coverage",()=>{
+  const input=evidence({days:17,maintenance:2800,intake:2800});
+  input.dailyLogs.forEach((row,index)=>{if(index%2)row.morningWeightKg=null;});
+  const result=calculate(input);
+  assert.equal(result.status,"trend_informed");assert.equal(result.observedMaintenanceKcal,2800);assert.equal(result.quality.segmentGapKcal,0);assert.equal(result.interval.days,16);assert.ok(result.targetKcal>2625);
+});
 test("gaining and losing synthetic tissue adjust maintenance with the correct sign",()=>{
   const gain=calculate(evidence({maintenance:2500,intake:2700})),loss=calculate(evidence({maintenance:2800,intake:2600}));
   assert.equal(gain.observedMaintenanceKcal,2500);assert.equal(loss.observedMaintenanceKcal,2800);assert.ok(gain.trendKgPerWeek>0);assert.ok(loss.trendKgPerWeek<0);assert.ok(gain.targetKcal<2625);assert.ok(loss.targetKcal>2625);
@@ -72,10 +87,27 @@ test("unchanged old windows do not ratchet the target in another week",()=>{
   const input=evidence({maintenance:3400,intake:3400}),first=calculate(input);input.previousWeek=previous(first,{week:WEEK});
   const second=calculate(input,{week:add(WEEK,7)});assert.equal(second.priorState,"held");assert.equal(second.targetKcal,first.targetKcal);assert.notEqual(second.status,"trend_informed");
 });
+test("an accepted endpoint cannot be replayed while it still meets the freshness cutoff",()=>{
+  const input=evidence({maintenance:3400,intake:3400}),first=calculate(input);input.previousWeek=previous(first,{week:WEEK});
+  for(const offset of [1,3,6]){
+    const replay=calculate(input,{week:add(WEEK,offset)});
+    assert.equal(replay.priorState,"held");assert.equal(replay.targetKcal,first.targetKcal);assert.equal(replay.lastAcceptedEvidenceEnd,first.lastAcceptedEvidenceEnd);assert.notEqual(replay.status,"trend_informed");assert.match(replay.explanation,/No newer usable morning-weight endpoint/);
+  }
+});
 test("a version 3 profile preserves its immediately previous v3 calibration during model rollover",()=>{
   const accepted=calculate(evidence({maintenance:3400,intake:3400})),oldCalibration={...accepted,modelVersion:"energy-planning-v3"},oldSnapshot=previous(oldCalibration,{week:WEEK,model:"energy-planning-v3"}),nextWeek=add(WEEK,7);
   const held=calculate({previousWeek:oldSnapshot},{week:nextWeek});assert.equal(held.priorState,"held");assert.equal(held.targetKcal,accepted.targetKcal);assert.ok(Math.abs(held.weeklyChangeKcal)<=150);
   const rejectedForV4=calculate({previousWeek:oldSnapshot},{week:nextWeek,profile:{version:4},baseline:{energySemantics:"mifflin_structured_activity_v4"}});assert.equal(rejectedForV4.priorState,"none");assert.equal(rejectedForV4.targetKcal,2625);
+});
+test("version 3 and 4 profiles preserve v4 targets and weekly limits during model rollover",()=>{
+  for(const version of [3,4]){
+    const oldCalibration={modelVersion:"energy-planning-v4",baselineKcal:2625,targetKcal:3275,status:"trend_informed",lastAcceptedEvidenceEnd:add(WEEK,-8)},saved=previous(oldCalibration,{model:"energy-planning-v4"});
+    const held=calculate({previousWeek:saved},{profile:{version},baseline:{targetKcal:2600}});
+    assert.equal(held.modelVersion,MODEL_VERSION);assert.equal(held.priorState,"held");assert.equal(held.targetKcal,3250);assert.equal(held.weeklyChangeKcal,-25);assert.equal(held.lastAcceptedEvidenceEnd,oldCalibration.lastAcceptedEvidenceEnd);
+    const fresh=evidence({maintenance:2800,intake:2800});fresh.previousWeek=saved;
+    const updated=calculate(fresh,{profile:{version}});
+    assert.equal(updated.status,"trend_informed");assert.equal(updated.priorState,"rate_limiter");assert.equal(updated.targetKcal,3125);assert.equal(updated.weeklyChangeKcal,-150);
+  }
 });
 test("stale accepted evidence is held for42days then explicitly expires",()=>{
   const first=calculate(evidence({maintenance:3400,intake:3400})),saved=previous(first,{week:WEEK});

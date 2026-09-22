@@ -67,6 +67,11 @@ test("a version 3 deficit keeps its percentage policy instead of displaying null
     const el=elements(),render=createRenderer({element:el,ui:Ui,diaryUi:Diary}),profile={version:3,measurementSystem:"metric",preferredLoadUnit:"kg",weightKg:82,experience:"intermediate",sessionMinutes:45,sessionsPerWeek:1,lifestyleActivity:"sedentary",usualExercises:[],trainingGoal:"balanced",goalPace:"gentle"};
     const model={...week,modelUpdateAvailable:true,nextWeekStart:"2026-09-21",training:{sessions:[]},nutrition:{...week.nutrition,rmrKcal:1650,selectedGoal:"fat_loss",goalPace:"gentle",weeklyTargetKcal:14_000,maintenance:{targetKcal:2250},deficit:{targetKcal:2000,policy:"10% below estimated maintenance",breakdown:{requestedWeightChangePercentPerWeek:null,actualWeightChangePercentPerWeek:null,actualDeficitKcal:250}},bulk:{targetKcal:2400,policy:"Conservative surplus"},weightScenarios:[]}};
     render.renderDashboard(profile,model,[],"2026-09-16");assert.match(el("coachingTargetDetail").textContent,/10% below estimated maintenance/);assert.doesNotMatch(el("coachingTargetDetail").textContent,/0% body weight/);assert.match(el("coachingModelUpdate").textContent,/keep their existing calculation.*opt in/is);assert.doesNotMatch(el("coachingModelUpdate").textContent,/next weekly snapshot uses the new method/i);
+    for(const maintenance of [2250,{baselineKcal:2250},{targetKcal:2250,baselineKcal:2500,estimateRangeKcal:[1900,2800]}]){
+      render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,maintenance}},[],"2026-09-16");
+      assert.equal(el("coachingTdee").textContent,"2,250 kcal/day");
+      assert.match(el("coachingGoalComparison").innerHTML,/<span>Maintenance<\/span><strong>2,250 kcal\/day<\/strong>/);
+    }
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
 
@@ -81,6 +86,34 @@ test("version 4 dashboard explains each separate activity input and the bounded 
     assert.match(el("coachingTargetDetail").textContent,/0\.5% body weight\/week requested.*400 kcal\/day actual deficit.*composition floor about 1,800 kcal\/day applied/);
     assert.match(el("coachingTargetDetail").textContent,/resting cross-check differs by about 425 kcal and widens the planning range.*lower sensitivity scenario stays within planner limits/);
     assert.match(el("coachingGoalComparison").innerHTML,/0\.5% body weight\/week requested/);
+    assert.equal(el("coachingTdee").textContent,"2,300 kcal/day");
+    assert.match(el("coachingTdeeDetail").textContent,/Planning range: 2,000–2,600 kcal\/day.*Not a measured value or a confidence interval/);
+    assert.equal(el("coachingTarget").textContent,"2,200 kcal/day");
+    assert.equal(el("coachingWeeklyCalories").textContent,"13,300 kcal/week");
+    const comparison=el("coachingGoalComparison").innerHTML;
+    for(const [label,calories] of [["Deficit","1,900"],["Maintenance","2,300"],["Surplus","2,450"]])assert.ok(comparison.includes(`<span>${label}</span><strong>${calories} kcal/day</strong>`));
+    assert.doesNotMatch(comparison,/<strong>about|<strong>.*–/);
+    assert.doesNotMatch(el("coachingCalorieWeek").innerHTML,/<strong>about/);
+    render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,dailyTargets:[{day:"Tuesday",date:"2026-09-15",calories:2050},{day:"Wednesday",date:"2026-09-16",calories:2300}]}},[],"2026-09-16");
+    assert.equal(el("coachingTarget").textContent,"2,050–2,300 kcal/day");
+    assert.match(el("coachingTargetDetail").textContent,/Scheduled daily targets; the weekly total is preserved/);
+    assert.equal(el("coachingTdee").textContent,"2,300 kcal/day","a varying daily schedule must not replace maintenance with a range");
+  }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
+});
+
+test("maintenance explains the movement multiplier separately from net exercise",()=>{
+  const previous=globalThis.document;globalThis.document={querySelectorAll:()=>[]};
+  try{
+    const el=elements(),render=createRenderer({element:el,ui:Ui,diaryUi:Diary}),profile={version:4,measurementSystem:"metric",weightKg:75,experience:"intermediate",dailyMovement:"lightly_moving",additionalActivityMinutesPerWeek:0,sessionsPerWeek:3,usualExercises:[]};
+    const model={...week,nutrition:{...week.nutrition,rmrKcal:1770,selectedGoal:"maintenance",maintenance:{targetKcal:2725},activityBreakdown:{movementPal:1.5,nonWorkoutKcal:2655,plannedTrainingWeekKcal:490,additionalActivityWeekKcal:0,sessions:[]}}};
+    render.renderDashboard(profile,model,[],"2026-09-16");
+    assert.equal(el("coachingTdee").textContent,"2,725 kcal/day");
+    assert.match(el("coachingTdeeDetail").textContent,/Resting plus ordinary daily movement: about 2,655 kcal\/day \(resting 1,770 × 1\.50 movement factor; an activity assumption, not a measurement\)/);
+    assert.match(el("coachingTdeeDetail").textContent,/generated sessions: about 490 kcal\/week · other activity: about 0 kcal\/week\. Exercise totals exclude resting energy/);
+    for(const [rmrKcal,movementPal] of [[1770,undefined],[1770,null],[1770,0],[1770,Infinity],[null,1.5],[0,1.5],[NaN,1.5]]){
+      render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,rmrKcal,activityBreakdown:{...model.nutrition.activityBreakdown,movementPal}}},[],"2026-09-16");
+      assert.doesNotMatch(el("coachingTdeeDetail").textContent,/×|movement factor/);
+    }
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
 

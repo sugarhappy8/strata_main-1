@@ -37,7 +37,8 @@ function exerciseFormat(exercise,unit){
   const suffix=(match[3]||"").toLowerCase(),measurement=["s","sec","seconds","min"].includes(suffix)?"timed":suffix==="m"?"distance":"reps",scale=suffix==="min"?60:1;
   const low=Number(match[1])*scale,high=Number(match[2])*scale;
   if(low<1||high<low||high>(measurement==="timed"?3600:1000))return null;
-  const assisted=/\bassisted\b/i.test(exercise.name),loadType=assisted?"assisted":exercise.equipment==="Bodyweight"?"bodyweight":"external";
+  // Match the workout logger: a support bench does not imply added resistance.
+  const assisted=/\bassisted\b/i.test(exercise.name),bodyweight=["Bodyweight","Bench"].includes(exercise.equipment),loadType=assisted?"assisted":bodyweight?"bodyweight":"external";
   return {measurement,loadType,unit,low,high,perSide:!!match[4],countUnit:["steps","contacts"].includes(suffix)?suffix:null,quantifiableLoad:loadType!=="assisted"||exercise.equipment==="Machine"};
 }
 /** @param {Value} format @param {number} low @param {number} high */
@@ -80,7 +81,11 @@ function withPerformance(item,evidence,weekStart){
   const result=progressionForWorkout(source,prior?[prior]:[],checkIn),suggestion=result.suggestions.find((/** @type {Value} */ value)=>value.entryId===entry.id);
   if(!suggestion||suggestion.basis==="incomplete"||suggestion.basis==="ambiguous")return held("The latest workout did not contain one fully completed, valid exercise entry. Record a complete baseline before using automatic targets.","incomplete");
   if(evidence.limited&&suggestion.action!=="repeat")return held("The available workout history is incomplete. Repeat a controlled baseline before increasing the target.","limited_history");
-  const targetSets=suggestion.targetSets.map((/** @type {Value} */ set)=>({...set})),weights=targetSets.map((/** @type {Value} */ set)=>set.weight),uniform=weights.length&&weights.every((/** @type {any} */ value)=>value===weights[0]);
+  const targetSets=suggestion.targetSets.map((/** @type {Value} */ set)=>({...set})),metric=item.measurement==="timed"?"seconds":"reps";
+  // The session time budget uses the prescription ceiling. Recorded work can
+  // exceed that ceiling, but cannot silently expand this week's planned work.
+  if(targetSets.some((/** @type {Value} */ set)=>Number(set[metric])>current.high))return held("The recorded targets exceed this prescription's time or repetition range. Use the starting prescription; review the range before carrying those targets into this workout.");
+  const weights=targetSets.map((/** @type {Value} */ set)=>set.weight),uniform=weights.length&&weights.every((/** @type {any} */ value)=>value===weights[0]);
   const suggestedStartingLoad=item.loadType!=="bodyweight"&&uniform&&typeof weights[0]==="number"?{value:weights[0],unit:item.unit,kg:item.unit==="lb"?Math.round(weights[0]/2.2046226218*100)/100:weights[0],basis:item.loadType==="assisted"?"Recorded assistance setting; lower assistance is harder.":"Based on complete recorded sets in the same format, unit, range, and set count."}:null;
   return {...item,targetSets,suggestedStartingLoad,loadingGuidance:suggestion.explanation,performance:{status:suggestion.action==="repeat"?"repeat":"progression",sourceDate:source.date,workoutId:source.id,basis:suggestion.basis,action:suggestion.action,explanation:suggestion.explanation}};
 }
