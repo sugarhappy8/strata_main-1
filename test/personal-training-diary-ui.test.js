@@ -18,7 +18,7 @@ test("historical target lookup never substitutes this week's calories for a miss
 
 test("historical diary renders intake without inventing a remaining target",()=>{
   const el=elements(),render=createRenderer({element:el,ui:Ui,diaryUi:Diary});render.renderLog({macroPreference:null,measurementSystem:"imperial"},week,[{date:"2026-09-07",calories:1800,morningWeightKg:300,complete:true}],"2026-09-07");
-  for(const prefix of ["coaching","progressCoaching"]){const summary=el(prefix==="coaching"?"coachingProgressSummary":"progressCoachingSummary").innerHTML;assert.match(summary,/1,800 kcal/);assert.match(summary,/No target was saved/);assert.doesNotMatch(summary,/2,200|400 kcal/);assert.equal(el(`${prefix}LogDate`).value,"2026-09-07");assert.equal(el(`${prefix}MorningWeight`).value,661.4);assert.equal(el(`${prefix}MorningWeight`).max,"661.4");}
+  for(const prefix of ["coaching"]){const summary=el(prefix==="coaching"?"coachingProgressSummary":"progressCoachingSummary").innerHTML;assert.match(summary,/1,800 kcal/);assert.match(summary,/No target was saved/);assert.doesNotMatch(summary,/2,200|400 kcal/);assert.equal(el(`${prefix}LogDate`).value,"2026-09-07");assert.equal(el(`${prefix}MorningWeight`).value,661.4);assert.equal(el(`${prefix}MorningWeight`).max,"661.4");}
 });
 
 test("a historical save uses the original revision and omits hidden macros",async()=>{

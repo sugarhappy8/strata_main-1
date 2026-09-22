@@ -63,10 +63,10 @@
       }
       let activeDestination=null;
       for(const link of document.querySelectorAll("[data-feature-target]")){
-        const target=featureName(link.dataset.featureTarget),active=target===name;
+        const target=featureName(link.dataset.featureTarget),active=target===name||(link.classList.contains("destination-link")&&target===item.parent);
         link.classList.toggle("active",active);
         link.setAttribute?.("aria-controls",config[target]?.panelId||"");
-        link.setAttribute?.("aria-expanded",String(active));
+        link.setAttribute?.("aria-expanded",String(target===name));
         if(link.classList.contains("feature-block")||link.classList.contains("destination-link")){
           if(active)link.setAttribute?.("aria-current","location");else link.removeAttribute?.("aria-current");
         }

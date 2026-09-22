@@ -79,7 +79,7 @@ test("plan-saving surfaces use consistent announced states and actionable errors
 test("planner and workout share clear Plan and Train navigation at mobile widths",()=>{
   const plannerHtml=read("public/pages/planner.html"),workoutHtml=read("public/pages/workout.html"),discoverHtml=read("public/pages/discover.html");
   const plannerCss=read("public/styles/planner.css"),workoutCss=read("public/styles/workout.css");
-  const destinations=/Rankings<\/a><a[^>]*>Strata\+<\/a><a[^>]*>Plan<\/a><a[^>]*>Train<\/a>/;
+  const destinations=/Exercises<\/a><a[^>]*>Strata\+<\/a><a[^>]*>Plan<\/a><a[^>]*>Train<\/a>/;
   assert.match(plannerHtml,destinations);assert.match(workoutHtml,destinations);assert.match(discoverHtml,destinations);
   assert.match(plannerHtml,/href="\/planner\.html" aria-current="page">Plan<\/a>/);
   assert.match(workoutHtml,/href="\/workout\.html" aria-current="page">Train<\/a>/);
@@ -139,7 +139,9 @@ test("workout empty days and planner mobile hand-offs expose useful 44px actions
   assert.match(workout,/\/api\/workouts\/\$\{encodeURIComponent\(workoutId\)\}\/check-in/);
   assert.match(workout,/checkIn:\{difficulty:values\[0\],energy:values\[1\],comfort:values\[2\],enjoyment:values\[3\]\}/);
   assert.match(workoutHtml,/No change happens unless you approve it/);
-  assert.match(workout,/decision==="accept"\?\{decision,expectedPlanUpdatedAt:adaptation\.expectedPlanUpdatedAt\}/);
+  assert.match(workoutHtml,/id="reviewAdaptation" href="\/discover\.html#planWorkspace"/);
+  assert.doesNotMatch(workoutHtml,/id="(?:acceptAdaptation|dismissAdaptation)"/);
+  assert.match(read("public/scripts/discover.js"),/decision:"accept",expectedPlanUpdatedAt:suggestion\.expectedPlanUpdatedAt/);
   assert.match(workoutCss,/\.exercise-guide>summary\{[^}]*min-height:46px/);
   assert.match(workoutCss,/\.check-in-grid\{display:grid/);
 });

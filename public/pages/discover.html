@@ -13,20 +13,21 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.0.1" />
-    <link rel="stylesheet" href="/experience.css?v=8.0.1" />
-    <link rel="stylesheet" href="discover.css?v=8.0.1" />
-    <link rel="stylesheet" href="discover-coaching-meals.css?v=8.0.1" />
-    <link rel="stylesheet" href="/product-signals.css?v=8.0.1" />
-    <script src="/motion.js?v=8.0.1"></script>
+    <link rel="stylesheet" href="/fonts.css?v=8.5.0" />
+    <link rel="stylesheet" href="/experience.css?v=8.5.0" />
+    <link rel="stylesheet" href="discover.css?v=8.5.0" />
+    <link rel="stylesheet" href="discover-coaching-meals.css?v=8.5.0" />
+    <link rel="stylesheet" href="/product-signals.css?v=8.5.0" />
+    <script src="/motion.js?v=8.5.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=8.5.0" />
   </head>
   <body class="plus-studio">
     <a class="skip-link" id="activeWorkspaceSkip" href="#todayTitle">Skip to active Strata+ workspace</a>
     <header class="studio-header">
       <a class="brand" href="/" aria-label="STRATA home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>STRATA</span></a>
-      <nav class="studio-nav studio-nav-desktop" aria-label="Primary navigation"><a href="/">Rankings</a><a class="active" href="/discover.html" aria-current="page">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
+      <nav class="studio-nav studio-nav-desktop" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a class="active" href="/discover.html" aria-current="page">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
       <div class="studio-user"><span id="userName">Member</span><a class="studio-account" href="/account.html">Account</a><button id="logoutButton" type="button">Sign out</button></div>
-      <nav class="studio-nav studio-nav-mobile" aria-label="Primary navigation"><a href="/">Rankings</a><a class="active" href="/discover.html" aria-current="page">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
+      <nav class="studio-nav studio-nav-mobile" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a class="active" href="/discover.html" aria-current="page">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
     </header>
 
     <section class="discovery-load-error" id="discoveryLoadError" role="alert" aria-labelledby="discoveryLoadErrorTitle" aria-describedby="discoveryLoadErrorMessage" hidden>
@@ -41,11 +42,12 @@
         <div class="studio-container">
           <h2 class="sr-only" id="featureHubTitle">Strata+ workspace</h2>
           <nav class="destination-nav" aria-label="Strata+ workspace">
-            <a class="destination-link" href="#todayWorkspace" data-feature-target="today" aria-controls="todayWorkspace" aria-expanded="false"><span>Today</span><small>Your next action</small></a>
-            <a class="destination-link" href="#planWorkspace" data-feature-target="plan" aria-controls="planWorkspace" aria-expanded="false"><span>Plan</span><small>Your week and block</small></a>
-            <a class="destination-link" href="#progressWorkspace" data-feature-target="progress" aria-controls="progressWorkspace" aria-expanded="false"><span>Progress</span><small>What you logged</small></a>
-            <a class="destination-link" href="#exploreWorkspace" data-feature-target="explore" aria-controls="exploreWorkspace" aria-expanded="false"><span>Explore</span><small>Exercises and ideas</small></a>
-            <a class="destination-link" href="#coachingWorkspace" data-feature-target="coaching" aria-controls="coachingWorkspace" aria-expanded="false"><span>Personal training &amp; calories</span><small>Your next week and intake</small></a>
+            <a class="destination-link" href="#todayWorkspace" data-feature-target="today" aria-controls="todayWorkspace" aria-expanded="false"><span>Overview</span><small>Your next step</small></a>
+            <a class="destination-link" href="#planWorkspace" data-feature-target="plan" aria-controls="planWorkspace" aria-expanded="false"><span>Plan</span><small>Build your week</small></a>
+            <a class="destination-link" href="/workout.html"><span>Train</span><small>Start or resume</small></a>
+            <a class="destination-link" href="#nutritionWorkspace" data-feature-target="nutrition" aria-controls="nutritionWorkspace" aria-expanded="false"><span>Nutrition</span><small>Calories & food</small></a>
+            <a class="destination-link" href="#progressWorkspace" data-feature-target="progress" aria-controls="progressWorkspace" aria-expanded="false"><span>Progress</span><small>Review your results</small></a>
+            <a class="destination-link" href="#exploreWorkspace" data-feature-target="explore" aria-controls="exploreWorkspace" aria-expanded="false"><span>Exercises</span><small>Find & compare</small></a>
           </nav>
           <p class="sr-only" id="featureStatus" role="status" aria-live="polite"></p>
         </div>
@@ -55,8 +57,8 @@
         <div class="hero-signal" aria-hidden="true"><span></span><span></span><span></span><i></i></div>
         <div class="studio-container hero-layout">
           <div class="hero-copy">
-            <p class="eyebrow"><span></span> Today · Strata+ member</p>
-            <h1 id="todayTitle" tabindex="-1">ONE SESSION.<br /><em>ONE CLEAR NEXT STEP.</em></h1>
+            <p class="eyebrow"><span></span> Overview · Strata+</p>
+            <h1 id="todayTitle" tabindex="-1">Your next step.<br /><em>Ready when you are.</em></h1>
             <p id="todayIntro">Loading the workout that belongs next in your saved week.</p>
             <div class="hero-actions"><a class="button button-accent" id="plusStartWorkout" href="/workout.html">Start working out <span aria-hidden="true">↗</span></a></div>
             <p class="today-membership-note"><span aria-hidden="true">+</span> Guided training, history, and progression are part of Strata+. Your weekly plan remains yours to review and edit.</p>
@@ -76,17 +78,18 @@
           </aside>
         </div>
         <div class="studio-container today-support-grid">
-          <section class="progression-card" id="progressionCard" aria-labelledby="progressionTitle" hidden>
-            <div class="progression-card-copy"><p class="kicker">Review before anything changes</p><h2 id="progressionTitle">A SMALL SAVED-PLAN ADJUSTMENT</h2><p id="progressionExplanation">Once you have comparable sessions, Strata+ can suggest one clear saved weekly Plan edit here.</p><small id="progressionEvidence">A suggestion is based only on work you logged and any check-in you chose to save.</small></div>
-            <div class="progression-proposal"><span>Suggested weekly Plan edit</span><strong id="progressionChange">No change suggested</strong><p id="progressionTradeoff">Your saved weekly Plan is never changed automatically.</p><div class="progression-actions"><button class="button button-accent" id="progressionAccept" type="button">Accept change</button><button class="small-button" id="progressionDismiss" type="button">Dismiss</button></div><p id="progressionStatus" role="status" aria-live="polite"></p></div>
-          </section>
-          <aside class="today-context-card" id="todayAlternativeWorkout" aria-labelledby="todayContextTitle" hidden><p class="kicker">Need a different session?</p><h2 id="todayContextTitle">CHANGE THE PLAN, NOT THE STORY.</h2><p>Build an alternative when time or equipment changes. Nothing is saved until you review and approve it.</p><a class="small-button" id="todayAlternativeAction" href="#sessionBuilder" data-feature-target="session">Create a different workout <span aria-hidden="true">→</span></a></aside>
+
+          <aside class="today-context-card" id="todayAlternativeWorkout" aria-labelledby="todayContextTitle" hidden><p class="kicker">Need a different session?</p><h2 id="todayContextTitle">Need a different workout?</h2><p>Build an alternative when time or equipment changes. Nothing is saved until you review and approve it.</p><a class="small-button" id="todayAlternativeAction" href="#sessionBuilder" data-feature-target="session">Create a different workout <span aria-hidden="true">→</span></a></aside>
         </div>
       </section>
 
       <section class="plan-workspace feature-panel" id="planWorkspace" data-feature-panel="plan" aria-labelledby="planWorkspaceTitle">
         <div class="studio-container">
-          <div class="workspace-heading"><div><p class="kicker">Plan · make the week workable</p><h2 id="planWorkspaceTitle" tabindex="-1">YOUR TRAINING <em>PLAN.</em></h2></div><p>Review your weekly plan, create one workout, or organize the same week over a longer period.</p></div>
+          <div class="workspace-heading"><div><p class="kicker">Plan · make the week workable</p><h2 id="planWorkspaceTitle" tabindex="-1">Make room for <em>progress.</em></h2></div><p>Review your weekly plan, create one workout, or organize the same week over a longer period.</p></div>
+<section class="progression-card" id="progressionCard" aria-labelledby="progressionTitle" hidden>
+            <div class="progression-card-copy"><p class="kicker">Review before anything changes</p><h2 id="progressionTitle">A SMALL SAVED-PLAN ADJUSTMENT</h2><p id="progressionExplanation">Once you have comparable sessions, Strata+ can suggest one clear saved weekly Plan edit here.</p><small id="progressionEvidence">A suggestion is based only on work you logged and any check-in you chose to save.</small></div>
+            <div class="progression-proposal"><span>Suggested weekly Plan edit</span><strong id="progressionChange">No change suggested</strong><p id="progressionTradeoff">Your saved weekly Plan is never changed automatically.</p><div class="progression-actions"><button class="button button-accent" id="progressionAccept" type="button">Accept change</button><button class="small-button" id="progressionDismiss" type="button">Dismiss</button></div><p id="progressionStatus" role="status" aria-live="polite"></p></div>
+          </section>
           <div class="plan-overview-layout">
             <section class="plan-summary-card plan-primary-card" aria-labelledby="planSummaryTitle">
               <span class="workspace-card-number" aria-hidden="true">01</span>
@@ -148,38 +151,21 @@
               </details>
             </div>
           </div>
-        </div>
+        <div class="workspace-empty" id="programState" role="status"><div><p class="kicker">Personal setup</p><h3>A training week that fits you</h3><p id="programStateMessage">Loading your saved profile…</p></div><a class="button button-accent" id="programSetupLink" href="#coachingWorkspace" data-feature-target="coaching" hidden>Set up my profile →</a><button class="small-button" id="programRetry" type="button" hidden>Try again</button></div><div class="program-results" id="programResults" hidden><div class="program-toolbar"><div><p class="kicker">Suggested week</p><p>Generated from your personal setup. Review this week, then choose whether to use it as your saved plan.</p></div><a class="small-button" href="#coachingWorkspace" data-feature-target="coaching">Edit personal setup →</a></div><section class="coaching-week-section" aria-labelledby="coachingTrainingWeekTitle">
+              <div class="coaching-section-head"><div><p class="kicker kicker-light">Personal training · weekly review</p><h4 id="coachingTrainingWeekTitle">THIS WEEK’S TRAINING.</h4></div><div><span id="coachingRotationLabel">Training focus —</span><small id="coachingNextWeek">Next plan —</small></div></div>
+              <div class="coaching-week-grid" id="coachingWeekGrid"></div><div class="program-actions"><button class="button button-accent" id="programApply" type="button">Review &amp; use this week →</button><a class="small-button" id="programTrainLink" href="/workout.html" hidden>Open Train →</a><p id="programApplyStatus" role="status" aria-live="polite"></p></div>
+              <p class="coaching-method-note" id="coachingPlanMethod">The plan uses your available days, equipment, experience, time, movement constraints, and known exercise capabilities.</p>
+              <details class="coaching-method-details"><summary>Training coverage</summary><p class="coaching-method-note" id="coachingTrainingCoverage"></p></details>
+            </section></div></div>
       </section>
 
       <section class="progress-workspace feature-panel" id="progressWorkspace" data-feature-panel="progress" aria-labelledby="progressWorkspaceTitle">
         <div class="studio-container">
-          <div class="workspace-heading"><div><p class="kicker">Progress · based on your logs</p><h2 id="progressWorkspaceTitle" tabindex="-1">SEE THE WORK. <em>NOT A MADE-UP SCORE.</em></h2></div><p>Review completed workouts, logged volume, consistency, and repeat-exercise results.</p></div>
+          <div class="workspace-heading"><div><p class="kicker">Progress · based on your logs</p><h2 id="progressWorkspaceTitle" tabindex="-1">See your work <em>add up.</em></h2></div><p>Review completed workouts, logged volume, consistency, and repeat-exercise results.</p></div>
           <section class="progress-state progress-loading" id="progressLoadingState" role="status" aria-live="polite"><span class="progress-state-mark" aria-hidden="true">↻</span><div><strong>Loading your progress</strong><p id="progressLoadingMessage">Loading your completed workouts…</p></div></section>
           <section class="progress-state progress-error" id="progressLoadError" role="alert" hidden><span class="progress-state-mark" aria-hidden="true">!</span><div><strong>Progress couldn’t load</strong><p id="progressLoadErrorMessage">Check your connection, then try again.</p></div><button class="small-button" id="progressRetry" type="button">Try again <span aria-hidden="true">↻</span></button></section>
-          <section class="progress-calorie-setup" id="progressCalorieSetup" aria-labelledby="progressCalorieSetupTitle" hidden><div><p class="kicker">Daily calorie progress</p><h3 id="progressCalorieSetupTitle">SET YOUR TARGETS FIRST.</h3><p>Complete Personal training and calorie counting once to create your seven-day targets.</p></div><a class="small-button" href="#coachingWorkspace" data-feature-target="coaching">Set up calorie targets <span aria-hidden="true">→</span></a></section>
-          <section class="progress-calorie-card" id="progressCalorieCard" aria-labelledby="progressCalorieTitle" hidden>
-            <div class="progress-calorie-head"><div><p class="kicker">Daily calorie progress</p><h3 id="progressCalorieTitle">LOG A DAY’S TOTAL.</h3><p>Enter the cumulative total for the whole selected day—not only the latest meal. Optional macros appear only when enabled in your coaching profile.</p></div><a class="small-button" href="#coachingWorkspace" data-feature-target="coaching">Open full coaching week <span aria-hidden="true">→</span></a></div>
-            <div class="progress-calorie-summary" id="progressCoachingSummary" role="status" aria-live="polite"></div>
-              <form class="progress-calorie-form" id="progressCoachingLogForm" novalidate>
-              <label class="coaching-log-date" for="progressCoachingLogDate"><span>Day</span><select id="progressCoachingLogDate" name="date"></select></label>
-              <label class="coaching-log-calories" for="progressCoachingCaloriesEaten"><span>Cumulative daily calories</span><input id="progressCoachingCaloriesEaten" name="calories" type="number" min="0" max="20000" step="1" inputmode="numeric" aria-describedby="progressCoachingCaloriesHelp" required /><small id="progressCoachingCaloriesHelp">Replace this number as the day progresses; do not enter only the latest meal.</small></label>
-              <label class="coaching-log-weight" for="progressCoachingMorningWeight"><span>Morning body weight <small>Optional</small></span><span class="coaching-log-weight-input"><input id="progressCoachingMorningWeight" name="morningWeight" type="number" min="35" max="300" step="0.1" inputmode="decimal" aria-describedby="progressCoachingWeightHelp" /><b id="progressCoachingMorningWeightUnit" aria-hidden="true">kg</b></span><small id="progressCoachingWeightHelp">After waking, before food or drink, when available.</small></label>
-              <label class="progress-coaching-macro" for="progressCoachingProteinEaten"><span>Protein (g)</span><input id="progressCoachingProteinEaten" name="proteinGrams" type="number" min="0" max="2000" step="1" inputmode="numeric" /></label>
-              <label class="progress-coaching-macro" for="progressCoachingCarbsEaten"><span>Carbs (g)</span><input id="progressCoachingCarbsEaten" name="carbGrams" type="number" min="0" max="3000" step="1" inputmode="numeric" /></label>
-              <label class="progress-coaching-macro" for="progressCoachingFatEaten"><span>Fat (g)</span><input id="progressCoachingFatEaten" name="fatGrams" type="number" min="0" max="1000" step="1" inputmode="numeric" /></label>
-              <label class="coaching-log-complete" for="progressCoachingDayComplete"><input id="progressCoachingDayComplete" name="complete" type="checkbox" /><span><strong>Day total is complete</strong><small>Include this day when future weekly estimates assess aligned intake and morning weights.</small></span></label>
-              <button class="button button-dark" id="progressCoachingSaveLog" type="submit">Save intake <span aria-hidden="true">→</span></button>
-                <p id="progressCoachingLogStatus" role="status" aria-live="polite">Choose a day and enter its current total.</p>
-              </form>
-              <section class="coaching-meal-suggestions coaching-meal-suggestions-light" id="progressCoachingFood" aria-labelledby="progressCoachingFoodTitle">
-                <header class="coaching-meal-suggestions-head"><div><p class="kicker">Food ideas for what remains</p><h4 id="progressCoachingFoodTitle" tabindex="-1">OPTIONS FOR THIS DAY.</h4></div><button class="small-button" id="progressCoachingFoodRefresh" type="button" aria-controls="progressCoachingFoodOptions" disabled>Refresh suggestions <span aria-hidden="true">↻</span></button></header>
-                <dl class="coaching-meal-remaining" id="progressCoachingFoodRemaining" aria-label="Remaining nutrition used for meal suggestions"><div><dt>Calories left</dt><dd>—</dd></div><div data-meal-macro="protein"><dt>Protein left</dt><dd>—</dd></div><div data-meal-macro="carbs"><dt>Carbs left</dt><dd>—</dd></div><div data-meal-macro="fat"><dt>Fat left</dt><dd>—</dd></div></dl>
-                <p class="coaching-meal-status" id="progressCoachingFoodStatus" role="status" aria-live="polite" aria-atomic="true">Save your food preferences to load options for the selected day.</p>
-                <ul class="coaching-meal-list" id="progressCoachingFoodOptions" aria-busy="false" aria-label="Meal suggestions"></ul>
-                <p class="coaching-meal-disclaimer">Ingredient amounts are scaled for the suggested portion. These are approximate STRATA editorial recipe estimates informed by generic <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noreferrer">USDA FoodData Central reference data <span aria-hidden="true">↗</span></a>; no specific FDC record or branded product is verified, and costs are not live grocery prices. Verify actual portions, every label, and cross-contact risk—STRATA cannot guarantee allergy safety.</p>
-              </section>
-            </section>
-          <section class="progress-first-workout" id="progressFirstWorkout" aria-labelledby="progressFirstWorkoutTitle" hidden><span aria-hidden="true">01</span><div><p class="kicker">Your first useful signal</p><h3 id="progressFirstWorkoutTitle">COMPLETE YOUR FIRST WORKOUT TO UNLOCK PROGRESS.</h3><p>Your progress appears after your first completed workout. Log the work you actually complete to begin your history.</p></div><a class="button button-accent" id="progressEmptyAction" href="/workout.html">Start working out <span aria-hidden="true">→</span></a></section>
+          <aside class="workspace-shortcut"><div><strong>Looking for calories or body weight?</strong><p>Your daily diary and food suggestions live in Nutrition.</p></div><a class="small-button" href="#nutritionWorkspace" data-feature-target="nutrition">Open Nutrition →</a></aside>
+          <section class="progress-first-workout" id="progressFirstWorkout" aria-labelledby="progressFirstWorkoutTitle" hidden><span aria-hidden="true">01</span><div><p class="kicker">Your first useful signal</p><h3 id="progressFirstWorkoutTitle">Your first workout starts the story.</h3><p>Your progress appears after your first completed workout. Log the work you actually complete to begin your history.</p></div><a class="button button-accent" id="progressEmptyAction" href="/workout.html">Start working out <span aria-hidden="true">→</span></a></section>
           <div id="progressHistoryContent" hidden>
             <div class="progress-metric-grid" aria-label="Training progress summary">
               <article><span>This week</span><strong id="progressAdherence">—</strong><p id="progressAdherenceDetail">Loading planned and completed days…</p></article>
@@ -198,12 +184,12 @@
 
       <section class="explore-workspace feature-panel" id="exploreWorkspace" data-feature-panel="explore" aria-labelledby="exploreWorkspaceTitle">
         <div class="studio-container">
-          <div class="workspace-heading"><div><p class="kicker">Explore · use a tool with purpose</p><h2 id="exploreWorkspaceTitle" tabindex="-1">FIND WHAT YOU NEED. <em>KEEP THE REST QUIET.</em></h2></div><p>Browse all exercises, view recommendations, compare options, or update the preferences used for your matches.</p></div>
+          <div class="workspace-heading"><div><p class="kicker">Explore · use a tool with purpose</p><h2 id="exploreWorkspaceTitle" tabindex="-1">Find your next <em>exercise.</em></h2></div><p>Browse all exercises, view recommendations, compare options, or update the preferences used for your matches.</p></div>
           <nav class="feature-grid explore-tool-grid explore-primary-tools" aria-label="Primary Explore tools">
             <a class="feature-block" href="#recommendations" data-feature-target="recommendations" aria-controls="recommendations" aria-expanded="false"><span>Recommendations</span><strong>Find your strongest fits</strong><small>Ranked for your goal, experience, equipment, and constraints.</small><b aria-hidden="true">↗</b></a>
             <a class="feature-block" href="#exerciseExplorer" data-feature-target="library" aria-controls="exerciseExplorer" aria-expanded="false"><span>Library</span><strong>Explore every movement</strong><small>Search <span id="catalogTotal">320</span> exercises and inspect each trade-off.</small><b aria-hidden="true">↗</b></a>
           </nav>
-          <details class="explore-advanced-tools"><summary><span><small class="kicker">Advanced Explore tools</small><strong>Compare, browse community plans, or tune preferences</strong></span><b aria-hidden="true">+</b></summary><nav class="feature-grid explore-tool-grid" aria-label="Advanced Explore tools"><a class="feature-block" href="#battle" data-feature-target="battle" aria-controls="battle" aria-expanded="false"><span>Compare</span><strong>Make a clear choice</strong><small>Put two to four movements side by side before committing.</small><b aria-hidden="true">↗</b></a><a class="feature-block" href="#communityPlans" data-feature-target="community" aria-controls="communityPlans" aria-expanded="false"><span>Community</span><strong>Discover a shared week</strong><small>Preview every day before choosing to replace your own week.</small><b aria-hidden="true">↗</b></a><a class="feature-block" href="#profile" data-feature-target="profile" aria-controls="profile" aria-expanded="false"><span>Preferences</span><strong>Tune your ranking lens</strong><small>Control the rules behind your personal matches.</small><b aria-hidden="true">↗</b></a></nav></details>
+          <nav class="feature-grid explore-tool-grid" aria-label="More exercise tools"><a class="feature-block" href="#battle" data-feature-target="battle" aria-controls="battle" aria-expanded="false"><span>Compare</span><strong>Make a clear choice</strong><small>Put two to four movements side by side before committing.</small><b aria-hidden="true">↗</b></a><a class="feature-block" href="#profile" data-feature-target="profile" aria-controls="profile" aria-expanded="false"><span>Preferences</span><strong>Tune your ranking lens</strong><small>Control the rules behind your personal matches.</small><b aria-hidden="true">↗</b></a></nav>
         </div>
       </section>
 
@@ -211,8 +197,8 @@
         <div class="studio-container">
           <div class="coaching-heading">
             <div>
-              <p class="kicker kicker-light">Personal training and calorie counting</p>
-              <h2 id="coachingWorkspaceTitle" tabindex="-1">A WEEK BUILT<br />AROUND <em>YOU.</em></h2>
+              <p class="kicker kicker-light">Personal setup · used by Plan and Nutrition</p>
+              <h2 id="coachingWorkspaceTitle" tabindex="-1">A little about <em>you.</em></h2>
             </div>
             <p>Turn your measurements, schedule, experience, available equipment, and known lifts into one transparent training week and a calorie schedule you can actually follow. A new week is generated every Monday.</p>
           </div>
@@ -226,7 +212,7 @@
 
           <section class="coaching-onboarding" id="coachingSetup" aria-labelledby="coachingSetupTitle" hidden>
             <header class="coaching-setup-intro">
-              <div class="coaching-setup-copy"><p class="kicker">Starting coaching profile</p><h3 id="coachingSetupTitle" tabindex="-1">TELL STRATA WHAT<br /><em>THE NUMBERS MEAN.</em></h3><p>Begin with a transparent planning estimate. Complete daily intake totals and comparable morning weights help STRATA refine it over time.</p></div>
+              <div class="coaching-setup-copy"><p class="kicker">One setup · Plan and Nutrition</p><h3 id="coachingSetupTitle" tabindex="-1">Build your <em>personal profile.</em></h3><p>Begin with a transparent planning estimate. Complete daily intake totals and comparable morning weights help STRATA refine it over time.</p></div>
               <nav class="coaching-setup-map" aria-label="Coaching profile sections">
                 <a href="#coachingBodyInputs"><span>01</span><strong>Body</strong><small>Energy inputs</small></a>
                 <a href="#coachingTrainingInputs"><span>02</span><strong>Training</strong><small>Your real week</small></a>
@@ -329,56 +315,31 @@
               </fieldset>
 
               <p class="coaching-validation" id="coachingValidation" role="alert" hidden></p>
-              <div class="coaching-profile-actions"><button class="button button-accent" id="coachingGenerate" type="submit">Build my week <span aria-hidden="true">→</span></button><button class="small-button" id="coachingDiscardProfile" type="button" hidden>Discard edits</button><span id="coachingSaveStatus" role="status" aria-live="polite">Nothing is saved until you build the week.</span></div>
+              <div class="coaching-profile-actions"><button class="button button-accent" id="coachingGenerate" type="submit">Save personal setup <span aria-hidden="true">→</span></button><button class="small-button" id="coachingDiscardProfile" type="button" hidden>Discard edits</button><span id="coachingSaveStatus" role="status" aria-live="polite">No changes until you save personal setup.</span></div>
             </form>
           </section>
 
-          <section class="coaching-dashboard" id="coachingDashboard" aria-labelledby="coachingDashboardTitle" hidden>
+
+        </div>
+      </section>
+      <section class="coaching-workspace nutrition-workspace feature-panel" id="nutritionWorkspace" data-feature-panel="nutrition" aria-labelledby="nutritionWorkspaceTitle"><div class="studio-container">
+        <div class="workspace-heading"><div><p class="kicker kicker-light">Nutrition · your daily diary</p><h2 id="nutritionWorkspaceTitle" tabindex="-1">Eat for <em>your goal.</em></h2></div><p>Check your calorie target, record today's intake, and find meal ideas in one place.</p></div>
+        <div class="workspace-empty" id="nutritionState" role="status"><div><p class="kicker">Personal setup</p><h3>Your calories, made personal</h3><p id="nutritionStateMessage">Loading your saved profile…</p></div><a class="button button-accent" id="nutritionSetupLink" href="#coachingWorkspace" data-feature-target="coaching" hidden>Set up my profile →</a><button class="small-button" id="nutritionRetry" type="button" hidden>Try again</button></div>
+        <section class="coaching-dashboard" id="coachingDashboard" aria-labelledby="coachingDashboardTitle" hidden>
             <header class="coaching-dashboard-head">
-              <div><p class="kicker kicker-light" id="coachingWeekLabel">Current coaching week</p><h3 id="coachingDashboardTitle" tabindex="-1">YOUR PLAN. THE REASON BEHIND IT.</h3><p id="coachingWeekExplanation">Loading the assumptions behind this week…</p></div>
-              <button class="small-button" id="coachingEditProfile" type="button">Edit coaching profile</button>
+              <div><p class="kicker kicker-light" id="coachingWeekLabel">Current coaching week</p><h3 class="sr-only" id="coachingDashboardTitle" tabindex="-1">Your targets for this week.</h3></div>
+              <button class="small-button" id="coachingEditProfile" type="button">Edit personal setup</button>
             </header>
 
             <p class="coaching-method-note" id="coachingModelUpdate" role="status" hidden></p>
-            <p class="coaching-method-note" id="coachingWeightBasis"></p>
+
             <section class="coaching-metrics" aria-label="Energy estimates">
-              <article><span>Resting estimate</span><strong id="coachingBmr">—</strong><small id="coachingBmrMethod">Formula starting point</small></article>
-              <article><span>Maintenance is</span><strong id="coachingTdee">—</strong><small id="coachingTdeeDetail">Daily planning estimate; actual needs can differ</small></article>
-              <article class="coaching-metric-accent"><span id="coachingGoalLabel">Selected target</span><strong id="coachingTarget">—</strong><small id="coachingTargetDetail">Daily calorie target</small></article>
-              <article><span>Weekly target</span><strong id="coachingWeeklyCalories">—</strong><small>Distributed across seven days</small></article>
-            </section>
-            <section class="coaching-calibration" id="coachingCalibration" aria-labelledby="coachingCalibrationTitle">
-              <header class="coaching-calibration-head"><div><p class="kicker kicker-light">Calorie estimate</p><h4 id="coachingCalibrationTitle">STARTING ESTIMATE.</h4></div><span id="coachingCalibrationState">Formula estimate</span></header>
-              <p id="coachingCalibrationExplanation">This is a formula-based planning estimate. Complete intake totals and comparable morning weights can make future weekly targets more personal.</p>
-              <div class="coaching-calibration-progress" aria-label="Calibration readiness">
-                <article><span>Complete intake days</span><strong id="coachingCalibrationIntake">0 logged · 0 aligned</strong><small id="coachingCalibrationIntakeHelp">14 consecutive complete intake days within 42 days</small></article>
-                <article><span>Morning weights</span><strong id="coachingCalibrationWeights">0 / 8</strong><small id="coachingCalibrationWeightsHelp">8 usable morning weights spanning at least 14 days</small></article>
-                <article><span>Interval-derived estimate</span><strong id="coachingCalibrationObserved">Not ready</strong><small id="coachingCalibrationCutoff">No calibration cutoff yet</small></article>
-              </div>
-              <details class="coaching-evidence-details"><summary>Evidence dates and sensitivity</summary>
-              <p id="coachingCalibrationAlignment">No aligned interval yet.</p>
-              <p id="coachingCalibrationQuality">Evidence checks are engineering heuristics, not a confidence score.</p>
-              <p id="coachingCalibrationSensitivity">A sensitivity range appears when an aligned estimate is usable.</p></details>
-              <div class="coaching-calibration-decision"><span>Adjustment</span><strong id="coachingCalibrationAdjustment">No trend adjustment yet</strong><p id="coachingCalibrationLimitations">Day-to-day scale changes reflect water, glycogen, digestion, and measurement conditions as well as tissue change.</p></div>
-            </section>
-            <section class="coaching-goal-comparison" aria-labelledby="coachingGoalComparisonTitle"><div><p class="kicker kicker-light">All three planning estimates</p><h4 id="coachingGoalComparisonTitle">DEFICIT. MAINTAIN. BUILD.</h4></div><div id="coachingGoalComparison"></div></section>
 
-            <section class="coaching-week-section" aria-labelledby="coachingTrainingWeekTitle">
-              <div class="coaching-section-head"><div><p class="kicker kicker-light">Personal training · weekly review</p><h4 id="coachingTrainingWeekTitle">THIS WEEK’S TRAINING.</h4></div><div><span id="coachingRotationLabel">Training focus —</span><small id="coachingNextWeek">Next plan —</small></div></div>
-              <div class="coaching-week-grid" id="coachingWeekGrid"></div>
-              <p class="coaching-method-note" id="coachingPlanMethod">The plan uses your available days, equipment, experience, time, movement constraints, and known exercise capabilities.</p>
-              <details class="coaching-method-details"><summary>Training coverage</summary><p class="coaching-method-note" id="coachingTrainingCoverage"></p></details>
-            </section>
+              <article><span>Maintenance is</span><strong id="coachingTdee">—</strong><details class="metric-explanation"><summary>See calculation</summary><small id="coachingTdeeDetail">Daily planning estimate; actual needs can differ</small></details></article>
+              <article class="coaching-metric-accent"><span id="coachingGoalLabel">Selected target</span><strong id="coachingTarget">—</strong><details class="metric-explanation"><summary>Target details</summary><small id="coachingTargetDetail">Daily calorie target</small></details></article>
 
-            <section class="coaching-nutrition-section" aria-labelledby="coachingNutritionTitle">
-              <div class="coaching-section-head"><div><p class="kicker">Calorie counting · seven-day view</p><h4 id="coachingNutritionTitle">FUEL THE WHOLE WEEK.</h4></div><p id="coachingPatternExplanation">Each day is part of one weekly target.</p></div>
-              <div class="coaching-calorie-week" id="coachingCalorieWeek"></div>
-              <div class="coaching-projection-layout">
-                <section class="coaching-projection" aria-labelledby="coachingProjectionTitle"><p class="kicker">Scenario, not a promise</p><h5 id="coachingProjectionTitle">WEIGHT-CHANGE SCENARIOS</h5><div id="coachingProjectionChart" class="coaching-projection-chart"></div><p id="coachingProjectionNote">The display band is an unvalidated STRATA heuristic, not a confidence interval or clinical safety boundary. Real weight change can differ substantially.</p></section>
-                <aside class="coaching-method-card"><p class="kicker">How this was calculated</p><h5>METHOD &amp; LIMITS</h5><ul id="coachingMethodList"><li>Loading calculation details…</li></ul><p>This tool is for adults and general education. It is not suitable for pregnancy, eating-disorder treatment, or medical nutrition therapy. Speak with a qualified clinician or dietitian when those apply.</p></aside>
-              </div>
             </section>
-
+            <p class="nutrition-estimate-note">Planning estimates. Use your diary and weight trend to refine them over time.</p>
             <section class="coaching-progress-section" aria-labelledby="coachingProgressTitle">
               <div class="coaching-section-head"><div><p class="kicker kicker-light">Daily intake log</p><h4 id="coachingProgressTitle">WHAT’S LEFT FOR THE DAY.</h4></div><p>Enter the cumulative total for the whole day. Mark it complete only when final. You can correct the past 42 days; a correction informs future weekly estimates and keeps this saved week unchanged.</p></div>
               <div class="coaching-progress-summary" id="coachingProgressSummary" role="status" aria-live="polite"></div>
@@ -401,9 +362,38 @@
                 <p class="coaching-meal-disclaimer">Ingredient amounts are scaled for the suggested portion. These are approximate STRATA editorial recipe estimates informed by generic <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noreferrer">USDA FoodData Central reference data <span aria-hidden="true">↗</span></a>; no specific FDC record or branded product is verified, and costs are not live grocery prices. Verify actual portions, every label, and cross-contact risk—STRATA cannot guarantee allergy safety.</p>
               </section>
             </section>
+            <details class="nutrition-details"><summary>Energy breakdown &amp; profile inputs</summary><div class="nutrition-breakdown"><p id="coachingWeekExplanation">Loading the assumptions behind this week…</p><p class="coaching-method-note" id="coachingWeightBasis"></p><div class="coaching-secondary-metrics"><article><span>Resting estimate</span><strong id="coachingBmr">—</strong><small id="coachingBmrMethod">Formula starting point</small></article><article><span>Weekly target</span><strong id="coachingWeeklyCalories">—</strong><small>Distributed across seven days</small></article></div></div></details>
+            <details class="nutrition-details"><summary>How your maintenance adapts</summary><section class="coaching-calibration" id="coachingCalibration" aria-labelledby="coachingCalibrationTitle">
+              <header class="coaching-calibration-head"><div><p class="kicker kicker-light">Calorie estimate</p><h4 id="coachingCalibrationTitle">STARTING ESTIMATE.</h4></div><span id="coachingCalibrationState">Formula estimate</span></header>
+              <p id="coachingCalibrationExplanation">This is a formula-based planning estimate. Complete intake totals and comparable morning weights can make future weekly targets more personal.</p>
+              <div class="coaching-calibration-progress" aria-label="Calibration readiness">
+                <article><span>Complete intake days</span><strong id="coachingCalibrationIntake">0 logged · 0 aligned</strong><small id="coachingCalibrationIntakeHelp">14 consecutive complete intake days within 42 days</small></article>
+                <article><span>Morning weights</span><strong id="coachingCalibrationWeights">0 / 8</strong><small id="coachingCalibrationWeightsHelp">8 usable morning weights spanning at least 14 days</small></article>
+                <article><span>Interval-derived estimate</span><strong id="coachingCalibrationObserved">Not ready</strong><small id="coachingCalibrationCutoff">No calibration cutoff yet</small></article>
+              </div>
+              <details class="coaching-evidence-details"><summary>Evidence dates and sensitivity</summary>
+              <p id="coachingCalibrationAlignment">No aligned interval yet.</p>
+              <p id="coachingCalibrationQuality">Evidence checks are engineering heuristics, not a confidence score.</p>
+              <p id="coachingCalibrationSensitivity">A sensitivity range appears when an aligned estimate is usable.</p></details>
+              <div class="coaching-calibration-decision"><span>Adjustment</span><strong id="coachingCalibrationAdjustment">No trend adjustment yet</strong><p id="coachingCalibrationLimitations">Day-to-day scale changes reflect water, glycogen, digestion, and measurement conditions as well as tissue change.</p></div>
+            </section></details>
+            <details class="nutrition-details"><summary>Compare calorie goals</summary><section class="coaching-goal-comparison" aria-labelledby="coachingGoalComparisonTitle"><div><p class="kicker kicker-light">All three planning estimates</p><h4 id="coachingGoalComparisonTitle">DEFICIT. MAINTAIN. BUILD.</h4></div><div id="coachingGoalComparison"></div></section></details>
+
+
+
+            <section class="coaching-nutrition-section" aria-labelledby="coachingNutritionTitle">
+              <div class="coaching-section-head"><div><p class="kicker">Calorie counting · seven-day view</p><h4 id="coachingNutritionTitle">FUEL THE WHOLE WEEK.</h4></div><p id="coachingPatternExplanation">Each day is part of one weekly target.</p></div>
+              <div class="coaching-calorie-week" id="coachingCalorieWeek"></div>
+              <details class="nutrition-details"><summary>Weight scenarios, calculation method & sources</summary><div class="coaching-projection-layout">
+                <section class="coaching-projection" aria-labelledby="coachingProjectionTitle"><p class="kicker">Scenario, not a promise</p><h5 id="coachingProjectionTitle">WEIGHT-CHANGE SCENARIOS</h5><div id="coachingProjectionChart" class="coaching-projection-chart"></div><p id="coachingProjectionNote">The display band is an unvalidated STRATA heuristic, not a confidence interval or clinical safety boundary. Real weight change can differ substantially.</p></section>
+                <aside class="coaching-method-card"><p class="kicker">How this was calculated</p><h5>METHOD &amp; LIMITS</h5><ul id="coachingMethodList"><li>Loading calculation details…</li></ul><p>This tool is for adults and general education. It is not suitable for pregnancy, eating-disorder treatment, or medical nutrition therapy. Speak with a qualified clinician or dietitian when those apply.</p></aside>
+              </div></details>
+            </section>
+
+
           </section>
-        </div>
-      </section>
+      </div></section>
+
 
       <aside class="score-guide" id="scoreGuide" aria-label="STRATA score guide" hidden>
         <div class="studio-container">
@@ -413,7 +403,7 @@
 
       <section class="profile-section feature-panel" id="profile" data-feature-panel="profile" aria-labelledby="profileTitle">
         <div class="studio-container">
-          <a class="tool-menu-link" href="#exploreWorkspace" data-feature-target="explore">Back to Explore ↑</a>
+          <a class="tool-menu-link" href="#exploreWorkspace" data-feature-target="explore">Back to Exercises ↑</a>
           <div class="section-heading compact-heading"><div><p class="kicker">Your selection rules</p><h2 id="profileTitle" tabindex="-1">TUNE THE <em>RANKING.</em></h2></div><p>This profile changes personalized rankings only. It never changes the official STRATA FitScore.</p></div>
           <form class="profile-card" id="profileForm">
             <div class="profile-primary">
@@ -433,7 +423,7 @@
 
       <section class="battle-section feature-panel" id="battle" data-feature-panel="battle" aria-labelledby="battleTitle">
         <div class="studio-container">
-          <a class="tool-menu-link tool-menu-link-light" href="#exploreWorkspace" data-feature-target="explore">Back to Explore ↑</a>
+          <a class="tool-menu-link tool-menu-link-light" href="#exploreWorkspace" data-feature-target="explore">Back to Exercises ↑</a>
           <div class="section-heading"><div><p class="kicker">Exercise comparison</p><h2 id="battleTitle" tabindex="-1">BUILD AN EXERCISE <em>BATTLE.</em></h2></div><p>Choose any two to four exercises. STRATA will compare their scores, target, mechanics, progression, setup, equipment, practicality, and fit for your saved profile.</p></div>
           <form class="battle-builder" id="battleForm">
             <div class="battle-selects" id="battleSelects"></div>
@@ -445,7 +435,7 @@
 
       <section class="recommendation-section feature-panel" id="recommendations" data-feature-panel="recommendations" aria-labelledby="recommendationTitle">
         <div class="studio-container">
-          <a class="tool-menu-link" href="#exploreWorkspace" data-feature-target="explore">Back to Explore ↑</a>
+          <a class="tool-menu-link" href="#exploreWorkspace" data-feature-target="explore">Back to Exercises ↑</a>
           <div class="section-heading"><div><p class="kicker">Personalized shortlist</p><h2 id="recommendationTitle" tabindex="-1">BEST EXERCISES <em>FOR YOU.</em></h2></div><div class="heading-action"><p id="recommendationSummary">Based on your saved selection rules.</p><button class="small-button" id="shareRanking" type="button">Share shortlist ↗</button></div></div>
           <div class="ranking-lens" aria-label="Current recommendation profile">
             <div><span>Your ranking lens</span><ul id="rankingLensItems"><li>Loading preferences…</li></ul></div>
@@ -503,8 +493,8 @@
 
       <section class="explorer-section feature-panel" id="exerciseExplorer" data-feature-panel="library" aria-labelledby="explorerTitle">
         <div class="studio-container">
-          <a class="tool-menu-link" href="#exploreWorkspace" data-feature-target="explore">Back to Explore ↑</a>
-          <div class="section-heading"><div><p class="kicker">Search, inspect, and rate</p><h2 id="explorerTitle" tabindex="-1">EXPLORE EVERY <em>TRADE-OFF.</em></h2></div><p>Search by exercise, muscle, equipment, pattern, or difficulty. Select up to four movements for a deeper comparison.</p></div>
+          <a class="tool-menu-link" href="#exploreWorkspace" data-feature-target="explore">Back to Exercises ↑</a>
+          <div class="section-heading"><div><p class="kicker">Search, inspect, and rate</p><h2 id="explorerTitle" tabindex="-1">Your exercise <em>library.</em></h2></div><p>Search by exercise, muscle, equipment, pattern, or difficulty. Select up to four movements for a deeper comparison.</p></div>
           <div class="collection-row" role="group" aria-label="Quick exercise collections"><button data-collection="all" class="active" type="button" aria-pressed="true">All exercises</button><button data-collection="saved" type="button" aria-pressed="false"><span id="savedCollectionLabel">Saved · 0</span></button><button data-collection="top-chest" type="button" aria-pressed="false">Highest-rated chest</button><button data-collection="dumbbells" type="button" aria-pressed="false">Best with dumbbells</button><button data-collection="bodyweight" type="button" aria-pressed="false">Bodyweight only</button><button data-collection="beginner" type="button" aria-pressed="false">Beginner-friendly</button><button data-collection="community" type="button" aria-pressed="false">Community rated</button></div>
           <div class="explorer-toolbar" role="search" aria-label="Filter exercises">
             <label class="filter-control search-control"><span class="filter-label">Search exercises</span><span class="search-icon" aria-hidden="true">⌕</span><input id="searchInput" type="search" placeholder="Name, muscle, equipment, pattern…" autocomplete="off" /></label>
@@ -522,7 +512,7 @@
 
       <section class="community-plans-section feature-panel" id="communityPlans" data-feature-panel="community" aria-labelledby="communityPlansTitle">
         <div class="studio-container">
-          <a class="tool-menu-link tool-menu-link-light" href="#exploreWorkspace" data-feature-target="explore">Back to Explore ↑</a>
+          <a class="tool-menu-link tool-menu-link-light" href="#planWorkspace" data-feature-target="plan">Back to Plan ↑</a>
           <div class="section-heading">
             <div><p class="kicker kicker-light">Shared weekly plans</p><h2 id="communityPlansTitle" tabindex="-1">FIND YOUR NEXT <em>WEEK.</em></h2></div>
             <p>Explore seven-day workout plans shared by other STRATA members. Preview every day first, then confirm before replacing your current weekly plan.</p>
@@ -607,7 +597,7 @@
 
     </main>
 
-    <footer class="build-footer">STRATA · Build 8.0.1 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <footer class="build-footer">STRATA · Build 8.5.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
 
     <aside class="compare-tray" id="compareTray" hidden aria-label="Exercise comparison tray">
       <div><span>EXERCISE BATTLE</span><p id="compareNames">Choose 2–4 exercises</p></div>
@@ -615,6 +605,10 @@
     </aside>
 
     <dialog class="detail-dialog" id="detailDialog" aria-labelledby="detailTitle"><div id="detailContent"></div></dialog>
+    <dialog class="community-apply-dialog" id="programApplyDialog" aria-labelledby="programApplyTitle" aria-describedby="programApplyDescription">
+      <div class="community-confirm-body"><p class="kicker">Review before saving</p><h2 id="programApplyTitle">Use this suggested week?</h2><p id="programApplyDescription">This replaces all seven days of your saved weekly plan. Your completed workouts and calorie diary stay saved. Only exercises, sets, and repetitions transfer; load and rest guidance remain in the suggestion above.</p><p id="programApplySummary" class="program-review-summary"></p><p id="programApplyError" role="alert" hidden></p><div class="community-confirm-actions"><button class="small-button" id="programApplyCancel" data-close-dialog="programApplyDialog" type="button">Keep current week</button><button class="button button-dark" id="programApplyConfirm" type="button">Use this week</button></div></div>
+    </dialog>
+
     <dialog class="community-apply-dialog" id="communityApplyDialog" aria-labelledby="communityApplyTitle" aria-describedby="communityApplyDescription communityApplyWarning">
       <div class="community-confirm-head"><p class="kicker">Replace weekly plan</p><button class="icon-button" data-close-dialog="communityApplyDialog" type="button" aria-label="Close without replacing your plan">×</button></div>
       <div class="community-confirm-body">
@@ -640,30 +634,31 @@
     </dialog>
     <noscript><div class="no-script-note" role="status"><strong>Strata+ needs JavaScript for personalized tools.</strong> The page content remains available, but saving, filtering, comparing, and plan building require JavaScript.</div></noscript>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="/pwa.js?v=8.0.1"></script>
-    <script src="/product-signals.js?v=8.0.1"></script>
-    <script src="session-selection-core.js?v=8.0.1"></script>
-    <script src="discovery-core.js?v=8.0.1"></script>
-    <script src="monthly-plan-core.js?v=8.0.1"></script>
-    <script src="training-block-core.js?v=8.0.1"></script>
-    <script src="personal-training-energy-ui-core.js?v=8.0.1"></script>
-    <script src="personal-training-ui-core.js?v=8.0.1"></script>
-    <script src="personal-training-diary-ui.js?v=8.0.1"></script>
-    <script src="personal-training-meals-ui-core.js?v=8.0.1"></script>
-    <script src="discover-state.js?v=8.0.1"></script>
-    <script src="discover-api.js?v=8.0.1"></script>
-    <script src="discover-navigation.js?v=8.0.1"></script>
-    <script src="discover-progress.js?v=8.0.1"></script>
-    <script src="discover-render.js?v=8.0.1"></script>
-    <script src="discover-coaching-render.js?v=8.0.1"></script>
-    <script src="discover-catalog.js?v=8.0.1"></script>
-    <script src="discover-detail.js?v=8.0.1"></script>
-    <script src="discover-community.js?v=8.0.1"></script>
-    <script src="discover-session.js?v=8.0.1"></script>
-    <script src="discover-sharing.js?v=8.0.1"></script>
-    <script src="discover-events.js?v=8.0.1"></script>
-    <script src="discover-coaching-meals.js?v=8.0.1"></script>
-    <script src="discover-coaching.js?v=8.0.1"></script>
-    <script src="discover.js?v=8.0.1"></script>
+    <script src="/pwa.js?v=8.5.0"></script>
+    <script src="/product-signals.js?v=8.5.0"></script>
+    <script src="session-selection-core.js?v=8.5.0"></script>
+    <script src="discovery-core.js?v=8.5.0"></script>
+    <script src="monthly-plan-core.js?v=8.5.0"></script>
+    <script src="training-block-core.js?v=8.5.0"></script>
+    <script src="personal-training-energy-ui-core.js?v=8.5.0"></script>
+    <script src="personal-training-ui-core.js?v=8.5.0"></script>
+    <script src="personal-training-diary-ui.js?v=8.5.0"></script>
+    <script src="personal-training-meals-ui-core.js?v=8.5.0"></script>
+    <script src="discover-state.js?v=8.5.0"></script>
+    <script src="discover-api.js?v=8.5.0"></script>
+    <script src="discover-navigation.js?v=8.5.0"></script>
+    <script src="discover-progress.js?v=8.5.0"></script>
+    <script src="discover-render.js?v=8.5.0"></script>
+    <script src="discover-coaching-render.js?v=8.5.0"></script>
+    <script src="discover-catalog.js?v=8.5.0"></script>
+    <script src="discover-detail.js?v=8.5.0"></script>
+    <script src="discover-community.js?v=8.5.0"></script>
+    <script src="discover-session.js?v=8.5.0"></script>
+    <script src="discover-sharing.js?v=8.5.0"></script>
+    <script src="discover-events.js?v=8.5.0"></script>
+    <script src="discover-coaching-meals.js?v=8.5.0"></script>
+    <script src="discover-coaching.js?v=8.5.0"></script>
+    <script src="discover-program.js?v=8.5.0"></script>
+    <script src="discover.js?v=8.5.0"></script>
   </body>
 </html>

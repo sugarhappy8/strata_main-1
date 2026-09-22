@@ -69,10 +69,10 @@ test("meal presentation formatters are deliberate about units and missing data",
 test("Discover markup supplies accessible preference and suggestion surfaces without example meals",()=>{
   const html=readFileSync(join(ROOT,"public","pages","discover.html"),"utf8"),css=readFileSync(join(ROOT,"public","styles","discover-coaching-meals.css"),"utf8");
   for(const asset of ["discover-coaching-meals.css","personal-training-meals-ui-core.js","discover-coaching-meals.js"])assert.match(html,new RegExp(`${asset.replaceAll(".","\\.")}\\?v=${BUILD.replaceAll(".","\\.")}`),asset);
-  for(const id of ["mealAllergyNone","mealAllergyListed","mealAllergyOther","mealOtherAllergies","mealDietaryPattern","mealDietGlutenFree","mealDietDairyFree","mealMealsPerDay","mealDailyBudget","coachingFoodStatus","coachingFoodRemaining","coachingFoodOptions","coachingFoodRefresh","progressCoachingFoodStatus","progressCoachingFoodRemaining","progressCoachingFoodOptions","progressCoachingFoodRefresh"])assert.match(html,new RegExp(`id="${id}"`),id);
+  for(const id of ["mealAllergyNone","mealAllergyListed","mealAllergyOther","mealOtherAllergies","mealDietaryPattern","mealDietGlutenFree","mealDietDairyFree","mealMealsPerDay","mealDailyBudget","coachingFoodStatus","coachingFoodRemaining","coachingFoodOptions","coachingFoodRefresh"])assert.match(html,new RegExp(`id="${id}"`),id);
   assert.equal((html.match(/name="mealAllergen"/g)||[]).length,9);assert.equal((html.match(/name="mealFavorite"/g)||[]).length,Ui.FAVORITE_FOODS.length);
-  assert.equal((html.match(/aria-label="Meal suggestions"/g)||[]).length,2);assert.equal((html.match(/USDA FoodData Central reference data/g)||[]).length,2);assert.equal((html.match(/cross-contact risk/g)||[]).length,2);
-  assert.match(html,/id="coachingFoodOptions"[^>]*><\/ul>/);assert.match(html,/id="progressCoachingFoodOptions"[^>]*><\/ul>/);
+  assert.equal((html.match(/aria-label="Meal suggestions"/g)||[]).length,1);assert.equal((html.match(/USDA FoodData Central reference data/g)||[]).length,1);assert.equal((html.match(/cross-contact risk/g)||[]).length,1);
+  assert.match(html,/id="coachingFoodOptions"[^>]*><\/ul>/);assert.doesNotMatch(html,/id="progressCoachingFoodOptions"/);
   assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);assert.match(css,/@media\(max-width:560px\)/);assert.match(css,/\.coaching-meal-list[^}]*grid-template-columns:minmax\(0,1fr\)/);assert.match(css,/@media\(forced-colors:active\)/);
 });
 

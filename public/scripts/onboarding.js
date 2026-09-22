@@ -91,7 +91,7 @@
     ready=false;$("setupFields").disabled=true;$("retrySetup").hidden=true;$("previewSummary").hidden=true;status("Loading your starting point…");
     try{
       if(!exercises.length){
-        const response=await fetch("/exercises.json?v=8.0.1");if(!response.ok)throw new Error("The exercise library is unavailable. Reconnect and retry.");exercises=await response.json();
+        const response=await fetch("/exercises.json?v=8.5.0");if(!response.ok)throw new Error("The exercise library is unavailable. Reconnect and retry.");exercises=await response.json();
       }
       const account=await request("/api/setup",{cache:"no-store"});requirePlus(account);
       if(!account.csrfToken)throw new Error("Your account could not be verified. Retry before editing.");

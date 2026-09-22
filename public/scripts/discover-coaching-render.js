@@ -6,7 +6,6 @@
   root.StrataDiscoverCoachingRender=api;
 })(typeof globalThis!=="undefined"?globalThis:this,function(energyUi){
   "use strict";
-
   const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const number=(value)=>Math.round(Number(value)||0).toLocaleString();
   const dateLabel=(value)=>{const date=new Date(`${value}T12:00:00`);return Number.isNaN(date.getTime())?String(value||""):new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric"}).format(date);};
@@ -23,7 +22,6 @@
     return `Resting plus ordinary daily movement: about ${number(activity.nonWorkoutKcal)} kcal/day${factorText} · generated sessions: about ${number(activity.plannedTrainingWeekKcal)} kcal/week · other activity: about ${number(activity.additionalActivityWeekKcal)} kcal/week. Exercise totals exclude resting energy.${crossText}`;
   }
   function deficitSummary(nutrition){const details=nutrition.deficit?.breakdown,requestedRaw=details?.requestedWeightChangePercentPerWeek;if(!details||requestedRaw==null||requestedRaw==="")return nutrition.deficit?.policy||"Review required";const requestedValue=Number(requestedRaw);if(!Number.isFinite(requestedValue))return nutrition.deficit?.policy||"Review required";const requested=requestedValue.toLocaleString(undefined,{maximumFractionDigits:2}),composition=details.energyAvailabilityFloorKcal==null?"optional composition inputs not used":`composition floor about ${number(details.energyAvailabilityFloorKcal)} kcal/day${details.energyAvailabilityGuardApplied?" applied":" not limiting"}${details.compositionDifferenceKcal==null?"":` · resting cross-check differs by about ${number(details.compositionDifferenceKcal)} kcal${details.compositionRangeExpanded?" and widens the planning range":" within the existing planning range"}`}`,scenario=details.scenarioGuardApplied?"lower sensitivity scenario requires review":"lower sensitivity scenario stays within planner limits";if(nutrition.deficit?.targetKcal==null)return `Review required for the ${requested}% request · ${composition} · ${scenario}`;const actualRaw=details.actualWeightChangePercentPerWeek,actual=actualRaw==null||actualRaw===""?null:Number(actualRaw);return `${requested}% body weight/week requested · about ${number(details.actualDeficitKcal)} kcal/day actual deficit${Number.isFinite(actual)?` (about ${actual.toLocaleString(undefined,{maximumFractionDigits:2})}%/week)`:""} · ${composition} · ${scenario}`;}
-
   function projectionSvg(profile,scenarios,displayWeight){
     const start=Number(scenarios?.[0]?.startWeightKg??profile.weightKg),points=[{weeks:0,weightKg:start,rangeKg:[start,start]},...(Array.isArray(scenarios)?scenarios:[])].filter((item)=>Number.isFinite(Number(item.weightKg))&&Array.isArray(item.rangeKg));
     if(points.length<2)return '<p class="coaching-field-intro">A projection appears after a complete energy estimate is available.</p>';
@@ -36,19 +34,24 @@
     const valuesList=points.slice(1).map((item)=>`<div><dt>${number(item.weeks)} weeks</dt><dd><strong>${escape(displayWeight(item.weightKg))}</strong><span>Scenario range ${escape(displayWeight(Math.min(...item.rangeKg)))}–${escape(displayWeight(Math.max(...item.rangeKg)))}</span></dd></div>`).join("");
     return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated weight scenario over ${weeks} weeks"><polygon class="projection-range" points="${range}"/><g>${grids}</g><path class="projection-line" d="${line}"/>${labels}</svg><dl class="coaching-projection-data">${valuesList}</dl>`;
   }
-
   function createRenderer({element,ui,diaryUi}){
-    const el=element;
-    function show(state){el("coachingLoading").hidden=state!=="loading";el("coachingError").hidden=state!=="error";el("coachingSetup").hidden=state!=="setup";el("coachingDashboard").hidden=state!=="dashboard";}
+    const el=element;let ready=false;
+    function show(state){const available=ready&&state!=="loading"&&state!=="error";
+      el("coachingLoading").hidden=state!=="loading";el("coachingError").hidden=state!=="error";el("coachingSetup").hidden=state!=="setup";el("coachingDashboard").hidden=!available;
+      el("programResults").hidden=!available;
+      for(const prefix of ["program","nutrition"]){
+        el(`${prefix}State`).hidden=available;el(`${prefix}SetupLink`).hidden=state!=="setup";el(`${prefix}Retry`).hidden=state!=="error";
+        el(`${prefix}StateMessage`).textContent=state==="error"?el("coachingErrorMessage").textContent:state==="setup"?"Set up your measurements, available days, and preferences once. Plan and Nutrition use the same profile.":"Loading your saved profile…";
+      }
+    }
     function error(message){el("coachingErrorMessage").textContent=message||"Check your connection, then try again.";show("error");}
-    function showProgressSetup(enabled){el("progressCalorieSetup").hidden=!enabled;el("progressCalorieCard").hidden=enabled;}
     function clearPrivate(){
-      for(const id of ["coachingWeekGrid","coachingCalorieWeek","coachingProjectionChart","coachingMethodList","coachingProgressSummary","coachingGoalComparison","progressCoachingSummary","coachingCalibrationExplanation","coachingCalibrationLimitations","coachingWeightBasis","coachingModelUpdate","coachingCalibrationAlignment","coachingCalibrationQuality","coachingCalibrationSensitivity","coachingTrainingCoverage"])el(id).textContent="";
-      for(const id of ["coachingLogDate","progressCoachingLogDate"])el(id).textContent="";
-      for(const id of ["coachingCaloriesEaten","coachingMorningWeight","coachingProteinEaten","coachingCarbsEaten","coachingFatEaten","progressCoachingCaloriesEaten","progressCoachingMorningWeight","progressCoachingProteinEaten","progressCoachingCarbsEaten","progressCoachingFatEaten"])el(id).value="";
-      for(const id of ["coachingDayComplete","progressCoachingDayComplete"])el(id).checked=false;
+      for(const id of ["coachingWeekGrid","coachingCalorieWeek","coachingProjectionChart","coachingMethodList","coachingProgressSummary","coachingGoalComparison","coachingCalibrationExplanation","coachingCalibrationLimitations","coachingWeightBasis","coachingModelUpdate","coachingCalibrationAlignment","coachingCalibrationQuality","coachingCalibrationSensitivity","coachingTrainingCoverage"])el(id).textContent="";
+      for(const id of ["coachingLogDate"])el(id).textContent="";
+      for(const id of ["coachingCaloriesEaten","coachingMorningWeight","coachingProteinEaten","coachingCarbsEaten","coachingFatEaten"])el(id).value="";
+      for(const id of ["coachingDayComplete"])el(id).checked=false;
       el("coachingCalibrationTitle").textContent="STARTING ESTIMATE.";el("coachingCalibrationState").textContent="Formula estimate";el("coachingCalibrationState").dataset.state="starting";el("coachingCalibrationIntake").textContent="0 / 14";el("coachingCalibrationWeights").textContent="0 / 8 · 0 / 14 days";el("coachingCalibrationObserved").textContent="Not ready";el("coachingCalibrationCutoff").textContent="";el("coachingCalibrationAdjustment").textContent="";
-      el("progressCalorieCard").hidden=true;el("progressCalorieSetup").hidden=true;show("loading");
+      ready=false;show("loading");
     }
     function renderCalibration(nutrition){
       const rawMaintenance=typeof nutrition.maintenance==="number"?{}:nutrition.maintenance||{},view=ui.calibrationDisplay(rawMaintenance.calibration??nutrition.calibration),observed=view.observedMaintenanceKcal;
@@ -89,19 +92,19 @@
       el("coachingProjectionChart").innerHTML=projectionSvg({...profile,weightKg:nutrition.weightBasis?.weightKg??profile.weightKg},nutrition.weightScenarios,displayWeight);el("coachingProjectionNote").textContent=(nutrition.weightScenarios?.[0]?.caveat||"These are broad energy-balance scenarios, not promised outcomes. The display band is an unvalidated STRATA heuristic, not a confidence interval or clinical safety boundary. Water, glycogen, digestion, adherence, medication, and individual metabolism can move scale weight differently.")+(nutrition.weightScenarios?.some((scenario)=>scenario.includesGainAndLoss)?" The scenario envelope includes both weight gain and weight loss.":"");
       const references=(week.methodology?.references||[]).filter((item)=>/^https:\/\//.test(String(item?.url||""))).map((item)=>`<li><a href="${escape(item.url)}" rel="noreferrer" target="_blank">${escape(item.label||"Method source")} <span aria-hidden="true">↗</span></a></li>`);el("coachingMethodList").innerHTML=[...(week.methodology?.formulaSources||[]),...(week.methodology?.assumptions||[]),...(week.methodology?.cautions||[]),...(maintenanceData.referencePredictionErrorKcal==null?[]:[`Population equation reference error: ${number(maintenanceData.referencePredictionErrorKcal)} kcal/day. ${maintenanceData.referencePredictionErrorBasis||"Not a personalized confidence interval."}`])].map((item)=>`<li>${escape(item)}</li>`).concat(references).join("");
       const diaryTargets=diaryUi.targetsFor(week),keep=diaryUi.selectedDate(week,selectedDate,today);
-      for(const id of ["coachingLogDate","progressCoachingLogDate"]){const select=el(id);select.innerHTML=diaryTargets.map((target)=>`<option value="${escape(target.date)}"${target.date===keep?" selected":""}>${escape(target.day)} · ${escape(dateLabel(target.date))} · ${target.calories==null?"no saved target":energyUi.calorieTargetLabel(target.calories,"kcal")}</option>`).join("");}
-      document.querySelectorAll(".coaching-macro-log,.progress-coaching-macro").forEach((node)=>node.hidden=!profile.macroPreference);showProgressSetup(false);renderLog(profile,week,logs,keep);show("dashboard");return keep;
+      for(const id of ["coachingLogDate"]){const select=el(id);select.innerHTML=diaryTargets.map((target)=>`<option value="${escape(target.date)}"${target.date===keep?" selected":""}>${escape(target.day)} · ${escape(dateLabel(target.date))} · ${target.calories==null?"no saved target":energyUi.calorieTargetLabel(target.calories,"kcal")}</option>`).join("");}
+      document.querySelectorAll(".coaching-macro-log").forEach((node)=>node.hidden=!profile.macroPreference);renderLog(profile,week,logs,keep);ready=true;show("dashboard");return keep;
     }
     function renderLog(profile,week,logs,date){
       const context=diaryUi.context(week,logs,date);if(!context)return;const {row,target,log}=context;
-      el("coachingProgressTitle").textContent=`INTAKE FOR ${row.day.toUpperCase()}.`;el("progressCalorieTitle").textContent=`LOG ${row.day.toUpperCase()}’S TOTAL.`;
+      el("coachingProgressTitle").textContent=`INTAKE FOR ${row.day.toUpperCase()}.`;
       const progress=target?ui.calorieProgress(target.calories,log?.calories||0):null,label=progress?.status==="over"?"Above saved target":"Remaining";
       const summary=`<div class="coaching-progress-stat"><span>Logged</span><strong>${number(log?.calories||0)} kcal</strong><small>${log?log.complete===true?"Saved complete day":"Saved running total":"Nothing logged yet"}</small></div><div class="coaching-progress-stat"><span>Saved planning target</span><strong>${target?energyUi.calorieTargetLabel(target.calories,"kcal"):"Not available"}</strong><small>${target?`${escape(String(target.kind||"daily target").replaceAll("_"," "))} · estimate for this date`:"No target was saved for this date"}</small></div><div class="coaching-progress-stat"><span>${progress?label:"Comparison"}</span><strong>${progress?`${number(progress.status==="over"?progress.overByCalories:progress.remainingCalories)} kcal`:"Unavailable"}</strong><small>${progress?escape(progress.summary):"You can log or correct intake and weight without a historical calorie target."}</small></div>`;
       const macrosEnabled=Boolean(profile.macroPreference);
       const imperial=profile.measurementSystem==="imperial",weightValue=ui.dailyWeightFromKilograms(log?.morningWeightKg,profile.measurementSystem);
-      for(const scope of [{prefix:"coaching",summary:"coachingProgressSummary"},{prefix:"progressCoaching",summary:"progressCoachingSummary"}]){el(scope.summary).innerHTML=summary;el(`${scope.prefix}CaloriesEaten`).value=log?.calories??"";el(`${scope.prefix}MorningWeight`).value=weightValue??"";el(`${scope.prefix}MorningWeight`).min=imperial?"77.2":"35";el(`${scope.prefix}MorningWeight`).max=imperial?"661.4":"300";el(`${scope.prefix}MorningWeightUnit`).textContent=imperial?"lb":"kg";el(`${scope.prefix}DayComplete`).checked=log?.complete===true;el(`${scope.prefix}ProteinEaten`).value=macrosEnabled?log?.proteinG??"":"";el(`${scope.prefix}CarbsEaten`).value=macrosEnabled?log?.carbsG??"":"";el(`${scope.prefix}FatEaten`).value=macrosEnabled?log?.fatG??"":"";el(`${scope.prefix}LogStatus`).textContent=log?log.complete===true?`Saved as a complete ${row.day}. It can count toward the next weekly calibration.`:`Saved running total for ${row.day}. Mark it complete only when the whole day is final.`:`No intake saved for ${row.day} yet. Enter the cumulative day total.`;el(`${scope.prefix}LogDate`).value=date;}
+      for(const scope of [{prefix:"coaching",summary:"coachingProgressSummary"}]){el(scope.summary).innerHTML=summary;el(`${scope.prefix}CaloriesEaten`).value=log?.calories??"";el(`${scope.prefix}MorningWeight`).value=weightValue??"";el(`${scope.prefix}MorningWeight`).min=imperial?"77.2":"35";el(`${scope.prefix}MorningWeight`).max=imperial?"661.4":"300";el(`${scope.prefix}MorningWeightUnit`).textContent=imperial?"lb":"kg";el(`${scope.prefix}DayComplete`).checked=log?.complete===true;el(`${scope.prefix}ProteinEaten`).value=macrosEnabled?log?.proteinG??"":"";el(`${scope.prefix}CarbsEaten`).value=macrosEnabled?log?.carbsG??"":"";el(`${scope.prefix}FatEaten`).value=macrosEnabled?log?.fatG??"":"";el(`${scope.prefix}LogStatus`).textContent=log?log.complete===true?`Saved as a complete ${row.day}. It can count toward the next weekly calibration.`:`Saved running total for ${row.day}. Mark it complete only when the whole day is final.`:`No intake saved for ${row.day} yet. Enter the cumulative day total.`;el(`${scope.prefix}LogDate`).value=date;}
     }
-    return{clearPrivate,error,renderDashboard,renderLog,show,showProgressSetup};
+    return{clearPrivate,error,renderDashboard,renderLog,show};
   }
   return{createRenderer,dateLabel,equationLabel,goalLabel,projectionSvg};
 });

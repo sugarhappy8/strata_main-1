@@ -362,7 +362,7 @@
     state.workout.restEndsAt=Date.now()+seconds*1000;state.pausedSeconds=null;state.timerAnnounced=false;markDirty();tick();
   }
   const progression=P.create({state,workout:W,memoryFor,accountRead,renderSession:()=>view.refreshTargets($("sessionEntries"))});
-  const guidance=Q.create({$,state,accountRead,api,assertIdentity,saveError,exercise,esc,number,renderPlan});
+  const guidance=Q.create({$,state,accountRead,api,assertIdentity,saveError,exercise,esc,number});
   const historyView=H.create({$,state,workout:W,view,esc,number,exercise,formatLabel,accountRead,saveError,blockSession,renderPlan,mergeMemory,memoryReadyFor,renderSession,loadWorkoutMemory,fetchWorkout,selectWorkout,toast,recover,resetProgression:progression.reset,locationLike:location,historyLike:history});
   const contextView=T.create({$,state,workout:W,view,esc,openDetail:historyView.openDetail,recover});
   async function initialize(){
@@ -391,7 +391,7 @@
       $("modeNotice").textContent="The workout room could not load. Your saved sessions and device drafts have been kept.";
     }finally{state.loading=false;}
   }
-  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,resolveAdaptation:guidance.resolve,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save}});
+  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save}});
   setInterval(tick,1000);
   void initialize();
 })();

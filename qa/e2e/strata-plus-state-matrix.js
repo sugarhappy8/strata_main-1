@@ -86,25 +86,25 @@ test("a deep-linked workspace skip link keeps the selected Strata+ destination",
   const f=await fixture(t,{path:"/discover.html#coachingWorkspace"}),{page}=f;
   await page.locator("#coachingSetup").waitFor({state:"visible"});assert.equal(await page.locator("#activeWorkspaceSkip").getAttribute("href"),"#coachingWorkspaceTitle");
   await page.locator("#activeWorkspaceSkip").focus();await page.keyboard.press("Enter");await page.waitForFunction(()=>globalThis.document.activeElement?.id==="coachingWorkspaceTitle");
-  assert.equal(await page.locator("#coachingWorkspace").isVisible(),true);assert.equal(await page.locator('[data-feature-target="coaching"].destination-link').getAttribute("aria-current"),"location");assert.equal(await page.locator("[data-feature-panel]:not([hidden])").count(),1);healthy(f);
+  assert.equal(await page.locator("#coachingWorkspace").isVisible(),true);assert.equal(await page.locator('[data-feature-target="nutrition"].destination-link').getAttribute("aria-current"),"location");assert.equal(await page.locator("[data-feature-panel]:not([hidden])").count(),1);healthy(f);
 });
 
-test("the five Strata+ destinations retain keyboard focus, mobile identity, reduced motion, and a 31-day browser flow",{timeout:30_000},async(t)=>{
+test("the six Strata+ destinations retain keyboard focus, mobile identity, reduced motion, and a 31-day browser flow",{timeout:30_000},async(t)=>{
   const f=await fixture(t),{page}=f;
   await page.locator("#progressFirstWorkout").waitFor({state:"attached"});await page.waitForFunction(()=>globalThis.document.querySelector("#progressFirstWorkout")?.hidden===false);
   assert.match(await page.locator("#plusStartWorkout").textContent(),/Start workout/);assert.equal(await page.locator("#todayAlternativeWorkout").isVisible(),true);
   const primary=page.locator(".destination-nav .destination-link");
-  assert.deepEqual(await primary.locator("span").allTextContents(),["Today","Plan","Progress","Explore","Personal training & calories"]);
-  const mobile=page.locator(".studio-nav-mobile");assert.equal(await mobile.isVisible(),true);assert.deepEqual(await mobile.locator("a").allTextContents(),["Rankings","Strata+","Plan","Train"]);assert.equal(await mobile.locator('[aria-current="page"]').textContent(),"Strata+");
+  assert.deepEqual(await primary.locator("span").allTextContents(),["Overview","Plan","Train","Nutrition","Progress","Exercises"]);
+  const mobile=page.locator(".studio-nav-mobile");assert.equal(await mobile.isVisible(),true);assert.deepEqual(await mobile.locator("a").allTextContents(),["Exercises","Strata+","Plan","Train"]);assert.equal(await mobile.locator('[aria-current="page"]').textContent(),"Strata+");
   const layout=await page.evaluate(()=>({overflow:globalThis.document.documentElement.scrollWidth-globalThis.document.documentElement.clientWidth,reduced:globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches,motion:[...globalThis.document.querySelectorAll(".destination-link")].map((node)=>{const style=globalThis.getComputedStyle(node);return[style.animationDuration,style.transitionDuration];})}));
   assert.ok(layout.overflow<=1,`Strata+ overflows the 390px viewport by ${layout.overflow}px`);assert.equal(layout.reduced,true);for(const durations of layout.motion)for(const value of durations)assert.ok(value.split(",").every((part)=>Number.parseFloat(part)===0),`Reduced motion left ${value}`);
 
-  for(const [label,panel,heading] of [["Today","todayWorkspace","todayTitle"],["Plan","planWorkspace","planWorkspaceTitle"],["Progress","progressWorkspace","progressWorkspaceTitle"],["Explore","exploreWorkspace","exploreWorkspaceTitle"],["Personal training & calories","coachingWorkspace","coachingWorkspaceTitle"]]){
+  for(const [label,panel,heading] of [["Overview","todayWorkspace","todayTitle"],["Plan","planWorkspace","planWorkspaceTitle"],["Progress","progressWorkspace","progressWorkspaceTitle"],["Exercises","exploreWorkspace","exploreWorkspaceTitle"],["Nutrition","nutritionWorkspace","nutritionWorkspaceTitle"]]){
     const link=primary.filter({hasText:label}).first();await link.focus();await page.keyboard.press("Enter");await page.locator(`#${panel}`).waitFor({state:"visible"});await page.waitForFunction((hash)=>globalThis.location.hash===hash,`#${panel}`);
     await page.waitForFunction((id)=>globalThis.document.activeElement?.id===id,heading);assert.equal(await link.getAttribute("aria-current"),"location");assert.equal(await page.locator("[data-feature-panel]:not([hidden])").count(),1);
     const visible=await link.evaluate((node)=>{const rail=node.parentElement,linkBox=node.getBoundingClientRect(),railBox=rail.getBoundingClientRect();return linkBox.left>=railBox.left-1&&linkBox.right<=railBox.right+1;});assert.equal(visible,true,`${label} should remain visible in the mobile destination rail`);
   }
-  assert.equal(await page.locator("#scoreGuide").isHidden(),true,"Coaching should not show the exercise-score guide");await primary.filter({hasText:"Explore"}).first().click();assert.equal(await page.locator("#scoreGuide").isVisible(),true);assert.equal(await page.locator("#scoreGuideDetails").evaluate((node)=>node.open),false);assert.equal(await page.locator("#scoreGuide").count(),1);
+  assert.equal(await page.locator("#scoreGuide").isHidden(),true,"Coaching should not show the exercise-score guide");await primary.filter({hasText:"Exercises"}).first().click();assert.equal(await page.locator("#scoreGuide").isVisible(),true);assert.equal(await page.locator("#scoreGuideDetails").evaluate((node)=>node.open),false);assert.equal(await page.locator("#scoreGuide").count(),1);
 
   await primary.filter({hasText:"Plan"}).first().click();assert.equal(await page.locator("#planSummaryTitle").textContent(),"YOUR WEEKLY PLAN");
   for(const id of ["workoutBuilderDetails","planAheadDetails","reuseWeekDetails"])assert.equal(await page.locator(`#${id}`).evaluate((node)=>node.open),false);

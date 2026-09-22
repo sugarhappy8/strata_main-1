@@ -11,7 +11,7 @@
 
   function createController({document,element,api,state,ui,assertAccountResponse,onAccountError}){
     const el=element,data={profile:null,week:null,logs:[],date:"",request:0,bound:false};
-    const surfaces=()=>["coachingFood","progressCoachingFood"].map((prefix)=>({prefix,status:el(`${prefix}Status`),remaining:el(`${prefix}Remaining`),options:el(`${prefix}Options`),refresh:el(`${prefix}Refresh`)}));
+    const surfaces=()=>["coachingFood"].map((prefix)=>({prefix,status:el(`${prefix}Status`),remaining:el(`${prefix}Remaining`),options:el(`${prefix}Options`),refresh:el(`${prefix}Refresh`)}));
     const selected=(name)=>[...document.querySelectorAll(`input[name="${name}"]:checked`)].map((input)=>input.value);
     function preferenceNode(field){return {allergyStatus:el("mealAllergyNone"),allergens:document.querySelector('input[name="mealAllergen"]'),otherAllergies:el("mealOtherAllergies"),dietaryPattern:el("mealDietaryPattern"),dietaryRequirements:el("mealDietGlutenFree"),favoriteFoods:document.querySelector('input[name="mealFavorite"]'),mealsPerDay:el("mealMealsPerDay"),dailyBudgetUsd:el("mealDailyBudget")}[field]||null;}
     function updateAllergyFields(){

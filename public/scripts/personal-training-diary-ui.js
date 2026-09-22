@@ -1,7 +1,7 @@
 /* global module */
 (function(root,factory){const api=factory();if(typeof module==="object"&&module.exports)module.exports=api;root.StrataPersonalTrainingDiaryUi=api;})(typeof globalThis!=="undefined"?globalThis:this,function(){
   "use strict";
-  const prefixes=["coaching","progressCoaching"],fields=["LogDate","CaloriesEaten","MorningWeight","ProteinEaten","CarbsEaten","FatEaten"];
+  const prefixes=["coaching"],fields=["LogDate","CaloriesEaten","MorningWeight","ProteinEaten","CarbsEaten","FatEaten"];
   const validDate=(value)=>typeof value==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&Number.isFinite(Date.parse(`${value}T00:00:00Z`))&&new Date(`${value}T00:00:00Z`).toISOString().slice(0,10)===value;
   function targetsFor(week){
     const rows=Array.isArray(week?.logTargets)?week.logTargets:week?.nutrition?.dailyTargets||[];

@@ -9,7 +9,7 @@ const {chromium}=require("playwright");
 
 const ROOT=join(__dirname,"..","..");
 const read=(path)=>readFileSync(join(ROOT,path),"utf8");
-const sharedCss=read("public/styles/product-nav.css");
+const sharedCss=read("public/styles/product-nav.css")+"\n"+read("public/styles/site-experience.css");
 
 function headerFrom(path){
   const match=read(path).match(/<header\b[\s\S]*?<\/header>/i);
@@ -28,14 +28,14 @@ test("account and setup navigation fit narrow screens with touch-sized targets",
     ];
     for(const width of [320,390])for(const fixture of fixtures){
       const page=await browser.newPage({viewport:{width,height:700}});
-      await page.setContent(`<style>${fixture.css}</style>${fixture.header}`);
+      await page.setContent(`<style>${fixture.css}\n${read("public/styles/site-experience.css")}</style>${fixture.header}`);
       const result=await page.evaluate(()=>({
         overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,
         links:[...document.querySelectorAll(".product-nav a")].map(link=>({text:link.textContent.trim(),width:link.getBoundingClientRect().width,height:link.getBoundingClientRect().height,fontSize:parseFloat(getComputedStyle(link).fontSize)})),
         current:document.querySelector('.product-nav [aria-current="page"]')?.textContent.trim()||null
       }));
       assert.ok(result.overflow<=1,`${fixture.name} navigation overflows ${width}px by ${result.overflow}px`);
-      assert.deepEqual(result.links.map(link=>link.text),["Rankings","Strata+","Plan","Train","Account"]);
+      assert.deepEqual(result.links.map(link=>link.text),["Exercises","Strata+","Plan","Train","Account"]);
       assert.ok(result.links.every(link=>link.width>=44&&link.height>=44),`${fixture.name} navigation must keep 44×44px targets at ${width}px`);
       assert.ok(result.links.every(link=>link.fontSize>=11),`${fixture.name} navigation text must remain readable at ${width}px`);
       assert.equal(result.current,fixture.current);
@@ -52,23 +52,23 @@ test("responsive product headers follow their visual keyboard order",{timeout:30
     const fixtures=[
       {
         name:"Strata+",header:headerFrom("public/pages/discover.html"),css:read("public/styles/discover.css"),bodyClass:"plus-studio",
-        desktop:["STRATA home","Rankings","Strata+","Plan","Train","Account","Sign out"],
-        mobile:["STRATA home","Account","Sign out","Rankings","Strata+","Plan","Train"]
+        desktop:["STRATA home","Exercises","Strata+","Plan","Train","Account","Sign out"],
+        mobile:["STRATA home","Account","Sign out","Exercises","Strata+","Plan","Train"]
       },
       {
         name:"Plan",header:headerFrom("public/pages/planner.html"),css:read("public/styles/planner.css"),signedIn:true,
-        desktop:["STRATA rankings","Rankings","Strata+","Plan","Train","Account","Sign out"],
-        mobile:["STRATA rankings","Account","Sign out","Rankings","Strata+","Plan","Train"]
+        desktop:["STRATA rankings","Exercises","Strata+","Plan","Train","Account","Sign out"],
+        mobile:["STRATA rankings","Account","Sign out","Exercises","Strata+","Plan","Train"]
       },
       {
         name:"Train",header:headerFrom("public/pages/workout.html"),css:read("public/styles/workout.css"),
-        desktop:["STRATA rankings","Rankings","Strata+","Plan","Train","Account"],
-        mobile:["STRATA rankings","Account","Rankings","Strata+","Plan","Train"]
+        desktop:["STRATA rankings","Exercises","Strata+","Plan","Train","Account"],
+        mobile:["STRATA rankings","Account","Exercises","Strata+","Plan","Train"]
       }
     ];
     for(const fixture of fixtures)for(const [width,expected] of [[1200,fixture.desktop],[390,fixture.mobile],[320,fixture.mobile]]){
       const page=await browser.newPage({viewport:{width,height:800}});
-      await page.setContent(`<style>${fixture.css}</style>${fixture.header}`);
+      await page.setContent(`<style>${fixture.css}\n${read("public/styles/site-experience.css")}</style>${fixture.header}`);
       if(fixture.bodyClass)await page.evaluate((bodyClass)=>{document.body.className=bodyClass;},fixture.bodyClass);
       if(fixture.signedIn)await page.evaluate(()=>{document.getElementById("userName").hidden=false;document.getElementById("logoutButton").hidden=false;});
       const result=await page.evaluate(()=>{
@@ -119,7 +119,7 @@ test("planner cards contain long text and usable controls at every responsive bo
     const page=await browser.newPage({viewport:{width:1440,height:1210}});
     for(const width of [1440,1024,768,761,760,700,678,600,430,390,360,339,320]){
       await page.setViewportSize({width,height:1210});
-      await page.setContent(`<style>${plannerCss}</style>${fixture}`);
+      await page.setContent(`<style>${plannerCss}\n${read("public/styles/site-experience.css")}</style>${fixture}`);
       const result=await page.evaluate(()=>{
         const box=(node)=>{const rect=node.getBoundingClientRect();return{top:rect.top,right:rect.right,bottom:rect.bottom,left:rect.left,width:rect.width,height:rect.height};};
         const intersects=(left,right)=>left.left<right.right-1&&left.right>right.left+1&&left.top<right.bottom-1&&left.bottom>right.top+1;
@@ -167,7 +167,7 @@ test("planner cards contain long text and usable controls at every responsive bo
     }
     for(const width of [761,768,800,880]){
       await page.setViewportSize({width,height:500});
-      await page.setContent(`<style>${plannerCss}</style>${headerFrom("public/pages/planner.html")}`);
+      await page.setContent(`<style>${plannerCss}\n${read("public/styles/site-experience.css")}</style>${headerFrom("public/pages/planner.html")}`);
       const result=await page.evaluate(()=>{
         document.getElementById("saveStatus").textContent="Couldn't save — Retry";
         document.getElementById("retryPlanSave").hidden=false;

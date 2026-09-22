@@ -1,0 +1,164 @@
+/* Build 8.5: shared wayfinding, calm hierarchy, and compact action-first layouts. */
+:root { --site-radius:16px; }
+html { scroll-padding-top:100px; }
+body { line-height:1.5; }
+[hidden] { display:none!important; }
+:where(a,button,input,select,textarea,summary):focus-visible { outline:3px solid #6f8e27; outline-offset:4px; }
+:where(.site-header,.studio-header,.planner-header,.workout-header) { border-bottom:1px solid #ffffff24; }
+:where(.desktop-nav,.studio-nav,.planner-nav,.mobile-public-nav) a { text-decoration:none; }
+:where(.desktop-nav,.studio-nav,.planner-nav) a[aria-current] { color:#d4f578; }
+:where(.button,.small-button,.account-button,.dark-button,.outline-button) { border-radius:9px; min-height:44px; }
+:where(.section-heading,.workspace-heading,.coaching-heading) h2 { font-size:clamp(2rem,4.3vw,3.75rem); line-height:1.12; letter-spacing:-.045em; }
+:where(.section-heading,.workspace-heading,.coaching-heading)>p { max-width:48ch; line-height:1.65; }
+:where(.build-footer,.site-footer,.info-footer) { line-height:2; }
+.home-page .hero { height:auto; min-height:560px; max-height:none; }
+.home-page .hero-grid { min-height:560px; padding-top:130px; padding-bottom:52px; }
+.home-page .hero h1 { font-size:clamp(3.4rem,6.7vw,6.5rem); line-height:1.02; }
+.home-page .hero-intro { max-width:52ch; font-size:1rem; line-height:1.7; }
+.home-page .hero-data { max-width:230px; }
+.home-page .ticker { display:none; }
+.start-directory { padding:28px 0; background:#f3f4ef; color:#10110f; border-bottom:1px solid #d2d6cc; }
+.start-directory-title { margin:0 0 14px; font-size:.8rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.start-directory nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+.start-directory a { position:relative; display:flex; flex-direction:column; gap:8px; min-width:0; padding:20px 38px 20px 20px; color:inherit; background:#fff; border:1px solid #d2d6cc; border-radius:12px; text-decoration:none; }
+.start-directory a:hover { border-color:#6f8e27; background:#f4f9e8; }
+.start-directory strong { font-size:1rem; }
+.start-directory small { color:#525a49; font-size:.8rem; line-height:1.6; }
+.start-directory b { position:absolute; right:18px; top:20px; }
+.home-page :where(.proof-section,.week-section,.method-section) { padding-block:56px; }
+.home-page .section-heading h2 { font-size:clamp(2rem,4vw,3.4rem); }
+/* Six destinations remain visible, including on a narrow phone. */
+.plus-studio .workspace-switcher { padding:18px 0; background:#10110f; border-bottom:1px solid #34392d; }
+.plus-studio .destination-nav { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); grid-auto-flow:row; grid-auto-columns:auto; gap:8px; overflow:visible; }
+.plus-studio .destination-link { display:flex; flex-direction:column; justify-content:center; min-width:0; min-height:76px; padding:12px 14px; border:1px solid #3b4233; border-radius:10px; background:#1b1f17; }
+.plus-studio .destination-link span { font-size:.94rem; font-weight:700; }
+.plus-studio .destination-link small { margin-top:4px; font-size:.72rem; color:#c2caba; }
+.plus-studio .destination-link.active { background:#d4f578; color:#10110f; border-color:#d4f578; }
+.plus-studio .destination-link.active small { color:#394921; }
+.plus-studio .destination-link:hover { border-color:#d4f578; }
+.plus-studio :where(.studio-hero,.plan-workspace,.progress-workspace,.explore-workspace,.coaching-workspace) { min-height:0; padding-block:42px 64px; }
+.plus-studio .studio-hero h1 { font-size:clamp(2.4rem,4.8vw,4.6rem); line-height:1.1; letter-spacing:-.045em; }
+.plus-studio .hero-layout { gap:36px; align-items:center; }
+.plus-studio .hero-copy>p:not(.eyebrow) { max-width:51ch; }
+.plus-studio .today-membership-note { font-size:.8rem; line-height:1.6; }
+.plus-studio .workspace-heading { gap:24px; margin-bottom:28px; }
+.plus-studio .plan-primary-card { min-height:0; }
+.plus-studio .plan-summary-card h3 { font-size:1.6rem; line-height:1.25; }
+.plus-studio .plan-tool-disclosure { border-radius:12px; }
+.plus-studio .plan-tool-summary { gap:16px; }
+.plus-studio .plan-tool-copy strong { font-size:1.15rem; }
+.plus-studio .plan-tool-copy>span { font-size:.85rem; }
+.plus-studio .plan-tool-disclosure summary { padding:22px; }
+.plus-studio .explore-tool-grid { gap:14px; margin-bottom:14px; }
+.plus-studio .feature-block { min-height:190px; padding:26px; border-radius:14px; }
+.plus-studio .feature-block strong { font-size:clamp(1.2rem,2vw,1.6rem); line-height:1.3; }
+.workspace-shortcut,.workspace-empty,.program-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:20px; padding:24px; margin:24px 0; border:1px solid #414936; border-radius:14px; color:#f2f3eb; background:#1b2017; }
+.workspace-shortcut>div,.workspace-empty>div,.program-toolbar>div { flex:1 1 260px; }
+.workspace-shortcut p,.workspace-empty p,.program-toolbar p { margin:6px 0 0; color:#c5ceba; line-height:1.6; font-size:.875rem; }
+.workspace-empty h3 { margin:8px 0; font-size:1.55rem; line-height:1.3; }
+.program-results { padding:24px; margin-top:28px; background:#10150f; color:#f2f3eb; border-radius:16px; }
+.program-results .program-toolbar { margin:0 0 24px; }
+.program-results .coaching-week-section { margin:0; }
+.program-results .coaching-day-card { border-color:#47513e; }
+.program-results .coaching-week-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.program-results :where(h4,h5) { line-height:1.3; }
+.plus-studio .coaching-heading { margin-bottom:24px; }
+.plus-studio .coaching-setup-intro { gap:24px; padding:26px; }
+.plus-studio .coaching-setup-copy h3 { font-size:clamp(1.6rem,3vw,2.3rem); line-height:1.15; }
+.plus-studio .coaching-dashboard-head h3 { font-size:1.35rem; letter-spacing:-.02em; line-height:1.3; }
+.plus-studio .coaching-dashboard-head { padding-bottom:20px; }
+.plus-studio .coaching-dashboard-head p:not(.kicker) { font-size:.83rem; max-width:80ch; }
+.plus-studio .coaching-section-head h4 { font-size:clamp(1.4rem,2.5vw,2rem); line-height:1.25; }
+.plus-studio .coaching-metrics { margin-block:20px; align-items:start; }
+.plus-studio .coaching-metrics article { min-height:140px; padding:20px; }
+.plus-studio .coaching-metrics strong { font-size:clamp(1.2rem,2.4vw,1.8rem); line-height:1.3; }
+.plus-studio .coaching-progress-section { margin-top:24px; }
+.metric-explanation { font-size:.8rem; margin-top:12px; }
+.metric-explanation summary { cursor:pointer; color:#d4f578; min-height:32px; }
+.metric-explanation small { display:block; margin-top:8px; }
+.nutrition-details { margin:18px 0; border:1px solid #47513e; border-radius:12px; overflow:clip; }
+.nutrition-details>summary { padding:18px 22px; color:#f2f3eb; background:#1b2017; font-size:.94rem; font-weight:650; cursor:pointer; }
+.nutrition-details>section,.nutrition-details>.coaching-projection-layout { margin:0; border:0; border-radius:0; }
+.plus-studio .nutrition-details .coaching-calibration { margin:0; }
+.plus-studio .coaching-onboarding { border-radius:16px; }
+/* Shared page hierarchy puts forms and tools ahead of decorative space. */
+.planner-page .week-toolbar { padding-block:42px; }
+.planner-page .week-toolbar h1 { font-size:clamp(2.5rem,5.2vw,4.8rem); line-height:1.05; }
+.workout-page .hero { min-height:0; padding-block:36px; }
+.workout-page .hero h1 { font-size:clamp(2.4rem,5vw,4.5rem); line-height:1.08; }
+.workout-page .hero-visual { max-height:220px; }
+.workout-page .panel { border-radius:16px; }
+.workout-page .start-panel { scroll-margin-top:100px; }
+:where(.info-page,.account-page) h1 { font-size:clamp(2.5rem,5vw,4.5rem); line-height:1.08; }
+:where(.info-page,.account-page) :where(.info-hero,.account-hero) { padding-block:48px; }
+@media (max-width:1000px) {
+  .start-directory nav { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .plus-studio .destination-link { padding:12px 8px; }
+  .plus-studio .destination-link small { font-size:.65rem; }
+  .program-results .coaching-week-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:680px) {
+  html { scroll-padding-top:128px; }
+  .home-page .hero,.home-page .hero-grid { min-height:0; }
+  .home-page .hero-grid { padding-top:132px; padding-bottom:34px; gap:24px; }
+  .home-page .hero h1 { font-size:clamp(2.8rem,11.5vw,4.2rem); }
+  .home-page .hero-data { max-width:none; }
+  .start-directory { padding-block:22px; }
+  .start-directory nav { gap:8px; }
+  .start-directory a { padding:16px 28px 16px 14px; }
+  .start-directory b { right:10px; top:16px; }
+  .start-directory strong { font-size:.9rem; }
+  .start-directory small { font-size:.75rem; }
+  .plus-studio .destination-nav { grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; }
+  .plus-studio .destination-link { min-height:61px; padding:10px; }
+  .plus-studio .destination-link span { font-size:.875rem; }
+  .plus-studio .destination-link small { font-size:.65rem; }
+  .plus-studio .workspace-switcher { padding-block:12px; }
+  .plus-studio :where(.studio-hero,.plan-workspace,.progress-workspace,.explore-workspace,.coaching-workspace) { padding-block:28px 42px; }
+  .plus-studio .studio-hero h1 { font-size:clamp(2rem,8vw,3rem); }
+  .plus-studio .workspace-heading h2,.plus-studio .coaching-heading h2 { font-size:2rem; }
+  .plus-studio .workspace-heading { gap:14px; margin-bottom:22px; }
+  .plus-studio .feature-block { min-height:154px; padding:22px; }
+  .plus-studio .feature-block strong { font-size:1.25rem; }
+  .workspace-shortcut,.workspace-empty,.program-toolbar { padding:20px; gap:16px; }
+  .program-results { padding:16px; }
+  .program-results .coaching-week-grid { grid-template-columns:1fr; }
+  .plus-studio .coaching-metrics article { padding:16px; min-height:0; }
+  .plus-studio .coaching-metrics strong { font-size:1.3rem; }
+  .plus-studio .coaching-setup-intro { padding:22px; }
+  .workout-page .hero { padding-block:26px; }
+  .workout-page .hero-visual { display:none; }
+}
+@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+
+.program-actions { display:flex; flex-wrap:wrap; align-items:center; gap:16px; margin-top:24px; }
+.program-actions p { flex-basis:100%; margin:0; color:#c5ceba; font-size:.875rem; }
+.program-review-summary { white-space:pre-line; padding:18px; border:1px solid #d2d6cc; border-radius:10px; line-height:1.9; }
+
+.plus-studio .studio-hero .hero-layout { min-height:360px; }
+.plus-studio .studio-hero h1 { text-transform:none; }
+.nutrition-workspace .workspace-heading>p { color:#c5ceba; }
+.nutrition-workspace .workspace-heading em { color:#d4f578; }
+@media(max-width:680px) { .plus-studio .studio-hero .hero-layout { min-height:0; } }
+
+.plus-studio .explore-tool-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.plus-studio :is(.explore-workspace,.progress-workspace,.nutrition-workspace) .workspace-heading .kicker { color:#bdc8b0; }
+.plus-studio .plan-primary-card { border-top-color:#829e3c; }
+.workout-page .hero { grid-template-columns:1fr; padding-block:28px; }
+.workout-page .hero h1 { font-size:clamp(2rem,4vw,3.5rem); }
+.workout-page .hero-visual { display:none; }
+.home-page .hero h1 { font-size:clamp(3rem,6vw,5rem); }
+@media(max-width:680px) { .plus-studio .explore-tool-grid { grid-template-columns:1fr; } .planner-page .week-toolbar { padding-block:20px; } }
+
+.plan-workspace .progression-card { margin-bottom:24px; color:#f2f3eb; background:#1b2017; }
+
+.nutrition-workspace .coaching-metrics { grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.nutrition-workspace .coaching-metrics article { border:1px solid #414936; border-radius:12px; }
+.nutrition-workspace .coaching-metric-accent .metric-explanation summary { color:#22300f; }
+.nutrition-estimate-note { color:#bdc8b0; font-size:.8rem; margin:0; }
+.nutrition-breakdown { padding:24px; color:#c5ceba; font-size:.875rem; }
+.coaching-secondary-metrics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px; }
+.coaching-secondary-metrics article { display:flex; flex-direction:column; gap:10px; }
+.coaching-secondary-metrics strong { color:#f2f3eb; font-size:1.35rem; }
+.coaching-secondary-metrics small { line-height:1.6; }
+@media(max-width:400px) { .nutrition-workspace .coaching-metrics { gap:8px; } .nutrition-workspace .coaching-metrics article { padding:12px; } .nutrition-workspace .coaching-metrics strong { font-size:1.15rem; } .coaching-secondary-metrics { grid-template-columns:1fr; } }

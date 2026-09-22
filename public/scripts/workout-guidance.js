@@ -19,7 +19,7 @@
     return String(value||"Review next target").replace(/[_-]+/g," ").replace(/\b\w/g,(letter)=>letter.toUpperCase());
   }
 
-  function create({$,state,accountRead,api,assertIdentity,saveError,exercise,esc,number,renderPlan}){
+  function create({$,state,accountRead,api,assertIdentity,saveError,exercise,esc,number}){
     let loadGeneration=0;
     function reset(){
       loadGeneration++;state.adaptation=null;state.checkInBusy=false;
@@ -36,7 +36,7 @@
       $("adaptationTitle").textContent=state.adaptation.title||"Review a smaller next session.";
       $("adaptationExplanation").textContent=state.adaptation.explanation||"Your check-in supports reviewing one small change.";
       $("adaptationChange").textContent=`${change.day||"Planned day"} · ${exercise(change.exerciseId).name} · ${Number(change.fromSets)||"—"} to ${Number(change.toSets)||"—"} sets`;
-      $("acceptAdaptation").disabled=false;$("dismissAdaptation").disabled=false;$("adaptationStatus").textContent="";
+      $("adaptationStatus").textContent="";
     }
 
     function render(result,{saved=false}={}){
@@ -83,26 +83,7 @@
       }
     }
 
-    async function resolve(decision){
-      const adaptation=state.adaptation;if(!adaptation||state.checkInBusy||state.blocked)return;
-      state.checkInBusy=true;$("acceptAdaptation").disabled=true;$("dismissAdaptation").disabled=true;$("anotherSession").disabled=true;$("adaptationStatus").textContent=decision==="accept"?"Saving the approved Plan change…":"Keeping your current Plan…";
-      try{
-        await assertIdentity();
-        const body=decision==="accept"?{decision,expectedPlanUpdatedAt:adaptation.expectedPlanUpdatedAt}:{decision};
-        const result=await api(`/api/training/adaptations/${encodeURIComponent(adaptation.id)}`,{method:"POST",body:JSON.stringify(body)});await assertIdentity();
-        if(result.plan?.days)state.plan=result.plan;
-        if(Number.isSafeInteger(result.planUpdatedAt))state.planUpdatedAt=result.planUpdatedAt;
-        state.adaptation=null;$("adaptationProposal").hidden=true;$("adaptationStatus").textContent="";
-        $("checkInStatus").textContent=decision==="accept"?"Saved · Your approved one-set reduction is now in Plan.":"Saved · Your current Plan was kept.";$("checkInStatus").dataset.state="saved";renderPlan();
-      }catch(error){
-        $("adaptationStatus").textContent=error.status===409?"Your Plan or this suggestion changed elsewhere. Reload before deciding; nothing was overwritten.":`Couldn't save this decision — ${saveError(error)}`;
-      }finally{
-        state.checkInBusy=false;$("anotherSession").disabled=false;
-        if(state.adaptation){$("acceptAdaptation").disabled=false;$("dismissAdaptation").disabled=false;}
-      }
-    }
-
-    return{reset,render,renderAdaptation,load,save,resolve};
+    return{reset,render,renderAdaptation,load,save};
   }
 
   return{suggestionTarget,actionLabel,create};

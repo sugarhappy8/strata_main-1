@@ -13,19 +13,20 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.0.1" />
-    <link rel="stylesheet" href="planner.css?v=8.0.1" />
-    <link rel="stylesheet" href="/product-signals.css?v=8.0.1" />
-    <link rel="stylesheet" href="/experience.css?v=8.0.1" />
-    <script src="/motion.js?v=8.0.1"></script>
+    <link rel="stylesheet" href="/fonts.css?v=8.5.0" />
+    <link rel="stylesheet" href="planner.css?v=8.5.0" />
+    <link rel="stylesheet" href="/product-signals.css?v=8.5.0" />
+    <link rel="stylesheet" href="/experience.css?v=8.5.0" />
+    <script src="/motion.js?v=8.5.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=8.5.0" />
   </head>
-  <body>
+  <body class="planner-page">
     <a class="skip-link" href="#weekTitle">Skip to weekly plan</a>
     <header class="planner-header">
       <div class="planner-identity"><a class="brand" href="/" aria-label="STRATA rankings"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>STRATA</span></a><div class="header-center"><span class="live-dot" aria-hidden="true"></span><span id="saveStatus" role="status" aria-live="polite" aria-atomic="true">Loading plan…</span><button class="save-retry" id="retryPlanSave" type="button" hidden>Retry</button></div></div>
-      <nav class="planner-primary-nav planner-primary-nav-desktop" aria-label="Primary navigation"><a href="/">Rankings</a><a href="/discover.html">Strata+</a><a href="/planner.html" aria-current="page">Plan</a><a href="/workout.html">Train</a></nav>
+      <nav class="planner-primary-nav planner-primary-nav-desktop" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a href="/discover.html">Strata+</a><a href="/planner.html" aria-current="page">Plan</a><a href="/workout.html">Train</a></nav>
       <div class="user-menu"><a class="account-link" id="userName" href="/account.html" hidden>Account</a><a id="plannerSignIn" href="/account.html?mode=login&amp;next=planner" hidden>Account</a><button id="logoutButton" type="button" hidden>Sign out</button></div>
-      <nav class="planner-primary-nav planner-primary-nav-mobile" aria-label="Primary navigation"><a href="/">Rankings</a><a href="/discover.html">Strata+</a><a href="/planner.html" aria-current="page">Plan</a><a href="/workout.html">Train</a></nav>
+      <nav class="planner-primary-nav planner-primary-nav-mobile" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a href="/discover.html">Strata+</a><a href="/planner.html" aria-current="page">Plan</a><a href="/workout.html">Train</a></nav>
     </header>
 
     <div class="planner-mode-notice" id="plannerModeNotice" role="status"><strong>Free device plan.</strong> No account required. This week stays in this browser. <a href="/account.html?mode=login&amp;next=planner">Use a synced plan</a>.</div>
@@ -201,22 +202,22 @@
       <button class="dark-button reset-week-confirm" id="confirmResetWeek" type="button">Reset entire week</button>
     </dialog>
 
-    <footer class="build-footer">STRATA · Build 8.0.1 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <footer class="build-footer">STRATA · Build 8.5.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
     <div class="planner-toast" id="plannerToast" role="status" aria-live="polite"></div>
-    <script src="/pwa.js?v=8.0.1"></script>
-    <script src="/product-signals.js?v=8.0.1"></script>
-    <script src="/discovery-core.js?v=8.0.1"></script>
-    <script src="/activation-core.js?v=8.0.1"></script>
-    <script src="/plan-insights-core.js?v=8.0.1"></script>
-    <script src="/planner-logic.js?v=8.0.1"></script>
-    <script src="/planner-state.js?v=8.0.1"></script>
-    <script src="/planner-api.js?v=8.0.1"></script>
-    <script src="/planner-render.js?v=8.0.1"></script>
-    <script src="/planner-conflicts.js?v=8.0.1"></script>
-    <script src="/planner-templates.js?v=8.0.1"></script>
-    <script src="/planner-sharing.js?v=8.0.1"></script>
-    <script src="/planner-activation.js?v=8.0.1"></script>
-    <script src="/planner-events.js?v=8.0.1"></script>
-    <script src="planner.js?v=8.0.1"></script>
+    <script src="/pwa.js?v=8.5.0"></script>
+    <script src="/product-signals.js?v=8.5.0"></script>
+    <script src="/discovery-core.js?v=8.5.0"></script>
+    <script src="/activation-core.js?v=8.5.0"></script>
+    <script src="/plan-insights-core.js?v=8.5.0"></script>
+    <script src="/planner-logic.js?v=8.5.0"></script>
+    <script src="/planner-state.js?v=8.5.0"></script>
+    <script src="/planner-api.js?v=8.5.0"></script>
+    <script src="/planner-render.js?v=8.5.0"></script>
+    <script src="/planner-conflicts.js?v=8.5.0"></script>
+    <script src="/planner-templates.js?v=8.5.0"></script>
+    <script src="/planner-sharing.js?v=8.5.0"></script>
+    <script src="/planner-activation.js?v=8.5.0"></script>
+    <script src="/planner-events.js?v=8.5.0"></script>
+    <script src="planner.js?v=8.5.0"></script>
   </body>
 </html>

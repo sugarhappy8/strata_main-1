@@ -372,12 +372,11 @@ test("training journeys use real browser controls and isolated local fixtures",{
     await page.click("#saveCheckIn");const checkInResponse=await checkInSaving;assert.equal(checkInResponse.status(),200,await checkInResponse.text());const checked=await checkInResponse.json();
     assert.equal(checked.adaptation?.status,"pending");assert.equal(checked.adaptation?.requiresApproval,true);assert.equal(checked.adaptation?.change?.fromSets,3);assert.equal(checked.adaptation?.change?.toSets,2);
     const proposal=page.locator("#adaptationProposal");await proposal.waitFor({state:"visible"});assert.match(await proposal.textContent(),/Plan change available[\s\S]*energy 2\/5[\s\S]*3 to 2 sets[\s\S]*No change happens unless you approve it/i);
-    const approve=page.getByRole("button",{name:"Approve this plan change",exact:true}),dismiss=page.getByRole("button",{name:"Keep my current plan",exact:true});
-    assert.equal(await approve.isVisible(),true);assert.equal(await dismiss.isVisible(),true);
+    assert.equal(await proposal.locator("button").count(),0,"Plan owns approval; Train offers a shortcut without a second approval form");await page.click("#reviewAdaptation");await page.locator("#progressionCard").waitFor({state:"visible"});assert.equal(await page.locator("#planWorkspace").isVisible(),true);const approve=page.locator("#progressionAccept");
     const unchanged=await accountPlan(context);assert.equal(unchanged.plan.days.Monday[0].sets,3,"Saving low-energy feedback must not silently change Plan");assert.equal(unchanged.planUpdatedAt,seeded.planUpdatedAt);
     const accepting=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/training/adaptations/${checked.adaptation.id}`&&response.request().method()==="POST");
     await approve.click();const accepted=await accepting;assert.equal(accepted.status(),200,await accepted.text());assert.deepEqual(accepted.request().postDataJSON(),{decision:"accept",expectedPlanUpdatedAt:seeded.planUpdatedAt});assert.ok(accepted.request().headers()["x-csrf-token"],"The explicit approval must carry CSRF proof");
-    await page.waitForFunction(()=>globalThis.document.querySelector("#checkInStatus")?.textContent?.includes("approved one-set reduction"));await proposal.waitFor({state:"hidden"});
+    await page.waitForFunction(()=>globalThis.document.querySelector("#progressionStatus")?.textContent?.includes("Saved."));
     const applied=await accountPlan(context);assert.equal(applied.plan.days.Monday[0].sets,2,"Only the visible approval action may apply the proposed reduction");assert.ok(applied.planUpdatedAt>seeded.planUpdatedAt);
     await context.close();
   });
