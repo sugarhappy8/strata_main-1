@@ -44,5 +44,22 @@
 
   function hasAdditionalActivity(value){const minutes=wholeNumber(value);return minutes!=null&&minutes>0;}
 
-  return Object.freeze({DAILY_MOVEMENTS,ACTIVITY_INTENSITIES,profileDraftToEnergy,profileEnergyToDraft,hasAdditionalActivity});
+  function positiveCalories(value){if(!["number","string"].includes(typeof value)||String(value).trim()==="")return null;const parsed=Number(value);return Number.isFinite(parsed)&&parsed>0?parsed:null;}
+  function calorieTargetLabel(value,unit="kcal/day"){const calories=positiveCalories(value);return calories==null?"Review required":`${Math.round(calories).toLocaleString()} ${unit}`;}
+
+  function maintenanceDisplay(value){
+    const source=isRecord(value)?value:{targetKcal:value},targetKcal=positiveCalories(source.targetKcal??source.baselineKcal);
+    const range=[source.planningRangeKcal,source.estimateRangeKcal].find(candidate=>Array.isArray(candidate)&&candidate.length===2&&candidate.every(item=>positiveCalories(item)!=null)&&Number(candidate[0])<=Number(candidate[1]));
+    const detail=range?`Planning range: ${Math.round(Number(range[0])).toLocaleString()}–${Math.round(Number(range[1])).toLocaleString()} kcal/day. ${source.rangeLabel||"Not a measured value or a confidence interval."}`:"Planning estimate; actual needs can differ. Intake and morning-weight trends can refine it.";
+    return{targetKcal,label:calorieTargetLabel(targetKcal),detail};
+  }
+
+  function dailyTargetDisplay(targets){
+    const values=(Array.isArray(targets)?targets:[]).map(item=>positiveCalories(item?.calories));
+    if(!values.length||values.some(value=>value==null))return{label:"Review required",varies:false};
+    const low=Math.round(Math.min(...values)),high=Math.round(Math.max(...values)),varies=low!==high;
+    return{label:varies?`${low.toLocaleString()}–${high.toLocaleString()} kcal/day`:calorieTargetLabel(low),varies};
+  }
+
+  return Object.freeze({DAILY_MOVEMENTS,ACTIVITY_INTENSITIES,profileDraftToEnergy,profileEnergyToDraft,hasAdditionalActivity,calorieTargetLabel,maintenanceDisplay,dailyTargetDisplay});
 });

@@ -86,6 +86,17 @@ test("version 4 does not claim a zigzag when no usable generated session can rec
   assert.equal(output.requestedPattern,"zigzag");assert.equal(output.effectivePattern,"steady");assert.match(output.patternFallback,/No usable generated session/);assert.ok(output.dailyTargets.every(day=>day.kind==="standard"));assert.ok(Math.max(...output.dailyTargets.map(day=>day.calories))-Math.min(...output.dailyTargets.map(day=>day.calories))<=1);
 });
 
+test("daily redistribution cannot undo the composition floor applied to a deficit",()=>{
+  for(const caloriePattern of ["flexible_day","zigzag"]){
+    const output=nutritionFor(structuredProfile({weightKg:85,bodyFatPercent:20,goal:"fat_loss",caloriePattern,flexibleDay:"Sunday"}),"2026-09-07",null,training(["Monday","Friday"],60));
+    const floor=output.deficit.breakdown.energyAvailabilityFloorKcal;
+    assert.equal(output.deficit.targetKcal,floor);
+    assert.equal(output.effectivePattern,"steady");assert.match(output.patternFallback,/composition review floor/);
+    assert.ok(output.dailyTargets.every(day=>day.calories>=floor));
+    assert.equal(output.weeklyTargetKcal,output.deficit.targetKcal*7);
+  }
+});
+
 test("calibration searches the preceding 42 days and ignores outside and future rows",()=>{
   const evidence=completeEvidence();
   evidence.dailyLogs.push({date:"2026-07-26",calories:1,complete:true,morningWeightKg:200},{date:"2026-09-07",calories:1,complete:true,morningWeightKg:200});

@@ -7,7 +7,7 @@ const {CATALOG_FINGERPRINT:MEAL_CATALOG_FINGERPRINT,sanitizeMealPreferences}=req
 const {DAYS,EXERCISES}=require("./plans");
 const {buildTraining,CATALOG_FINGERPRINT}=require("./coaching-training-core");
 
-const GENERATION_VERSION="coaching-week-v5";
+const GENERATION_VERSION="coaching-week-v6";
 const EQUIPMENT=[...new Set(EXERCISES.map((exercise)=>String(exercise.equipment)))].sort();
 const EXERCISE_BY_ID=new Map(EXERCISES.map((exercise)=>[String(exercise.id),exercise]));
 const ACTIVITY_FACTORS=LEGACY_ACTIVITY_FACTORS;
