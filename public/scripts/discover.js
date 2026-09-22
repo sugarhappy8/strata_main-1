@@ -61,15 +61,15 @@ const toastController=NavigationCore.createToastController(el("toast"));
 function showToast(message){toastController.show(message);}
 function hideToast(){toastController.hide();}
 const coachingMeals=CoachingMealsCore.createController({document,element:el,api,state,ui:CoachingMealsUi,assertAccountResponse:ApiCore.assertAccountResponse,onAccountError:redirectedOrChangedAccount});
-const coaching=CoachingCore.createController({document,element:el,api,state,ui:CoachingUi,diaryUi:CoachingDiaryUi,meals:coachingMeals,assertAccountResponse:ApiCore.assertAccountResponse,renderFactory:CoachingRender.createRenderer,saveRetryMessage,showToast,onAccountError:redirectedOrChangedAccount});
+const coaching=CoachingCore.createController({document,element:el,api,state,ui:CoachingUi,diaryUi:CoachingDiaryUi,meals:coachingMeals,assertAccountResponse:ApiCore.assertAccountResponse,renderFactory:CoachingRender.createRenderer,saveRetryMessage,showToast,onAccountError:redirectedOrChangedAccount,navigate:(name,options)=>activateFeature(name,options)});
 const featureNavigation=NavigationCore.createFeatureNavigation({
   config:FEATURE_CONFIG,defaultFeature:FEATURE_DEFAULT,state,document,window,
-  onDestinationChange:hideToast,
+  onDestinationChange:(name,previous)=>{hideToast();if(name==="coaching")coaching.setReturnFeature(previous);},
   onActivate:(name)=>{
     const scoreGuide=el("scoreGuide"),showScoreGuide=["explore","recommendations","library","battle"].includes(name);if(scoreGuide)scoreGuide.hidden=!showScoreGuide;if(!showScoreGuide&&el("scoreGuideDetails"))el("scoreGuideDetails").open=false;
     if(state.user&&["recommendations","library","battle"].includes(name))void refreshCommunityRatings().catch(()=>{});
     if(state.user&&name==="community"&&!state.communityLoaded&&!state.communityLoading)void loadCommunityPlans({reset:true});
-    if(state.user&&["coaching","progress"].includes(name))void coaching.ensureLoaded();
+    if(state.user&&["coaching","plan","nutrition"].includes(name))void coaching.ensureLoaded();
   }
 });
 function featureName(value){return featureNavigation.featureName(value);}
@@ -123,6 +123,7 @@ const community=CommunityCore.createCommunity({
   state,monthly:Monthly,element:el,document,escapeHtml,exerciseById,titleCase,api,getGeneration:()=>workspaceGeneration,pageSize:COMMUNITY_PAGE_SIZE,
   weeklyPlanCount,openDialog,closeDialog,syncSessionPlanViews:(...args)=>syncSessionPlanViews(...args),saveRetryMessage,showToast
 });
+const program=globalThis.StrataDiscoverProgram.createController({element:el,api,state,getWeek:()=>coaching.state.week,getGeneration:()=>workspaceGeneration,monthly:Monthly,openDialog,closeDialog,syncPlanViews:(options)=>syncSessionPlanViews(options),onAccountError:redirectedOrChangedAccount});
 const {applyCommunityPlan,loadCommunityPlans,openCommunityApplyDialog,renderCommunityPlans}=community;
 
 function blankMonthlySchedule(){
@@ -297,7 +298,7 @@ function renderProgression(){
   el("progressionAccept").disabled=suggestion.applied;el("progressionAccept").textContent=suggestion.applied?"Change accepted":"Accept change";el("progressionDismiss").hidden=suggestion.applied;el("progressionStatus").textContent=suggestion.applied?"Saved. Your weekly Plan was updated; this edit remains until you change Plan again.":"Nothing changes unless you accept.";
 }
 function clearPrivateWorkspace(){
-  workspaceGeneration+=1;workspaceReady=false;coaching.reset();
+  workspaceGeneration+=1;workspaceReady=false;coaching.reset();program.reset();
   state.exercises=[];state.methodology=null;state.sources=[];state.limited=new Set();state.preferences=null;state.user=null;state.csrfToken="";state.aggregate=new Map();state.userRatings=new Map();state.ratingsRefreshedAt=0;state.ratingsRefreshPromise=null;state.ratingSaving=new Set();state.compare=[];state.shortlist=[];state.collection="all";state.query="";state.group="all";state.equipment="all";state.pattern="all";state.level="all";state.sort="personal";state.recommendations=[];state.activeExercise=null;state.explorerLimit=EXPLORER_DESKTOP_PAGE_SIZE;
   state.weeklyPlan=null;state.weeklyPlanUpdatedAt=0;state.workouts=[];state.workoutHistoryAvailable=false;state.workoutHistoryHasMore=false;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.trainingBlock=null;state.trainingBlockRevision=0;state.trainingBlockAction=null;state.progressionSuggestion=null;state.session=null;state.sessionSaving=false;state.sessionDayInitialized=false;state.monthlyPlan=null;state.monthlyPlanUpdatedAt=0;state.monthlySchedule=null;state.monthlySource="muscle-schedule";state.communityPlans=[];state.communityLoaded=false;state.communityLoading=false;state.communityError="";state.communityNextOffset=0;state.communityQuery="";state.communityPendingId=null;state.communityAppliedId=null;state.communityAppliedUpdatedAt=0;
   const main=document.querySelector("main");if(main){main.hidden=true;main.inert=true;main.setAttribute("aria-busy","true");}

@@ -13,18 +13,19 @@
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-  <link rel="stylesheet" href="/fonts.css?v=8.0.1" />
-  <link rel="stylesheet" href="/workout.css?v=8.0.1" />
-  <link rel="stylesheet" href="/product-signals.css?v=8.0.1" />
-  <script src="/motion.js?v=8.0.1"></script>
-</head>
+  <link rel="stylesheet" href="/fonts.css?v=8.5.0" />
+  <link rel="stylesheet" href="/workout.css?v=8.5.0" />
+  <link rel="stylesheet" href="/product-signals.css?v=8.5.0" />
+  <script src="/motion.js?v=8.5.0"></script>
+  <link rel="stylesheet" href="/site-experience.css?v=8.5.0" />
+  </head>
 <body class="workout-page">
   <a class="skip-link" href="#workoutTitle">Skip to workout</a>
   <header class="site-header">
     <a class="brand" href="/" aria-label="STRATA rankings"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>STRATA</a>
-    <nav class="workout-nav workout-nav-desktop" aria-label="Primary navigation"><a href="/">Rankings</a><a href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html" aria-current="page">Train</a></nav>
+    <nav class="workout-nav workout-nav-desktop" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html" aria-current="page">Train</a></nav>
     <a class="header-account" href="/account.html" id="accountLink">Account</a>
-    <nav class="workout-nav workout-nav-mobile" aria-label="Primary navigation"><a href="/">Rankings</a><a href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html" aria-current="page">Train</a></nav>
+    <nav class="workout-nav workout-nav-mobile" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html" aria-current="page">Train</a></nav>
   </header>
   <main class="shell">
     <div class="mode-notice" id="modeNotice" role="status">Checking your session…</div>
@@ -70,7 +71,7 @@
           </div>
           <div class="check-in-actions"><button class="button primary" id="saveCheckIn" type="submit">Save check-in</button><span id="checkInStatus" role="status" aria-live="polite" aria-atomic="true"></span></div>
         </form>
-        <section class="adaptation-proposal" id="adaptationProposal" aria-labelledby="adaptationTitle" hidden><p class="eyebrow">Plan change available</p><h3 id="adaptationTitle"></h3><p id="adaptationExplanation"></p><p class="adaptation-change" id="adaptationChange"></p><p>No change happens unless you approve it.</p><div class="actions"><button class="button primary" id="acceptAdaptation" type="button">Approve this plan change</button><button class="button secondary" id="dismissAdaptation" type="button">Keep my current plan</button></div><p id="adaptationStatus" role="status" aria-live="polite" aria-atomic="true"></p></section>
+        <section class="adaptation-proposal" id="adaptationProposal" aria-labelledby="adaptationTitle" hidden><p class="eyebrow">Plan change available</p><h3 id="adaptationTitle"></h3><p id="adaptationExplanation"></p><p class="adaptation-change" id="adaptationChange"></p><p>No change happens unless you approve it.</p><div class="actions"><a class="button primary" id="reviewAdaptation" href="/discover.html#planWorkspace">Review change in Plan →</a></div><p id="adaptationStatus" role="status" aria-live="polite" aria-atomic="true"></p></section>
         <p class="completion-next-note">Your next session will show these targets beside your previous performance. Apply them when you are ready; your recorded results stay unchanged.</p>
         <section class="calendar-next" id="calendarNext" hidden aria-labelledby="calendarNextTitle"><div><span>Optional reminder</span><strong id="calendarNextTitle">Put your next workout on your calendar.</strong><small id="calendarNextSummary"></small></div><a class="button secondary" id="calendarLink" href="#" download>Add to calendar <span aria-hidden="true">↓</span></a><p>The calendar file is created on this device. STRATA does not request notification access or send your plan to a calendar service.</p></section>
         <a class="button" href="/discover.html#todayWorkspace">See my next session <span aria-hidden="true">→</span></a>
@@ -85,24 +86,24 @@
     <div class="signal-consent-host" data-product-signals-consent-host></div>
     <noscript><div class="panel">Enable JavaScript to log sessions and load workout history. Your week remains available in <a href="/planner.html">Plan</a>.</div></noscript>
   </main>
-  <footer>STRATA · Build 8.0.1 <span>Plan with purpose. Train with intent.</span><a href="/policies">Policies</a><a href="/install.html">Install app</a></footer>
+  <footer>STRATA · Build 8.5.0 <span>Plan with purpose. Train with intent.</span><a href="/policies">Policies</a><a href="/install.html">Install app</a></footer>
   <dialog id="finishDialog" aria-labelledby="finishDialogTitle"><form method="dialog"><p class="eyebrow">Close out your session</p><h2 id="finishDialogTitle">Finish this workout?</h2><p id="finishDialogMessage"></p><p>Only checked sets count toward your history and progress. Unfinished sets stay in the session for reference.</p><div class="actions"><button class="button secondary" value="cancel">Keep training</button><button class="button primary" value="finish">Finish and save</button></div></form></dialog>
   <dialog id="detailDialog" aria-labelledby="detailTitle"><div class="section-heading"><h2 id="detailTitle"></h2><button class="button quiet compact" type="button" id="closeDetail" aria-label="Close session details">Close ×</button></div><div id="detailBody"></div></dialog>
   <dialog id="swapDialog" aria-labelledby="swapTitle" aria-describedby="swapBoundary"><div class="section-heading"><div><p class="eyebrow">Exercise replacement</p><h2 id="swapTitle" tabindex="-1">Choose a comparable movement.</h2></div><button class="button quiet compact" type="button" id="closeSwap" aria-label="Close exercise replacement">Close ×</button></div><p id="swapBoundary">Choose a catalog-backed alternative and review the target, equipment, FitScore, and stability trade-off. No workout or Plan changes until you use one of the actions below.</p><label class="field">Alternative exercise<select id="swapExercise"></select></label><div class="swap-comparison" id="swapComparison" role="status" aria-live="polite"></div><p class="inline-error" id="swapError" role="alert" hidden></p><div class="swap-actions"><button class="button secondary" type="button" id="swapWorkoutOnly">Use for this workout only</button><button class="button primary" type="button" id="reviewPlanSwap">Review change to Plan</button></div><section class="plan-swap-review" id="planSwapReview" hidden aria-labelledby="planSwapTitle"><p class="eyebrow">Plan proposal · not applied</p><h3 id="planSwapTitle">Review the lasting change.</h3><p id="planSwapSummary"></p><p>This updates the matching exercise in your saved weekly Plan and this active workout. Sets and written rep targets stay the same.</p><div class="actions"><button class="button primary" type="button" id="approvePlanSwap">Approve Plan &amp; workout change</button><button class="button quiet" type="button" id="cancelPlanSwap">Keep Plan unchanged</button></div></section></dialog>
   <div class="toast" id="workoutToast" role="status" aria-live="polite"></div>
-  <script src="/workout-core.js?v=8.0.1"></script>
-  <script src="/discovery-core.js?v=8.0.1"></script>
-  <script src="/workout-state.js?v=8.0.1"></script>
-  <script src="/workout-api.js?v=8.0.1"></script>
-  <script src="/workout-calendar.js?v=8.0.1"></script>
-  <script src="/workout-progression.js?v=8.0.1"></script>
-  <script src="/workout-render.js?v=8.0.1"></script>
-  <script src="/workout-context.js?v=8.0.1"></script>
-  <script src="/workout-guidance.js?v=8.0.1"></script>
-  <script src="/workout-history.js?v=8.0.1"></script>
-  <script src="/workout-events.js?v=8.0.1"></script>
-  <script src="/product-signals.js?v=8.0.1" defer></script>
-  <script src="/workout.js?v=8.0.1" defer></script>
-  <script src="/pwa.js?v=8.0.1" defer></script>
+  <script src="/workout-core.js?v=8.5.0"></script>
+  <script src="/discovery-core.js?v=8.5.0"></script>
+  <script src="/workout-state.js?v=8.5.0"></script>
+  <script src="/workout-api.js?v=8.5.0"></script>
+  <script src="/workout-calendar.js?v=8.5.0"></script>
+  <script src="/workout-progression.js?v=8.5.0"></script>
+  <script src="/workout-render.js?v=8.5.0"></script>
+  <script src="/workout-context.js?v=8.5.0"></script>
+  <script src="/workout-guidance.js?v=8.5.0"></script>
+  <script src="/workout-history.js?v=8.5.0"></script>
+  <script src="/workout-events.js?v=8.5.0"></script>
+  <script src="/product-signals.js?v=8.5.0" defer></script>
+  <script src="/workout.js?v=8.5.0" defer></script>
+  <script src="/pwa.js?v=8.5.0" defer></script>
 </body>
 </html>

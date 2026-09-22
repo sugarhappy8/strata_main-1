@@ -41,6 +41,7 @@
         {"file":"public/scripts/discover-events.js","role":"events","global":"StrataDiscoverEvents","maxLines":90},
         {"file":"public/scripts/discover-coaching-meals.js","role":"events","global":"StrataDiscoverCoachingMeals","maxLines":120},
         {"file":"public/scripts/discover-coaching.js","role":"events","global":"StrataDiscoverCoaching","maxLines":100},
+        {"file":"public/scripts/discover-program.js","role":"events","global":"StrataDiscoverProgram","maxLines":100},
         {"file":"public/scripts/discover.js","role":"entry","maxLines":730}
       ]
     },

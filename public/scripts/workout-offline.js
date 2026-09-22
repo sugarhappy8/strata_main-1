@@ -61,7 +61,7 @@
   async function initialize(){
     const restored=readContext();if(!restored){unavailable("Reconnect, sign in to the original account, and open an active workout once before continuing it offline.");return;}
     state.context=restored.context;state.record=restored.record;
-    try{const response=await fetch("/exercises.json?v=8.0.1");if(response.ok){const catalog=await response.json();state.catalog=new Map(catalog.map((item)=>[item.id,item]));}}catch{/* Exercise IDs remain usable if the public catalog is unavailable. */}
+    try{const response=await fetch("/exercises.json?v=8.5.0");if(response.ok){const catalog=await response.json();state.catalog=new Map(catalog.map((item)=>[item.id,item]));}}catch{/* Exercise IDs remain usable if the public catalog is unavailable. */}
     $("offlineUnavailable").hidden=true;$("offlineSession").hidden=false;render();$("offlineSessionTitle").focus();
   }
   $("offlineEntries").addEventListener("input",(event)=>{

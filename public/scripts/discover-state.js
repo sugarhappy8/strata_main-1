@@ -11,18 +11,19 @@
   const LIMITATION_OPTIONS=Object.freeze({"no-overhead":"Avoid overhead positions","no-deep-knee":"Avoid deep knee flexion","no-unsupported-hinge":"Avoid unsupported hinges","no-floor":"Avoid floor exercises","no-unilateral":"Avoid unilateral work"});
   const FEATURE_DEFAULT="today";
   const FEATURE_CONFIG=Object.freeze({
-    today:Object.freeze({panelId:"todayWorkspace",headingId:"todayTitle",label:"Today"}),
+    today:Object.freeze({panelId:"todayWorkspace",headingId:"todayTitle",label:"Overview"}),
     plan:Object.freeze({panelId:"planWorkspace",headingId:"planWorkspaceTitle",label:"Plan"}),
     progress:Object.freeze({panelId:"progressWorkspace",headingId:"progressWorkspaceTitle",label:"Progress"}),
-    explore:Object.freeze({panelId:"exploreWorkspace",headingId:"exploreWorkspaceTitle",label:"Explore"}),
-    coaching:Object.freeze({panelId:"coachingWorkspace",headingId:"coachingWorkspaceTitle",label:"Personal training and calorie counting"}),
-    recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you"}),
-    library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library"}),
-    battle:Object.freeze({panelId:"battle",headingId:"battleTitle",label:"Compare exercises"}),
-    profile:Object.freeze({panelId:"profile",headingId:"profileTitle",label:"Personalize recommendations"}),
-    community:Object.freeze({panelId:"communityPlans",headingId:"communityPlansTitle",label:"Browse community plans"}),
-    monthly:Object.freeze({panelId:"monthlyPlan",headingId:"monthlyPlanTitle",label:"Build a 31-day plan"}),
-    session:Object.freeze({panelId:"sessionBuilder",headingId:"sessionBuilderTitle",label:"Build a session"})
+    explore:Object.freeze({panelId:"exploreWorkspace",headingId:"exploreWorkspaceTitle",label:"Exercises"}),
+    nutrition:Object.freeze({panelId:"nutritionWorkspace",headingId:"nutritionWorkspaceTitle",label:"Nutrition"}),
+    coaching:Object.freeze({panelId:"coachingWorkspace",headingId:"coachingWorkspaceTitle",label:"Personal setup",parent:"nutrition"}),
+    recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you",parent:"explore"}),
+    library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library",parent:"explore"}),
+    battle:Object.freeze({panelId:"battle",headingId:"battleTitle",label:"Compare exercises",parent:"explore"}),
+    profile:Object.freeze({panelId:"profile",headingId:"profileTitle",label:"Personalize recommendations",parent:"explore"}),
+    community:Object.freeze({panelId:"communityPlans",headingId:"communityPlansTitle",label:"Browse community plans",parent:"plan"}),
+    monthly:Object.freeze({panelId:"monthlyPlan",headingId:"monthlyPlanTitle",label:"Build a 31-day plan",parent:"plan"}),
+    session:Object.freeze({panelId:"sessionBuilder",headingId:"sessionBuilderTitle",label:"Build a session",parent:"plan"})
   });
   const LIMITS=Object.freeze({
     explorerDesktopPageSize:24,

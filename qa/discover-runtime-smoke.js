@@ -81,10 +81,10 @@ vm.runInContext(readPublic("scripts","personal-training-ui-core.js"),context,{fi
 vm.runInContext(readPublic("scripts","personal-training-diary-ui.js"),context,{filename:"personal-training-diary-ui.js"});
 vm.runInContext(readPublic("scripts","personal-training-meals-ui-core.js"),context,{filename:"personal-training-meals-ui-core.js"});
 for(const name of ["discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-sharing.js","discover-events.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
-for(const name of ["discover-coaching-render.js","discover-coaching-meals.js","discover-coaching.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
+for(const name of ["discover-coaching-render.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
 vm.runInContext(readPublic("scripts","discover.js"),context,{filename:"discover.js"});
 assert.equal(vm.runInContext("state.activeFeature",context),"today","feature navigation must initialize before discovery data resolves");
-assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>featureNavigation.featurePanel(name).hidden).length',context),11,"only the default workspace should remain visible during discovery loading");
+assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>featureNavigation.featurePanel(name).hidden).length',context),12,"only the default workspace should remain visible during discovery loading");
 
 (async()=>{
   await new Promise(setImmediate);
@@ -232,10 +232,10 @@ assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>feature
   assert.equal(result.compareCount,3);
   assert.equal(result.defaultFeature,"today");
   assert.equal(result.defaultVisible,true);
-  assert.equal(result.defaultHidden,11);
+  assert.equal(result.defaultHidden,12);
   assert.equal(result.explorerFeature,"library");
   assert.equal(result.explorerVisible,true);
-  assert.equal(result.explorerHidden,11);
+  assert.equal(result.explorerHidden,12);
   assert.equal(result.unknownHashFeature,"library");
   assert.equal(result.battleSlots,4);
   assert.ok(result.battleRows>=10);
