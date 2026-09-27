@@ -12,7 +12,14 @@
       if(kind==="comparison"){const exercises=state.compare.map(exerciseById).filter(Boolean),verdict=comparisonWinner(exercises);return{eyebrow:"EXERCISE BATTLE",title:exercises.map((exercise)=>exercise.name).join(" vs. "),score:verdict.winner?String(verdict.winner.score):"—",scoreLabel:verdict.winner?"LEADING FITSCORE":"NO UNIVERSAL WINNER",lines:exercises.map((exercise)=>`${exercise.score} FitScore · ${personalLabel(personalResult(exercise))} — ${exercise.name}`),footer:"Compare the trade-offs, not just the score"};}
       const top=state.recommendations.slice(0,5);return{eyebrow:"PERSONALIZED SHORTLIST",title:`${titleCase(state.preferences.goal)} selection`,score:String(top[0]?.result.match||"—"),scoreLabel:"TOP PERSONAL MATCH",lines:top.map(({exercise,result},index)=>`${index+1}. ${exercise.name} — ${result.match}% match`),footer:`${state.preferences.days} days · ${state.preferences.level} · community ratings separate`};
     }
-    function wrapCanvasText(ctx,text,x,y,maxWidth,lineHeight,maxLines=3){const words=String(text).split(/\s+/);let line="",lines=0;for(const word of words){const test=`${line}${line?" ":""}${word}`;if(ctx.measureText(test).width>maxWidth&&line){ctx.fillText(line,x,y);line=word;y+=lineHeight;lines+=1;if(lines>=maxLines-1)break;}else line=test;}if(line&&lines<maxLines){let final=line;if(ctx.measureText(final).width>maxWidth){while(final.length&&ctx.measureText(`${final}…`).width>maxWidth)final=final.slice(0,-1);final+="…";}ctx.fillText(final,x,y);}return y+lineHeight;}
+    // Fills every allowed line, then ends the last one with an ellipsis only when words remain.
+    function wrapCanvasText(ctx,text,x,y,maxWidth,lineHeight,maxLines=3){
+      const fits=(value)=>ctx.measureText(value).width<=maxWidth,lines=[];
+      for(const word of String(text).split(/\s+/).filter(Boolean)){const last=lines.length-1,test=last>=0?`${lines[last]} ${word}`:word;if(last>=0&&fits(test))lines[last]=test;else lines.push(word);}
+      const shown=lines.slice(0,maxLines);if(lines.length>maxLines)shown[maxLines-1]=lines.slice(maxLines-1).join(" ");
+      shown.forEach((line,index)=>{let final=line;if(!fits(final)){while(final&&!fits(`${final}…`))final=final.slice(0,-1);final=`${final.trimEnd()}…`;}ctx.fillText(final,x,y+index*lineHeight);});
+      return y+Math.max(1,shown.length)*lineHeight;
+    }
     function drawCanvasBrand(ctx){ctx.save();ctx.translate(70,60);ctx.transform(1,0,-.2,1,0,0);ctx.fillStyle="#d4f578";ctx.fillRect(0,14,10,24);ctx.fillRect(15,7,10,31);ctx.fillRect(30,0,10,38);ctx.restore();ctx.fillStyle="#faf9f5";ctx.font="700 42px Manrope, sans-serif";ctx.fillText("STRATA",126,95);}
     async function shareCard(kind,id=null){
       try{

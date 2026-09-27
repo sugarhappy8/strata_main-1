@@ -104,6 +104,16 @@ test("only an elevated admin receives bounded aggregate counts, never people or 
   assert.equal(denied.store.range,undefined);
 });
 
+test("a missing, blank, or invalid aggregate range uses the 30-day default",async()=>{
+  const cases=[["",30],["?days=",30],["?days=%20",30],["?days=abc",30],["?days=7.5",30],["?days=0",1],["?days=-4",1],["?days=7",7],["?days=90",90],["?days=91",90]];
+  for(const [query,days] of cases){
+    const page=harness(),res=response();
+    await page.service.handleApi(request({method:"GET"}),res,new URL(`https://strata.test/api/admin/product-signals${query}`));
+    assert.equal(res.status,200,query);assert.equal(res.data.scope.days,days,query||"(omitted)");
+    assert.equal(page.store.range.through,"2026-09-07");assert.equal(page.store.range.since,utcDay(NOW-(days-1)*24*60*60*1000),query);
+  }
+});
+
 test("aggregate cleanup keeps today plus 89 prior UTC days",async()=>{
   const page=harness();
   assert.equal(RETENTION_DAYS,90);

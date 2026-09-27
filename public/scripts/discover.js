@@ -308,7 +308,7 @@ function clearPrivateWorkspace(){
   document.querySelectorAll("dialog").forEach((dialog)=>{if(dialog.open)dialog.close();});document.body.classList.remove("dialog-open");
 }
 function revealPrivateWorkspace(){
-  const main=document.querySelector("main");if(main){main.hidden=false;main.inert=false;main.setAttribute("aria-busy","false");}
+  const main=document.querySelector("main");if(main){main.hidden=false;main.inert=false;main.style.visibility="";main.setAttribute("aria-busy","false");}
   workspaceReady=true;
 }
 function dashboardUnavailable(message="Workout history could not be loaded. Your plan is still ready."){
@@ -351,7 +351,7 @@ async function reconcileAdaptationError(error,{accepting=false}={}){
   return true;
 }
 let memberDashboardLoadingGeneration=null;
-async function loadMemberDashboard(generation=workspaceGeneration){
+async function loadMemberDashboard(generation=workspaceGeneration,{keepForms=false}={}){
   if(memberDashboardLoadingGeneration===generation)return;
   memberDashboardLoadingGeneration=generation;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.workoutHistoryAvailable=false;renderWeeklyPulse();renderProgress();
   try{
@@ -370,7 +370,7 @@ async function loadMemberDashboard(generation=workspaceGeneration){
       state.workouts=safeWorkoutList(history.workouts);state.workoutHistoryAvailable=true;state.workoutHistoryHasMore=history.hasMore===true;state.workoutHistoryStatus="ready";state.workoutHistoryError="";renderWeeklyPulse();renderProgress();renderTrainingBlockReview();
     }else dashboardUnavailable();
     state.progressionSuggestion=normalizeProgression(training,completedWorkouts()[0]?.id||"");renderProgression();
-    if(training){
+    if(training&&!keepForms){
       state.trainingBlock=normalizeTrainingBlock(training);state.trainingBlockRevision=state.trainingBlock?.revision||0;renderTrainingBlock();
     }
   }finally{if(memberDashboardLoadingGeneration===generation){memberDashboardLoadingGeneration=null;const retry=el("progressRetry");if(retry)retry.disabled=false;}}
@@ -666,11 +666,12 @@ document.addEventListener("submit",async(event)=>{
   }
 });
 
+// Tab return re-checks the session behind a hidden view (visibility keeps layout and scroll). The same session gets its view back as left, unsaved input included; any other answer clears it; a failed check keeps the input in memory until a retry.
 async function revalidateMemberWorkspaceWhenVisible(){
-  if(document.visibilityState&&document.visibilityState!=="visible"||!workspaceReady||workspaceRevalidating||discoveryLoading)return;
-  workspaceRevalidating=true;clearPrivateWorkspace();
-  try{await init();}
-  finally{workspaceRevalidating=false;}
+  if(document.visibilityState&&document.visibilityState!=="visible"||!workspaceReady||workspaceRevalidating||discoveryLoading)return;workspaceRevalidating=true;const main=document.querySelector("main"),generation=workspaceGeneration,focused=document.activeElement;if(main){main.inert=true;main.style.visibility="hidden";main.setAttribute("aria-busy","true");}
+  try{const identity=await api("/api/me");if(generation!==workspaceGeneration)return;
+    if(String(identity.user?.id||"")===String(state.user?.id||"")&&String(identity.csrfToken||"")===state.csrfToken&&identity.user?.discovery?.active===true){el("discoveryLoadError").hidden=true;revealPrivateWorkspace();if(main?.contains(focused))focused.focus({preventScroll:true});void loadMemberDashboard(generation,{keepForms:true});return;}clearPrivateWorkspace();await init();
+  }catch(error){if(!redirectedOrChangedAccount(error)&&!error?.stale){if(main)main.hidden=true;el("discoveryLoadErrorMessage").textContent=`${initialLoadMessage(error)} Unsaved changes stay in this tab until STRATA confirms your account.`;el("discoveryLoadError").hidden=false;}}finally{workspaceRevalidating=false;}
 }
 
 let discoveryLoading=false;

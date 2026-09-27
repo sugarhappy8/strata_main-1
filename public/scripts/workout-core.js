@@ -57,13 +57,20 @@
     if(entry.effortType==="rpe"&&(set.effort<1||set.effort>10))return "RPE must be from 1 to 10.";
     return "";
   }
+  function repsError(value){return Number.isInteger(value)&&value>=1&&value<=1000?"":"Enter actual repetitions from 1 to 1,000.";}
+  function secondsError(value){return Number.isInteger(value)&&value>=1&&value<=3600?"":"Enter actual time from 1 to 3,600 whole seconds.";}
+  function loadError(value){return typeof value==="number"&&Number.isFinite(value)&&value>=0&&value<=1000&&Math.abs(value*100-Math.round(value*100))<=0.000001?"":"Enter an explicit load from 0 to 1,000, using at most 2 decimal places.";}
   function actualError(entry,set){
-    if(entry.measurement==="timed"){
-      if(!Number.isInteger(set.seconds)||set.seconds<1||set.seconds>3600)return "Enter actual time from 1 to 3,600 whole seconds.";
-    }else if(!Number.isInteger(set.reps)||set.reps<1||set.reps>1000)return "Enter actual repetitions from 1 to 1,000.";
-    if(entry.loadType!=="bodyweight"&&(typeof set.weight!=="number"||!Number.isFinite(set.weight)||set.weight<0||set.weight>1000||Math.abs(set.weight*100-Math.round(set.weight*100))>0.000001))return "Enter an explicit load from 0 to 1,000, using at most 2 decimal places.";
-    return effortError(entry,set);
+    return (entry.measurement==="timed"?secondsError(set.seconds):repsError(set.reps))||(entry.loadType!=="bodyweight"?loadError(set.weight):"")||effortError(entry,set);
   }
+  // Live-input rules shared by the online and offline loggers. A value that fails
+  // here is never applied to the workout, so it can never reach a saved draft.
+  function inputError(entry,field,value){
+    if(value===null)return "";
+    return field==="reps"?repsError(value):field==="seconds"?secondsError(value):field==="weight"?loadError(value):field==="effort"?effortError(entry,{effort:value}):"This field is not recognized.";
+  }
+  const UNSAFE_NOTE=/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
+  function cleanNote(value){return String(value??"").replace(UNSAFE_NOTE,"").slice(0,500);}
   function progress(workout){
     const sets=(workout?.entries||[]).flatMap((entry)=>entry.sets);
     const completed=sets.filter((set)=>set.completed===true).length;
@@ -84,9 +91,11 @@
       const group=entries[entryIndex]?.supersetGroup;
       if(group){
         if(visited.has(group))continue;visited.add(group);
-        const members=entries.map((entry,index)=>entry?.supersetGroup===group?index:-1).filter((index)=>index>=0),rounds=Math.max(...members.map((index)=>entries[index].sets.length));
+        const members=entries.map((entry,index)=>entry?.supersetGroup===group?index:-1).filter((index)=>index>=0),rounds=Math.max(0,...members.map((index)=>Array.isArray(entries[index].sets)?entries[index].sets.length:0));
         for(let setIndex=0;setIndex<rounds;setIndex++)for(const memberIndex of members){
-          if(entries[memberIndex].sets[setIndex]?.completed!==true)return{entryIndex:memberIndex,setIndex,entryId:entries[memberIndex].id,exerciseId:entries[memberIndex].exerciseId,remaining:counts.total-counts.completed};
+          // A shorter partner has no set in this round; skip it rather than point at a missing set.
+          const set=entries[memberIndex].sets?.[setIndex];
+          if(set&&set.completed!==true)return{entryIndex:memberIndex,setIndex,entryId:entries[memberIndex].id,exerciseId:entries[memberIndex].exerciseId,remaining:counts.total-counts.completed};
         }
         continue;
       }
@@ -220,7 +229,9 @@
     const value=Number(target);if(!Number.isFinite(value)||value<=0||value>1000)return[];
     return[[.4,8],[.6,5],[.8,3]].map(([percent,reps])=>({percent:Math.round(percent*100),load:Math.round(value*percent*2)/2,reps}));
   }
-  function plateBreakdown(target,bar=20,plates=[25,20,15,10,5,2.5,1.25]){
+  const PLATES={kg:[25,20,15,10,5,2.5,1.25],lb:[45,35,25,10,5,2.5]};
+  function plateInventory(unit){return[...(PLATES[unit]||PLATES.kg)];}
+  function plateBreakdown(target,bar=20,plates=PLATES.kg){
     const total=Number(target),barWeight=Number(bar);
     if(!Number.isFinite(total)||!Number.isFinite(barWeight)||total<barWeight||barWeight<0||total>1000)return{pairs:[],remainder:null,achievable:false};
     let perSide=(total-barWeight)/2;const pairs=[];
@@ -253,7 +264,14 @@
     if(typeof ownerId!=="string"||!ownerId)throw new Error("An explicit storage owner is required.");
     return `strata_workout_draft_v1:${encodeURIComponent(ownerId)}:`;
   }
-  function readDraft(raw,ownerId){
+  function storedValueError(entry,set,field){
+    const value=set[field],limit={reps:1000,seconds:3600}[field];
+    if(value===null||value===undefined&&!limit)return false;
+    if(typeof value!=="number"||!Number.isFinite(value)||value<0)return true;
+    if(limit)return !Number.isInteger(value)||value>limit;
+    return field==="weight"?value>1000:Boolean(effortError(entry,set));
+  }
+  function parseDraft(raw,ownerId,repairs){
     try{
       const record=JSON.parse(raw);
       const workout=record.workout;
@@ -262,11 +280,18 @@
       for(const entry of workout.entries){
         if(typeof entry.id!=="string"||!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.id)||typeof entry.exerciseId!=="string"||!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.exerciseId)||!["reps","timed"].includes(entry.measurement)||!["external","bodyweight","assisted"].includes(entry.loadType)||!["kg","lb"].includes(entry.unit)||!Array.isArray(entry.sets)||entry.sets.length<1||entry.sets.length>10)return null;
         const normalized={...entry,effortType:entry.effortType||"none"};
-        if(entry.note!==undefined&&(typeof entry.note!=="string"||entry.note.length>500||/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/.test(entry.note))||normalized.effortType&&!['none','rir','rpe'].includes(normalized.effortType)||entry.planInstanceId!==undefined&&entry.planInstanceId!==""&&!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.planInstanceId)||entry.supersetGroup!==undefined&&entry.supersetGroup!==""&&!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.supersetGroup)||entry.replacedFromExerciseId!==undefined&&entry.replacedFromExerciseId!==""&&!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.replacedFromExerciseId))return null;
-        if(entry.sets.some((set)=>!set||typeof set.completed!=="boolean"||set.completed&&actualError(normalized,set)||["reps","seconds","weight","effort"].some((field)=>set[field]!==null&&set[field]!==undefined&&(typeof set[field]!=="number"||!Number.isFinite(set[field])||set[field]<0))||set.reps!==null&&(!Number.isInteger(set.reps)||set.reps>1000)||set.seconds!==null&&(!Number.isInteger(set.seconds)||set.seconds>3600)||set.weight!==null&&set.weight>1000||effortError(normalized,set)))return null;
+        if(entry.note!==undefined&&(typeof entry.note!=="string"||entry.note.length>500||new RegExp(UNSAFE_NOTE.source).test(entry.note))||normalized.effortType&&!['none','rir','rpe'].includes(normalized.effortType)||entry.planInstanceId!==undefined&&entry.planInstanceId!==""&&!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.planInstanceId)||entry.supersetGroup!==undefined&&entry.supersetGroup!==""&&!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.supersetGroup)||entry.replacedFromExerciseId!==undefined&&entry.replacedFromExerciseId!==""&&!/^[a-zA-Z0-9_-]{1,100}$/.test(entry.replacedFromExerciseId))return null;
+        for(const [setIndex,set] of entry.sets.entries()){
+          if(!set||typeof set.completed!=="boolean")return null;
+          for(const field of ["reps","seconds","weight","effort"])if(storedValueError(normalized,set,field)){if(!repairs)return null;repairs.push({entryId:entry.id,exerciseId:entry.exerciseId,setIndex,field,value:set[field]});set[field]=null;}
+          if(set.completed&&actualError(normalized,set)){if(!repairs)return null;repairs.push({entryId:entry.id,exerciseId:entry.exerciseId,setIndex,field:"completed",value:true});set.completed=false;}
+        }
       }
       return{...record,workout:normalizeWorkout(workout)};
     }catch{return null;}
   }
-  return{DAYS,copy,localDate,today,dayFromSearch,id,inferFormat,blankSet,normalizeWorkout,createWorkout,effortError,actualError,progress,planDaySummary,nextIncompleteSet,remainingSeconds,offlineAccessUntil,duration,formatKey,summary,metrics,series,bestInWindow,previousComparable,suggestedTargets,hasSetValues,applyTargets,addSet,duplicateSet,removeSet,warmupSets,plateBreakdown,swapComparison,planSwapProposal,payload,matches,draftPrefix,readDraft};
+  function readDraft(raw,ownerId){return parseDraft(raw,ownerId,null);}
+  // Opens a draft whose only problems are invalid set values, listing each value it cleared.
+  function repairDraft(raw,ownerId){const repairs=[],record=parseDraft(raw,ownerId,repairs);return record?{record,repairs}:null;}
+  return{DAYS,copy,localDate,today,dayFromSearch,id,inferFormat,blankSet,normalizeWorkout,createWorkout,effortError,actualError,inputError,cleanNote,progress,planDaySummary,nextIncompleteSet,remainingSeconds,offlineAccessUntil,duration,formatKey,summary,metrics,series,bestInWindow,previousComparable,suggestedTargets,hasSetValues,applyTargets,addSet,duplicateSet,removeSet,warmupSets,plateInventory,plateBreakdown,swapComparison,planSwapProposal,payload,matches,draftPrefix,readDraft,repairDraft};
 });

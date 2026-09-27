@@ -41,6 +41,9 @@
     });
     window.addEventListener?.("focus",()=>{void actions.revalidateMemberWorkspaceWhenVisible();});
     document.addEventListener("visibilitychange",()=>{void actions.revalidateMemberWorkspaceWhenVisible();});
+    // A signed-in view whose account re-check failed retries that check, keeping unsaved input; a failed first load reloads.
+    const retryLoad=()=>{void(state.user?actions.revalidateMemberWorkspaceWhenVisible():actions.init());};
+    window.addEventListener?.("online",()=>{if(!el("discoveryLoadError").hidden)retryLoad();});
     el("searchInput").addEventListener("input",event=>{const query=event.target.value;clearTimeout(state.explorerSearchTimer);state.explorerSearchTimer=setTimeout(()=>{state.query=query;actions.resetExplorerWindow();actions.renderExplorer();},searchDebounceMs);});
     for(const [id,key] of [["groupFilter","group"],["equipmentFilter","equipment"],["patternFilter","pattern"],["levelFilter","level"],["sortSelect","sort"]])el(id).addEventListener("change",event=>{state[key]=event.target.value;actions.resetExplorerWindow();actions.renderExplorer();});
     el("clearFilters").addEventListener("click",actions.resetFilters);
@@ -57,7 +60,7 @@
       try{await actions.api("/api/logout",{method:"POST"});window.location.replace("/");}
       catch(error){if(error.status===401){window.location.replace("/");return;}button.disabled=false;actions.showToast("Could not sign out. Check your connection and try again.");}
     });
-    el("discoveryRetry").addEventListener("click",()=>{void actions.init();});
+    el("discoveryRetry").addEventListener("click",retryLoad);
   }
 
   return{bind};

@@ -106,6 +106,11 @@ async function logAndFinish(member,{sets=3,reps=12,weight=40}={}){
   await synced(page);await page.click("#finishWorkout");await page.locator("#finishDialog").waitFor({state:"visible"});await page.click('#finishDialog button[value="finish"]');
   await page.locator("#celebration").waitFor({state:"visible"});await page.locator("#progressionPanel").waitFor({state:"visible"});
 }
+// The panel shows a placeholder while the page's own progression request is in flight; read it only after that request settles.
+async function progressionText(page){
+  await page.waitForFunction(()=>{const text=globalThis.document.querySelector("#progressionPanel")?.textContent||"";return Boolean(text)&&!text.includes("Checking completed sets");});
+  return page.locator("#progressionPanel").textContent();
+}
 async function captureAndCheckLayout(page,width,label){
   await page.setViewportSize({width,height:width>=1000?1000:844});
   const target=entry(page).locator(".memory-target");await target.waitFor({state:"visible"});await target.scrollIntoViewIfNeeded();
@@ -155,7 +160,7 @@ test("Train carries earned weight progression into the next session",{timeout:18
     await logAndFinish(member);
     const completed=await read(context,`/api/workouts/${active.id}/progression`);
     assert.equal(completed.checkIn,null);assert.equal(completed.progression.suggestions[0].action,"increase_load");
-    assert.match(await page.locator("#progressionPanel").textContent(),/42\.5\s*kg/);
+    assert.match(await progressionText(page),/42\.5\s*kg/);
     assert.equal(await page.locator("#checkInDifficulty").inputValue(),"","Next-session guidance must be visible before the optional check-in");
     await page.screenshot({path:join(CAPTURE_DIR,"after-workout-390.png"),fullPage:true});
     await page.locator("#progressionPanel").evaluate(node=>node.scrollIntoView({block:"center"}));
@@ -176,7 +181,7 @@ test("Train carries earned weight progression into the next session",{timeout:18
     await logAndFinish(member);
     const result=await read(context,`/api/workouts/${active.id}/progression`),suggestion=result.progression.suggestions[0];
     assert.equal(result.checkIn,null);assert.equal(suggestion.action,"repeat");assert.equal(suggestion.target.weight,40);
-    assert.match(await page.locator("#progressionPanel").textContent(),/40\s*kg/);assert.doesNotMatch(await page.locator("#progressionPanel").textContent(),/42\.5/);
+    const baselinePanel=await progressionText(page);assert.match(baselinePanel,/40\s*kg/);assert.doesNotMatch(baselinePanel,/42\.5/);
     await context.close();
   });
   await t.test("an unfinished three-set prescription cannot earn a heavier target",async()=>{

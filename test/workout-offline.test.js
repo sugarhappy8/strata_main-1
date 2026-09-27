@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const {readFileSync}=require("node:fs");
 const {join}=require("node:path");
 
-const BUILD="8.6.0";
+const BUILD="8.6.1";
 const ROOT=join(__dirname,".."),read=(path)=>readFileSync(join(ROOT,path),"utf8");
 
 test("the service worker uses a generic offline workout shell without caching private pages or APIs",()=>{
@@ -47,4 +47,18 @@ test("the offline page exposes a usable responsive logging and recovery surface"
   assert.match(css,/@media\(max-width:420px\)/);
   assert.match(css,/:focus-visible/);
   assert.match(css,/@media\(prefers-reduced-motion:reduce\)/);
+});
+
+test("offline input is checked per field, completed sets are read-only, and a failed save never looks saved",()=>{
+  const offline=read("public/scripts/workout-offline.js"),html=read("public/pages/workout-offline.html");
+  assert.match(offline,/validity\.badInput\?"Enter a number\.":W\.inputError\(entry,field,value\)/);
+  assert.match(offline,/if\(!W\.readDraft\(serialized,state\.record\.ownerId\)\)/,"a write that could not be read back is refused");
+  assert.match(offline,/W\.repairDraft\(localStorage\.getItem\(context\.draftKey\),context\.ownerId\)/);
+  assert.match(offline,/const locked=set\.completed\|\|!active/);
+  assert.match(offline,/Complete at least one set before finishing a workout\./);
+  assert.match(offline,/state\.saveError\?"Couldn't save — Retry":"Saved on device"/);
+  assert.doesNotMatch(offline,/setStates\("Saved on device"/,"no code path hard-codes a success label");
+  assert.match(offline,/W\.cleanNote\(event\.target\.value\)/);
+  assert.match(html,/id="finishOfflineCounts"/);
+  assert.match(html,/To change a completed set, uncheck Completed first\./);
 });
