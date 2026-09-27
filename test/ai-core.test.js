@@ -106,10 +106,17 @@ test("weeks that cannot pass, bad replies, and search requests are handled expli
 
 test("a conversational answer needs no plan, nutrition change, or suggestions",()=>{
   assert.equal(core.directAnswerOnly("What does progressive overload mean?"),true);
+  assert.equal(core.directAnswerOnly("Should I make sessions longer?"),true);
+  assert.equal(core.directAnswerOnly("How can I add another training day?"),true);
   assert.equal(core.directAnswerOnly("Can you build me a three-day plan?"),false);
+  assert.equal(core.directAnswerOnly("Could you make sessions longer?"),false);
   assert.deepEqual(core.interpretReply({reply:"Progressive overload means gradually increasing the challenge as you adapt.",week:{title:"Ignore this"},nutrition:{goal:"fat_loss"},suggestions:["Ignore this"]},{candidates,plan:null,answerOnly:true}),{
     reply:"Progressive overload means gradually increasing the challenge as you adapt.",week:null,weekIssue:null,nutrition:null,suggestions:[]
   });
+  const fallback=core.interpretReply({reply:"",week:{days:[{day:"Monday",exercises:[["CH1",3],["BK1",3]]}]}},{candidates,plan:null});
+  assert.equal(fallback.reply,"Here is your updated week.");
+  assert.throws(()=>core.interpretReply({reply:"",week:{days:"Monday"}},{candidates,plan:null}),{code:"AI_BAD_OUTPUT"});
+  assert.throws(()=>core.interpretReply({reply:"",week:{days:[{day:"Monday",exercises:[["CH1",3],["BK1",3]]}]}},{candidates,plan:null,answerOnly:true}),{code:"AI_BAD_OUTPUT"});
 });
 
 test("nutrition proposals are limited to STRATA's own choices",()=>{

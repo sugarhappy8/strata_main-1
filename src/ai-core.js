@@ -8,8 +8,7 @@
 const {DAYS,EXERCISES,sanitizePlan}=require("./plans");
 const {currentWeekStart,generateCoachingWeek,sanitizeCoachingProfile}=require("./coaching-core");
 const {allowedByLimits,exerciseByName}=require("./ai-catalog");
-
-const LIMITS=Object.freeze({messageChars:1200,historyTurns:6,replyChars:900,suggestions:3,textChars:240,minExercises:2,maxExercises:8,maxSets:6,maxDaySets:30,promptChars:10500,searchTerms:6});
+const LIMITS=Object.freeze({messageChars:1200,historyTurns:6,replyChars:900,suggestions:3,textChars:240,minExercises:2,maxExercises:8,maxSets:6,maxDaySets:36,promptChars:10500,searchTerms:6});
 const SESSION_MINUTES=Object.freeze([30,45,60,75,90]);
 const CHOICES=Object.freeze({focus:["balanced","strength","hypertrophy"],goal:["fat_loss","maintenance","muscle_gain"],pace:["gentle","moderate"],pattern:["steady","zigzag","flexible_day"],macros:["balanced","higher_protein"]});
 /** @type {Map<string,any>} */
@@ -90,15 +89,15 @@ Safety: you are not a doctor or dietitian. Do not diagnose, treat pain or injury
 Answer with exactly one JSON object and nothing else: {"reply":"...","week":null,"nutrition":null,"suggestions":[],"search":[]}
 reply: warm and plain, no markdown. Use at most 90 words for a question and at most 60 words when you include a proposal.
 Conversation: answer ordinary questions about training, exercises, recovery, and general nutrition directly. A question is not permission to change anything. If the member asks for information, an explanation, or whether they should do something, answer in reply and leave week and nutrition null and suggestions and search empty. Use their saved context when relevant. If one missing detail prevents a useful answer, ask one concise follow-up question. For unrelated topics, briefly explain what Strata AI can help with.
-week: only when the member asks for a new or changed weekly plan. Shape: {"title":"...","focus":"balanced|strength|hypertrophy","days":[{"day":"Monday","name":"Upper body","exercises":[["CH1",3,"8-12"],["BK2",3,"8-12"]]}]}. Each exercise is [code, sets, reps].
+week: only when the member asks for a new or changed weekly plan. Shape: {"title":"...","focus":"balanced|strength|hypertrophy","days":[{"day":"Monday","name":"Upper body","exercises":[["CH1",3,"8-12"],["BK2",3,"8-12"]]}]}. Each exercise is [code, sets, reps]. For an edit, return the complete replacement week, keep every detail the member did not ask to change, and use the editable base and STRATA requirements in Member data. If the request is ambiguous, ask one concise question and leave week null.
 Exercises: STRATA's library has 320 exercises. The list below is a shortlist chosen for this request. Use its codes. For another STRATA exercise the member asks for by name, put its exact name where the code goes.
 Search: if the member wants exercises that are not in the shortlist, reply briefly, leave week empty, and put up to 6 short search words in "search" (for example ["landmine press","nordic curl"]). STRATA will send matching exercises.
-Week rules: 1 to 6 training days; days you leave out are rest days. 3 to 7 exercises per training day, never the same exercise twice in a day. Match the member's time with working sets per day: 30 min about 10, 45 min about 16, 60 min about 22, 75 min about 28, 90 min about 34. Cover every major muscle group across the week unless the member asks for a focus. Respect the member's equipment and movement limits.
+Week rules: 1 to 6 training days; days you leave out are rest days. A request for N rest days means exactly 7-N training days. Use 2 to 8 exercises per training day, never the same exercise twice in a day. Match each day's time with working sets: 30 min about 10, 45 min about 16, 60 min about 22, 75 min about 28, 90 min about 34. "Longer" or "shorter" means the next 15-minute target unless the member gives a duration. Cover every major muscle group across the week unless the member asks for a focus. Respect the member's equipment and movement limits.
 nutrition: only when the member explicitly asks to create or change calorie or macro targets, or accepts your offer to do so. An informational question about calories, macros, or food gets a reply only. Shape: {"goal":"fat_loss|maintenance|muscle_gain","pace":"gentle|moderate","pattern":"steady|zigzag|flexible_day","flexibleDay":"Saturday" or null,"macros":"balanced|higher_protein" or null}. Never state proposed calorie numbers; STRATA calculates them.
 After proposing a week, end the reply by offering matching calorie targets, unless nutrition was already discussed.
 suggestions: only when the member explicitly asks to review or improve their saved plan. Give up to 3 short, specific tips based on the member's data, as {"text":"..."}. To replace an exercise in the saved plan add "swap":{"day":"Monday","from":"exact exercise name from the saved plan","to":"CODE or exact exercise name"}.`;
 const SUGGESTION_REQUEST="Review my saved plan and my recent training and nutrition, then give me up to 3 specific suggestions.";
-function directAnswerOnly(/** @type {unknown} */ message){const value=text(message,LIMITS.messageChars).toLowerCase(),question=/\?$|^(?:what|why|how|when|where|which|who|should|is|are|do|does|did|can|could|would|explain|define|tell me|compare)\b/.test(value),request=/\b(?:build|create|make|replace|change|update|modify|add|remove|swap|review|improve|rewrite|generate|suggest|set(?:\s+up)?)\b|\bplan\s+(?:me|my|a|an|this|next|the)\b/.test(value);return question&&!request;}
+function directAnswerOnly(/** @type {unknown} */ message){const value=text(message,LIMITS.messageChars).toLowerCase(),question=/\?$|^(?:what|why|how|when|where|which|who|should|is|are|do|does|did|can|could|would|explain|define|tell me|compare)\b/.test(value),change="(?:build|create|make|replace|change|update|modify|add|remove|swap|review|improve|rewrite|generate|suggest|set(?:\\s+up)?)",request=new RegExp(`^(?:please\\s+)?${change}\\b|^(?:can|could|would|will)\\s+you\\b.*\\b${change}\\b|\\b(?:i want|i need|i would like|i'd like)\\b.*\\b${change}\\b|\\bplan\\s+(?:me|my|a|an|this|next|the)\\b`).test(value);return question&&!request;}
 /** The member's recent words, used to choose the exercise shortlist. @param {{kind:string,message?:string,history?:Array<{role:string,content:string}>}} input */
 function requestText({kind,message="",history=[]}){
   if(kind==="suggestions")return "";
@@ -232,12 +231,13 @@ function searchTerms(data){
  */
 function interpretReply(data,{candidates,plan,limitations=[],answerOnly=false}){
   if(!data||typeof data!=="object"||Array.isArray(data))throw aiError("AI_BAD_OUTPUT","Strata AI's answer could not be read. Try asking again.");
-  const reply=text(data.reply,LIMITS.replyChars);
-  if(!reply)throw aiError("AI_BAD_OUTPUT","Strata AI's answer could not be read. Try asking again.");
-  if(answerOnly)return {reply,week:null,weekIssue:null,nutrition:null,suggestions:[]};
+  const written=text(data.reply,LIMITS.replyChars);
+  if(answerOnly){if(!written)throw aiError("AI_BAD_OUTPUT","Strata AI's answer could not be read. Try asking again.");return {reply:written,week:null,weekIssue:null,nutrition:null,suggestions:[]};}
   const byCode=new Map(candidates.map((item)=>[item.code.toUpperCase(),item]));
-  const week=data.week?interpretWeek(data.week,byCode,limitations):null;
-  return {reply,week:week&&!("issue" in week)?week:null,weekIssue:week&&"issue" in week?week.issue:null,nutrition:interpretNutrition(data.nutrition),suggestions:interpretSuggestions(data.suggestions,{byCode,plan,limitations})};
+  const interpreted=data.week?interpretWeek(data.week,byCode,limitations):null,week=interpreted&&!("issue" in interpreted)?interpreted:null,nutrition=interpretNutrition(data.nutrition),suggestions=interpretSuggestions(data.suggestions,{byCode,plan,limitations});
+  const reply=written||text(week?"Here is your updated week.":nutrition?"Here are your updated nutrition targets.":suggestions.length?"Here are some suggestions for you.":"",LIMITS.replyChars);
+  if(!reply)throw aiError("AI_BAD_OUTPUT","Strata AI's answer could not be read. Try asking again.");
+  return {reply,week,weekIssue:interpreted&&"issue" in interpreted?interpreted.issue:null,nutrition,suggestions};
 }
 
 /**

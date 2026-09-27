@@ -35,6 +35,15 @@ test("history sent to the server alternates turns and describes proposed weeks b
   assert.deepEqual(logic.historyFor(null),[]);assert.equal(logic.describeWeek(null),"");
 });
 
+test("the latest unapplied draft plan is sent as structured edit context",()=>{
+  const older={version:1,days:{Monday:[]}},latest={version:1,days:{Tuesday:[]}};
+  const messages=[assistant("a1",{week:{...week,plan:older},planUpdatedAt:4}),assistant("a2",{week:{...week,plan:latest},planUpdatedAt:7})];
+  assert.deepEqual(logic.draftPlanFor(messages),{plan:latest,planUpdatedAt:7});
+  messages[1].applied={week:true};assert.equal(logic.draftPlanFor(messages),null,"an applied newer week must not expose an older proposal");
+  delete messages[1].applied;delete messages[1].result.planUpdatedAt;assert.equal(logic.draftPlanFor(messages),null,"legacy drafts without provenance are not reused");
+  assert.equal(logic.draftPlanFor(null),null);
+});
+
 test("proposals are described in plain words",()=>{
   assert.equal(logic.weekStats(week),"3 training days · about 45 min each · 27 working sets");
   assert.equal(logic.weekStats({trainingDays:["Monday"],sessionMinutes:30,workingSets:1}),"1 training day · about 30 min each · 1 working set");
@@ -70,6 +79,8 @@ test("a swap replaces exactly one planned exercise, or nothing when the plan has
   assert.equal(logic.swapPlan(plan,{...action,day:"Funday"}),null);assert.equal(logic.swapPlan(null,action),null);
   assert.equal(logic.swapPlan(plan,{...action,toReps:""}).days.Monday[0].reps,"8–12");
   assert.equal(logic.planExerciseCount(plan),2);assert.equal(logic.planExerciseCount(null),0);
+  const proposal=assistant("revision",{});proposal.result.planUpdatedAt=42;
+  assert.equal(logic.planRevisionMatches(proposal,{planUpdatedAt:42}),true);assert.equal(logic.planRevisionMatches(proposal,{planUpdatedAt:43}),false);assert.equal(logic.planRevisionMatches({},{}),false);
 });
 
 test("status, waiting, and error states read clearly",()=>{
@@ -119,10 +130,10 @@ test("conversations are stored per account in this tab and forgotten on sign-out
 test("the page's requests carry the account and security token and report failures",async()=>{
   const calls=[];let reply={status:200,body:{ok:true}};
   const client=createClient({fetchImpl:async(url,init)=>{calls.push({url,init});if(reply instanceof Error)throw reply;return new Response(reply.body===undefined?"":JSON.stringify(reply.body),{status:reply.status});},getCsrfToken:()=>"csrf-1",getUserId:()=>"user-9"});
-  await client.ask({kind:"chat",message:"Plan",history:[]});
+  const draftPlan={version:1,days:{Monday:[]}};await client.ask({kind:"chat",message:"Plan",history:[],draftPlan,draftPlanUpdatedAt:17});
   assert.equal(calls[0].url,"/api/ai/requests");assert.equal(calls[0].init.method,"POST");
   assert.equal(calls[0].init.headers["X-CSRF-Token"],"csrf-1");assert.equal(calls[0].init.headers["X-Strata-User"],"user-9");assert.equal(calls[0].init.credentials,"same-origin");
-  assert.deepEqual(JSON.parse(calls[0].init.body),{kind:"chat",message:"Plan",history:[],expectedUserId:"user-9"});
+  assert.deepEqual(JSON.parse(calls[0].init.body),{kind:"chat",message:"Plan",draftPlan,draftPlanUpdatedAt:17,history:[],expectedUserId:"user-9"});
   await client.ask({kind:"suggestions",message:"ignored",history:[]});assert.equal(JSON.parse(calls[1].init.body).message,undefined);
   await client.poll("abc/def");assert.equal(calls[2].url,"/api/ai/requests/abc%2Fdef");assert.equal(calls[2].init.headers["X-CSRF-Token"],undefined,"reads carry no token");
   await client.savePlan({plan:{days:{}},expectedPlanUpdatedAt:5});assert.deepEqual(JSON.parse(calls[3].init.body),{plan:{days:{}},expectedPlanUpdatedAt:5,expectedUserId:"user-9"});assert.equal(calls[3].init.method,"PUT");

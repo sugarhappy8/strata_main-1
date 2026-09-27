@@ -8,6 +8,7 @@
 const {randomUUID}=require("node:crypto");
 const {LIMITS,aiError,directAnswerOnly,interpretReply,memberContext,planItems,previewNutrition,promptMessages,requestText,sanitizeHistory,searchTerms}=require("./ai-core");
 const {candidateExercises,readRequest,searchCatalog}=require("./ai-catalog");
+const {planEditContext,planEditContract,planEditIssue,planExerciseIds,sanitizeDraftPlan}=require("./ai-plan-edits");
 const {addDays,currentWeekStart,localDate}=require("./coaching-core");
 const {compatibleWeek,readCoachingEvidence}=require("./coaching-evidence");
 const {profilePayload}=require("./coaching");
@@ -16,7 +17,7 @@ const {workoutPayload}=require("./workouts");
 const DAY_MS=24*60*60*1000;
 // Failures that happen before the model does any work do not count against the member's daily requests.
 const REFUNDED=new Set(["AI_OFFLINE","AI_AUTH","AI_UNAVAILABLE","AI_NOT_CONFIGURED"]);
-const SHORTER="Your previous answer was cut off. Keep the reply under 40 words and use at most 5 exercises per day.";
+const SHORTER="Your previous answer was cut off. Keep the reply under 40 words and use at most 7 exercises per day.";
 /** @param {number} time @param {unknown} zone */
 function weekdayName(time,zone){try{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:String(zone||"UTC")}).format(time);}catch{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}).format(time);}}
 
@@ -77,12 +78,15 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
     const started=now();
     try{
       const data=await memberData(job.userId),limitations=data.profile?.movementLimitations||[],request=requestText(job);
-      const pinned=[...new Set(planItems(data.plan).map((item)=>item.exerciseId))].slice(0,24),named=readRequest(request).named;
+      const draftPlan=job.draftPlan&&Number(job.draftPlanUpdatedAt)===Number(data.planUpdatedAt)?job.draftPlan:null;
+      const answerOnly=job.kind==="chat"&&directAnswerOnly(job.message),basePlan=draftPlan||data.plan,contract=answerOnly?null:planEditContract(job.message,basePlan);
+      const pinned=[...new Set([...planItems(data.plan).map((item)=>item.exerciseId),...planExerciseIds(draftPlan)])].slice(0,48),named=readRequest(request).named;
       const shortlist=(/** @type {string[]} */ extra)=>candidateExercises({equipment:data.profile?.availableEquipment||[],limitations,experience:data.profile?.experience||"intermediate",pinned,request,extra});
-      const context=memberContext({profile:data.profile,plan:data.plan,workouts:data.workouts,nutrition:data.nutrition,today:data.weekday});
+      const member=memberContext({profile:data.profile,plan:data.plan,workouts:data.workouts,nutrition:data.nutrition,today:data.weekday});
       /** @type {string[]} */
       let extra=[],candidates=shortlist(extra);
-      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:job.history,context,candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:900,temperature});
+      const context=()=>[member,job.kind==="chat"&&!answerOnly&&(draftPlan||contract)?planEditContext({basePlan,source:draftPlan?"latest proposed week":"saved weekly plan",candidates,contract}):""].filter(Boolean).join("\n\n");
+      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:job.history,context:context(),candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:900,temperature});
       const ask=async(/** @type {string} */ note)=>{
         let compact=false,first;
         // A context overflow gets one compact retry without history and with a smaller shortlist.
@@ -99,7 +103,9 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       }
       // Content-free diagnostics help the owner tell a weak model from a broken tunnel; answers are never logged.
       if(!completion.data)logger?.warn?.("ai.unreadable_answer",{chars:String(completion.text||"").length,truncated:Boolean(completion.truncated),startsWithBrace:/^\s*\{/.test(String(completion.text||""))});
-      const result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations,answerOnly:job.kind==="chat"&&directAnswerOnly(job.message)}));
+      let result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations,answerOnly})),mismatch=planEditIssue(contract,result.week);
+      if(mismatch){completion=await ask(`Correction required: ${mismatch} Return the complete corrected week now, do not search, and keep every requirement in the plan edit contract.`);result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations,answerOnly}));mismatch=planEditIssue(contract,result.week);}
+      if(mismatch)throw aiError("AI_BAD_OUTPUT","Strata AI could not make a week that matched that change. Try naming the training days or exact session length.");
       if(result.nutrition){
         if(!data.profile)result.nutrition={changes:result.nutrition,needsSetup:true,message:"Calorie targets come from your personal setup. Complete it once, then ask again."};
         else{
@@ -115,7 +121,7 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       if(REFUNDED.has(job.error.code)&&usage.has(job.usageKey))usage.set(job.usageKey,Math.max(0,(usage.get(job.usageKey)||0)-1));
       if(!failure?.status)logger?.warn?.("ai.request_failed",{error});
     }finally{
-      job.finishedAt=now();delete job.message;delete job.history;
+      job.finishedAt=now();delete job.message;delete job.history;delete job.draftPlan;delete job.draftPlanUpdatedAt;
       logger?.info?.("ai.request",{kind:job.kind,status:job.status,code:job.error?.code||null,durationMs:job.finishedAt-started});
     }
   }
@@ -162,20 +168,23 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       }
       validMutation(req,session);
       if(!rateAllowed(req,`identity:ai:write:${session.id}`,12,60000))throw aiError("AI_RATE_LIMIT","You are asking faster than Strata AI can answer. Wait a moment.",429);
-      const input=await bodyJson(req),extra=Object.keys(input).filter((key)=>!["kind","message","history","expectedUserId"].includes(key));
+      const input=await bodyJson(req),extra=Object.keys(input).filter((key)=>!["kind","message","history","draftPlan","draftPlanUpdatedAt","expectedUserId"].includes(key));
       if(extra.length)throw aiError("AI_INVALID_REQUEST",`Request contains unsupported fields: ${extra.join(", ")}.`,400);
       if(input.expectedUserId!==undefined&&String(input.expectedUserId)!==String(session.id))throw aiError("AI_ACCOUNT_CHANGED","Your account changed. Reload before asking again.",409);
       const kind=input.kind==="suggestions"?"suggestions":input.kind==="chat"?"chat":null;
       if(!kind)throw aiError("AI_INVALID_REQUEST","Choose a chat message or suggestions.",400);
+      if(kind!=="chat"&&(input.draftPlan!==undefined||input.draftPlanUpdatedAt!==undefined))throw aiError("AI_INVALID_REQUEST","Draft plans are only valid for chat requests.",400);
       const message=typeof input.message==="string"?input.message.trim():"";
       if(kind==="chat"&&(!message||message.length>LIMITS.messageChars))throw aiError("AI_INVALID_REQUEST",`Write a message of 1 to ${LIMITS.messageChars} characters.`,400);
-      const history=sanitizeHistory(input.history);
+      const history=sanitizeHistory(input.history),draftPlan=kind==="chat"?sanitizeDraftPlan(input.draftPlan):null,draftPlanUpdatedAt=draftPlan?Number(input.draftPlanUpdatedAt):null;
+      if(draftPlan&&(typeof draftPlanUpdatedAt!=="number"||!Number.isSafeInteger(draftPlanUpdatedAt)||draftPlanUpdatedAt<0))throw aiError("AI_INVALID_REQUEST","A draft plan needs the saved-plan revision it was based on.",400);
+      if(!draftPlan&&input.draftPlanUpdatedAt!==undefined)throw aiError("AI_INVALID_REQUEST","A draft-plan revision needs a draft plan.",400);
       if(!provider.configured)throw aiError("AI_NOT_CONFIGURED","Strata AI is not set up on this server yet.",503);
       if([...jobs.values()].some((job)=>job.userId===String(session.id)&&(job.status==="queued"||job.status==="running")))throw aiError("AI_REQUEST_IN_PROGRESS","Strata AI is still working on your last request.",409);
       if(usedToday(session.id)>=dailyLimit)throw aiError("AI_DAILY_LIMIT",`You have used today's ${dailyLimit} Strata AI requests. They reset at midnight UTC.`,429);
       if(queue.length>=maxQueue)throw aiError("AI_BUSY","Strata AI is busy with other members. Try again in a minute.",503);
       const usageKey=`${session.id}:${today()}`;usage.set(usageKey,usedToday(session.id)+1);
-      const job={id:randomUUID(),userId:String(session.id),kind,message,history,usageKey,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
+      const job={id:randomUUID(),userId:String(session.id),kind,message,history,draftPlan,draftPlanUpdatedAt,usageKey,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
       jobs.set(job.id,job);queue.push(job);pump();
       json(res,202,{request:publicJob(job),csrfToken:session.csrf_token});
     }catch(error){

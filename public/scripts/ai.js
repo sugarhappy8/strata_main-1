@@ -60,12 +60,12 @@
 
   async function ask(kind,message,{addUserMessage=true}={}){
     if(state.pending||state.busy)return;
-    const history=logic.historyFor(state.messages);
+    const history=logic.historyFor(state.messages),draft=kind==="chat"?logic.draftPlanFor(state.messages):null;
     if(addUserMessage){state.messages.push({id:logic.newId(),role:"user",kind,text:kind==="suggestions"?logic.SUGGESTION_PROMPT:message});if(kind==="chat")nodes.message.value="";}
     state.busy=true;view.setFormError("");render();
     const retry={kind,message};
     try{
-      const {request}=await client.ask({kind,message,history});
+      const {request}=await client.ask({kind,message,history,draftPlan:draft?.plan,draftPlanUpdatedAt:draft?.planUpdatedAt});
       state.pending={id:request.id,kind,startedAt:Date.now(),request,retry};
       persist();
       const expected=++generation;clearTimeout(pollTimer);pollTimer=setTimeout(()=>{void poll(expected);},logic.pollDelay(0));
@@ -111,9 +111,10 @@
     },
     applyWeek:id=>{const message=findMessage(id);return applying(message,"week",async()=>{
       const current=await client.plan();if(!samePlanOwner(current))return null;
+      if(!logic.planRevisionMatches(message,current))throw Object.assign(new Error("Your plan changed after this week was created. Ask Strata AI to update the latest plan."),{code:"PLAN_CHANGED"});
       const count=logic.planExerciseCount(current.plan);
       if(count>0&&!await confirmReplace(count))return null;
-      await client.savePlan({plan:message.result.week.plan,expectedPlanUpdatedAt:current.planUpdatedAt});
+      await client.savePlan({plan:message.result.week.plan,expectedPlanUpdatedAt:message.result.planUpdatedAt});
       return {applied:{week:true},announce:"Saved as your weekly plan."};
     });},
     applyNutrition:id=>{const message=findMessage(id);return applying(message,"nutrition",async()=>{

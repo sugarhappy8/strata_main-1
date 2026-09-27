@@ -61,6 +61,12 @@
     return paired.slice(-LIMITS.historyTurns*2);
   }
 
+  /** The latest proposed week that has not been applied; the server validates it before use. */
+  function draftPlanFor(messages){
+    const message=[...(Array.isArray(messages)?messages:[])].reverse().find((item)=>item?.role==="assistant"&&isRecord(item.result?.week?.plan));if(!message||message.applied?.week)return null;
+    const planUpdatedAt=Number(message.result.planUpdatedAt);return Number.isFinite(planUpdatedAt)?{plan:message.result.week.plan,planUpdatedAt}:null;
+  }
+
   /** Follow-ups for an answer: only the latest one, only for a week, and never a nutrition offer already answered. */
   function followUps(message,{latest=false}={}){
     if(!latest||!message?.result?.week)return [];
@@ -105,6 +111,7 @@
     return {...plan,days:{...plan.days,[action.day]:next}};
   }
   function planExerciseCount(plan){return DAYS.reduce((sum,day)=>sum+(Array.isArray(plan?.days?.[day])?plan.days[day].length:0),0);}
+  function planRevisionMatches(message,current){return Number.isFinite(Number(message?.result?.planUpdatedAt))&&Number(message.result.planUpdatedAt)===Number(current?.planUpdatedAt);}
 
   function statusView(status){
     if(!status)return {tone:"checking",title:"Checking Strata AI…",detail:"",canAsk:false};
@@ -138,5 +145,5 @@
   }
   function newId(){return `m${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`;}
 
-  return Object.freeze({FOLLOW_UPS,LIMITS,STARTERS,SUGGESTION_PROMPT,alignmentText,dailyTargets,describeWeek,errorView,focusLabel,followUps,historyFor,messageError,newId,nutritionLines,patternLabel,pendingText,planExerciseCount,pollDelay,restoreConversation,statusView,swapPlan,weekStats});
+  return Object.freeze({FOLLOW_UPS,LIMITS,STARTERS,SUGGESTION_PROMPT,alignmentText,dailyTargets,describeWeek,draftPlanFor,errorView,focusLabel,followUps,historyFor,messageError,newId,nutritionLines,patternLabel,pendingText,planExerciseCount,planRevisionMatches,pollDelay,restoreConversation,statusView,swapPlan,weekStats});
 });

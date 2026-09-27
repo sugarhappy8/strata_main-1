@@ -399,6 +399,7 @@
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/ai-core.js",
+        "src/ai-plan-edits.js",
         "src/coaching-core.js",
         "src/coaching-evidence.js",
         "src/coaching.js",
@@ -411,6 +412,13 @@
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/coaching-core.js",
+        "src/plans.js"
+      ]
+    },
+    "src/ai-plan-edits.js": {
+      "role": "Strata AI structured draft and plan-edit contracts",
+      "maxLines": 120,
+      "allowedDependencies": [
         "src/plans.js"
       ]
     },

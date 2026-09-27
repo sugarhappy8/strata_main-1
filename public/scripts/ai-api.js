@@ -28,7 +28,7 @@
     return Object.freeze({
       me:()=>request("/api/me"),
       status:()=>request("/api/ai/status"),
-      ask:({kind,message,history})=>request("/api/ai/requests",{method:"POST",body:{kind,...(kind==="chat"?{message}:{}),history,expectedUserId:String(getUserId()||"")}}),
+      ask:({kind,message,history,draftPlan=null,draftPlanUpdatedAt=null})=>request("/api/ai/requests",{method:"POST",body:{kind,...(kind==="chat"?{message,...(draftPlan?{draftPlan,draftPlanUpdatedAt}:{})}:{}),history,expectedUserId:String(getUserId()||"")}}),
       poll:id=>request(`/api/ai/requests/${encodeURIComponent(id)}`),
       plan:()=>request("/api/plan"),
       savePlan:({plan,expectedPlanUpdatedAt})=>request("/api/plan",{method:"PUT",body:{plan,expectedPlanUpdatedAt,expectedUserId:String(getUserId()||"")}}),
