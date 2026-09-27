@@ -52,8 +52,8 @@ test("conversation history is checked, trimmed, and always starts with the membe
 
 test("prompts stay within a small model's context without losing named exercises",()=>{
   const small=core.promptMessages({kind:"chat",message:"Plan my week",context:"Member facts",candidates:candidates.slice(0,3),note:"A note"});
-  assert.equal(small.length,2);assert.equal(small[0].role,"system");assert.match(small[0].content,/Member data:\nMember facts/);assert.match(small[0].content,/CH1 Incline Smith Press/);assert.match(small[0].content,/A note$/);
-  assert.equal(small[1].content,"Plan my week");
+  assert.equal(small.length,2);assert.equal(small[0].role,"system");assert.match(small[0].content,/Member data:\nMember facts/);assert.match(small[0].content,/CH1 Incline Smith Press/);
+  assert.match(small[1].content,/^Plan my week/);assert.match(small[1].content,/STRATA verification: A note$/);
   const question=core.promptMessages({kind:"chat",message:"What does progressive overload mean?",context:"Member facts",candidates:[]});
   assert.match(question[0].content,/answer ordinary questions .* directly/i);assert.match(question[0].content,/A question is not permission to change anything/);
   assert.match(question[0].content,/informational question about calories, macros, or food gets a reply only/);assert.equal(question.at(-1).content,"What does progressive overload mean?");
@@ -86,11 +86,11 @@ test("a proposed week keeps only real, allowed exercises within STRATA's limits"
   assert.deepEqual(limited.week.days[0].exercises.map((entry)=>entry.exerciseId),[candidates[0].id,candidates.find((entry)=>entry.code==="BK1").id],"movement limits apply to exercises named outside the shortlist");
 });
 
-test("the compact [code, sets, reps] form is read like the object form",()=>{
+test("the legacy compact exercise form is read while the model is asked for schema-safe objects",()=>{
   const {week}=interpret({reply:"Compact.",week:{title:"Compact week",days:[{day:"Tuesday",name:"Push",exercises:[[code("flat-dumbbell-press"),4,"6-10"],["Nordic Hamstring Curl",3,"3-8"],["ZZ9",3,"8-12"],"not an exercise",[code("flat-dumbbell-press"),2,"8"]]}]}});
   assert.deepEqual(week.days[0].exercises.map((entry)=>[entry.exerciseId,entry.sets,entry.reps]),[["flat-dumbbell-press",4,"6–10"],["nordic-hamstring-curl",3,"3–8"]]);
   assert.deepEqual(week.notes,["Exercises STRATA does not list, or that your movement limits exclude, were left out."]);
-  assert.match(core.promptMessages({kind:"chat",message:"x",context:"",candidates:[]})[0].content,/Each exercise is \[code, sets, reps\]/);
+  assert.match(core.promptMessages({kind:"chat",message:"x",context:"",candidates:[]})[0].content,/"code":"CH1","sets":3,"reps":"8-12"/);
 });
 
 test("weeks that cannot pass, bad replies, and search requests are handled explicitly",()=>{
@@ -117,6 +117,22 @@ test("a conversational answer needs no plan, nutrition change, or suggestions",(
   assert.equal(fallback.reply,"Here is your updated week.");
   assert.throws(()=>core.interpretReply({reply:"",week:{days:"Monday"}},{candidates,plan:null}),{code:"AI_BAD_OUTPUT"});
   assert.throws(()=>core.interpretReply({reply:"",week:{days:[{day:"Monday",exercises:[["CH1",3],["BK1",3]]}]}},{candidates,plan:null,answerOnly:true}),{code:"AI_BAD_OUTPUT"});
+});
+
+test("safety-sensitive requests are always reply-only",()=>{
+  assert.equal(core.directAnswerOnly("My shoulder hurts, make my sessions longer"),true);
+  assert.equal(core.directAnswerOnly("I am pregnant; build me a five-day plan"),true);
+});
+
+test("a question followed by an explicit change remains a plan request",()=>{
+  assert.equal(core.directAnswerOnly("Why are there four rest days? Make it two."),false);
+  assert.equal(core.directAnswerOnly("Would five days be better? If so, make the change."),false);
+  assert.equal(core.directAnswerOnly("Explain this plan, then make sessions longer."),false);
+  assert.equal(core.directAnswerOnly("How can I make my sessions longer?"),true);
+  assert.equal(core.directAnswerOnly("Can you explain how to make sessions longer?"),true);
+  assert.equal(core.directAnswerOnly("Could you tell me how to add another training day?"),true);
+  assert.equal(core.directAnswerOnly("Would you explain why I should change my plan?"),true);
+  assert.equal(core.directAnswerOnly("Can you explain this, then make sessions longer?"),false);
 });
 
 test("nutrition proposals are limited to STRATA's own choices",()=>{

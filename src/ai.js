@@ -5,10 +5,11 @@
 // the page submits a request, receives an id, and polls for the result, so no HTTP request is held
 // open while the model works. Proposals are returned for review; nothing is saved here.
 
-const {randomUUID}=require("node:crypto");
+const {randomUUID}=require("node:crypto");const {aiResponseFormat}=require("./ai-response-schema");
 const {LIMITS,aiError,directAnswerOnly,interpretReply,memberContext,planItems,previewNutrition,promptMessages,requestText,sanitizeHistory,searchTerms}=require("./ai-core");
 const {candidateExercises,readRequest,searchCatalog}=require("./ai-catalog");
-const {planEditContext,planEditContract,planEditIssue,planExerciseIds,sanitizeDraftPlan}=require("./ai-plan-edits");
+const {planEditContext,planEditContract,planEditIssue,planEditReply,planExerciseIds,sanitizeDraftPlan}=require("./ai-plan-edits");
+const {fallbackPlanResponse}=require("./ai-plan-fallback");
 const {addDays,currentWeekStart,localDate}=require("./coaching-core");
 const {compatibleWeek,readCoachingEvidence}=require("./coaching-evidence");
 const {profilePayload}=require("./coaching");
@@ -17,7 +18,7 @@ const {workoutPayload}=require("./workouts");
 const DAY_MS=24*60*60*1000;
 // Failures that happen before the model does any work do not count against the member's daily requests.
 const REFUNDED=new Set(["AI_OFFLINE","AI_AUTH","AI_UNAVAILABLE","AI_NOT_CONFIGURED"]);
-const SHORTER="Your previous answer was cut off. Keep the reply under 40 words and use at most 7 exercises per day.";
+const SHORTER="Your previous answer was cut off. Keep the reply under 40 words and use at most 7 exercises per day.";const JSON_REPAIR='Return one JSON object with the named fields "reply", "week", "nutrition", "suggestions", and "search". Never put positional null or arrays after the week.';
 /** @param {number} time @param {unknown} zone */
 function weekdayName(time,zone){try{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:String(zone||"UTC")}).format(time);}catch{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}).format(time);}}
 
@@ -85,14 +86,14 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       const member=memberContext({profile:data.profile,plan:data.plan,workouts:data.workouts,nutrition:data.nutrition,today:data.weekday});
       /** @type {string[]} */
       let extra=[],candidates=shortlist(extra);
-      const context=()=>[member,job.kind==="chat"&&!answerOnly&&(draftPlan||contract)?planEditContext({basePlan,source:draftPlan?"latest proposed week":"saved weekly plan",candidates,contract}):""].filter(Boolean).join("\n\n");
-      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:job.history,context:context(),candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:900,temperature});
-      const ask=async(/** @type {string} */ note)=>{
-        let compact=false,first;
+      const context=()=>[member,job.kind==="chat"&&(draftPlan||contract)?planEditContext({basePlan,source:draftPlan?"latest proposed week":"saved weekly plan",candidates,contract}):""].filter(Boolean).join("\n\n");
+      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:contract?[]:job.history,context:context(),candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:1100,temperature,responseFormat:aiResponseFormat({codes:candidates.map((item)=>item.code),requireWeek:Boolean(contract),trainingDays:contract?.trainingDays??null,trainingDayNames:contract?.targetTrainingDays??[],answerOnly})});
+      const ask=async(/** @type {string} */ note,forceCompact=false)=>{
+        let compact=forceCompact,first;
         // A context overflow gets one compact retry without history and with a smaller shortlist.
-        try{first=await complete(note,false,0.3);}catch(error){if(/** @type {any} */(error)?.code!=="AI_TOO_LARGE")throw error;compact=true;first=await complete(note,true,0.3);}
+        try{first=await complete(note,compact,0.3);}catch(error){if(/** @type {any} */(error)?.code!=="AI_TOO_LARGE")throw error;compact=true;first=await complete(note,true,0.3);}
         // A small local model occasionally breaks or overruns its JSON; one quieter retry usually fixes it.
-        return first.data?first:complete([note,first.truncated?SHORTER:""].filter(Boolean).join("\n\n"),compact,0.1);
+        return first.data?first:complete([note,JSON_REPAIR,first.truncated?SHORTER:""].filter(Boolean).join("\n\n"),true,0.1);
       };
       let completion=await ask("");
       // The model may ask STRATA to search the full library once before it answers.
@@ -103,9 +104,12 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       }
       // Content-free diagnostics help the owner tell a weak model from a broken tunnel; answers are never logged.
       if(!completion.data)logger?.warn?.("ai.unreadable_answer",{chars:String(completion.text||"").length,truncated:Boolean(completion.truncated),startsWithBrace:/^\s*\{/.test(String(completion.text||""))});
-      let result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations,answerOnly})),mismatch=planEditIssue(contract,result.week);
-      if(mismatch){completion=await ask(`Correction required: ${mismatch} Return the complete corrected week now, do not search, and keep every requirement in the plan edit contract.`);result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations,answerOnly}));mismatch=planEditIssue(contract,result.week);}
+      const read=()=>{try{return /** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations,answerOnly}));}catch(error){if(!contract||/** @type {any} */(error)?.code!=="AI_BAD_OUTPUT")throw error;return null;}};
+      let result=read(),mismatch=result?planEditIssue(contract,result.week):"The answer did not contain a readable structured week.";
+      if(mismatch){completion=await ask(`Correction required: ${mismatch} Return the complete corrected week now, do not search, and keep every requirement in the plan edit contract.`,true);result=read();mismatch=result?planEditIssue(contract,result.week):"The corrected answer was not readable.";}
+      if(mismatch){const fallback=fallbackPlanResponse({basePlan,contract,candidates});if(fallback){result=/** @type {any} */(interpretReply(fallback,{candidates,plan:data.plan,limitations,answerOnly}));mismatch=planEditIssue(contract,result.week);}}
       if(mismatch)throw aiError("AI_BAD_OUTPUT","Strata AI could not make a week that matched that change. Try naming the training days or exact session length.");
+      if(contract?.replySafe)result.reply=planEditReply(contract,result.week);
       if(result.nutrition){
         if(!data.profile)result.nutrition={changes:result.nutrition,needsSetup:true,message:"Calorie targets come from your personal setup. Complete it once, then ask again."};
         else{

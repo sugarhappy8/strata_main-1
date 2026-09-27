@@ -129,7 +129,7 @@ function recheckAccount(options={}){
 
 async function initializeCatalog(){
   state.catalogStatus="loading";renderAll();
-  try{STATE.setCatalog(state,await api("/exercises.json?v=8.8.3"));el("catalogTotal").textContent=state.exercises.length;}
+  try{STATE.setCatalog(state,await api("/exercises.json?v=8.8.4"));el("catalogTotal").textContent=state.exercises.length;}
   catch{STATE.failCatalog(state);}
   renderAll();updatePreviewEquipmentOptions();window.StrataHomeActivation?.restore?.({exercises:state.exercises,applyProfile:applyActivationProfile,readSample:quickPreviewProfile,previewResultMarkup});
 }

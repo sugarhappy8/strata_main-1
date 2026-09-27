@@ -25,7 +25,7 @@ test("model answers are read as JSON even with reasoning, fences, or prose aroun
   assert.equal(stripReasoning(undefined),"");
 });
 
-test("the client sends the key, the model, and JSON options to the configured server",async()=>{
+test("the client sends the key, model, and Atomic llama.cpp schema to the configured server",async()=>{
   const {calls,fetchImpl}=fakeFetch([answer('<think>x</think>{"reply":"ok"}'),{body:{data:[{id:"local-model"},{id:"other"}]}}]);
   const provider=createAiProvider({baseUrl:"https://ai.example.test/v1/",apiKey:"secret-key",model:"local-model",extraHeaders:{"CF-Access-Client-Id":"id"},fetchImpl});
   assert.equal(provider.configured,true);assert.equal(provider.model,"local-model");
@@ -33,18 +33,24 @@ test("the client sends the key, the model, and JSON options to the configured se
   assert.deepEqual(result,{text:'{"reply":"ok"}',data:{reply:"ok"},truncated:false});
   assert.equal(calls[0].url,"https://ai.example.test/v1/chat/completions");
   assert.equal(calls[0].init.headers.Authorization,"Bearer secret-key");assert.equal(calls[0].init.headers["CF-Access-Client-Id"],"id");
-  assert.deepEqual(calls[0].body.response_format,{type:"json_object"});assert.deepEqual(calls[0].body.chat_template_kwargs,{enable_thinking:false});
+  assert.equal(calls[0].body.response_format.type,"json_object");assert.equal(calls[0].body.response_format.schema.properties.reply.maxLength,900);assert.equal(calls[0].body.response_format.json_schema,undefined);assert.deepEqual(calls[0].body.chat_template_kwargs,{enable_thinking:false});
   assert.equal(calls[0].body.model,"local-model");assert.equal(calls[0].body.max_tokens,50);assert.equal(calls[0].body.temperature,0.2);assert.equal(calls[0].body.stream,false);
   assert.deepEqual(await provider.health(),{ok:true,modelListed:true});assert.equal(calls[1].url,"https://ai.example.test/v1/models");
 });
 
-test("a server that rejects JSON options is retried once without them, and remembered",async()=>{
-  const {calls,fetchImpl}=fakeFetch([{status:400,body:{error:"unsupported"}},answer('{"reply":"plain"}'),answer('{"reply":"again"}')]);
+test("a server that rejects structured modes falls back to plain requests and remembers it",async()=>{
+  const {calls,fetchImpl}=fakeFetch([{status:400,body:{error:"schema unsupported"}},{status:400,body:{error:"JSON mode unsupported"}},answer('{"reply":"plain"}'),answer('{"reply":"again"}')]);
   const provider=createAiProvider({baseUrl:"http://localhost:1337/v1",model:"m",fetchImpl});
   assert.equal((await provider.complete({messages:[]})).data.reply,"plain");
   assert.equal((await provider.complete({messages:[]})).data.reply,"again");
-  assert.ok(calls[0].body.response_format);assert.equal(calls[1].body.response_format,undefined);assert.equal(calls[2].body.response_format,undefined);
+  assert.equal(calls[0].body.response_format.type,"json_object");assert.ok(calls[0].body.response_format.schema);assert.equal(calls[1].body.response_format.type,"json_object");assert.equal(calls[1].body.response_format.schema,undefined);assert.equal(calls[2].body.response_format,undefined);assert.equal(calls[3].body.response_format,undefined);
   assert.equal(calls[0].init.headers.Authorization,undefined,"no key means no authorization header");
+});
+
+test("a server can fall back from JSON schema to JSON object mode",async()=>{
+  const {calls,fetchImpl}=fakeFetch([{status:400,body:{}},answer('{"reply":"object"}'),answer('{"reply":"again"}')]),provider=createAiProvider({baseUrl:"http://localhost:1337/v1",model:"m",fetchImpl});
+  assert.equal((await provider.complete({messages:[]})).data.reply,"object");assert.equal((await provider.complete({messages:[]})).data.reply,"again");
+  assert.ok(calls[0].body.response_format.schema);assert.equal(calls[1].body.response_format.type,"json_object");assert.equal(calls[1].body.response_format.schema,undefined);assert.equal(calls[2].body.response_format.type,"json_object");assert.equal(calls[2].body.response_format.schema,undefined);
 });
 
 test("failures map to clear codes without exposing server details",async()=>{
@@ -84,10 +90,10 @@ test("settings come from the environment with safe defaults and bounds",()=>{
 });
 
 test("a rejected prompt is reported as too large without turning JSON mode off",async()=>{
-  const {calls,fetchImpl}=fakeFetch([{status:400,body:{}},{status:400,body:{}},{body:{choices:[{message:{content:'{"reply":"cut'},finish_reason:"length"}]}}]);
+  const {calls,fetchImpl}=fakeFetch([{status:400,body:{}},{status:400,body:{}},{status:400,body:{}},{body:{choices:[{message:{content:'{"reply":"cut'},finish_reason:"length"}]}}]);
   const provider=createAiProvider({baseUrl:"https://ai.example.test/v1",model:"m",fetchImpl});
   await assert.rejects(provider.complete({messages:[]}),{code:"AI_TOO_LARGE"});
   const cut=await provider.complete({messages:[]});
-  assert.ok(calls[2].body.response_format,"both attempts failed, so the server's JSON support was not the problem");
+  assert.ok(calls[3].body.response_format.schema,"all fallbacks failed, so the server's schema support was not disproved");
   assert.equal(cut.truncated,true);assert.equal(cut.data,null);
 });

@@ -104,7 +104,7 @@ function candidateExercises({equipment=[],limitations=[],experience="intermediat
     // Named and pinned exercises never count against the group's share of default picks.
     /** @type {any[]} */
     const defaults=[];
-    const named=pool.filter((/** @type {any} */ exercise)=>always.has(exercise.id)),types=new Set();
+    const named=pool.filter((/** @type {any} */ exercise)=>always.has(exercise.id)&&(!wants.onlyEquipment||allowedEquipment.has(exercise.equipment))),types=new Set();
     for(const exercise of eligible){if(defaults.length>=Math.min(limit,4))break;if(!always.has(exercise.id)&&!types.has(exercise.equipment)){defaults.push(exercise);types.add(exercise.equipment);}}
     for(const exercise of eligible){if(defaults.length>=limit)break;if(!always.has(exercise.id)&&!defaults.includes(exercise))defaults.push(exercise);}
     const picked=[...named,...defaults];

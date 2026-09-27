@@ -4,6 +4,7 @@
 // OpenAI-compatible chat client for Strata AI. It only talks to the configured base URL, always
 // sends the configured key, and never lets a slow model hold a request open indefinitely.
 
+const {aiResponseFormat}=require("./ai-response-schema");
 const REASONING=/<think>[\s\S]*?<\/think>/gi;
 // Gateway timeouts, including Cloudflare's 100-second limit (524), mean the model was too slow.
 const TIMEOUT_STATUSES=new Set([408,504,522,524]);
@@ -29,8 +30,8 @@ function extractJson(value){
 function createAiProvider({baseUrl="",apiKey="",model="",timeoutMs=120000,extraHeaders={},fetchImpl=globalThis.fetch}={}){
   const base=String(baseUrl||"").trim().replace(/\/+$/,""),name=String(model||"").trim();
   const configured=Boolean(/^https?:\/\/[^\s]+$/i.test(base)&&name);
-  // Remember whether this server accepts the JSON response options, so a rejection costs one retry once.
-  let structured=true;
+  // Prefer a strict grammar, then remember the strongest JSON mode this compatible server accepts.
+  let structured="schema";
   /** @returns {Record<string,string>} */
   function headers(){return {"Content-Type":"application/json",Accept:"application/json",...(apiKey?{Authorization:`Bearer ${apiKey}`}:{}),...extraHeaders};}
   /** @param {string} path @param {RequestInit} init @param {number} ms */
@@ -54,13 +55,13 @@ function createAiProvider({baseUrl="",apiKey="",model="",timeoutMs=120000,extraH
     const body=await response.json().catch(()=>null),ids=Array.isArray(body?.data)?body.data.map((/** @type {any} */ item)=>String(item?.id??"")):[];
     return {ok:true,modelListed:ids.includes(name)};
   }
-  /** @param {{messages:Array<{role:string,content:string}>,maxTokens?:number,temperature?:number}} request */
-  async function complete({messages,maxTokens=1100,temperature=0.3}){
+  /** @param {{messages:Array<{role:string,content:string}>,maxTokens?:number,temperature?:number,responseFormat?:any}} request */
+  async function complete({messages,maxTokens=1100,temperature=0.3,responseFormat=aiResponseFormat()}){
     const body={model:name,messages,temperature,max_tokens:maxTokens,stream:false};
-    const withOptions=()=>({...body,response_format:{type:"json_object"},chat_template_kwargs:{enable_thinking:false}});
-    let response=await send("/chat/completions",{method:"POST",body:JSON.stringify(structured?withOptions():body)},timeoutMs);
-    // Stop sending the options only when a plain request then succeeds; a 400 can also mean the prompt was too long.
-    if(response.status===400&&structured){const plain=await send("/chat/completions",{method:"POST",body:JSON.stringify(body)},timeoutMs);if(plain.ok)structured=false;response=plain;}
+    const request=(/** @type {"schema"|"object"|"plain"} */ mode)=>send("/chat/completions",{method:"POST",body:JSON.stringify(mode==="plain"?body:{...body,response_format:mode==="schema"?responseFormat:{type:"json_object"},chat_template_kwargs:{enable_thinking:false}})},timeoutMs);
+    let response=await request(/** @type {any} */(structured));
+    if(response.status===400&&structured==="schema"){const object=await request("object");if(object.ok){structured="object";response=object;}else if(object.status===400){const plain=await request("plain");if(plain.ok)structured="plain";response=plain;}else response=object;}
+    else if(response.status===400&&structured==="object"){const plain=await request("plain");if(plain.ok)structured="plain";response=plain;}
     assertOk(response);
     const payload=await response.json().catch(()=>null),choice=payload?.choices?.[0],content=choice?.message?.content;
     if(typeof content!=="string"||!stripReasoning(content))throw providerError("AI_EMPTY","Strata AI returned an empty answer. Try again.",502);

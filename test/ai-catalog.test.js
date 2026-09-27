@@ -49,6 +49,7 @@ test("focus, equipment, experience, and movement limits shape the shortlist",()=
   assert.equal(groupCount(glutes,"glutes"),SHORTLIST.focusGroup);assert.equal(groupCount(glutes,"chest"),SHORTLIST.otherGroup);
   const home=candidateExercises({request:"only dumbbells at home"});
   assert.deepEqual([...new Set(home.map((item)=>item.equipment))].sort(),["Bodyweight","Dumbbells"]);
+  assert.equal(candidateExercises({request:"using only dumbbells",pinned:["hack-squat"]}).some((item)=>item.id==="hack-squat"),false,"the editable base cannot leak incompatible equipment into an only-equipment shortlist");
   const gym=candidateExercises({equipment:["Machine","Cables"]});
   assert.deepEqual([...new Set(gym.map((item)=>item.equipment))].sort(),["Cables","Machine"]);
   const beginner=candidateExercises({experience:"beginner",pinned:["bulgarian-split"]});

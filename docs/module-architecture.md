@@ -6,7 +6,7 @@ The policies live in `architecture-policy.json` and `frontend-architecture-polic
 
 ## Dependency direction
 
-Build 8.0.0 added focused modules for coaching evidence, energy calibration, sensitivity scenarios, training selection, and exercise prescriptions. The current profile-version-4 work adds one pure server activity-budget leaf and one pure browser energy-field leaf. Build 8.8.0 added Strata AI as four server modules and one page boundary; Build 8.8.3 adds a fifth server leaf for structured draft validation and verifiable plan-edit contracts. The current inventory covers 59 server modules and 82 browser modules across 8 page boundaries. Existing module budgets remain enforced; new responsibilities have their own reviewed limits.
+Build 8.0.0 added focused modules for coaching evidence, energy calibration, sensitivity scenarios, training selection, and exercise prescriptions. The current profile-version-4 work adds one pure server activity-budget leaf and one pure browser energy-field leaf. Build 8.8.0 added Strata AI as four server modules and one page boundary; Build 8.8.3 added structured draft validation and verifiable plan-edit contracts. Build 8.8.4 adds an Atomic-compatible response-schema leaf and a deterministic fallback for measurable plan edits. The current inventory covers 61 server modules and 82 browser modules across 8 page boundaries. Existing module budgets remain enforced; new responsibilities have their own reviewed limits.
 
 ```text
 root bootstrap
@@ -54,7 +54,7 @@ Missing catalog coverage yields explicitly partial or unavailable training sessi
 
 The coaching HTTP boundary is 134 physical lines, its core 132, and its evidence helper 84. Activity budgeting is 49 lines; energy planning, calibration, and scenarios are 116, 152, and 27. Training selection and prescriptions are 107 and 87; meal planning is 168. The HTTP composition root remains at 798 lines under its 800-line ceiling, and the dual database adapter remains at 1,198 under 1,200. The existing coaching schema and parity adapter own persistence, including the nullable morning-weight and intake-completeness fields introduced by migration `005-coaching-calibration`; the new activity fields remain inside the already-versioned coaching-profile JSON. The existing owner/date key serves bounded 42-date diary reads.
 
-Earlier extraction boundaries remain intact: billing delegates provider validation and checkout retirement, authentication delegates account self-service and bounded export serialization, and the database adapter delegates focused schema and storage responsibilities. The current server report has 59 modules, zero dependency cycles, and zero policy violations.
+Earlier extraction boundaries remain intact: billing delegates provider validation and checkout retirement, authentication delegates account self-service and bounded export serialization, and the database adapter delegates focused schema and storage responsibilities. The current server report has 61 modules, zero dependency cycles, and zero policy violations.
 
 ## Browser boundaries
 
@@ -111,11 +111,13 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/admin-mfa.js` | Session-bound administrator email MFA challenge and delivery | 62 | 55 | 4.6 KiB | 100 | — |
 | `src/admin-user-actions.js` | Audited administrator account and payment actions | 87 | 86 | 9.2 KiB | 160 | `src/access-controls.js`, `src/plans.js` |
 | `src/admin.js` | Administrative authorization and actions | 209 | 195 | 12.4 KiB | 280 | `src/access-controls.js`, `src/admin-user-actions.js`, `src/plans.js` |
-| `src/ai-catalog.js` | Strata AI library search and per-request exercise shortlists | 126 | 114 | 10.5 KiB | 130 | `src/plans.js` |
-| `src/ai-core.js` | Strata AI prompt rules and proposal validation | 260 | 243 | 22.3 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
-| `src/ai-plan-edits.js` | Strata AI structured draft and plan-edit contracts | 102 | 93 | 9.4 KiB | 120 | `src/plans.js` |
-| `src/ai-provider.js` | OpenAI-compatible model client and Strata AI settings | 88 | 80 | 6.3 KiB | 90 | — |
-| `src/ai.js` | Strata AI request queue and review-only proposal API | 200 | 188 | 17.0 KiB | 200 | `src/ai-catalog.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
+| `src/ai-catalog.js` | Strata AI library search and per-request exercise shortlists | 126 | 114 | 10.6 KiB | 130 | `src/plans.js` |
+| `src/ai-core.js` | Strata AI prompt rules and proposal validation | 260 | 243 | 22.7 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
+| `src/ai-plan-edits.js` | Strata AI structured draft and plan-edit contracts | 135 | 125 | 14.8 KiB | 140 | `src/ai-catalog.js`, `src/plans.js` |
+| `src/ai-plan-fallback.js` | Deterministic verified plan-edit fallback proposals | 41 | 37 | 3.3 KiB | 80 | `src/plans.js` |
+| `src/ai-provider.js` | OpenAI-compatible model client and Strata AI settings | 89 | 81 | 6.6 KiB | 90 | `src/ai-response-schema.js` |
+| `src/ai-response-schema.js` | Bounded grammar schema for Strata AI responses | 35 | 32 | 3.0 KiB | 80 | — |
+| `src/ai.js` | Strata AI request queue and review-only proposal API | 204 | 192 | 18.0 KiB | 215 | `src/ai-catalog.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
 | `src/auth.js` | Authentication and account lifecycle | 815 | 772 | 53.6 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |
 | `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 126 | 120 | 17.6 KiB | 140 | — |
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 240 | 233 | 22.8 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
@@ -159,12 +161,11 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/training-loop-store.js` | SQLite and Turso training-loop adapter parity | 136 | 133 | 7.1 KiB | 140 | `src/training-loop-schema.js` |
 | `src/training.js` | Check-ins, deterministic progression, blocks, and approved adaptations | 358 | 346 | 24.8 KiB | 450 | `src/plans.js`, `src/progression.js` |
 | `src/workouts.js` | Workout validation, history summaries, and authenticated lifecycle | 214 | 208 | 14.3 KiB | 230 | `src/plans.js` |
-
-Snapshot result: 59 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 82 browser modules with zero cycles and zero violations.
+Snapshot result: 61 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 82 browser modules with zero cycles and zero violations.
 
 ## Strata AI
 
-`src/ai-provider.js` is the only module that talks to the model. It sends the configured key to the configured OpenAI-compatible base URL, bounds every call with a timeout, and maps failures to stable codes. `src/ai-catalog.js` chooses a per-request shortlist from the full exercise library: default picks per muscle group, every exercise, muscle, or piece of equipment the member names, and the results of one optional model-requested search. `src/ai-core.js` holds the prompt rules and turns model JSON into proposals: unknown exercises, movement-limit conflicts, oversized days, and invalid nutrition choices are dropped or rejected, weeks pass through `sanitizePlan`, and calorie targets come from `generateCoachingWeek`, never from the model. `src/ai-plan-edits.js` validates the browser's latest un-applied draft, converts explicit day and duration language into server-owned constraints, describes the complete editable base with current exercise codes, and checks the accepted proposal against those constraints. `src/ai.js` owns entitlement, CSRF, rate, daily, and queue limits, and gives a mismatched edit one constrained repair attempt before refusing it. Nothing in these modules writes member data. The page applies a proposal through the existing plan and personal-setup endpoints, and a proposal cannot overwrite a plan revision that changed after generation.
+`src/ai-provider.js` is the only module that talks to the model. It sends the configured key to the configured OpenAI-compatible base URL, bounds every call with a timeout, and maps failures to stable codes. `src/ai-response-schema.js` supplies Atomic Chat's llama.cpp JSON grammar, including the exact requested training days and the request-specific exercise-code set. `src/ai-catalog.js` chooses a per-request shortlist from the full exercise library: default picks per muscle group, every exercise, muscle, or piece of equipment the member names, and the results of one optional model-requested search. `src/ai-core.js` holds the prompt rules and turns model JSON into proposals: unknown exercises, movement-limit conflicts, oversized days, and invalid nutrition choices are dropped or rejected, weeks pass through `sanitizePlan`, and calorie targets come from `generateCoachingWeek`, never from the model. `src/ai-plan-edits.js` validates the browser's latest un-applied draft, converts explicit day and duration language into server-owned constraints, chooses balanced target days, describes the complete editable base with current exercise codes, and checks the accepted proposal against those constraints. If a local model still cannot satisfy a measurable edit, `src/ai-plan-fallback.js` builds the exact schedule or duration change from the validated base and shortlist; the result passes through the same proposal interpreter and contract checks. `src/ai.js` owns entitlement, CSRF, rate, daily, and queue limits, and keeps ordinary questions on the conversational path. Nothing in these modules writes member data. The page applies a proposal through the existing plan and personal-setup endpoints, and a proposal cannot overwrite a plan revision that changed after generation.
 
 ## Static boundary types
 

@@ -118,7 +118,11 @@ test("ordinary questions return a conversation reply without proposing account c
   model.replies.push({reply:"Longer sessions can help if recovery and schedule allow it; add time gradually.",week:{title:"Ignore this",days:[]},nutrition:null,suggestions:[]});
   const followUp=await settle(member,(await ask(member,{message:"Should I make sessions longer?",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
   assert.equal(followUp.data.request.result.week,null);assert.match(followUp.data.request.result.reply,/recovery/);
-  const questionPrompt=model.requests[1].messages[0].content;assert.doesNotMatch(questionPrompt,/Proposed week under discussion|Plan edit contract/);
+  const questionPrompt=model.requests[1].messages[0].content;assert.match(questionPrompt,/Proposed week under discussion/);assert.doesNotMatch(questionPrompt,/Plan edit contract/);
+  model.replies.push({reply:"Pain needs an appropriate health professional before changing your plan.",week:week([{day:"Monday",name:"Unsafe",exercises:[["CH1",3,"8-12"],["BK1",3,"8-12"]]}]),nutrition:null,suggestions:[],search:[]});
+  const safety=await settle(member,(await ask(member,{message:"My shoulder hurts, make my sessions longer",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
+  assert.equal(safety.data.request.status,"done");assert.equal(safety.data.request.result.week,null);assert.match(safety.data.request.result.reply,/health professional/);
+  assert.deepEqual(model.requests[2].response_format.schema.properties.week,{const:null});
 });
 
 test("a week proposal uses only real exercises and saves through the normal plan endpoint",async()=>{
@@ -141,12 +145,12 @@ test("follow-up edits use the structured draft and repair a wrong rest-day count
   const member=await account("edit-days");model.requests.length=0;
   const day=(name)=>({day:name,name:`${name} training`,exercises:[["CH1",3,"8-12"],["BK1",3,"8-12"],["LG1",3,"8-12"]]});
   model.replies.push({reply:"Updated to two rest days.",week:week([day("Monday"),day("Tuesday"),day("Wednesday"),day("Friday")]),nutrition:null,suggestions:[]});
-  model.replies.push({reply:"",week:week([day("Monday"),day("Tuesday"),day("Wednesday"),day("Thursday"),day("Friday")]),nutrition:null,suggestions:[]});
+  model.replies.push({reply:"This is a three-day plan.",week:week([day("Monday"),day("Tuesday"),day("Wednesday"),day("Friday"),day("Saturday")]),nutrition:null,suggestions:[]});
   const done=await settle(member,(await ask(member,{message:"I only want 2 rest days.",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id),result=done.data.request.result;
-  assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.equal(result.reply,"Here is your updated week.");
-  assert.deepEqual(result.week.trainingDays,["Monday","Tuesday","Wednesday","Thursday","Friday"]);assert.equal(result.week.restDays.length,2);
+  assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.equal(result.reply,"Updated to 5 training days with 2 rest days: Monday, Tuesday, Wednesday, Friday, Saturday. Want matching calorie targets?");
+  assert.deepEqual(result.week.trainingDays,["Monday","Tuesday","Wednesday","Friday","Saturday"]);assert.deepEqual(result.week.restDays,["Thursday","Sunday"]);
   assert.equal(model.requests.length,2);assert.match(model.requests[0].messages[0].content,/Base source: latest proposed week/);assert.match(model.requests[0].messages[0].content,/exactly 5 training days and 2 rest days/);
-  assert.match(model.requests[1].messages[0].content,/Correction required: The edit needs exactly 5 training days; the proposal has 4/);
+  assert.doesNotMatch(model.requests[1].messages[0].content,/Correction required/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: Correction required: The edit needs exactly 5 training days; the proposal has 4/);
 });
 
 test("longer-session edits keep the draft days and require every day to reach the next bucket",async()=>{
@@ -158,7 +162,7 @@ test("longer-session edits keep the draft days and require every day to reach th
   assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.deepEqual(result.week.trainingDays,["Monday","Wednesday","Friday"]);
   assert.equal(result.week.sessionMinutes,60);assert.ok(result.week.days.every((entry)=>entry.minutes===60));assert.equal(model.requests.length,2);
   assert.match(model.requests[0].messages[0].content,/Use exactly these training days: Monday, Wednesday, Friday/);assert.match(model.requests[0].messages[0].content,/60-minute bucket/);
-  assert.match(model.requests[1].messages[0].content,/Correction required: Monday must estimate to the 60-minute bucket/);
+  assert.doesNotMatch(model.requests[1].messages[0].content,/Correction required/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: Correction required: Monday must estimate to the 60-minute bucket/);
 });
 
 test("a stale proposed week falls back to the latest saved plan",async()=>{
@@ -174,13 +178,40 @@ test("a stale proposed week falls back to the latest saved plan",async()=>{
   const prompt=model.requests[0].messages[0].content;assert.match(prompt,/Base source: saved weekly plan/);assert.match(prompt,/Use exactly these training days: Tuesday, Thursday/);
 });
 
-test("two semantically wrong answers never return a misleading week",async()=>{
+test("two semantically wrong answers fall back to a verified rest-day edit",async()=>{
   const member=await account("edit-fails");model.requests.length=0;
   const bad={reply:"Done.",week:week(["Monday","Tuesday","Wednesday","Friday"].map((day)=>({day,name:"Training",exercises:[["CH1",3,"8-12"],["BK1",3,"8-12"]]}))),nutrition:null,suggestions:[]};
   model.replies.push(bad,bad);
-  const done=await settle(member,(await ask(member,{message:"I only want two rest days.",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
-  assert.equal(done.data.request.status,"failed");assert.equal(done.data.request.error.code,"AI_BAD_OUTPUT");assert.match(done.data.request.error.message,/could not make a week that matched/);
+  const done=await settle(member,(await ask(member,{message:"I only want two rest days.",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id),result=done.data.request.result;
+  assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.deepEqual(result.week.trainingDays,["Monday","Tuesday","Wednesday","Friday","Saturday"]);assert.deepEqual(result.week.restDays,["Thursday","Sunday"]);
+  assert.equal(result.reply,"Updated to 5 training days with 2 rest days: Monday, Tuesday, Wednesday, Friday, Saturday. Want matching calorie targets?");
   assert.equal(model.requests.length,2);
+});
+
+test("a reply-only plan and malformed correction use the verified rest-day fallback",async()=>{
+  const member=await account("edit-screenshot");model.requests.length=0;
+  model.replies.push({reply:"Here's a 5-day full-body plan focusing on hypertrophy. Monday: lots of exercises...",week:null,nutrition:null,suggestions:[],search:[]});
+  model.replies.push('{"reply":"Here is the corrected plan","week":{"title":"Broken"}',"still not json");
+  const done=await settle(member,(await ask(member,{message:"i want only 2 rest days",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id),result=done.data.request.result;
+  assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.deepEqual(result.week.trainingDays,["Monday","Tuesday","Wednesday","Friday","Saturday"]);assert.deepEqual(result.week.restDays,["Thursday","Sunday"]);
+  assert.match(result.reply,/Updated to 5 training days with 2 rest days/);assert.equal(model.requests.length,3);
+  assert.match(model.requests[1].messages.at(-1).content,/No weekly plan was returned for the requested edit/);
+  assert.match(model.requests[2].messages.at(-1).content,/Return one JSON object with the named fields/);
+});
+
+test("fallback never drops qualitative requirements from a measurable edit",async()=>{
+  const member=await account("edit-qualitative");model.requests.length=0;
+  const bad={reply:"Done.",week:week(["Monday","Tuesday","Wednesday","Friday","Saturday"].map((day)=>({day,name:"Training",exercises:[["Hack Squat",3,"8-12"],["Flat Dumbbell Press",3,"8-12"]]}))),nutrition:null,suggestions:[]};
+  model.replies.push(bad,bad);
+  const done=await settle(member,(await ask(member,{message:"Make it five training days using only dumbbells",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
+  assert.equal(done.data.request.status,"failed",JSON.stringify(done.data));assert.equal(done.data.request.error.code,"AI_BAD_OUTPUT");assert.equal(model.requests.length,2);assert.match(model.requests[1].messages.at(-1).content,/must use only Dumbbells or Bodyweight/);
+});
+
+test("malformed output for an unrecognized plan request still fails closed",async()=>{
+  const member=await account("unrecognized-malformed");model.requests.length=0;
+  model.replies.push("not json at all","still not json");
+  const done=await settle(member,(await ask(member,{message:"Rework this however you think best.",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
+  assert.equal(done.data.request.status,"failed",JSON.stringify(done.data));assert.equal(done.data.request.error.code,"AI_BAD_OUTPUT");assert.equal(model.requests.length,2);
 });
 
 test("nutrition proposals are calculated by STRATA and applied through personal setup",async()=>{
@@ -251,7 +282,7 @@ test("context overflows and cut-off answers are retried in a smaller form",async
   model.truncateNext=true;model.replies.push({reply:"Short now.",week:null,nutrition:null,suggestions:[]});
   const shorter=await settle(member,(await ask(member)).data.request.id);
   assert.equal(shorter.data.request.status,"done");assert.equal(shorter.data.request.result.reply,"Short now.");
-  assert.equal(model.requests.length,2);assert.match(model.requests[1].messages[0].content,/previous answer was cut off/);assert.equal(model.requests[1].temperature,0.1);
+  assert.equal(model.requests.length,2);assert.doesNotMatch(model.requests[1].messages[0].content,/previous answer was cut off/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification:.*previous answer was cut off/s);assert.equal(model.requests[1].temperature,0.1);
 });
 
 test("the model can search all 320 exercises once and use what it finds",async()=>{
@@ -264,10 +295,10 @@ test("the model can search all 320 exercises once and use what it finds",async()
   assert.deepEqual(result.week.days[0].exercises.map((item)=>item.exerciseId).slice(0,2),["half-kneeling-landmine-press","nordic-hamstring-curl"]);
   assert.equal(model.requests.length,2,"one search, then one answer");
   assert.doesNotMatch(model.requests[0].messages[0].content,/Half-Kneeling Landmine Press/,"the first shortlist did not include it");
-  assert.match(model.requests[1].messages[0].content,/STRATA searched its library for: landmine press, nordic curl/);
+  assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: STRATA searched its library for: landmine press, nordic curl/);
   model.requests.length=0;
   model.replies.push({reply:"Searching.",week:null,search:["underwater basket weaving"]},{reply:"STRATA has no exercise like that, but here are close options.",week:null,search:["asked again"]});
   const none=await settle(member,(await ask(member,{message:"Add underwater basket weaving"})).data.request.id);
   assert.equal(none.data.request.status,"done");assert.match(none.data.request.result.reply,/no exercise like that/);
-  assert.equal(model.requests.length,2,"the model cannot search twice");assert.match(model.requests[1].messages[0].content,/STRATA found no library exercises for: underwater basket weaving/);
+  assert.equal(model.requests.length,2,"the model cannot search twice");assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: STRATA found no library exercises for: underwater basket weaving/);
 });

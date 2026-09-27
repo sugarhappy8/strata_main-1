@@ -395,11 +395,13 @@
     },
     "src/ai.js": {
       "role": "Strata AI request queue and review-only proposal API",
-      "maxLines": 200,
+      "maxLines": 215,
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/ai-core.js",
+        "src/ai-plan-fallback.js",
         "src/ai-plan-edits.js",
+        "src/ai-response-schema.js",
         "src/coaching-core.js",
         "src/coaching-evidence.js",
         "src/coaching.js",
@@ -417,7 +419,15 @@
     },
     "src/ai-plan-edits.js": {
       "role": "Strata AI structured draft and plan-edit contracts",
-      "maxLines": 120,
+      "maxLines": 140,
+      "allowedDependencies": [
+        "src/ai-catalog.js",
+        "src/plans.js"
+      ]
+    },
+    "src/ai-plan-fallback.js": {
+      "role": "Deterministic verified plan-edit fallback proposals",
+      "maxLines": 80,
       "allowedDependencies": [
         "src/plans.js"
       ]
@@ -425,6 +435,13 @@
     "src/ai-provider.js": {
       "role": "OpenAI-compatible model client and Strata AI settings",
       "maxLines": 90,
+      "allowedDependencies": [
+        "src/ai-response-schema.js"
+      ]
+    },
+    "src/ai-response-schema.js": {
+      "role": "Bounded grammar schema for Strata AI responses",
+      "maxLines": 80,
       "allowedDependencies": []
     },
     "src/ai-catalog.js": {
