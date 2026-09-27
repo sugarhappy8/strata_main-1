@@ -99,7 +99,7 @@ test("requests are checked before they reach the model",async()=>{
 
 test("ordinary questions return a conversation reply without proposing account changes",async()=>{
   const member=await account("question");model.requests.length=0;
-  model.replies.push({reply:"Progressive overload means gradually increasing training difficulty as your body adapts.",week:null,nutrition:null,suggestions:[],search:[]});
+  model.replies.push({reply:"Progressive overload means gradually increasing training difficulty as your body adapts.",week:{title:"Ignore this",focus:"strength",days:[]},nutrition:{goal:"fat_loss",pace:"gentle",pattern:"steady"},suggestions:[{text:"Ignore this"}],search:[]});
   const done=await settle(member,(await ask(member,{message:"What does progressive overload mean?"})).data.request.id),result=done.data.request.result;
   assert.equal(done.data.request.status,"done",JSON.stringify(done.data));
   assert.equal(result.reply,"Progressive overload means gradually increasing training difficulty as your body adapts.");

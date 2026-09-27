@@ -6,7 +6,7 @@
 // open while the model works. Proposals are returned for review; nothing is saved here.
 
 const {randomUUID}=require("node:crypto");
-const {LIMITS,aiError,interpretReply,memberContext,planItems,previewNutrition,promptMessages,requestText,sanitizeHistory,searchTerms}=require("./ai-core");
+const {LIMITS,aiError,directAnswerOnly,interpretReply,memberContext,planItems,previewNutrition,promptMessages,requestText,sanitizeHistory,searchTerms}=require("./ai-core");
 const {candidateExercises,readRequest,searchCatalog}=require("./ai-catalog");
 const {addDays,currentWeekStart,localDate}=require("./coaching-core");
 const {compatibleWeek,readCoachingEvidence}=require("./coaching-evidence");
@@ -99,7 +99,7 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       }
       // Content-free diagnostics help the owner tell a weak model from a broken tunnel; answers are never logged.
       if(!completion.data)logger?.warn?.("ai.unreadable_answer",{chars:String(completion.text||"").length,truncated:Boolean(completion.truncated),startsWithBrace:/^\s*\{/.test(String(completion.text||""))});
-      const result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations}));
+      const result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations,answerOnly:job.kind==="chat"&&directAnswerOnly(job.message)}));
       if(result.nutrition){
         if(!data.profile)result.nutrition={changes:result.nutrition,needsSetup:true,message:"Calorie targets come from your personal setup. Complete it once, then ask again."};
         else{

@@ -98,7 +98,7 @@ nutrition: only when the member explicitly asks to create or change calorie or m
 After proposing a week, end the reply by offering matching calorie targets, unless nutrition was already discussed.
 suggestions: only when the member explicitly asks to review or improve their saved plan. Give up to 3 short, specific tips based on the member's data, as {"text":"..."}. To replace an exercise in the saved plan add "swap":{"day":"Monday","from":"exact exercise name from the saved plan","to":"CODE or exact exercise name"}.`;
 const SUGGESTION_REQUEST="Review my saved plan and my recent training and nutrition, then give me up to 3 specific suggestions.";
-
+function directAnswerOnly(/** @type {unknown} */ message){const value=text(message,LIMITS.messageChars).toLowerCase(),question=/\?$|^(?:what|why|how|when|where|which|who|should|is|are|do|does|did|can|could|would|explain|define|tell me|compare)\b/.test(value),request=/\b(?:build|create|make|replace|change|update|modify|add|remove|swap|review|improve|rewrite|generate|suggest|set(?:\s+up)?)\b|\bplan\s+(?:me|my|a|an|this|next|the)\b/.test(value);return question&&!request;}
 /** The member's recent words, used to choose the exercise shortlist. @param {{kind:string,message?:string,history?:Array<{role:string,content:string}>}} input */
 function requestText({kind,message="",history=[]}){
   if(kind==="suggestions")return "";
@@ -225,16 +225,16 @@ function searchTerms(data){
   if(!data||typeof data!=="object"||data.week||!Array.isArray(data.search))return [];
   return data.search.map((/** @type {unknown} */ term)=>text(term,60)).filter(Boolean).slice(0,LIMITS.searchTerms);
 }
-
 /**
  * Turns the model's JSON into proposals the page can show. Anything outside STRATA's rules is
  * dropped or rejected here; the page never receives an exercise STRATA does not know.
- * @param {any} data @param {{candidates:Array<{code:string}>,plan:any,limitations?:string[]}} context
+ * @param {any} data @param {{candidates:Array<{code:string}>,plan:any,limitations?:string[],answerOnly?:boolean}} context
  */
-function interpretReply(data,{candidates,plan,limitations=[]}){
+function interpretReply(data,{candidates,plan,limitations=[],answerOnly=false}){
   if(!data||typeof data!=="object"||Array.isArray(data))throw aiError("AI_BAD_OUTPUT","Strata AI's answer could not be read. Try asking again.");
   const reply=text(data.reply,LIMITS.replyChars);
   if(!reply)throw aiError("AI_BAD_OUTPUT","Strata AI's answer could not be read. Try asking again.");
+  if(answerOnly)return {reply,week:null,weekIssue:null,nutrition:null,suggestions:[]};
   const byCode=new Map(candidates.map((item)=>[item.code.toUpperCase(),item]));
   const week=data.week?interpretWeek(data.week,byCode,limitations):null;
   return {reply,week:week&&!("issue" in week)?week:null,weekIssue:week&&"issue" in week?week.issue:null,nutrition:interpretNutrition(data.nutrition),suggestions:interpretSuggestions(data.suggestions,{byCode,plan,limitations})};
@@ -257,4 +257,4 @@ function previewNutrition({profile,changes,plan,evidence,timestamp}){
   return {changes,alignment:aligned&&schedule?schedule:null,profile:saved,expectedRevision:Number(profile.revision),preview:{selectedGoal:nutrition.selectedGoal,maintenance:{targetKcal:nutrition.maintenance?.targetKcal??null},dailyTargets:nutrition.dailyTargets}};
 }
 
-module.exports={LIMITS,SESSION_MINUTES,aiError,estimatedMinutes,interpretReply,memberContext,planItems,planSchedule,previewNutrition,promptMessages,repsText,requestText,sanitizeHistory,searchTerms};
+module.exports={LIMITS,SESSION_MINUTES,aiError,directAnswerOnly,estimatedMinutes,interpretReply,memberContext,planItems,planSchedule,previewNutrition,promptMessages,repsText,requestText,sanitizeHistory,searchTerms};

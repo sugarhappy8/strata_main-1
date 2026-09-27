@@ -105,7 +105,9 @@ test("weeks that cannot pass, bad replies, and search requests are handled expli
 });
 
 test("a conversational answer needs no plan, nutrition change, or suggestions",()=>{
-  assert.deepEqual(interpret({reply:"Progressive overload means gradually increasing the challenge as you adapt.",week:null,nutrition:null,suggestions:[],search:[]}),{
+  assert.equal(core.directAnswerOnly("What does progressive overload mean?"),true);
+  assert.equal(core.directAnswerOnly("Can you build me a three-day plan?"),false);
+  assert.deepEqual(core.interpretReply({reply:"Progressive overload means gradually increasing the challenge as you adapt.",week:{title:"Ignore this"},nutrition:{goal:"fat_loss"},suggestions:["Ignore this"]},{candidates,plan:null,answerOnly:true}),{
     reply:"Progressive overload means gradually increasing the challenge as you adapt.",week:null,weekIssue:null,nutrition:null,suggestions:[]
   });
 });

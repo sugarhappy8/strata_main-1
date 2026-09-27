@@ -1,5 +1,14 @@
 # Changelog
 
+## 8.8.2 — Conversational Strata AI
+
+- Answer ordinary questions about training, exercises, recovery, and general nutrition directly instead of forcing every message into a plan or settings proposal.
+- Treat informational questions as read-only conversation: a week, calorie or macro targets, and plan-review suggestions are created only after an explicit request.
+- Allow direct answers up to 90 words while keeping proposal replies at 60 words and preserving every existing proposal validator and apply-time confirmation.
+- Update the Strata AI page, starter prompts, composer guidance, and waiting text so members can clearly see that they may ask a question or request a plan.
+
+See the [8.8.2 release guide](docs/release-8.8.2.md).
+
 ## 8.8.1 — Faster Strata AI answers
 
 - Ask the model for each exercise as `[code or exact name, sets, reps]` instead of an object, which makes a proposed week about 45% shorter. The object form is still accepted.

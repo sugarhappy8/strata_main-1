@@ -12,7 +12,7 @@
     Object.freeze({label:"Plan a 3-day full-body week",message:"Plan a 3-day full-body week for me."}),
     Object.freeze({label:"Push, pull, legs with dumbbells",message:"Build me a push, pull, legs week using only dumbbells."}),
     Object.freeze({label:"4 days, 45 minutes, glutes first",message:"I can train 4 days a week for about 45 minutes. Focus on glutes and legs."}),
-    Object.freeze({label:"Set calories for gentle fat loss",message:"Set up my calorie targets for gentle fat loss."})
+    Object.freeze({label:"How does progressive overload work?",message:"What does progressive overload mean, and how should I use it?"})
   ]);
   const SUGGESTION_PROMPT="Review my plan and suggest improvements.";
   // One-tap replies under the latest proposed week; the first accepts Strata AI's nutrition offer.
@@ -33,7 +33,7 @@
 
   function messageError(value){
     const text=String(value??"").trim();
-    if(!text)return "Write what you would like Strata AI to plan.";
+    if(!text)return "Ask a training or nutrition question, or describe what you would like Strata AI to plan.";
     if(text.length>LIMITS.messageChars)return `Keep your message under ${whole(LIMITS.messageChars)} characters.`;
     return "";
   }
@@ -118,7 +118,7 @@
     if(request?.status==="queued"&&Number(request.position)>0)return Number(request.position)===1?"You’re next in line…":`You’re number ${whole(request.position)} in line…`;
     const seconds=Math.max(0,Math.floor(elapsedMs/1000));
     if(seconds>=45)return `Still working (${seconds} s). Detailed weeks can take up to a minute…`;
-    return seconds>=3?`Strata AI is planning… ${seconds} s. Most answers take 10–30 seconds.`:"Strata AI is planning…";
+    return seconds>=3?`Strata AI is preparing an answer… ${seconds} s. Most answers take 10–30 seconds.`:"Strata AI is preparing an answer…";
   }
   function errorView(error){
     const code=String(error?.code||"AI_FAILED");
