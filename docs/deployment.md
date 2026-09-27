@@ -100,6 +100,14 @@ Strata AI is off until `AI_BASE_URL` and `AI_MODEL` are set. It works with any O
 3. In Render, set `AI_BASE_URL` to that address, `AI_API_KEY` to the key, and `AI_MODEL` to the exact model ID that `GET /v1/models` lists. Never commit these values or paste the key into chat, tickets, or logs.
 4. Deploy, sign in with a Strata+ account, open `/ai`, and confirm the status reads "Strata AI is ready".
 
+Choosing a model:
+
+- Use an official instruction-tuned model that ships with its chat template. On a 12 GB GPU, Qwen2.5-14B-Instruct at Q4_K_M (about 9 GB) fits with a 16,384-token context and writes a week in roughly 10–20 seconds. Qwen2.5-7B-Instruct at Q5_K_M or Q6_K answers about twice as fast with slightly simpler plans.
+- Avoid community merges and "upscaled" models (for example an 8B model stretched to 14B). They can loop on one phrase and never produce the JSON STRATA needs, which shows as "Strata AI's answer could not be read" and an `ai.unreadable_answer` warning in the logs.
+- Avoid reasoning ("thinking") models unless the server honors `enable_thinking: false`; otherwise the thinking uses up the answer budget.
+- Each request needs about 4,000 tokens of context (a prompt of up to about 2,800 tokens plus an answer of up to 900). The server's context is shared by its parallel slots, so 16,384 tokens supports 3–4 slots.
+- After changing models, set `AI_MODEL` to the exact ID the server lists and redeploy.
+
 Operational notes:
 
 - A Cloudflare quick tunnel gets a new address each time it restarts. Update `AI_BASE_URL` in Render when that happens, or use a named tunnel for a stable address. If the endpoint sits behind Cloudflare Access, set `AI_ACCESS_CLIENT_ID` and `AI_ACCESS_CLIENT_SECRET` to a service token.

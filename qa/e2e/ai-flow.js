@@ -35,7 +35,7 @@ function modelReply(messages){
     return JSON.stringify({reply:"Your week is balanced. Two small changes would help.",week:null,nutrition:null,search:[],suggestions:[{text:"Add a set to your first exercise once it feels easy.",swap:{day:"Monday",from:saved,to:code("CH",3)}},{text:"Keep one full rest day between hard leg sessions."}]});
   }
   if(/calorie|calories/i.test(question))return JSON.stringify({reply:"Here are gentle fat-loss targets that match your training days.",week:null,search:[],suggestions:[],nutrition:{goal:"fat_loss",pace:"gentle",pattern:"zigzag",flexibleDay:null,macros:"higher_protein"}});
-  const day=(name,day,codes)=>({day,name,exercises:codes.map((entry)=>({code:entry,sets:3,reps:"8-12"}))});
+  const day=(name,day,codes)=>({day,name,exercises:codes.map((entry)=>[entry,3,"8-12"])});
   return JSON.stringify({reply:"Here is a three-day full-body week. Want matching calorie targets?",nutrition:null,search:[],suggestions:[],week:{title:"Three full-body days",focus:"balanced",sessionMinutes:45,days:[
     day("Full body A","Monday",[code("CH"),code("BK"),code("LG"),code("CR")]),day("Full body B","Wednesday",[code("SH"),code("GL"),code("BK",2),code("AR")]),day("Full body C","Friday",[code("CH",2),code("LG",2),code("CV"),code("AR",2)])
   ]}});

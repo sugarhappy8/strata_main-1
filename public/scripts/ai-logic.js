@@ -116,8 +116,9 @@
   }
   function pendingText(request,elapsedMs=0){
     if(request?.status==="queued"&&Number(request.position)>0)return Number(request.position)===1?"You’re next in line…":`You’re number ${whole(request.position)} in line…`;
-    if(elapsedMs>45000)return "Still working. Detailed weeks can take up to a minute or two…";
-    return "Strata AI is planning…";
+    const seconds=Math.max(0,Math.floor(elapsedMs/1000));
+    if(seconds>=45)return `Still working (${seconds} s). Detailed weeks can take up to a minute…`;
+    return seconds>=3?`Strata AI is planning… ${seconds} s. Most answers take 10–30 seconds.`:"Strata AI is planning…";
   }
   function errorView(error){
     const code=String(error?.code||"AI_FAILED");

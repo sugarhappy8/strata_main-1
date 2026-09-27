@@ -83,6 +83,13 @@ test("a proposed week keeps only real, allowed exercises within STRATA's limits"
   assert.deepEqual(limited.week.days[0].exercises.map((entry)=>entry.exerciseId),[candidates[0].id,candidates.find((entry)=>entry.code==="BK1").id],"movement limits apply to exercises named outside the shortlist");
 });
 
+test("the compact [code, sets, reps] form is read like the object form",()=>{
+  const {week}=interpret({reply:"Compact.",week:{title:"Compact week",days:[{day:"Tuesday",name:"Push",exercises:[[code("flat-dumbbell-press"),4,"6-10"],["Nordic Hamstring Curl",3,"3-8"],["ZZ9",3,"8-12"],"not an exercise",[code("flat-dumbbell-press"),2,"8"]]}]}});
+  assert.deepEqual(week.days[0].exercises.map((entry)=>[entry.exerciseId,entry.sets,entry.reps]),[["flat-dumbbell-press",4,"6–10"],["nordic-hamstring-curl",3,"3–8"]]);
+  assert.deepEqual(week.notes,["Exercises STRATA does not list, or that your movement limits exclude, were left out."]);
+  assert.match(core.promptMessages({kind:"chat",message:"x",context:"",candidates:[]})[0].content,/Each exercise is \[code, sets, reps\]/);
+});
+
 test("weeks that cannot pass, bad replies, and search requests are handled explicitly",()=>{
   const allDays=interpret({reply:"Seven days",week:{days:DAYS.map((day)=>({day,exercises:[{code:"CH1"},{code:"BK1"}]}))}});
   assert.equal(allDays.week,null);assert.match(allDays.weekIssue,/did not pass STRATA's checks/);

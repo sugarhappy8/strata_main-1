@@ -88,9 +88,9 @@ function memberContext({profile=null,plan=null,workouts=[],nutrition=null,today=
 const RULES=`You are Strata AI, the planning assistant inside STRATA, a strength-training app. You help one member plan training and nutrition and give practical suggestions.
 Safety: you are not a doctor or dietitian. Do not diagnose, treat pain or injury, or advise on pregnancy, medication, or eating disorders. Suggest a qualified professional instead and do not propose a plan in that case.
 Answer with exactly one JSON object and nothing else: {"reply":"...","week":null,"nutrition":null,"suggestions":[],"search":[]}
-reply: at most 90 words, warm and plain, no markdown.
-week: only when the member asks for a new or changed weekly plan. Shape: {"title":"...","focus":"balanced|strength|hypertrophy","days":[{"day":"Monday","name":"Upper body","exercises":[{"code":"CH1","sets":3,"reps":"8-12"}]}]}
-Exercises: STRATA's library has 320 exercises. The list below is a shortlist chosen for this request. Use its codes. For another STRATA exercise the member asks for by name, write {"name":"exact exercise name","sets":3,"reps":"8-12"} instead of a code.
+reply: at most 60 words, warm and plain, no markdown.
+week: only when the member asks for a new or changed weekly plan. Shape: {"title":"...","focus":"balanced|strength|hypertrophy","days":[{"day":"Monday","name":"Upper body","exercises":[["CH1",3,"8-12"],["BK2",3,"8-12"]]}]}. Each exercise is [code, sets, reps].
+Exercises: STRATA's library has 320 exercises. The list below is a shortlist chosen for this request. Use its codes. For another STRATA exercise the member asks for by name, put its exact name where the code goes.
 Search: if the member wants exercises that are not in the shortlist, reply briefly, leave week empty, and put up to 6 short search words in "search" (for example ["landmine press","nordic curl"]). STRATA will send matching exercises.
 Week rules: 1 to 6 training days; days you leave out are rest days. 3 to 7 exercises per training day, never the same exercise twice in a day. Match the member's time with working sets per day: 30 min about 10, 45 min about 16, 60 min about 22, 75 min about 28, 90 min about 34. Cover every major muscle group across the week unless the member asks for a focus. Respect the member's equipment and movement limits.
 nutrition: only when the member asks about calories or eating, or accepts your offer. Shape: {"goal":"fat_loss|maintenance|muscle_gain","pace":"gentle|moderate","pattern":"steady|zigzag|flexible_day","flexibleDay":"Saturday" or null,"macros":"balanced|higher_protein" or null}. Never state calorie numbers; STRATA calculates them.
@@ -173,7 +173,9 @@ function interpretWeek(value,byCode,limitations){
     const day=dayName(entry?.day);
     if(!day||days[day])continue;
     const seen=new Set(),exercises=[];
-    for(const raw of Array.isArray(entry?.exercises)?entry.exercises.slice(0,LIMITS.maxExercises+4):[]){
+    for(const item of Array.isArray(entry?.exercises)?entry.exercises.slice(0,LIMITS.maxExercises+4):[]){
+      // The compact form is [code or exact name, sets, reps]; the object form is still accepted.
+      const raw=Array.isArray(item)?{code:item[0],name:item[0],sets:item[1],reps:item[2]}:item;
       const candidate=resolveExercise(raw,byCode,limitations);
       if(!candidate){notes.add("Exercises STRATA does not list, or that your movement limits exclude, were left out.");continue;}
       if(seen.has(candidate.id))continue;seen.add(candidate.id);

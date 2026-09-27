@@ -1,5 +1,15 @@
 # Changelog
 
+## 8.8.1 — Faster Strata AI answers
+
+- Ask the model for each exercise as `[code or exact name, sets, reps]` instead of an object, which makes a proposed week about 45% shorter. The object form is still accepted.
+- Cap replies at 60 words and each answer at 900 tokens (from 90 words and 1,100 tokens), so answers arrive sooner and a model that loops stops sooner.
+- Show the seconds elapsed while Strata AI works, with the usual 10–30 second range.
+- Log a content-free `ai.unreadable_answer` warning (length, whether it was cut off, whether it started as JSON) when a model's answer cannot be read. Messages and answers are still never logged.
+- Recommend official instruction-tuned models in the deployment guide, and explain why community merges, upscaled models, and thinking models can fail.
+
+See the [8.8.1 release guide](docs/release-8.8.1.md).
+
 ## 8.8.0 — Strata AI
 
 - Add Strata AI at `/ai` for Strata+ members. Describe a week in your own words and Strata AI proposes one from all 320 STRATA exercises: a shortlist chosen for each request (default picks per muscle group, anything you name, and your equipment, experience, and movement limits), plus one search of the full library when you ask for something that isn't on it.
