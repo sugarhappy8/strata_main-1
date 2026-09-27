@@ -54,6 +54,9 @@ test("prompts stay within a small model's context without losing named exercises
   const small=core.promptMessages({kind:"chat",message:"Plan my week",context:"Member facts",candidates:candidates.slice(0,3),note:"A note"});
   assert.equal(small.length,2);assert.equal(small[0].role,"system");assert.match(small[0].content,/Member data:\nMember facts/);assert.match(small[0].content,/CH1 Incline Smith Press/);assert.match(small[0].content,/A note$/);
   assert.equal(small[1].content,"Plan my week");
+  const question=core.promptMessages({kind:"chat",message:"What does progressive overload mean?",context:"Member facts",candidates:[]});
+  assert.match(question[0].content,/answer ordinary questions .* directly/i);assert.match(question[0].content,/A question is not permission to change anything/);
+  assert.match(question[0].content,/informational question about calories, macros, or food gets a reply only/);assert.equal(question.at(-1).content,"What does progressive overload mean?");
   assert.match(core.promptMessages({kind:"suggestions",context:"",candidates:[]}).at(-1).content,/up to 3 specific suggestions/);
   const long="x".repeat(1200),history=Array.from({length:12},(_,index)=>({role:index%2?"assistant":"user",content:long}));
   const big=candidateExercises({request:"focus on everything: chest back shoulders arms legs glutes calves core",perGroup:12}),keep=new Set([big.find((entry)=>entry.group==="core"&&entry.code.endsWith("12"))?.id].filter(Boolean));
@@ -99,6 +102,12 @@ test("weeks that cannot pass, bad replies, and search requests are handled expli
   assert.deepEqual(core.searchTerms({reply:"Searching",search:[" landmine press ","",42,"a","b","c","d","e","f"]}),["landmine press","42","a","b","c","d"]);
   assert.deepEqual(core.searchTerms({reply:"x",week:{days:[]},search:["ignored"]}),[]);assert.deepEqual(core.searchTerms(null),[]);
   assert.deepEqual(core.searchTerms({search:"not a list"}),[]);
+});
+
+test("a conversational answer needs no plan, nutrition change, or suggestions",()=>{
+  assert.deepEqual(interpret({reply:"Progressive overload means gradually increasing the challenge as you adapt.",week:null,nutrition:null,suggestions:[],search:[]}),{
+    reply:"Progressive overload means gradually increasing the challenge as you adapt.",week:null,weekIssue:null,nutrition:null,suggestions:[]
+  });
 });
 
 test("nutrition proposals are limited to STRATA's own choices",()=>{

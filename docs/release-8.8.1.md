@@ -7,7 +7,7 @@ Build 8.8.1 makes Strata AI answers shorter to generate and easier to diagnose. 
 | Before | Build 8.8.1 |
 | --- | --- |
 | Each exercise was an object: `{"code":"CH1","sets":3,"reps":"8-12"}` | Each exercise is `["CH1",3,"8-12"]`, or an exact library name in place of the code. A four-day week of six exercises a day drops from 1,173 to 649 characters, 45% shorter. The object form is still accepted |
-| Replies could run to 90 words | Replies are capped at 60 words |
+| Replies could run to 90 words | Planning replies are capped at 60 words; direct answers to ordinary questions can use up to 90 words |
 | Each answer could use 1,100 tokens | Each answer is capped at 900 tokens, which still fits a six-day week, so a model that loops stops sooner |
 
 STRATA's checks are unchanged: every exercise, set, and day is validated before a proposal appears, and calories still come from STRATA's calculator.

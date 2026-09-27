@@ -97,6 +97,17 @@ test("requests are checked before they reach the model",async()=>{
   assert.equal((await settle(member,first.data.request.id)).data.request.status,"done");
 });
 
+test("ordinary questions return a conversation reply without proposing account changes",async()=>{
+  const member=await account("question");model.requests.length=0;
+  model.replies.push({reply:"Progressive overload means gradually increasing training difficulty as your body adapts.",week:null,nutrition:null,suggestions:[],search:[]});
+  const done=await settle(member,(await ask(member,{message:"What does progressive overload mean?"})).data.request.id),result=done.data.request.result;
+  assert.equal(done.data.request.status,"done",JSON.stringify(done.data));
+  assert.equal(result.reply,"Progressive overload means gradually increasing training difficulty as your body adapts.");
+  assert.equal(result.week,null);assert.equal(result.nutrition,null);assert.deepEqual(result.suggestions,[]);
+  assert.match(model.requests[0].messages[0].content,/A question is not permission to change anything/);
+  assert.equal(model.requests[0].messages.at(-1).content,"What does progressive overload mean?");
+});
+
 test("a week proposal uses only real exercises and saves through the normal plan endpoint",async()=>{
   const member=await account("week");model.requests.length=0;
   model.replies.push({reply:"Here is a three-day plan. Want matching calorie targets?",week:week([{day:"Monday",name:"Full body A",exercises:[{code:"CH1",sets:3,reps:"8-12"},{code:"BK1",sets:3,reps:"8-12"},{code:"LG1",sets:3,reps:"8-12"},{code:"NOPE",sets:3}]},{day:"Wednesday",name:"Full body B",exercises:[{code:"SH1",sets:3,reps:"10-15"},{code:"GL1",sets:3,reps:"8-12"},{code:"CR1",sets:2,reps:"30-45 s"}]},{day:"Friday",name:"Full body C",exercises:[{code:"AR1",sets:3,reps:"10-12"},{code:"CV1",sets:4,reps:"12-15"},{code:"CH2",sets:3,reps:"8-12"}]}]),nutrition:null,suggestions:[]});
