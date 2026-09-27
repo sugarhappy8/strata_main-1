@@ -1,5 +1,21 @@
 # Changelog
 
+## 8.8.0 — Strata AI
+
+- Add Strata AI at `/ai` for Strata+ members. Describe a week in your own words and Strata AI proposes one from all 320 STRATA exercises: a shortlist chosen for each request (default picks per muscle group, anything you name, and your equipment, experience, and movement limits), plus one search of the full library when you ask for something that isn't on it.
+- Check every proposal on the server before it appears: unknown exercises, exercises your movement limits exclude, duplicate exercises, days with fewer than two exercises or more than 30 sets, and weeks with no rest day are dropped or refused. Session length always comes from STRATA's estimate of 2.5 minutes a working set plus a warm-up.
+- Offer matching nutrition after a week. Strata AI picks the goal, pace, calorie pattern, and macro preference; STRATA's own calculator produces the calories, shown as maintenance minus the deficit with a target for each day, and the personal setup's training days follow the plan. Apply saves it with the usual revision check.
+- Add "Review my plan": up to three suggestions, where a suggested exercise swap applies to the saved plan with one tap if that exercise is still there.
+- Apply nothing without a tap. Replacing a saved plan asks first, and quick replies under the latest week accept the calorie offer or ask for shorter sessions.
+- Queue requests in memory so no web request waits on the model; the page polls for the answer and shows its place in line. Each member gets 30 requests per UTC day, one at a time, and requests the model never received are not counted.
+- Retry a context overflow once without history, a cut-off answer once with a request for a shorter reply, and a response the model broke once at a lower temperature. Tunnel timeouts, an offline model, and a refused key each show a clear message, and the rest of STRATA keeps working.
+- Add a homepage section, "Don't feel like planning things yourself? Ask Strata AI to do it for you.", which opens `/ai` for members with Strata+ and pricing for everyone else. Pricing explains that Strata AI is part of Strata+ and returns people to `/ai` after sign-up, sign-in, or the trial. Strata+ Overview links to it.
+- Configure it with `AI_BASE_URL`, `AI_API_KEY`, and `AI_MODEL` for any OpenAI-compatible server, with optional limits and a Cloudflare Access service token. In production the key is never sent over plain HTTP to another machine.
+- Update the privacy policy and terms to describe what Strata AI receives, how long answers are held, and its limits.
+- Match exercise names by singular form, so "flat dumbbell presses" finds Flat Dumbbell Press.
+
+See the [8.8.0 release guide](docs/release-8.8.0.md).
+
 ## 8.7.0 — Clear calorie math and a calmer STRATA
 
 - Show Nutrition's arithmetic: the target reads as maintenance minus the deficit (or plus the surplus), with one target per kind of day, and See calculation lists resting energy × the movement factor, planned workouts ÷ 7, other activity, the rounded estimate, and any calibration, in rows that add up on screen.

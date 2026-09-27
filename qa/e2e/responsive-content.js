@@ -89,7 +89,7 @@ test("pricing benefits keep their descriptions in the readable content column",{
         }
         return{left:itemBox.left,width:itemBox.width,height:itemBox.height,headingLeft:headingBox.left,lineHeight:parseFloat(getComputedStyle(item).lineHeight),descriptionRects};
       }));
-      assert.equal(rows.length,5,`pricing must keep all five benefits at ${width}px`);
+      assert.equal(rows.length,6,`pricing must keep all six benefits at ${width}px`);
       assert.ok(result.overflow<=1,`pricing benefit list overflows ${width}px by ${result.overflow}px`);
       for(const [index,row] of rows.entries()){
         assert.ok(row.descriptionRects.length>0,`pricing benefit ${index+1} must expose readable copy at ${width}px`);
