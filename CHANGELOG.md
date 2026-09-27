@@ -1,5 +1,19 @@
 # Changelog
 
+## 8.7.0 — Clear calorie math and a calmer STRATA
+
+- Show Nutrition's arithmetic: the target reads as maintenance minus the deficit (or plus the surplus), with one target per kind of day, and See calculation lists resting energy × the movement factor, planned workouts ÷ 7, other activity, the rounded estimate, and any calibration, in rows that add up on screen.
+- Split zigzag session energy evenly across training days, so days of the same kind share one target in multiples of 5 kcal while the seven days still add up to exactly seven times the average. Week generation is now `coaching-week-v7`; saved weeks keep their numbers until the next snapshot.
+- Check diary macros against the calories entered (4 kcal per gram of protein or carbohydrate, 9 per gram of fat), offer the macro total as the calorie entry, and explain a remaining mismatch beside meal ideas.
+- Keep two decimals for profile weight, height, known loads, and morning weights, so pound and inch entries read back as typed.
+- Add quick add (a meal or +100, +250, or +500 kcal, added and saved in one step), copy the previous day, a logging streak, and a morning-weight trend chart with its seven-day average and weekly change.
+- Add weekly calendar reminders on Train: one calendar file with a repeating event for every planned day at a chosen time and an optional reminder. Downloading again updates the same events in calendar apps that honor event updates.
+- Redesign every page around one type family in sentence case, one olive accent on light surfaces and lime on dark ones, red only for errors and destructive actions, one focus ring, pill-shaped actions, and readable minimum text sizes.
+- Show the ten best homepage matches first with a "Show all" button, which makes the homepage about 30% shorter.
+- Make payment test fixtures wait for the checkout-claim release that follows the 201 response instead of racing it.
+
+See the [8.7.0 release guide](docs/release-8.7.0.md).
+
 ## 8.6.1 — Reliable drafts and offline workouts
 
 - Keep unsaved Strata+ input when you return to the tab: the view is hidden while the account is re-checked, then restored as it was for the same session. A different account, a signed-out session, or ended access still clears it, and a failed check keeps the input in memory until a retry succeeds.
