@@ -282,7 +282,7 @@
     for(const [index,day] of plan.days.entries()){
       const weekday=DAYS.includes(day?.weekday)?day.weekday:weekdayForDate(day?.date);
       lines.push(`Day ${String(index+1).padStart(2,"0")} · ${weekday} · ${displayDate(day.date)}`);
-      if(day.rest){lines.push("REST / RECOVERY","");continue;}
+      if(day.rest){lines.push("Rest and recovery","");continue;}
       const labels=(Array.isArray(day.targets)?day.targets:[]).filter((target)=>TARGET_SET.has(target)).map((target)=>TARGET_LABELS[target]);
       if(labels.length)lines.push(labels.join(" + "));
       for(const item of Array.isArray(day.exercises)?day.exercises:[]){

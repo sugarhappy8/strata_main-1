@@ -14,11 +14,11 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.6.1" />
-    <link rel="stylesheet" href="/account.css?v=8.6.1" />
-    <link rel="stylesheet" href="/experience.css?v=8.6.1" />
-    <script src="/motion.js?v=8.6.1"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=8.6.1" />
+    <link rel="stylesheet" href="/fonts.css?v=8.7.0" />
+    <link rel="stylesheet" href="/account.css?v=8.7.0" />
+    <link rel="stylesheet" href="/experience.css?v=8.7.0" />
+    <script src="/motion.js?v=8.7.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=8.7.0" />
   </head>
   <body>
     <a class="skip-link" href="#verificationPanel">Skip to verification</a>
@@ -30,7 +30,7 @@
     <main class="account-page verification-page">
       <section class="account-intro">
         <p class="kicker"><span></span> One last step</p>
-        <h1>CHECK YOUR.<br /><em>INBOX.</em></h1>
+        <h1>Check your<br /><em>inbox.</em></h1>
         <p>Enter the 6-digit code we sent to <strong id="verificationEmail">the email address you just used</strong>. This confirms the inbox before STRATA creates or restores account access.</p>
         <div class="activation-handoff" data-activation-handoff role="status" hidden><strong>Your week is waiting safely.</strong><span data-activation-handoff-detail></span><small>Verification will not overwrite it. You will choose which week to keep after account access is confirmed.</small></div>
         <div class="storage-state verification-state" id="verificationState" role="status" aria-live="polite"><i></i><span>Enter your code to continue securely.</span></div>
@@ -38,8 +38,8 @@
 
       <section class="account-access verification-access" aria-label="Verify your email address">
         <article class="auth-panel verification-panel" id="verificationPanel" aria-labelledby="verificationTitle">
-          <p class="panel-index">02 / Email confirmation</p>
-          <h2 id="verificationTitle" tabindex="-1">VERIFY EMAIL</h2>
+          <p class="panel-index">Email confirmation</p>
+          <h2 id="verificationTitle" tabindex="-1">Verify email</h2>
           <p>Codes expire for your protection. You can request a fresh one below if yours no longer works.</p>
 
           <form id="verificationForm" action="/auth/verify-email" method="post" aria-labelledby="verificationTitle" aria-describedby="verificationMessage verificationCodeHint">
@@ -53,7 +53,7 @@
           </form>
 
           <div class="verification-ended" id="verificationSessionEnded" role="status" aria-live="assertive" tabindex="-1" hidden>
-            <h3>VERIFICATION SESSION ENDED</h3>
+            <h3>Verification session ended</h3>
             <p id="verificationEndedMessage">This verification request is no longer active. Return to the account page to receive a new code.</p>
             <div class="verification-ended-actions">
               <a id="verificationRestart" href="/account.html?mode=signup">Restart signup <span aria-hidden="true">→</span></a>
@@ -74,10 +74,10 @@
       </section>
     </main>
 
-    <footer class="build-footer">STRATA · Build 8.6.1 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
-    <script src="/pwa.js?v=8.6.1"></script>
-    <script src="/activation-core.js?v=8.6.1"></script>
-    <script src="/activation-handoff.js?v=8.6.1"></script>
-    <script src="/verify-email.js?v=8.6.1"></script>
+    <footer class="build-footer">STRATA · Build 8.7.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <script src="/pwa.js?v=8.7.0"></script>
+    <script src="/activation-core.js?v=8.7.0"></script>
+    <script src="/activation-handoff.js?v=8.7.0"></script>
+    <script src="/verify-email.js?v=8.7.0"></script>
   </body>
 </html>

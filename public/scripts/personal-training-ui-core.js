@@ -36,9 +36,11 @@
   function aliasedValue(value,aliases){return aliases[String(value||"").trim().toLowerCase()]||"";}
   function validExerciseId(value){return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)&&value.length<=80;}
 
+  // At two decimals the advertised imperial endpoints (661.4 lb, 47.24 in) land a hair outside the metric range; snap them onto it.
+  function snap(value,min,max){return value==null?null:value<min&&min-value<.02?min:value>max&&value-max<.02?max:value;}
   function poundsToKilograms(value){const number=finiteNumber(value);return number==null?null:round(number*KG_PER_LB,2);}
   function kilogramsToPounds(value){const number=finiteNumber(value);return number==null?null:round(number/KG_PER_LB,1);}
-  function inchesToCentimeters(value){const number=finiteNumber(value);return number==null?null:round(number*CM_PER_INCH,1);}
+  function inchesToCentimeters(value){const number=finiteNumber(value);return number==null?null:round(number*CM_PER_INCH,2);}
   function centimetersToInches(value){const number=finiteNumber(value);return number==null?null:round(number/CM_PER_INCH,2);}
 
   function heightToCentimeters(draft){
@@ -76,7 +78,7 @@
       if(seen.has(exerciseId)){errors.push({field:`performanceMaxes.${index}.exerciseId`,message:"Record each known exercise once."});continue;}
       const rawSets=entry.maxSets??entry.sets,rawReps=entry.maxReps??entry.reps,rawWeight=entry.maxWeightKg??entry.maxWeight??entry.weight??entry.load;
       const maxSets=boundedNumber(rawSets,1,20,{whole:true}),maxReps=boundedNumber(rawReps,1,100,{whole:true}),hasWeight=rawWeight!==""&&rawWeight!=null;
-      const enteredWeight=finiteNumber(rawWeight),loadUnit=entry.maxWeightKg!=null||entry.unit==="kg"||entry.weightUnit==="kg"?"kg":entry.unit==="lb"||entry.weightUnit==="lb"?"lb":preferredLoadUnit,maxWeightKg=enteredWeight==null?null:round(loadUnit==="lb"?enteredWeight*KG_PER_LB:enteredWeight,1);
+      const enteredWeight=finiteNumber(rawWeight),loadUnit=entry.maxWeightKg!=null||entry.unit==="kg"||entry.weightUnit==="kg"?"kg":entry.unit==="lb"||entry.weightUnit==="lb"?"lb":preferredLoadUnit,maxWeightKg=enteredWeight==null?null:round(loadUnit==="lb"?enteredWeight*KG_PER_LB:enteredWeight,2);
       if(maxSets==null)errors.push({field:`performanceMaxes.${index}.maxSets`,message:"Enter 1–20 sets for this exercise."});
       if(maxReps==null)errors.push({field:`performanceMaxes.${index}.maxReps`,message:"Enter 1–100 reps for this exercise."});
       if(hasWeight&&(enteredWeight==null||maxWeightKg<0||maxWeightKg>1000))errors.push({field:`performanceMaxes.${index}.maxWeight`,message:"Enter a load from 0–1,000 kg, or leave it blank for bodyweight work."});
@@ -100,7 +102,7 @@
     const workoutDays=uniqueStrings(source.trainingDays??source.workoutDays??source.availableDays).filter((day)=>DAYS.includes(day));
     const frequency=boundedNumber(source.frequency??source.trainingDaysPerWeek??workoutDays.length,1,6,{whole:true}),sessionMinutes=boundedNumber(source.sessionMinutes,30,90,{whole:true});
     if(age==null)errors.push({field:"age",message:"New STRATA energy estimates are for adults ages 19–80."});
-    if(heightCm==null||heightCm<120||heightCm>230)errors.push({field:"height",message:"Enter a height from 120–230 cm (3 ft 11 in–7 ft 7 in)."});
+    if(heightCm==null||snap(round(heightCm,2),120,230)<120||snap(round(heightCm,2),120,230)>230)errors.push({field:"height",message:"Enter a height from 120–230 cm (3 ft 11 in–7 ft 7 in)."});
     if(weightKg==null||weightKg<35||weightKg>300)errors.push({field:"weight",message:"Enter a weight from 35–300 kg (77.2–661.4 lb)."});
     if(bodyFatRaw!=null&&bodyFatPercent==null)errors.push({field:"bodyFatPercent",message:"Enter 3–65%, or leave body fat blank."});
     if(!['female','male'].includes(sexForEquation))errors.push({field:"sexForEquation",message:"Choose the coefficient required by the primary energy equation."});
@@ -115,7 +117,7 @@
     const goalPace=source.goalPace==="gentle"||source.goalPace==="moderate"?source.goalPace:"moderate";
     const macroPreference=source.macrosEnabled===false?null:source.macroPreference==="higher_protein"||source.macroPreference==="balanced"?source.macroPreference:source.macrosEnabled===true?"balanced":null;
     const payload={
-      version:4,measurementSystem,preferredLoadUnit,age,heightCm:heightCm==null?null:round(heightCm,1),weightKg:weightKg==null?null:round(weightKg,1),bodyFatPercent,
+      version:4,measurementSystem,preferredLoadUnit,age,heightCm:heightCm==null?null:snap(round(heightCm,2),120,230),weightKg:weightKg==null?null:round(weightKg,2),bodyFatPercent,
       sexForEquation:['female','male'].includes(sexForEquation)?sexForEquation:null,
       goal,goalPace,trainingGoal,experience,...energy.payload,workoutDays,sessionMinutes:sessionMinutes??45,usualExercises,
       availableEquipment:uniqueStrings(source.equipment??source.availableEquipment),movementLimitations:uniqueStrings(source.limitations??source.movementLimitations),caloriePattern,flexibleDay:DAYS.includes(source.flexibleDay)?source.flexibleDay:null,
@@ -168,19 +170,20 @@
     return{days:rows,targetCalories,consumedCalories,remainingCalories:Math.max(0,difference),overByCalories:Math.max(0,-difference),complete:rows.length===7};
   }
 
-  function dailyWeightToKilograms(value,unitSystem="metric"){const entered=finiteNumber(value);if(entered==null)return null;if(unitSystem==="imperial")return entered<77.2||entered>661.4?null:round(entered*KG_PER_LB,1);return round(entered,1);}
+  // Two decimals (0.01 kg ≈ 0.02 lb) so every 0.1 lb entry reads back exactly as typed.
+  function dailyWeightToKilograms(value,unitSystem="metric"){const entered=finiteNumber(value);if(entered==null)return null;if(unitSystem==="imperial")return entered<77.2||entered>661.4?null:snap(round(entered*KG_PER_LB,2),35,300);return round(entered,2);}
   function dailyWeightFromKilograms(valueKg,unitSystem="metric"){const kilograms=finiteNumber(valueKg);return kilograms==null?null:unitSystem==="imperial"?kilogramsToPounds(kilograms):round(kilograms,1);}
 
   function calibrationDisplay(value){
     const source=isRecord(value)?value:{},allowed=["starting","calibrating","trend_informed","legacy_profile"],status=allowed.includes(source.status)?source.status:"starting";
     const count=(input,fallback=0)=>{const parsed=boundedNumber(input,0,10_000,{whole:true});return parsed==null?fallback:parsed;};
     const evidence=isRecord(source.evidence)?source.evidence:source,requiredCompleteDays=count(evidence.requiredCompleteCalorieDays??source.requiredCompleteDays,14),requiredWeightDays=count(evidence.requiredMorningWeightDays??source.requiredWeightDays,8),requiredWeightSpanDays=count(evidence.requiredWeightObservationSpanDays??source.requiredWeightSpanDays,14),windowDays=count(source.windowDays,source.windowStart&&source.windowEnd?Math.round((Date.parse(source.windowEnd)-Date.parse(source.windowStart))/86400000)+1:42),completeDays=count(evidence.completeCalorieDays??source.completeDays),weightDays=count(evidence.morningWeightDays??source.weightDays),weightSpanDays=count(evidence.weightObservationSpanDays??source.weightSpanDays);
-    const copy={starting:{title:"STARTING ESTIMATE.",label:"Formula estimate"},calibrating:{title:"CALIBRATING FROM YOUR LOGS.",label:"Calibration in progress"},trend_informed:{title:"TREND-INFORMED ESTIMATE.",label:"Trend informed"},legacy_profile:{title:"STARTING ESTIMATE.",label:"Legacy profile"}}[status];
+    const copy={starting:{title:"Starting estimate",label:"Formula estimate"},calibrating:{title:"Calibrating from your logs",label:"Calibration in progress"},trend_informed:{title:"Trend-informed estimate",label:"Trend informed"},legacy_profile:{title:"Starting estimate",label:"Legacy profile"}}[status];
     const defaults={starting:"This is a formula-based planning estimate. Complete intake totals and comparable morning weights can make a future weekly estimate more personal.",calibrating:"STRATA is collecting complete intake totals and comparable morning weights. It will keep the current planning estimate until the evidence window is ready.",trend_informed:"This week uses your completed intake records and smoothed morning-weight trend as a cross-check on the formula estimate.",legacy_profile:"This saved profile predates calorie calibration. Review the profile once, then complete daily totals and comparable morning weights to begin."},explanation=String(source.explanation||defaults[status]);
     const limitations=Array.isArray(source.limitations)?source.limitations.map((item)=>String(item||"").trim()).filter(Boolean):source.limitations?String(source.limitations):"Day-to-day scale changes reflect water, glycogen, digestion, and measurement conditions as well as tissue change.";
     const priorState=["held","expired","rate_limiter"].includes(source.priorState)?source.priorState:"none",interval=isRecord(source.interval)?source.interval:null,quality=isRecord(source.quality)?source.quality:null,sensitivity=isRecord(source.sensitivity)&&Array.isArray(source.sensitivity.rangeKcal)&&source.sensitivity.rangeKcal.length===2&&source.sensitivity.rangeKcal.every((x)=>finiteNumber(x)!=null&&Number(x)>=0)?source.sensitivity:null;
     const weeklyChangeKcal=finiteNumber(source.weeklyChangeKcal),adjusted=priorState==="held"&&weeklyChangeKcal!=null&&weeklyChangeKcal!==0;
-    return{status,modelVersion:String(source.modelVersion||""),weeklyChangeKcal,title:priorState==="held"?(adjusted?"PREVIOUS ESTIMATE ADJUSTED.":"PREVIOUS ESTIMATE HELD."):copy.title,label:priorState==="held"?(adjusted?"Previous estimate adjusted":"Previous estimate held"):priorState==="expired"?"Previous evidence expired":copy.label,priorState,interval,quality,sensitivity,alignedIntakeDays:count(evidence.alignedIntakeDays),lastAcceptedEvidenceEnd:String(source.lastAcceptedEvidenceEnd||""),completeDays,requiredCompleteDays,weightDays,requiredWeightDays,weightSpanDays,requiredWeightSpanDays,windowDays,observedMaintenanceKcal:finiteNumber(source.observedMaintenanceKcal),averageCompleteCaloriesKcal:finiteNumber(source.averageCompleteCaloriesKcal??source.averageCalories),appliedAdjustmentKcal:finiteNumber(source.appliedAdjustmentKcal)??0,cutoffDate:String(source.windowEnd||source.cutoffDate||""),explanation,limitations};
+    return{status,modelVersion:String(source.modelVersion||""),weeklyChangeKcal,title:priorState==="held"?(adjusted?"Previous estimate adjusted":"Previous estimate held"):copy.title,label:priorState==="held"?(adjusted?"Previous estimate adjusted":"Previous estimate held"):priorState==="expired"?"Previous evidence expired":copy.label,priorState,interval,quality,sensitivity,alignedIntakeDays:count(evidence.alignedIntakeDays),lastAcceptedEvidenceEnd:String(source.lastAcceptedEvidenceEnd||""),completeDays,requiredCompleteDays,weightDays,requiredWeightDays,weightSpanDays,requiredWeightSpanDays,windowDays,observedMaintenanceKcal:finiteNumber(source.observedMaintenanceKcal),averageCompleteCaloriesKcal:finiteNumber(source.averageCompleteCaloriesKcal??source.averageCalories),appliedAdjustmentKcal:finiteNumber(source.appliedAdjustmentKcal)??0,cutoffDate:String(source.windowEnd||source.cutoffDate||""),explanation,limitations};
   }
 
   function formatCalories(value){const number=finiteNumber(value);return number==null?"—":`${Math.round(number).toLocaleString()} kcal`;}

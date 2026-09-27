@@ -83,9 +83,11 @@ test("version 4 dashboard explains each separate activity input and the bounded 
     render.renderDashboard(profile,model,[],"2026-09-16");
     assert.match(el("coachingWeekExplanation").textContent,/on your feet.*1 generated STRATA session \(40 min\).*180 min of vigorous other activity.*1 known exercise/);
     assert.match(el("coachingTdeeDetail").textContent,/ordinary daily movement: about 2,200 kcal\/day.*generated sessions: about 160 kcal\/week.*other activity: about 300 kcal\/week.*Population EER cross-check: about 2,500 kcal\/day \(low active\); context only, not an override/);
-    assert.match(el("coachingTargetDetail").textContent,/0\.5% body weight\/week requested.*400 kcal\/day actual deficit.*composition floor about 1,800 kcal\/day applied/);
-    assert.match(el("coachingTargetDetail").textContent,/resting cross-check differs by about 425 kcal and widens the planning range.*lower sensitivity scenario stays within planner limits/);
-    assert.match(el("coachingGoalComparison").innerHTML,/0\.5% body weight\/week requested/);
+    assert.match(el("coachingTargetDetail").textContent,/400 kcal\/day below maintenance, about 0\.5% of body weight per week \(0\.5% requested\)\. A body-composition floor of about 1,800 kcal\/day limits the deficit\./);
+    assert.match(el("coachingTargetDetail").textContent,/differs from the resting estimate by about 425 kcal, which widens the planning range\. The lower weight scenario stays within the planner’s limits\./);
+    assert.match(el("coachingGoalComparison").innerHTML,/about 0\.5% of body weight per week/);
+    assert.equal(el("coachingTargetMath").textContent,"2,300 maintenance − 100 deficit = 2,200 kcal/day","the target reads as maintenance minus the deficit");
+    assert.equal(el("coachingTargetDays").hidden,true,"a steady week needs no per-day breakdown");
     assert.equal(el("coachingTdee").textContent,"2,300 kcal/day");
     assert.match(el("coachingTdeeDetail").textContent,/Planning range: 2,000–2,600 kcal\/day.*Not a measured value or a confidence interval/);
     assert.equal(el("coachingTarget").textContent,"2,200 kcal/day");
@@ -95,8 +97,9 @@ test("version 4 dashboard explains each separate activity input and the bounded 
     assert.doesNotMatch(comparison,/<strong>about|<strong>.*–/);
     assert.doesNotMatch(el("coachingCalorieWeek").innerHTML,/<strong>about/);
     render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,dailyTargets:[{day:"Tuesday",date:"2026-09-15",calories:2050},{day:"Wednesday",date:"2026-09-16",calories:2300}]}},[],"2026-09-16");
-    assert.equal(el("coachingTarget").textContent,"2,050–2,300 kcal/day");
-    assert.match(el("coachingTargetDetail").textContent,/Scheduled daily targets; the weekly total is preserved/);
+    assert.equal(el("coachingTarget").textContent,"2,175 kcal/day average");
+    assert.equal(el("coachingTargetDays").textContent,"Every day 2,050–2,300");assert.equal(el("coachingTargetDays").hidden,false);
+    assert.match(el("coachingTargetDetail").textContent,/Each kind of day has one target, and the seven days add up to exactly seven times the average\./);
     assert.equal(el("coachingTdee").textContent,"2,300 kcal/day","a varying daily schedule must not replace maintenance with a range");
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
@@ -140,3 +143,40 @@ test("partial and unavailable sessions disclose missing movements while calorie 
     assert.match(markup,/Recovery day/);assert.match(el("coachingWeekLabel").textContent,/2 scheduled days/);assert.match(el("coachingPlanMethod").textContent,/partial or unavailable sessions/);assert.match(el("coachingTrainingCoverage").textContent,/Thursday: Knee-dominant legs, Upper-body pull/);assert.match(el("coachingCalorieWeek").innerHTML,/2,200 kcal/);assert.match(el("coachingProgressSummary").innerHTML,/2,200 kcal/);assert.equal(el("coachingDashboard").hidden,false);
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
+
+test("the diary totals entered macros, flags a mismatch, and can copy the total into calories",()=>{
+  const fixture=controllerFixture(async()=>({})),{el,controller}=fixture;controller.state.profile.macroPreference="balanced";
+  el("coachingCaloriesEaten").value="1250";el("coachingProteinEaten").value="90";el("coachingCarbsEaten").value="120";el("coachingFatEaten").value="40";
+  el("coachingLogForm").listeners.input();
+  assert.equal(el("coachingMacroHint").hidden,false);assert.match(el("coachingMacroHintText").textContent,/add up to 1,200 kcal.*That is 50 kcal less than the 1,250 kcal entered\./);
+  assert.equal(el("coachingUseMacroCalories").hidden,false);assert.equal(el("coachingUseMacroCalories").textContent,"Use 1,200 kcal");
+  el("coachingUseMacroCalories").listeners.click({currentTarget:el("coachingUseMacroCalories")});
+  assert.equal(el("coachingCaloriesEaten").value,"1200");assert.equal(el("coachingUseMacroCalories").hidden,true);assert.doesNotMatch(el("coachingMacroHintText").textContent,/more than|less than/);
+  el("coachingFatEaten").value="";el("coachingLogForm").listeners.input();assert.equal(el("coachingMacroHint").hidden,true,"incomplete macros show no total");
+  controller.state.profile.macroPreference=null;el("coachingFatEaten").value="40";el("coachingLogForm").listeners.input();assert.equal(el("coachingMacroHint").hidden,true,"macro tracking off hides the total");
+});
+
+test("quick add raises the running total and saves it; copying fills the previous day's totals for review",async()=>{
+  let payload;const fixture=controllerFixture(async(_url,options)=>{payload=JSON.parse(options.body);return{csrfToken:"csrf",log:{date:"2026-09-07",...payload.log,revision:5}};}),{el,controller}=fixture;
+  el("coachingQuickAdd").value="350";await el("coachingQuickAddButton").listeners.click();
+  assert.equal(payload.log.calories,2150,"1,800 already entered plus 350");assert.equal(el("coachingQuickAdd").value,"");
+  payload=null;el("coachingQuickAdd").value="0";await el("coachingQuickAddButton").listeners.click();assert.equal(payload,null);assert.match(el("coachingLogStatus").textContent,/Enter 1–5,000 calories/);
+  controller.state.profile.macroPreference="balanced";controller.state.logs.push({date:"2026-09-06",calories:2240,proteinG:140,carbsG:250,fatG:70,revision:2});
+  el("coachingCopyPrevious").listeners.click();
+  assert.equal(el("coachingCaloriesEaten").value,"2240");assert.equal(el("coachingProteinEaten").value,"140");assert.equal(el("coachingFatEaten").value,"70");assert.match(el("coachingLogStatus").textContent,/Copied 2,240 kcal from the previous day\. Review it, then save\./);
+  el("coachingLogDate").value="2026-09-01";el("coachingCopyPrevious").listeners.click();assert.match(el("coachingLogStatus").textContent,/Nothing was saved for the previous day/);
+});
+
+test("logging streaks and weight trends use only real logs",()=>{
+  const day=(offset)=>new Date(Date.UTC(2026,8,27+offset)).toISOString().slice(0,10),logs=[-7,-6,-5,-4,-3,-1,0].map(offset=>({date:day(offset),calories:offset===-4?0:2000,morningWeightKg:82+offset*.1}));
+  assert.deepEqual(Diary.loggingStreak(logs,day(0)),{days:2,includesToday:true},"a zero-calorie day or a gap ends the streak");
+  assert.deepEqual(Diary.loggingStreak(logs.slice(0,-1),day(0)),{days:1,includesToday:false},"yesterday still counts before today is logged");
+  assert.deepEqual(Diary.loggingStreak(logs,"not-a-date"),{days:0,includesToday:false});
+  const trend=Diary.weightTrend(logs,day(0));
+  assert.equal(trend.points.length,7);assert.equal(trend.latestKg,82);
+  assert.ok(Math.abs(trend.averageKg-(81.4+81.5+81.6+81.7+81.9+82)/6)<1e-9,"the latest seven-day average uses every weight in that window");
+  assert.ok(Math.abs(trend.weeklyChangeKg-.7)<1e-9,"a steady 0.1 kg/day gain is a 0.7 kg/week trend, even with a missing day");
+  assert.equal(Diary.weightTrend([{date:day(0),morningWeightKg:80}],day(0)).weeklyChangeKg,null);
+  assert.equal(Diary.weightTrend(logs.filter(log=>log.date>=day(-3)),day(0)).weeklyChangeKg,null,"a rate needs weights spanning at least a week");
+});
+

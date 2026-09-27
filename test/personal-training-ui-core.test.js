@@ -103,9 +103,9 @@ test("discover form aliases map to the strict coaching API contract",()=>{
   });
   assert.equal(result.ok,true);
   assert.deepEqual(result.payload,{
-    version:4,measurementSystem:"imperial",preferredLoadUnit:"lb",age:28,heightCm:177.8,weightKg:81.6,bodyFatPercent:null,sexForEquation:"male",
+    version:4,measurementSystem:"imperial",preferredLoadUnit:"lb",age:28,heightCm:177.8,weightKg:81.65,bodyFatPercent:null,sexForEquation:"male",
     goal:"muscle_gain",goalPace:"moderate",trainingGoal:"balanced",experience:"advanced",dailyMovement:"on_feet",additionalActivityMinutesPerWeek:0,additionalActivityIntensity:"moderate",workoutDays:["Tuesday","Saturday"],sessionMinutes:60,
-    usualExercises:[{exerciseId:"incline-curl",maxSets:3,maxReps:10,maxWeightKg:13.6}],availableEquipment:["Dumbbells"],movementLimitations:["no-overhead"],
+    usualExercises:[{exerciseId:"incline-curl",maxSets:3,maxReps:10,maxWeightKg:13.61}],availableEquipment:["Dumbbells"],movementLimitations:["no-overhead"],
     caloriePattern:"flexible_day",flexibleDay:"Saturday",macroPreference:"balanced",timeZone:"Asia/Dubai"
   });
 });
@@ -144,7 +144,7 @@ test("calibration display distinguishes readiness without inventing certainty",(
   assert.deepEqual({status:starting.status,completeDays:starting.completeDays,requiredCompleteDays:starting.requiredCompleteDays,weightDays:starting.weightDays,requiredWeightDays:starting.requiredWeightDays,weightSpanDays:starting.weightSpanDays,requiredWeightSpanDays:starting.requiredWeightSpanDays,windowDays:starting.windowDays},{status:"starting",completeDays:0,requiredCompleteDays:14,weightDays:0,requiredWeightDays:8,weightSpanDays:0,requiredWeightSpanDays:14,windowDays:42});
   assert.match(starting.explanation,/formula-based planning estimate/i);
   const informed=Ui.calibrationDisplay({status:"trend_informed",evidence:{completeCalorieDays:19,requiredCompleteCalorieDays:18,morningWeightDays:14,requiredMorningWeightDays:12,weightObservationSpanDays:16,requiredWeightObservationSpanDays:14},windowStart:"2026-09-07",windowEnd:"2026-09-27",observedMaintenanceKcal:2437,averageCompleteCaloriesKcal:2260,appliedAdjustmentKcal:-100,explanation:"Recent records support a restrained cross-check.",limitations:["Not a metabolic measurement."]});
-  assert.equal(informed.title,"TREND-INFORMED ESTIMATE.");assert.equal(informed.completeDays,19);assert.equal(informed.weightDays,14);assert.equal(informed.weightSpanDays,16);assert.equal(informed.requiredWeightSpanDays,14);assert.equal(informed.observedMaintenanceKcal,2437);assert.equal(informed.averageCompleteCaloriesKcal,2260);assert.equal(informed.cutoffDate,"2026-09-27");assert.equal(informed.appliedAdjustmentKcal,-100);assert.deepEqual(informed.limitations,["Not a metabolic measurement."]);
+  assert.equal(informed.title,"Trend-informed estimate");assert.equal(informed.completeDays,19);assert.equal(informed.weightDays,14);assert.equal(informed.weightSpanDays,16);assert.equal(informed.requiredWeightSpanDays,14);assert.equal(informed.observedMaintenanceKcal,2437);assert.equal(informed.averageCompleteCaloriesKcal,2260);assert.equal(informed.cutoffDate,"2026-09-27");assert.equal(informed.appliedAdjustmentKcal,-100);assert.deepEqual(informed.limitations,["Not a metabolic measurement."]);
   assert.equal(Ui.calibrationDisplay({status:"calibrating",completeDays:5,weightDays:4}).completeDays,5,"older flat fixtures remain readable");
   assert.equal(Ui.calibrationDisplay({status:"legacy_profile"}).label,"Legacy profile");
 });
@@ -167,13 +167,15 @@ test("training focus is independent of calorie goal and preserves a balanced def
 });
 
 test("advertised imperial weight bounds round-trip to valid canonical endpoints",()=>{
-  for(const [pounds,kilograms] of [[77.2,35],[661.4,300]]){assert.equal(Ui.dailyWeightToKilograms(pounds,"imperial"),kilograms);const result=Ui.profileDraftToMetric({...validDraft(),weight:pounds,weightUnit:"lb"});assert.equal(result.ok,true);assert.equal(result.payload.weightKg,kilograms);}
+  for(const [pounds,kilograms] of [[77.2,35.02],[661.4,300]]){assert.equal(Ui.dailyWeightToKilograms(pounds,"imperial"),kilograms);assert.equal(Ui.kilogramsToPounds(kilograms),pounds,"the endpoint reads back as entered");const result=Ui.profileDraftToMetric({...validDraft(),weight:pounds,weightUnit:"lb"});assert.equal(result.ok,true);assert.equal(result.payload.weightKg,kilograms);}
   assert.equal(Ui.dailyWeightToKilograms(661.5,"imperial"),null);assert.equal(Ui.dailyWeightToKilograms(77.1,"imperial"),null);
+  // Every 0.1 lb entry reads back exactly as typed (180 lb previously came back as 179.9 lb).
+  for(let tenths=772;tenths<=6614;tenths+=1){const pounds=tenths/10;assert.equal(Ui.dailyWeightFromKilograms(Ui.dailyWeightToKilograms(pounds,"imperial"),"imperial"),pounds);}
 });
 
 test("calibration presents aligned evidence, held prior state, and heuristic sensitivity",()=>{
   const source={status:"calibrating",priorState:"held",windowStart:"2026-08-03",windowEnd:"2026-09-13",evidence:{completeCalorieDays:20,alignedIntakeDays:14,requiredCompleteCalorieDays:14,morningWeightDays:8,requiredMorningWeightDays:8,weightObservationSpanDays:14},interval:{start:"2026-08-24",end:"2026-09-07",lastIntakeDate:"2026-09-06"},quality:{label:"inconsistent"},lastAcceptedEvidenceEnd:"2026-08-31",sensitivity:{rangeKcal:[1900,2600],statistical:false,basis:"Not a confidence interval."}};
-  const view=Ui.calibrationDisplay(source);assert.equal(view.windowDays,42);assert.equal(view.alignedIntakeDays,14);assert.equal(view.title,"PREVIOUS ESTIMATE HELD.");assert.equal(view.label,"Previous estimate held");assert.deepEqual(view.interval,source.interval);assert.deepEqual(view.sensitivity,source.sensitivity);assert.equal(view.quality.label,"inconsistent");assert.equal(Ui.calibrationDisplay({...source,priorState:"expired"}).label,"Previous evidence expired");assert.equal(Ui.calibrationDisplay({...source,sensitivity:{rangeKcal:[]}}).sensitivity,null);
+  const view=Ui.calibrationDisplay(source);assert.equal(view.windowDays,42);assert.equal(view.alignedIntakeDays,14);assert.equal(view.title,"Previous estimate held");assert.equal(view.label,"Previous estimate held");assert.deepEqual(view.interval,source.interval);assert.deepEqual(view.sensitivity,source.sensitivity);assert.equal(view.quality.label,"inconsistent");assert.equal(Ui.calibrationDisplay({...source,priorState:"expired"}).label,"Previous evidence expired");assert.equal(Ui.calibrationDisplay({...source,sensitivity:{rangeKcal:[]}}).sensitivity,null);
 });
 
 
@@ -184,7 +186,7 @@ test("imperial height endpoints retain enough precision to remain valid on revie
 
 test("held target reconciliation separates weekly change from the equation difference",()=>{
   const result=Ui.calibrationDisplay({modelVersion:"energy-planning-v3",status:"calibrating",priorState:"held",weeklyChangeKcal:-25,appliedAdjustmentKcal:650});
-  assert.equal(result.title,"PREVIOUS ESTIMATE ADJUSTED.");assert.equal(result.label,"Previous estimate adjusted");assert.equal(result.weeklyChangeKcal,-25);assert.equal(result.appliedAdjustmentKcal,650);assert.equal(result.modelVersion,"energy-planning-v3");
-  assert.equal(Ui.calibrationDisplay({...result,weeklyChangeKcal:0}).title,"PREVIOUS ESTIMATE HELD.");
+  assert.equal(result.title,"Previous estimate adjusted");assert.equal(result.label,"Previous estimate adjusted");assert.equal(result.weeklyChangeKcal,-25);assert.equal(result.appliedAdjustmentKcal,650);assert.equal(result.modelVersion,"energy-planning-v3");
+  assert.equal(Ui.calibrationDisplay({...result,weeklyChangeKcal:0}).title,"Previous estimate held");
   assert.equal(Ui.displayWeight(57.1,"metric",{projection:true}),"57.1 kg","presentation must preserve the backend's displayed lower safety boundary");
 });

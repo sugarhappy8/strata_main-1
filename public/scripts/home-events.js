@@ -35,6 +35,7 @@
     el("equipmentFilter").addEventListener("change",event=>{state.equipment=event.target.value;actions.renderExercises();});
     el("levelFilter").addEventListener("change",event=>{state.level=event.target.value;actions.renderExercises();});
     el("sortSelect").addEventListener("change",event=>{state.sort=event.target.value;actions.renderExercises();});
+    el("showAllExercises")?.addEventListener("click",()=>{state.showAll=true;actions.renderExercises();el("exerciseList").querySelectorAll("[data-detail]")[10]?.focus();});
     el("clearFilters").addEventListener("click",actions.resetFilters);
     el("resetActiveFilters").addEventListener("click",actions.resetFilters);
     el("clearCompare").addEventListener("click",actions.clearCompare);

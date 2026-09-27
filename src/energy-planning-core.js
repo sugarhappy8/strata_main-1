@@ -79,9 +79,31 @@ function baselineFor(profile,training=null){
 /** @param {any} profile @param {string} weekStart @param {unknown} evidence @param {ReturnType<typeof baselineFor>|null} [baseline] @param {any} [training] */
 function calibrateMaintenance(profile,weekStart,evidence,baseline=null,training=null){return calibrate(profile,weekStart,evidence,baseline||baselineFor(profile,training));}
 
-/** Preserve an exact weekly calorie budget while distributing daily weights. @param {number} target @param {number[]} weights */
+/**
+ * Preserve an exact weekly calorie budget while distributing daily weights. Days that share a
+ * weight share one target, and every target is a multiple of 5 kcal, so a week never shows two
+ * rest days that differ by a single calorie. With seven days, two day types always have an exact
+ * solution within 10 kcal of each raw share; anything else falls back to exact whole-calorie shares.
+ * @param {number} target @param {number[]} weights
+ */
 function distribute(target,weights){
-  const total=rounded(target)*7,sum=weights.reduce((value,weight)=>value+weight,0),raw=weights.map(weight=>total*weight/sum),days=raw.map(Math.floor),order=raw.map((value,index)=>({index,remainder:value-Math.floor(value)})).sort((a,b)=>b.remainder-a.remainder||a.index-b.index);
+  const total=rounded(target)*7,sum=weights.reduce((value,weight)=>value+weight,0),raw=weights.map(weight=>total*weight/sum),keys=weights.map(weight=>Math.round(weight*1e6));
+  const groups=[...new Set(keys)].map(key=>{const days=keys.flatMap((value,index)=>value===key?[index]:[]);return {days,raw:raw[days[0]??0]??0};});
+  const found=/** @type {{best:{units:number[],cost:number}|null}} */({best:null});
+  /** @param {number} index @param {number[]} chosen */
+  const search=(index,chosen)=>{
+    const group=groups[index];if(!group)return;
+    if(index===groups.length-1){
+      const rest=total/5-chosen.reduce((value,units,position)=>value+units*(groups[position]?.days.length??0),0);if(!Number.isInteger(rest)||rest%group.days.length)return;
+      const units=[...chosen,rest/group.days.length],cost=Math.max(...units.map((value,position)=>Math.abs(value*5-(groups[position]?.raw??0))));
+      if(!found.best||cost<found.best.cost-1e-9)found.best={units,cost};return;
+    }
+    for(let delta=-7;delta<=7;delta+=1)search(index+1,[...chosen,Math.round(group.raw/5)+delta]);
+  };
+  if(total%5===0&&groups.length<=3)search(0,[]);
+  const chosen=found.best;
+  if(chosen&&chosen.cost<=25){const days=Array(7).fill(0);groups.forEach((group,index)=>group.days.forEach(day=>{days[day]=(chosen.units[index]??0)*5;}));return days;}
+  const days=raw.map(Math.floor),order=raw.map((value,index)=>({index,remainder:value-Math.floor(value)})).sort((a,b)=>b.remainder-a.remainder||a.index-b.index);
   for(let remaining=total-days.reduce((a,b)=>a+b,0),index=0;remaining>0;remaining-=1,index+=1){const slot=order[index]?.index??0;days[slot]=(days[slot]??0)+1;}return days;
 }
 /** Integer grams reconcile exactly with the 4/4/9 planning convention. @param {number} calories @param {number} weightKg @param {string|null} preference @param {string} goal */
@@ -105,7 +127,7 @@ function nutritionFor(profile,weekStart,evidence=null,training=null){
   if(selected==null)throw Object.assign(new Error(compositionNeedsReview?"Recent weight differs by more than 2% from the weight paired with your saved body-fat estimate. Update or remove that estimate before generating a deficit; maintenance remains available.":compositionRangeExpanded&&scenarioGuardApplied?"Your optional body-fat cross-check differs enough from the primary resting estimate to widen the planning range, and the lower sensitivity scenario falls outside this planner’s limits. Review the estimate or choose maintenance and seek qualified advice.":"A calorie deficit requires review because recent weight, the lower sensitivity scenario, or the calorie floor falls outside this planner’s limits. Review your profile, choose maintenance, and seek qualified advice."),{code:"DEFICIT_REQUIRES_REVIEW",status:422});
   if(selected<1200)throw Object.assign(new Error("An automated calorie target cannot be generated below the conservative 1,200 kcal review floor. Speak with a qualified clinician."),{code:"CALORIE_TARGET_REQUIRES_REVIEW",status:422});
   const trainingEnergyByDay=new Map((baseline.structuredActivity?.sessions||[]).map(session=>[session.day,session.kcal])),averagePlannedTraining=(baseline.structuredActivity?.plannedTrainingWeekKcal||0)/7;
-  let weights=Array(7).fill(1),effectivePattern=profile.caloriePattern,patternFallback=null;if(profile.caloriePattern==="zigzag"){if(profile.version>=4&&averagePlannedTraining<=0){effectivePattern="steady";patternFallback="No usable generated session has an activity contribution this week, so calorie targets stay steady rather than claiming a training-day shift.";}else weights=profile.version>=4?DAYS.map((day)=>Math.max(.1,(selected-averagePlannedTraining+(trainingEnergyByDay.get(day)||0))/selected)):DAYS.map((day)=>profile.workoutDays.includes(day)?1.075:.925);}if(profile.caloriePattern==="flexible_day")weights=DAYS.map((day)=>day===profile.flexibleDay?1.15:.975);let calories=distribute(selected,weights);
+  let weights=Array(7).fill(1),effectivePattern=profile.caloriePattern,patternFallback=null;if(profile.caloriePattern==="zigzag"){if(profile.version>=4&&averagePlannedTraining<=0){effectivePattern="steady";patternFallback="No usable generated session has an activity contribution this week, so calorie targets stay steady rather than claiming a training-day shift.";}else{const sessionDays=DAYS.filter((day)=>(trainingEnergyByDay.get(day)||0)>0),sessionShare=sessionDays.length?(baseline.structuredActivity?.plannedTrainingWeekKcal||0)/sessionDays.length:0;weights=profile.version>=4?DAYS.map((day)=>Math.max(.1,(selected-averagePlannedTraining+(sessionDays.includes(day)?sessionShare:0))/selected)):DAYS.map((day)=>profile.workoutDays.includes(day)?1.075:.925);}}if(profile.caloriePattern==="flexible_day")weights=DAYS.map((day)=>day===profile.flexibleDay?1.15:.975);let calories=distribute(selected,weights);
   const dailyFloor=profile.version>=4&&profile.goal==="fat_loss"?reviewFloor:1200;
   if(Math.min(...calories)<dailyFloor){calories=distribute(selected,Array(7).fill(1));effectivePattern="steady";patternFallback=dailyFloor>1200?`The requested variation would create a day below the ${dailyFloor.toLocaleString("en-US")} kcal composition review floor already applied to your deficit, so this week uses steady targets.`:"The requested variation would create a day below the conservative 1,200 kcal floor, so this week uses steady targets.";}
   const dailyTargets=DAYS.map((day,index)=>{const dailyCalories=calories[index]??selected,hasTraining=(trainingEnergyByDay.get(day)||0)>0;return {day,date:addDays(weekStart,index),calories:dailyCalories,macros:macroTarget(dailyCalories,planningProfile.weightKg,profile.macroPreference,profile.goal),kind:effectivePattern==="zigzag"?(hasTraining||profile.version<4&&profile.workoutDays.includes(day)?"higher_training_day":"lower_rest_day"):effectivePattern==="flexible_day"&&day===profile.flexibleDay?"flexible_day":"standard"};});

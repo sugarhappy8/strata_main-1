@@ -61,8 +61,10 @@ function deriveWeightAnchor(profile,weekStart,evidence){
   const weight=median(usable.map(p=>p.weightKg)),spread=Math.max(...usable.map(p=>p.weightKg))-Math.min(...usable.map(p=>p.weightKg)),consistent=spread<=Math.max(POLICY.anchorSpreadKg,weight*.02),recentUnderweight=weight/(profile.heightCm/100)**2<18.5;
   if(!consistent)return {...fallback,diagnostics,quality:"inconsistent",requiresReview:true};
   const relativeGap=Math.abs(weight-profile.weightKg)/profile.weightKg,disagreement=relativeGap>POLICY.anchorProfileGap,changed=Math.abs(weight-profile.weightKg)>=.05,bodyFatCompatible=relativeGap<=POLICY.anchorBodyFatGap;
-  if(disagreement)return {...fallback,diagnostics,quality:"review_required",requiresReview:true,recentUnderweight,observedWeightKg:round(weight,.1),observedDate:latest};
-  return {...fallback,weightKg:round(weight,.1),source:"recent_morning_weights",date:latest,quality:"consistent",changed,requiresReview:recentUnderweight,recentUnderweight,bodyFatCompatible,diagnostics};
+  // Two decimals keep a pound-logged anchor displaying as entered; 0.1 kg is 0.22 lb.
+  const anchorKg=Math.round(weight*100)/100;
+  if(disagreement)return {...fallback,diagnostics,quality:"review_required",requiresReview:true,recentUnderweight,observedWeightKg:anchorKg,observedDate:latest};
+  return {...fallback,weightKg:anchorKg,source:"recent_morning_weights",date:latest,quality:"consistent",changed,requiresReview:recentUnderweight,recentUnderweight,bodyFatCompatible,diagnostics};
 }
 
 /** Complete daily intake runs are bounded by actual morning measurements. @param {ReturnType<typeof observations>} observed @param {string} weekStart */

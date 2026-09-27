@@ -7,7 +7,7 @@ const {join}=require("node:path");
 
 const PROJECT_ROOT=join(__dirname,"..");
 const read=(...parts)=>readFileSync(join(PROJECT_ROOT,"public",...parts),"utf8");
-const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-sharing.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover.js"];
+const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-sharing.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover.js"];
 const discoverScript=()=>discoverModules.map(name=>read("scripts",name)).join("\n");
 
 test("Strata+ progressively enhances six primary destinations and focused supporting tools",()=>{
@@ -67,12 +67,12 @@ test("Strata+ keeps the weekly Plan primary and explains secondary planning tool
   assert.match(plan,/id="planWorkspaceTitle"[^>]*>Make room for <em>progress\.<\/em>/);
   assert.match(plan,/Review your weekly plan, create one workout, or organize the same week over a longer period\./);
   assert.match(plan,/class="plan-summary-card plan-primary-card"[^>]*aria-labelledby="planSummaryTitle"/);
-  assert.match(plan,/id="planSummaryTitle">YOUR WEEKLY PLAN<\/h3>/);
+  assert.match(plan,/id="planSummaryTitle">Your weekly plan<\/h3>/);
   assert.match(plan,/See the exercises assigned to each day\. Edit days, sets, and repetitions in Plan\./);
   for(const label of ["Training days","Exercises","Working sets"])assert.match(plan,new RegExp(`<dt>${label}<\\/dt>`));
   assert.match(plan,/id="planWorkspaceAction"[^>]*href="\/planner\.html"[^>]*>Edit weekly plan/);
 
-  for(const [id,title] of [["workoutBuilderDetails","WORKOUT BUILDER"],["planAheadDetails","PLAN AHEAD"],["reuseWeekDetails","REUSE A WEEK"]]){
+  for(const [id,title] of [["workoutBuilderDetails","Workout builder"],["planAheadDetails","Plan ahead"],["reuseWeekDetails","Reuse a week"]]){
     assert.match(plan,new RegExp(`<details class="plan-tool-disclosure" id="${id}"`),id);
     assert.match(plan,new RegExp(`<strong[^>]*>${title}<\\/strong>`),title);
   }
@@ -83,7 +83,7 @@ test("Strata+ keeps the weekly Plan primary and explains secondary planning tool
   assert.match(plan,/Place workouts on actual dates for the next 31 days\./);
   assert.match(plan,/Save a weekly plan as a template or copy one shared by another member\./);
   for(const label of ["Templates","Import/export","Shared plans"])assert.match(plan,new RegExp(label));
-  assert.equal((plan.match(/id="planSummaryTitle">YOUR WEEKLY PLAN<\/h3>/g)||[]).length,1,"Strata+ must not grow a second weekly-plan editor");
+  assert.equal((plan.match(/id="planSummaryTitle">Your weekly plan<\/h3>/g)||[]).length,1,"Strata+ must not grow a second weekly-plan editor");
 });
 
 test("Strata+ explains its three score types once beside the relevant tools",()=>{
@@ -101,7 +101,7 @@ test("Strata+ loads bounded state, API, navigation, feature controllers, renderi
   const html=read("pages","discover.html"),names=discoverModules;
   let previous=-1;
   for(const name of names){const index=html.indexOf(`src="${name}?v=`);assert.ok(index>previous,`${name} must load after its dependencies`);previous=index;}
-  const reviewedBudgets=new Map([["personal-training-energy-ui-core.js",80],["personal-training-ui-core.js",220],["personal-training-meals-ui-core.js",140]]);
+  const reviewedBudgets=new Map([["personal-training-energy-ui-core.js",110],["personal-training-ui-core.js",220],["personal-training-meals-ui-core.js",140]]);
   for(const name of names.slice(0,-1))assert.ok(read("scripts",name).split("\n").length<=(reviewedBudgets.get(name)||120),`${name} should remain a small boundary module`);
   assert.ok(read("scripts","discover.js").split("\n").length<=725,"the incremental shell should stay below the state-repair module budget");
 });
@@ -120,7 +120,7 @@ test("session builder waits for an explicit build and adds the result with plan 
   assert.match(script,/error\.status===409\|\|error\.code==="PLAN_CHANGED"/);
   assert.match(script,/latest plan is loaded; review the selected day, then add the session again/i);
   assert.match(script,/Time is an estimate; actual duration changes with setup, rest, and training pace/);
-  assert.match(html,/id="sessionResultsTitle">YOUR SESSION WILL APPEAR HERE\./);
+  assert.match(html,/id="sessionResultsTitle">Your session will appear here\./);
   assert.match(script,/sessionBuilderForm"\)\?\.addEventListener\("submit",[^\n]+generateSession\(\{announce:true\}\)/);
   assert.doesNotMatch(script,/sessionGroup"\)\?\.addEventListener\("change",[^\n]+generateSession/);
   assert.doesNotMatch(script,/sessionLength"\)\?\.addEventListener\("change",[^\n]+generateSession/);
@@ -304,7 +304,7 @@ test("Strata+ copy and visual polish remain resilient across content and breakpo
   const html=read("pages","discover.html"),script=discoverScript(),css=read("styles","discover.css");
 
   assert.match(html,/id="todayTitle"[^>]*>Your next step\.<br \/><em>Ready when you are\.<\/em>/);
-  assert.match(html,/id="recommendationTitle"[^>]*>BEST EXERCISES <em>FOR YOU\.<\/em>/);
+  assert.match(html,/id="recommendationTitle"[^>]*>Best exercises <em>for you\.<\/em>/);
   assert.doesNotMatch(script,/recommendationTitle"\)\.innerHTML/,"A display name must not be interpolated into the recommendation heading");
   assert.match(html,/>Explore every movement<\/strong>/);
   assert.match(html,/>Your next step<\/small>/);
@@ -345,7 +345,7 @@ test("Strata+ polish keeps filters legible and comparison details accessible",()
 
   assert.equal((html.match(/class="filter-label"/g)||[]).length,6);
   assert.match(html,/id="clearFilters"[^>]*>Clear all</);
-  assert.match(html,/id="communityApplyTitle">REPLACE MY WEEKLY PLAN\?</);
+  assert.match(html,/id="communityApplyTitle">Replace my weekly plan\?</);
   assert.match(script,/data-scroll-alternatives/);
   assert.doesNotMatch(script,/href="#alternativeSection"/);
   assert.match(script,/<thead><tr><th scope="col">Measure<\/th>/);

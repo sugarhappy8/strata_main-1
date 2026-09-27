@@ -67,12 +67,12 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages",async()=>{
-  assert.equal(BUILD,"8.6.1");
+  assert.equal(BUILD,"8.7.0");
   const home=await request("/");
   assert.equal(home.response.status,200);
   assert.equal(home.response.headers.get("cache-control"),"private, no-store");
   assert.match(home.response.headers.get("vary"),/Cookie/i);
-  assert.match(home.data,/YOUR NEXT<br \/>WORKOUT/);
+  assert.match(home.data,/Your next<br \/>workout/);
   assert.match(home.data,/id="signupButton"[^>]*>Sign up/);
   assert.match(home.data,/id="accountButton"[^>]*>Log in/);
   assert.match(home.data,BUILD_LABEL);
@@ -120,7 +120,7 @@ test("serves rankings and gates private account pages",async()=>{
 });
 
 test("serves public pricing, contact, and policy pages at friendly routes",async()=>{
-  const pages={pricing:/MONTHLY SUBSCRIPTION/i,contact:/TALK TO/,policies:/PUBLIC POLICIES/,terms:/TERMS OF/,privacy:/PRIVACY/,refunds:/14-DAY/};
+  const pages={pricing:/Monthly subscription/i,contact:/Talk to/,policies:/Public policies/,terms:/Terms of/,privacy:/Privacy/,refunds:/14-day/};
   for(const [slug,marker] of Object.entries(pages)) {
     for(const path of [`/${slug}`,`/${slug}/`,`/${slug}.html`]) {
       const page=await request(path);
@@ -135,7 +135,7 @@ test("serves public pricing, contact, and policy pages at friendly routes",async
 });
 
 test("serves recovery pages at friendly private routes",async()=>{
-  const pages={"forgot-password":/SEND RESET LINK/,"reset-password":/NEW PASSWORD/,"delete-account":/THIS CANNOT BE UNDONE/};
+  const pages={"forgot-password":/Send reset link/,"reset-password":/New password/,"delete-account":/This cannot be undone/};
   for(const [slug,marker] of Object.entries(pages)) {
     for(const path of [`/${slug}`,`/${slug}/`,`/${slug}.html`]) {
       const page=await request(path);
@@ -176,7 +176,7 @@ test("creates an account with a private default plan",async()=>{
   const plannerPage=await request("/planner.html",{headers:{Cookie:signup.cookie}});
   assert.equal(plannerPage.response.status,200);
   assert.equal(plannerPage.response.headers.get("cache-control"),"no-cache");
-  assert.match(plannerPage.data,/BUILD YOUR/);
+  assert.match(plannerPage.data,/Build your/);
   assert.match(plannerPage.data,BUILD_LABEL);
 
   const discoverPage=await request("/discover.html",{headers:{Cookie:signup.cookie},redirect:"manual"});
@@ -435,7 +435,7 @@ test("keeps unpaid accounts out of Strata+ while the free planner remains availa
 
   const planner=await request("/planner.html",{headers:{Cookie:signup.cookie}});
   assert.equal(planner.response.status,200);
-  assert.match(planner.data,/BUILD YOUR/);
+  assert.match(planner.data,/Build your/);
   const plan=await request("/api/plan",{headers:{Cookie:signup.cookie}});
   assert.equal(plan.response.status,200);
 

@@ -158,6 +158,7 @@ const STATIC_FILES = new Map([
   ["discover-progress.js","scripts/discover-progress.js"],
   ["discover-render.js","scripts/discover-render.js"],
   ["discover-coaching-render.js","scripts/discover-coaching-render.js"],
+  ["discover-coaching-trend.js","scripts/discover-coaching-trend.js"],
   ["discover-catalog.js","scripts/discover-catalog.js"],
   ["discover-detail.js","scripts/discover-detail.js"],
   ["discover-community.js","scripts/discover-community.js"],

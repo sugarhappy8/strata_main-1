@@ -137,7 +137,7 @@ test("share text includes dates, rest days, targets, and exercise prescriptions"
   assert.match(text,/Day 01 · Monday/);
   assert.match(text,/Chest \+ Triceps/);
   assert.match(text,/• .+ — \d+ × .+/);
-  assert.match(text,/REST \/ RECOVERY/);
+  assert.match(text,/Rest and recovery/);
   assert.match(text,/Created with STRATA/);
 });
 

@@ -116,7 +116,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 240 | 233 | 22.8 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
 | `src/billing.js` | Commercial entitlement, checkout, trial, webhook, and reconciliation service | 719 | 690 | 44.5 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/checkout-reconciliation.js` | Validated checkout closure and settlement reconciliation | 99 | 98 | 8.0 KiB | 130 | `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
-| `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 132 | 125 | 19.6 KiB | 300 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
+| `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 133 | 126 | 19.8 KiB | 300 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
 | `src/coaching-evidence.js` | Owner-filtered coaching history and original-target diary assembly | 84 | 78 | 6.9 KiB | 130 | `src/coaching-core.js`, `src/energy-calibration-core.js` |
 | `src/coaching-prescription-core.js` | Measurement-aware prescriptions from comparable completed training history | 92 | 91 | 12.2 KiB | 180 | `src/progression.js` |
 | `src/coaching-schema.js` | Coaching profile, weekly snapshot, and daily-log schema | 50 | 47 | 4.5 KiB | 80 | — |
@@ -126,8 +126,8 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/database.js` | SQLite and Turso store adapters | 1198 | 1171 | 63.8 KiB | 1200 | `src/access-controls-store.js`, `src/account-self-service-store.js`, `src/billing-store.js`, `src/coaching-store.js`, `src/migrations.js`, `src/schema.js`, `src/store-contract.js`, `src/training-loop-store.js` |
 | `src/email.js` | Resend integration and email security | 388 | 355 | 19.9 KiB | 400 | `src/admin-mfa.js` |
 | `src/energy-activity-core.js` | Profile-v4 non-workout and generated-session activity energy budget | 51 | 48 | 3.7 KiB | 100 | — |
-| `src/energy-calibration-core.js` | Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation | 156 | 151 | 22.7 KiB | 220 | — |
-| `src/energy-planning-core.js` | Versioned energy estimation, bounded trend calibration, and nutrition planning | 117 | 108 | 21.6 KiB | 190 | `src/energy-activity-core.js`, `src/energy-calibration-core.js`, `src/energy-scenarios-core.js`, `src/plans.js` |
+| `src/energy-calibration-core.js` | Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation | 158 | 153 | 22.8 KiB | 220 | — |
+| `src/energy-planning-core.js` | Versioned energy estimation, bounded trend calibration, and nutrition planning | 139 | 130 | 23.3 KiB | 190 | `src/energy-activity-core.js`, `src/energy-calibration-core.js`, `src/energy-scenarios-core.js`, `src/plans.js` |
 | `src/energy-scenarios-core.js` | Explicit dynamic sensitivity scenarios with propagated maintenance uncertainty | 27 | 25 | 2.9 KiB | 100 | — |
 | `src/http.js` | HTTP transport helpers | 170 | 155 | 5.9 KiB | 180 | — |
 | `src/legacy-checkout.js` | Strict retired-checkout migration and completion policy | 71 | 66 | 7.4 KiB | 75 | `src/payments.js` |
@@ -144,7 +144,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 137 | 124 | 5.7 KiB | 140 | — |
 | `src/progression.js` | Pure per-set performance progression and comparison rules | 177 | 175 | 13.2 KiB | 300 | `src/plans.js` |
 | `src/schema.js` | Shared storage schema and statements | 364 | 358 | 44.3 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/product-signals-schema.js`, `src/training-loop-schema.js` |
-| `src/server.js` | HTTP composition root | 800 | 775 | 42.3 KiB | 800 | `src/access-controls.js`, `src/admin.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
+| `src/server.js` | HTTP composition root | 801 | 776 | 42.4 KiB | 820 | `src/access-controls.js`, `src/admin.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
 | `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.8 KiB | 60 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 84 | 77 | 4.9 KiB | 105 | `src/plans.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |

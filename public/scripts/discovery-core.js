@@ -353,14 +353,14 @@
   function weeklyPulse(plan,{today=new Date(),profileDays=0}={}){
     const fallbackDate=today instanceof Date&&!Number.isNaN(today.getTime())?today:new Date(),fallbackDay=WEEKDAYS[(fallbackDate.getDay()+6)%7],rawDay=typeof today==="string"&&WEEKDAYS.includes(today)?today:fallbackDay,todayIndex=WEEKDAYS.indexOf(rawDay);
     const scheduled=WEEKDAYS.map((day)=>({day,items:Array.isArray(plan?.days?.[day])?plan.days[day]:[]})).filter(({items})=>items.length),scheduledDays=scheduled.length,targetDays=clamp(Math.round(Number(profileDays)||1),1,7),progressPercent=round(clamp(scheduledDays/targetDays*100,0,100));
-    if(!scheduledDays)return {day:null,isToday:false,offset:null,movements:0,workingSets:0,scheduledDays,targetDays,progressPercent:0,eyebrow:"Saved week",title:"NO SESSIONS SCHEDULED.",detail:`0 scheduled training days · ${targetDays}-day profile target.`,actionLabel:"Build my week"};
+    if(!scheduledDays)return {day:null,isToday:false,offset:null,movements:0,workingSets:0,scheduledDays,targetDays,progressPercent:0,eyebrow:"Saved week",title:"No sessions scheduled.",detail:`0 scheduled training days · ${targetDays}-day profile target.`,actionLabel:"Build my week"};
     let selected=null,offset=0;
     for(;offset<WEEKDAYS.length;offset++){
       const day=WEEKDAYS[(todayIndex+offset)%WEEKDAYS.length],items=Array.isArray(plan?.days?.[day])?plan.days[day]:[];
       if(items.length){selected={day,items};break;}
     }
     const movements=selected.items.length,workingSets=selected.items.reduce((sum,item)=>sum+clamp(Math.round(Number(item?.sets)||0),0,10),0),isToday=offset===0,when=isToday?"Today":offset===1?"Tomorrow":selected.day;
-    return {day:selected.day,isToday,offset,movements,workingSets,scheduledDays,targetDays,progressPercent,eyebrow:isToday?"Today in your week":"Next in your week",title:`${when.toUpperCase()} · ${movements} MOVEMENT${movements===1?"":"S"}.`,detail:`${selected.day} · ${workingSets} working sets · ${scheduledDays} scheduled training day${scheduledDays===1?"":"s"} vs ${targetDays}-day profile target.`,actionLabel:"Open weekly plan"};
+    return {day:selected.day,isToday,offset,movements,workingSets,scheduledDays,targetDays,progressPercent,eyebrow:isToday?"Today in your week":"Next in your week",title:`${when} · ${movements} movement${movements===1?"":"s"}.`,detail:`${selected.day} · ${workingSets} working sets · ${scheduledDays} scheduled training day${scheduledDays===1?"":"s"} vs ${targetDays}-day profile target.`,actionLabel:"Open weekly plan"};
   }
 
   return {FACTOR_KEYS,TRAIT_KEYS,ISOLATION,UNILATERAL,OVERHEAD,DEEP_KNEE,UNSUPPORTED_HINGE,FLOOR,WEEKDAYS,SESSION_LENGTHS,SESSION_FOCUSES,SESSION_SELECTION_MODES:SessionSelection?.SESSION_SELECTION_MODES,hasTrait,movementClass,round,clamp,levelNumber,averageMetric,setupScore,setupLabel,resistanceProfile,practicality,factorWeights,weightedBaseline,scoreAdjustment,excludedByLimitations,personalResult,similarity,targetsCompatible,alternativesFor,exerciseGuidance,gainsAndLosses,normalizeShortlist,filterExercises,comparisonRecommendation,sessionRoleMatches,sessionFocusMatches,sessionMuscleTargets,buildSession,repeatSessionAnchors,mergeSessionIntoPlan,weeklyPulse};

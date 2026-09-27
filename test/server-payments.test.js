@@ -255,6 +255,17 @@ function database(options={}) {
   return new DatabaseSync(join(runtimeDir,"strata.sqlite"),{timeout:5000,...options});
 }
 
+// The server releases its checkout claim just after it sends the checkout response.
+// Fixtures that seed their own claim wait for that release instead of racing it.
+async function checkoutClaimReleased(userId) {
+  for(let attempt=0;attempt<100;attempt++){
+    const db=database({readOnly:true}),row=db.prepare("SELECT COUNT(*) AS count FROM paddle_checkout_claims WHERE user_id=?").get(userId);db.close();
+    if(!row?.count)return;
+    await new Promise((resolve)=>setTimeout(resolve,20));
+  }
+  assert.fail("the server did not release its checkout claim");
+}
+
 function eventId(label,sequence) {
   const safe=String(label).toLowerCase().replace(/[^a-z0-9]/g,"").slice(0,8);
   return `evt_${safe}${String(sequence).padStart(24-safe.length,"0")}`;
@@ -1105,6 +1116,7 @@ test("admin closes fresh checkouts and retains holds on provider failure",async(
 test("admin retires an interrupted Paddle draft, revokes sessions, and permanently deletes the account",async()=>{
   const account=await signup({name:"Interrupted Draft",email:"interrupted-draft@example.test",password:"interrupted-draft-password-123"});
   const prepared=await checkout(account);assert.equal(prepared.response.status,201);
+  await checkoutClaimReleased(account.user.id);
   const transactionId=prepared.data.transactionId,remote=paddleTransactions.get(transactionId),claimId=remote.custom_data.strata_checkout_id;
   remote.status="draft";remote.checkout={url:`https://checkout.paddle.test/${transactionId}`};
   {
@@ -1157,6 +1169,7 @@ test("admin retires an interrupted Paddle draft, revokes sessions, and permanent
 test("admin resumes safely when Paddle retirement succeeded before local cleanup",async()=>{
   const account=await signup({name:"Retirement Retry",email:"retirement-retry@example.test",password:"retirement-retry-password-123"});
   const prepared=await checkout(account);assert.equal(prepared.response.status,201);
+  await checkoutClaimReleased(account.user.id);
   const transactionId=prepared.data.transactionId,remote=paddleTransactions.get(transactionId),claimId=remote.custom_data.strata_checkout_id,stamp=Date.now();
   {
     const db=database();
@@ -1189,6 +1202,7 @@ test("admin resumes safely when Paddle retirement succeeded before local cleanup
 test("admin retires a stored draft from an earlier monthly catalog",async()=>{
   const account=await signup({name:"Stored Previous Draft",email:"stored-previous-draft@example.test",password:"stored-previous-draft-password-123"});
   const prepared=await checkout(account);assert.equal(prepared.response.status,201);
+  await checkoutClaimReleased(account.user.id);
   const transactionId=prepared.data.transactionId,remote=paddleTransactions.get(transactionId),stamp=Date.now();
   remote.status="draft";remote.items=[{quantity:1,price:{id:PREVIOUS_PRICE_ID,product_id:PREVIOUS_PRODUCT_ID,billing_cycle:{interval:"month",frequency:1}}}];
   remote.checkout={url:`https://checkout.paddle.test/${transactionId}`};remote.updated_at=new Date(stamp).toISOString();
@@ -1216,6 +1230,7 @@ test("admin retires a stored draft from an earlier monthly catalog",async()=>{
 test("admin retires an unbound interrupted draft after the deployed monthly catalog changes",async()=>{
   const account=await signup({name:"Previous Catalog Draft",email:"previous-catalog-draft@example.test",password:"previous-catalog-draft-password-123"});
   const prepared=await checkout(account);assert.equal(prepared.response.status,201);
+  await checkoutClaimReleased(account.user.id);
   const transactionId=prepared.data.transactionId,remote=paddleTransactions.get(transactionId),claimId="previous_catalog_interrupted",stamp=Date.now();
   remote.status="draft";remote.created_at=new Date(stamp).toISOString();remote.updated_at=remote.created_at;
   remote.custom_data={strata_user_id:account.user.id,strata_checkout_id:claimId,strata_version:1};
@@ -1251,6 +1266,7 @@ test("admin retires an unbound interrupted draft after the deployed monthly cata
 test("a failed Paddle draft retirement keeps Admin deletion blocked after session revocation",async()=>{
   const account=await signup({name:"Blocked Draft",email:"blocked-draft@example.test",password:"blocked-draft-password-123"});
   const prepared=await checkout(account);assert.equal(prepared.response.status,201);
+  await checkoutClaimReleased(account.user.id);
   const transactionId=prepared.data.transactionId,remote=paddleTransactions.get(transactionId),claimId=remote.custom_data.strata_checkout_id;
   remote.status="draft";remote.checkout={url:`https://checkout.paddle.test/${transactionId}`};
   {

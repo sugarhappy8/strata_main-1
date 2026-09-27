@@ -63,7 +63,7 @@ async function main() {
   assert.equal(install.response.status,200);
   assert.match(install.response.headers.get("content-type"),/^text\/html/);
   assert.match(install.response.headers.get("cache-control"),/no-cache/);
-  assert.match(installText,/PUT STRATA/);
+  assert.match(installText,/Put STRATA/);
   assert.match(installText,/data-platform="ios"/);
   assert.match(installText,/data-platform="android"/);
 

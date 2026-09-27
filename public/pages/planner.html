@@ -13,12 +13,12 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.6.1" />
-    <link rel="stylesheet" href="planner.css?v=8.6.1" />
-    <link rel="stylesheet" href="/product-signals.css?v=8.6.1" />
-    <link rel="stylesheet" href="/experience.css?v=8.6.1" />
-    <script src="/motion.js?v=8.6.1"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=8.6.1" />
+    <link rel="stylesheet" href="/fonts.css?v=8.7.0" />
+    <link rel="stylesheet" href="planner.css?v=8.7.0" />
+    <link rel="stylesheet" href="/product-signals.css?v=8.7.0" />
+    <link rel="stylesheet" href="/experience.css?v=8.7.0" />
+    <script src="/motion.js?v=8.7.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=8.7.0" />
   </head>
   <body class="planner-page">
     <a class="skip-link" href="#weekTitle">Skip to weekly plan</a>
@@ -34,7 +34,7 @@
 
     <section class="plan-conflict-panel device-plan-panel" id="devicePlanPanel" aria-labelledby="devicePlanTitle" hidden>
       <div class="plan-conflict-heading">
-        <div><p class="eyebrow" id="devicePlanEyebrow">Your preview survived</p><h2 id="devicePlanTitle" tabindex="-1">BRING YOUR <em>WEEK WITH YOU.</em></h2></div>
+        <div><p class="eyebrow" id="devicePlanEyebrow">Your preview survived</p><h2 id="devicePlanTitle" tabindex="-1">Bring your <em>week with you.</em></h2></div>
         <p id="devicePlanLead">Your account and this browser have different weeks. Nothing has been copied or overwritten. Compare both, then explicitly claim the device week or keep the account week.</p>
       </div>
       <label class="device-plan-source" id="devicePlanSourceLabel" hidden>Device week to review<select id="devicePlanSource"></select></label>
@@ -54,7 +54,7 @@
 
     <section class="plan-conflict-panel" id="planConflictPanel" aria-labelledby="planConflictTitle" hidden>
       <div class="plan-conflict-heading">
-        <div><p class="eyebrow">Save conflict</p><h2 id="planConflictTitle" tabindex="-1">CHOOSE WHICH <em>WEEK TO KEEP.</em></h2></div>
+        <div><p class="eyebrow">Save conflict</p><h2 id="planConflictTitle" tabindex="-1">Choose which <em>week to keep.</em></h2></div>
         <p id="planConflictMessage">Your account changed in another tab or device. Nothing has been overwritten. Compare both copies, then keep the account version or review your unsaved changes before explicitly saving them.</p>
       </div>
       <label class="draft-recovery-label" id="draftRecoveryLabel" hidden>Other recoverable drafts on this device<select id="draftRecoverySelect"></select></label>
@@ -89,7 +89,7 @@
 
       <section class="week-section" aria-labelledby="weekTitle">
         <div class="week-toolbar">
-          <div><p class="eyebrow">Weekly training architecture</p><h1 id="weekTitle" tabindex="-1">BUILD YOUR <em>WEEK.</em></h1><p class="week-intro">Shape a balanced seven-day plan, then fine-tune sets, reps, and recovery as you go.</p></div>
+          <div><p class="eyebrow">Weekly training architecture</p><h1 id="weekTitle" tabindex="-1">Build your <em>week.</em></h1><p class="week-intro">Shape a balanced seven-day plan, then fine-tune sets, reps, and recovery as you go.</p></div>
           <div class="toolbar-actions"><button class="outline-button" id="undoPlanRemoval" type="button" disabled>Undo removal <span aria-hidden="true">↶</span></button><button class="outline-button reset-week-button" id="resetWeeklyPlan" type="button" aria-haspopup="dialog" aria-controls="resetWeekDialog" disabled>Reset week <span aria-hidden="true">↺</span></button><button class="outline-button" id="manageWeekTemplates" type="button" disabled>Week templates <span aria-hidden="true">▧</span></button><button class="outline-button" id="exportWeeklyPlan" type="button" disabled>Export week <span aria-hidden="true">↓</span></button><button class="outline-button share-week-button" id="shareWeeklyPlan" type="button" aria-controls="shareWeeklyPanel" aria-expanded="false" disabled>Share week <span aria-hidden="true">↗</span></button></div>
         </div>
         <details class="planner-guide">
@@ -102,7 +102,7 @@
         </details>
         <section class="share-week-panel" id="shareWeeklyPanel" aria-labelledby="shareWeeklyTitle" hidden>
           <div class="share-week-heading">
-            <div><p class="eyebrow">Community plans</p><h2 id="shareWeeklyTitle" tabindex="-1">SHARE YOUR <em>WEEK.</em></h2></div>
+            <div><p class="eyebrow">Community plans</p><h2 id="shareWeeklyTitle" tabindex="-1">Share your <em>week.</em></h2></div>
             <button class="share-panel-close" id="closeShareWeekly" type="button" aria-label="Close weekly-plan sharing panel">×</button>
           </div>
           <p class="share-week-lead">Publish a copy of your current weekly plan to the Strata+ community library. Other members can preview it and apply it to their own Plan. You can keep one shared week active at a time; publishing again updates that copy.</p>
@@ -123,7 +123,7 @@
               <button class="dark-button publish-plan-button" id="publishWeeklyPlan" type="submit">Publish to Strata+ <span aria-hidden="true">↗</span></button>
             </form>
             <section class="own-shares" aria-labelledby="ownSharesTitle">
-              <div class="own-shares-heading"><div><p class="eyebrow">Manage sharing</p><h3 id="ownSharesTitle">YOUR SHARED WEEK.</h3></div><button class="outline-button" id="refreshSharedPlans" type="button">Refresh <span aria-hidden="true">↻</span></button></div>
+              <div class="own-shares-heading"><div><p class="eyebrow">Manage sharing</p><h3 id="ownSharesTitle">Your shared week.</h3></div><button class="outline-button" id="refreshSharedPlans" type="button">Refresh <span aria-hidden="true">↻</span></button></div>
               <div class="own-shared-plans" id="ownSharedPlans"><p class="share-list-empty">Loading your shared plan…</p></div>
             </section>
           </div>
@@ -158,7 +158,7 @@
     </main>
 
     <dialog class="planner-dialog" id="replaceExerciseDialog" aria-labelledby="replaceExerciseTitle" aria-describedby="replaceExerciseDescription">
-      <div class="planner-dialog-heading"><h2 id="replaceExerciseTitle">REPLACE EXERCISE.</h2><button class="outline-button" id="closeReplaceExercise" type="button">Cancel</button></div>
+      <div class="planner-dialog-heading"><h2 id="replaceExerciseTitle">Replace exercise</h2><button class="outline-button" id="closeReplaceExercise" type="button">Cancel</button></div>
       <p id="replaceExerciseDescription"></p>
       <label>Search movements<input id="replaceExerciseSearch" type="search" autocomplete="off" placeholder="Name, muscle or equipment" /></label>
       <label>Replacement exercise<select id="replaceExerciseSelect" aria-describedby="replaceExerciseStatus"></select></label>
@@ -167,12 +167,12 @@
     </dialog>
 
     <dialog class="planner-dialog exercise-guide-dialog" id="exerciseGuideDialog" aria-labelledby="exerciseGuideTitle">
-      <div class="planner-dialog-heading"><h2 id="exerciseGuideTitle" tabindex="-1">EXERCISE GUIDE.</h2><button class="outline-button" id="closeExerciseGuide" type="button" aria-label="Close exercise guide">Close</button></div>
+      <div class="planner-dialog-heading"><h2 id="exerciseGuideTitle" tabindex="-1">Exercise guide</h2><button class="outline-button" id="closeExerciseGuide" type="button" aria-label="Close exercise guide">Close</button></div>
       <div id="exerciseGuideBody"></div>
     </dialog>
 
     <dialog class="planner-dialog week-templates-dialog" id="weekTemplatesDialog" aria-labelledby="weekTemplatesTitle" aria-describedby="weekTemplatesDescription">
-      <div class="planner-dialog-heading"><h2 id="weekTemplatesTitle">WEEK TEMPLATES.</h2><button class="outline-button" id="closeWeekTemplates" type="button">Close</button></div>
+      <div class="planner-dialog-heading"><h2 id="weekTemplatesTitle">Week templates</h2><button class="outline-button" id="closeWeekTemplates" type="button">Close</button></div>
       <p id="weekTemplatesDescription">Save reusable copies of your current week. Templates stay on this device, separately for each account and the free device plan. Export your week for a portable backup; import it here on another device.</p>
       <div class="template-save-row"><label>Name this week<input id="weekTemplateName" type="text" maxlength="60" autocomplete="off" placeholder="My strength week" /></label><button class="outline-button" id="saveWeekTemplate" type="button">Save week template</button></div>
       <div class="template-save-row"><label>Saved weeks<select id="weekTemplateSelect"></select></label><button class="outline-button" id="previewWeekTemplate" type="button" disabled>Preview week</button></div>
@@ -186,7 +186,7 @@
     </dialog>
 
     <dialog class="planner-dialog copy-day-dialog" id="copyDayDialog" aria-labelledby="copyDayDialogTitle" aria-describedby="copyDayDialogDescription">
-      <div class="planner-dialog-heading"><h2 id="copyDayDialogTitle" tabindex="-1">REVIEW DAY COPY.</h2><button class="outline-button" id="closeCopyDay" type="button">Cancel</button></div>
+      <div class="planner-dialog-heading"><h2 id="copyDayDialogTitle" tabindex="-1">Review day copy</h2><button class="outline-button" id="closeCopyDay" type="button">Cancel</button></div>
       <p id="copyDayDialogDescription">This is a preview. Your week has not changed.</p>
       <div class="copy-day-preview" id="copyDayPreview"></div>
       <label class="template-replace-confirm"><input id="confirmCopyDay" type="checkbox" /> <span id="confirmCopyDayLabel">I reviewed this day copy and want to apply it to my editable week.</span></label>
@@ -195,29 +195,29 @@
     </dialog>
 
     <dialog class="planner-dialog reset-week-dialog" id="resetWeekDialog" aria-labelledby="resetWeekDialogTitle" aria-describedby="resetWeekDialogDescription resetWeekImpact">
-      <div class="planner-dialog-heading"><h2 id="resetWeekDialogTitle" tabindex="-1">RESET THIS WEEK.</h2><button class="outline-button" id="closeResetWeek" type="button">Cancel</button></div>
+      <div class="planner-dialog-heading"><h2 id="resetWeekDialogTitle" tabindex="-1">Reset this week</h2><button class="outline-button" id="closeResetWeek" type="button">Cancel</button></div>
       <p id="resetWeekDialogDescription">Remove every scheduled movement and return Sunday to the default recovery day. Workout history, saved templates, monthly plans, and shared community copies stay untouched.</p>
       <p class="reset-week-impact" id="resetWeekImpact"></p>
       <p class="planner-dialog-status" id="resetWeekStatus" role="status" aria-live="polite">Nothing has changed.</p>
       <button class="dark-button reset-week-confirm" id="confirmResetWeek" type="button">Reset entire week</button>
     </dialog>
 
-    <footer class="build-footer">STRATA · Build 8.6.1 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <footer class="build-footer">STRATA · Build 8.7.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
     <div class="planner-toast" id="plannerToast" role="status" aria-live="polite"></div>
-    <script src="/pwa.js?v=8.6.1"></script>
-    <script src="/product-signals.js?v=8.6.1"></script>
-    <script src="/discovery-core.js?v=8.6.1"></script>
-    <script src="/activation-core.js?v=8.6.1"></script>
-    <script src="/plan-insights-core.js?v=8.6.1"></script>
-    <script src="/planner-logic.js?v=8.6.1"></script>
-    <script src="/planner-state.js?v=8.6.1"></script>
-    <script src="/planner-api.js?v=8.6.1"></script>
-    <script src="/planner-render.js?v=8.6.1"></script>
-    <script src="/planner-conflicts.js?v=8.6.1"></script>
-    <script src="/planner-templates.js?v=8.6.1"></script>
-    <script src="/planner-sharing.js?v=8.6.1"></script>
-    <script src="/planner-activation.js?v=8.6.1"></script>
-    <script src="/planner-events.js?v=8.6.1"></script>
-    <script src="planner.js?v=8.6.1"></script>
+    <script src="/pwa.js?v=8.7.0"></script>
+    <script src="/product-signals.js?v=8.7.0"></script>
+    <script src="/discovery-core.js?v=8.7.0"></script>
+    <script src="/activation-core.js?v=8.7.0"></script>
+    <script src="/plan-insights-core.js?v=8.7.0"></script>
+    <script src="/planner-logic.js?v=8.7.0"></script>
+    <script src="/planner-state.js?v=8.7.0"></script>
+    <script src="/planner-api.js?v=8.7.0"></script>
+    <script src="/planner-render.js?v=8.7.0"></script>
+    <script src="/planner-conflicts.js?v=8.7.0"></script>
+    <script src="/planner-templates.js?v=8.7.0"></script>
+    <script src="/planner-sharing.js?v=8.7.0"></script>
+    <script src="/planner-activation.js?v=8.7.0"></script>
+    <script src="/planner-events.js?v=8.7.0"></script>
+    <script src="planner.js?v=8.7.0"></script>
   </body>
 </html>

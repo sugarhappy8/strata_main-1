@@ -10,11 +10,11 @@
     <title>Delete account — STRATA</title>
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.6.1" />
-    <link rel="stylesheet" href="/account.css?v=8.6.1" />
-    <link rel="stylesheet" href="/experience.css?v=8.6.1" />
-    <script src="/motion.js?v=8.6.1"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=8.6.1" />
+    <link rel="stylesheet" href="/fonts.css?v=8.7.0" />
+    <link rel="stylesheet" href="/account.css?v=8.7.0" />
+    <link rel="stylesheet" href="/experience.css?v=8.7.0" />
+    <script src="/motion.js?v=8.7.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=8.7.0" />
   </head>
   <body data-account-page="delete-account">
     <a class="skip-link" href="#deletePanel">Skip to account deletion</a>
@@ -25,14 +25,14 @@
     <main class="account-page verification-page">
       <section class="account-intro danger-intro">
         <p class="kicker"><span></span> Permanent account removal</p>
-        <h1>DELETE YOUR.<br /><em>ACCOUNT.</em></h1>
+        <h1>Delete your<br /><em>account.</em></h1>
         <p>Opening this page does not delete anything. STRATA only proceeds after you review the consequences and submit the confirmation below.</p>
         <div class="storage-state verification-state" id="deleteState" role="status" aria-live="polite"><i></i><span>Checking your deletion link…</span></div>
       </section>
       <section class="account-access verification-access" aria-label="Confirm account deletion">
         <article class="auth-panel verification-panel danger-zone" id="deletePanel" aria-labelledby="deleteTitle">
           <p class="panel-index">Final confirmation</p>
-          <h2 id="deleteTitle" tabindex="-1">THIS CANNOT BE UNDONE</h2>
+          <h2 id="deleteTitle" tabindex="-1">This cannot be undone</h2>
           <div class="deletion-warning">
             <p>Permanent deletion removes from STRATA’s account database:</p>
             <ul><li>Your account and every signed-in session</li><li>Your private weekly and monthly plans, published plan listing, profile, and preferences</li><li>Your ratings and their contribution to community scores</li><li>Your STRATA entitlement and local billing mapping</li></ul>
@@ -47,19 +47,19 @@
             <button class="danger-action" id="deleteSubmit" type="submit"><span class="button-idle">Delete my account permanently</span><span class="button-busy">Deleting account…</span><span aria-hidden="true">→</span></button>
           </form>
           <div class="verification-ended" id="deleteUnavailable" role="status" aria-live="assertive" tabindex="-1" hidden>
-            <h3>LINK UNAVAILABLE</h3>
+            <h3>Link unavailable</h3>
             <p>This deletion link is invalid, expired, already used, or was canceled.</p>
             <div class="verification-ended-actions"><a href="/account.html">Return to account <span aria-hidden="true">→</span></a><a href="/contact">Contact support <span aria-hidden="true">→</span></a></div>
           </div>
           <div class="recovery-success" id="deleteSuccess" role="status" aria-live="assertive" tabindex="-1" hidden>
-            <h3>ACCOUNT DELETED</h3>
+            <h3>Account deleted</h3>
             <p>Your account and linked data were removed from STRATA’s account database. Independently copied plans remain with the people who copied them. Support or security records and service-provider records may be retained as described in the Privacy Policy. Paddle’s billing records are not deleted; account deletion does not cancel a subscription or create a refund.</p>
             <a href="/">Return to STRATA <span aria-hidden="true">→</span></a>
           </div>
         </article>
       </section>
     </main>
-    <footer class="build-footer">STRATA · Build 8.6.1 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
-    <script src="/account-recovery.js?v=8.6.1"></script>
+    <footer class="build-footer">STRATA · Build 8.7.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <script src="/account-recovery.js?v=8.7.0"></script>
   </body>
 </html>

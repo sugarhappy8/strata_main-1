@@ -9,7 +9,7 @@
   function escapeHtml(value){return String(value??"").replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));}
 
   function filterMarkup(groups,activeGroup){
-    return groups.map(group=>`<button class="planner-filter ${activeGroup===group?"active":""}" data-library-group="${group}" type="button" aria-pressed="${activeGroup===group}">${group==="all"?"All":group}</button>`).join("");
+    return groups.map(group=>`<button class="planner-filter ${activeGroup===group?"active":""}" data-library-group="${group}" type="button" aria-pressed="${activeGroup===group}">${group==="all"?"All":group.charAt(0).toUpperCase()+group.slice(1)}</button>`).join("");
   }
 
   function dayNavMarkup(days,{selectedDay,restDays=[]}){

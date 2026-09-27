@@ -93,14 +93,14 @@
 
       const primary=el("accountPrimaryAction"),primaryLabel=el("accountPrimaryLabel"),nextTitle=el("accountNextTitle"),nextDetail=el("accountNextDetail"),nextEyebrow=el("accountNextEyebrow"),nextMetrics=el("accountNextMetrics");nextMetrics.hidden=true;
       if(active){
-        nextEyebrow.textContent="Workout in progress";nextTitle.textContent=String(active.title||"OPEN WORKOUT").toUpperCase();nextDetail.textContent=`Started ${logic.readableDate(active.date)} · ${Math.max(0,Number(active.completedSets)||0)} of ${Math.max(0,Number(active.totalSets)||0)} sets completed.`;
+        nextEyebrow.textContent="Workout in progress";nextTitle.textContent=String(active.title||"Open workout");nextDetail.textContent=`Started ${logic.readableDate(active.date)} · ${Math.max(0,Number(active.completedSets)||0)} of ${Math.max(0,Number(active.totalSets)||0)} sets completed.`;
         primary.href=`/workout.html#resume=${encodeURIComponent(active.id)}`;primaryLabel.textContent="Continue workout";
       }else if(!summary.scheduled.length){
-        nextEyebrow.textContent="Start here";nextTitle.textContent="BUILD A WEEK YOU CAN REPEAT.";nextDetail.textContent="Choose your training days and movements before tracking progress.";primary.href=discoveryActive?"/onboarding.html":"/planner.html";primaryLabel.textContent="Build your week";
+        nextEyebrow.textContent="Start here";nextTitle.textContent="Build a week you can repeat.";nextDetail.textContent="Choose your training days and movements before tracking progress.";primary.href=discoveryActive?"/onboarding.html":"/planner.html";primaryLabel.textContent="Build your week";
       }else{
         const next=logic.nextPlannedDay(plan,completedDays,week),movements=next?.items.length||0,sets=(next?.items||[]).reduce((total,item)=>total+Math.max(0,Math.round(Number(item?.sets)||0)),0);
         const when=next?.offset===0?"Today":next?.offset===1?"Tomorrow":next?.offset>=7?`Next ${next.day}`:next?.day||"Next up";
-        nextEyebrow.textContent=`${when} · ${next?new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric"}).format(next.date):""}`;nextTitle.textContent=`${next?.day||"NEXT"} WORKOUT`;
+        nextEyebrow.textContent=`${when} · ${next?new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric"}).format(next.date):""}`;nextTitle.textContent=next?.day?`${next.day} workout`:"Next workout";
         nextDetail.textContent=historyLoading?"Your plan is ready while STRATA checks saved completion history.":historyError?"Your plan is ready. Completion history is temporarily unavailable.":`${movements} ${movements===1?"movement":"movements"} in your saved plan.`;
         el("accountNextMovements").textContent=String(movements);el("accountNextSets").textContent=String(sets);nextMetrics.hidden=false;
         primary.href=discoveryActive?`/workout.html?day=${encodeURIComponent(next.day)}`:"/planner.html";primaryLabel.textContent=discoveryActive?"Open next workout":"Open your week";
@@ -111,29 +111,29 @@
       else{winsList.hidden=true;winsList.innerHTML="";winsEmpty.hidden=false;winsEmpty.textContent=historyLoading?"Loading recent saved sessions…":historyError?"Recent session history could not be loaded. Nothing was changed.":"Workout history is not available in this account view. Your saved plan is still ready.";}
 
       const adaptationTitle=el("accountAdaptationTitle"),adaptationDetail=el("accountAdaptationDetail");
-      if(!summary.scheduled.length){adaptationTitle.textContent="START WITH A REPEATABLE WEEK.";adaptationDetail.textContent="A stable schedule makes future session comparisons meaningful. STRATA will not infer readiness from a plan alone.";}
-      else if(historyLoading){adaptationTitle.textContent="BUILD A CLEAN BASELINE.";adaptationDetail.textContent="STRATA is checking repeat movements in your saved sessions. Recovery and form are never guessed from set totals.";}
-      else if(historyError||!discoveryActive){adaptationTitle.textContent="YOUR WEEK HAS A SHAPE.";adaptationDetail.textContent=`${summary.scheduled.length} planned ${summary.scheduled.length===1?"day gives":"days give"} you a repeatable structure. No training adaptation is claimed without comparable session data.`;}
-      else if(active){adaptationTitle.textContent="FINISH THE OPEN SESSION.";adaptationDetail.textContent="An in-progress workout is the clearest next signal. Finish or close it before changing the week.";}
-      else if(!weekWorkouts.length&&!workouts.some((workout)=>workout?.status==="completed")){adaptationTitle.textContent="CREATE THE FIRST DATA POINT.";adaptationDetail.textContent="Complete one saved workout. A repeat in the same movement format and unit will make progress comparable.";}
-      else if(records.length){adaptationTitle.textContent="PROGRESS IS MOVING.";adaptationDetail.textContent=`${records.length} repeat ${records.length===1?"movement exceeded":"movements exceeded"} an earlier saved result. Keep the format and unit consistent; recovery and form are not measured here.`;}
-      else if(summary.scheduled.length&&completedDays.size===summary.scheduled.length){adaptationTitle.textContent="YOUR SCHEDULE IS COMPLETE.";adaptationDetail.textContent="Every planned day has a saved completion this week. Review recovery and notes before changing volume; this dashboard does not measure readiness.";}
-      else{adaptationTitle.textContent="KEEP THE COMPARISON CLEAN.";adaptationDetail.textContent="Repeat key movements in the same format and unit. STRATA will surface a saved result only when it exceeds an earlier comparable session.";}
+      if(!summary.scheduled.length){adaptationTitle.textContent="Start with a repeatable week.";adaptationDetail.textContent="A stable schedule makes future session comparisons meaningful. STRATA will not infer readiness from a plan alone.";}
+      else if(historyLoading){adaptationTitle.textContent="Build a clean baseline.";adaptationDetail.textContent="STRATA is checking repeat movements in your saved sessions. Recovery and form are never guessed from set totals.";}
+      else if(historyError||!discoveryActive){adaptationTitle.textContent="Your week has a shape.";adaptationDetail.textContent=`${summary.scheduled.length} planned ${summary.scheduled.length===1?"day gives":"days give"} you a repeatable structure. No training adaptation is claimed without comparable session data.`;}
+      else if(active){adaptationTitle.textContent="Finish the open session.";adaptationDetail.textContent="An in-progress workout is the clearest next signal. Finish or close it before changing the week.";}
+      else if(!weekWorkouts.length&&!workouts.some((workout)=>workout?.status==="completed")){adaptationTitle.textContent="Create the first data point.";adaptationDetail.textContent="Complete one saved workout. A repeat in the same movement format and unit will make progress comparable.";}
+      else if(records.length){adaptationTitle.textContent="Progress is moving.";adaptationDetail.textContent=`${records.length} repeat ${records.length===1?"movement exceeded":"movements exceeded"} an earlier saved result. Keep the format and unit consistent; recovery and form are not measured here.`;}
+      else if(summary.scheduled.length&&completedDays.size===summary.scheduled.length){adaptationTitle.textContent="Your schedule is complete.";adaptationDetail.textContent="Every planned day has a saved completion this week. Review recovery and notes before changing volume; this dashboard does not measure readiness.";}
+      else{adaptationTitle.textContent="Keep the comparison clean.";adaptationDetail.textContent="Repeat key movements in the same format and unit. STRATA will surface a saved result only when it exceeds an earlier comparable session.";}
     }
 
     function renderDashboardUnavailable(){
-      el("accountNextEyebrow").textContent="Saved week unavailable";el("accountNextTitle").textContent="YOUR ACCOUNT IS STILL SAFE.";el("accountNextDetail").textContent="STRATA could not load your plan right now. Refresh or open My Plan to retry.";el("accountNextMetrics").hidden=true;
+      el("accountNextEyebrow").textContent="Saved week unavailable";el("accountNextTitle").textContent="Your account is still safe.";el("accountNextDetail").textContent="STRATA could not load your plan right now. Refresh or open My Plan to retry.";el("accountNextMetrics").hidden=true;
       el("accountWeekScore").textContent="—";el("accountWeekProgress").hidden=true;el("accountWeekDetail").textContent="Weekly progress could not be loaded.";el("accountWeekDays").innerHTML="";
       el("accountWinsList").hidden=true;el("accountWinsList").innerHTML="";el("accountWinsEmpty").hidden=false;el("accountWinsEmpty").textContent="Recent activity could not be loaded. Nothing was changed.";
-      el("accountAdaptationTitle").textContent="KEEP YOUR CURRENT PLAN.";el("accountAdaptationDetail").textContent="There is not enough verified data to suggest a training change right now.";el("accountPrimaryAction").href="/planner.html";el("accountPrimaryLabel").textContent="Open My Plan";
+      el("accountAdaptationTitle").textContent="Keep your current plan.";el("accountAdaptationDetail").textContent="There is not enough verified data to suggest a training change right now.";el("accountPrimaryAction").href="/planner.html";el("accountPrimaryLabel").textContent="Open My Plan";
     }
 
     function renderAccountBilling(user){
       const section=el("accountBilling"),subscription=logic.subscriptionFor(user),grandfathered=logic.grandfatheredAccess(user);section.hidden=!subscription&&!grandfathered;
       el("accountBillingStatus").textContent="";el("accountBillingStatus").classList.remove("bad");if(section.hidden)return;
       const manage=el("accountManageSubscription"),update=el("accountUpdatePayment"),cancel=el("accountCancelSubscription");manage.hidden=grandfathered;update.hidden=true;cancel.hidden=true;
-      if(grandfathered){el("accountBillingTitle").textContent="LIFETIME ACCESS";el("accountBillingBadge").textContent="Grandfathered";el("accountBillingDetail").textContent="Your prior lifetime purchase remains active under its original terms. It has no monthly renewal and does not need a subscription.";return;}
-      const status=String(subscription.status||""),scheduled=subscription.scheduledChange;el("accountBillingTitle").textContent="MONTHLY SUBSCRIPTION";
+      if(grandfathered){el("accountBillingTitle").textContent="Lifetime access";el("accountBillingBadge").textContent="Grandfathered";el("accountBillingDetail").textContent="Your prior lifetime purchase remains active under its original terms. It has no monthly renewal and does not need a subscription.";return;}
+      const status=String(subscription.status||""),scheduled=subscription.scheduledChange;el("accountBillingTitle").textContent="Monthly subscription";
       el("accountBillingBadge").textContent=status==="paused"?"Paused":status==="canceled"?"Canceled":subscription.active!==true?"Inactive":scheduled?.action==="cancel"?"Canceling":scheduled?.action==="pause"?"Pausing":status==="past_due"?"Past due":status.charAt(0).toUpperCase()+status.slice(1);
       if(status==="paused")el("accountBillingDetail").textContent="Paid access is inactive while this subscription is paused. Open Paddle to review resumption or cancellation options.";
       else if(status==="canceled")el("accountBillingDetail").textContent="This subscription is canceled, paid access is inactive, and there are no future renewals. Your free Plan remains available.";
@@ -162,7 +162,7 @@
     }
 
     function showChangedAccount(){
-      clearPrivateData();el("accountAccess").hidden=true;el("accountLoading").hidden=false;el("accountLoadingTitle").textContent="ACCOUNT ACCESS CHANGED.";
+      clearPrivateData();el("accountAccess").hidden=true;el("accountLoading").hidden=false;el("accountLoadingTitle").textContent="Account access changed.";
       el("accountLoadingMessage").textContent="The signed-in account or its security boundary changed. Reload to open the current account without mixing private training data.";el("accountReload").hidden=false;el("accountPage").setAttribute("aria-busy","false");
     }
 

@@ -7,17 +7,17 @@
   "use strict";
 
   const ACTION_DETAILS=Object.freeze({
-    "grant-plus":{title:"GIVE FREE STRATA+?",button:"Give free Strata+",description:"Give this account complimentary access for the chosen period. This replaces its current grant, never charges the user, and does not cancel a paid subscription."},
-    "revoke-plus":{title:"REVOKE FREE STRATA+?",button:"Revoke free Strata+",description:"End the administrator's complimentary grant. Separate paid or trial access is unchanged."},
-    "close-checkouts":{title:"BLOCK NEW CHECKOUTS?",button:"Block new and close eligible checkouts",description:"Block new checkouts until you allow them again and ask Paddle to cancel eligible unfinished transactions. Paddle does not allow STRATA to cancel a draft checkout, so STRATA retires the draft by disabling its checkout link and clearing STRATA’s checkout metadata while Paddle retains the transaction record. Revoking STRATA sign-in sessions is separate and does not change Paddle payment state. Existing subscriptions and charges are unchanged."},
-    "enable-checkouts":{title:"ALLOW PAYMENT SESSIONS?",button:"Allow payment sessions",description:"Allow this account to open new checkouts again. Previously canceled transactions stay canceled."},
-    "send-password-reset":{title:"SEND PASSWORD RESET?",button:"Send password reset",description:"A single-use password-reset link will be emailed to the account’s registered address. The link itself will not be shown here."},
-    "send-delete-link":{title:"SEND DELETION LINK?",button:"Send deletion link",description:"A deletion-confirmation link will be emailed to the registered address. Opening the link alone does not delete the account."},
-    "cancel-deletion":{title:"CANCEL DELETION?",button:"Cancel deletion request",description:"The pending deletion request will be revoked and its emailed link will stop working."},
-    "revoke-sessions":{title:"REVOKE ALL SESSIONS?",button:"Revoke all sessions",description:"Every active session for this account will be signed out. The account owner can sign in again with the current password."},
-    suspend:{title:"SUSPEND ACCOUNT?",button:"Suspend account",description:"The account will lose signed-in access until an administrator restores it. Existing payment records must remain intact."},
-    restore:{title:"RESTORE ACCOUNT?",button:"Restore account",description:"Signed-in access will be restored. This does not create or change Strata+ payment entitlement."},
-    "delete-account":{title:"PERMANENTLY DELETE ACCOUNT?",button:"Permanently delete account",description:"This pauses the account and signs out its devices, then checks payment state before deleting data permanently. If a live subscription or unresolved payment blocks deletion, the account stays paused and can be restored. Subscriptions and refunds are separate."}
+    "grant-plus":{title:"Give free Strata+?",button:"Give free Strata+",description:"Give this account complimentary access for the chosen period. This replaces its current grant, never charges the user, and does not cancel a paid subscription."},
+    "revoke-plus":{title:"Revoke free Strata+?",button:"Revoke free Strata+",description:"End the administrator's complimentary grant. Separate paid or trial access is unchanged."},
+    "close-checkouts":{title:"Block new checkouts?",button:"Block new and close eligible checkouts",description:"Block new checkouts until you allow them again and ask Paddle to cancel eligible unfinished transactions. Paddle does not allow STRATA to cancel a draft checkout, so STRATA retires the draft by disabling its checkout link and clearing STRATA’s checkout metadata while Paddle retains the transaction record. Revoking STRATA sign-in sessions is separate and does not change Paddle payment state. Existing subscriptions and charges are unchanged."},
+    "enable-checkouts":{title:"Allow payment sessions?",button:"Allow payment sessions",description:"Allow this account to open new checkouts again. Previously canceled transactions stay canceled."},
+    "send-password-reset":{title:"Send password reset?",button:"Send password reset",description:"A single-use password-reset link will be emailed to the account’s registered address. The link itself will not be shown here."},
+    "send-delete-link":{title:"Send deletion link?",button:"Send deletion link",description:"A deletion-confirmation link will be emailed to the registered address. Opening the link alone does not delete the account."},
+    "cancel-deletion":{title:"Cancel deletion?",button:"Cancel deletion request",description:"The pending deletion request will be revoked and its emailed link will stop working."},
+    "revoke-sessions":{title:"Revoke all sessions?",button:"Revoke all sessions",description:"Every active session for this account will be signed out. The account owner can sign in again with the current password."},
+    suspend:{title:"Suspend account?",button:"Suspend account",description:"The account will lose signed-in access until an administrator restores it. Existing payment records must remain intact."},
+    restore:{title:"Restore account?",button:"Restore account",description:"Signed-in access will be restored. This does not create or change Strata+ payment entitlement."},
+    "delete-account":{title:"Permanently delete account?",button:"Permanently delete account",description:"This pauses the account and signs out its devices, then checks payment state before deleting data permanently. If a live subscription or unresolved payment blocks deletion, the account stays paused and can be restored. Subscriptions and refunds are separate."}
   });
 
   function cleanString(value,fallback="—"){

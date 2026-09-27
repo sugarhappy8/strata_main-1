@@ -348,3 +348,18 @@ test("each starter builds and preserves a real three-day week using its stated e
     assert.match(elements.get("quickPreviewSummary").textContent,/3-day week ready/);
   }
 });
+
+test("the ranking shows the ten best matches first and the rest on request",async()=>{
+  const {context,elements}=createRuntime({meResponse:jsonResponse(401,{error:"Sign in"})});
+  await settle();
+  const rows=()=>(elements.get("exerciseList").innerHTML.match(/class="exercise-row"/g)||[]).length,chest=catalog.filter((item)=>item.group==="chest").length;
+  assert.ok(chest>10,"the fixture needs more than ten chest exercises");
+  assert.equal(rows(),10);assert.equal(elements.get("exerciseListMore").hidden,false);assert.equal(elements.get("showAllExercises").textContent,`Show all ${chest} exercises`);
+  assert.equal(elements.get("resultCount").textContent,chest,"the count still reports every match");
+  for(const handler of elements.get("showAllExercises").listeners.click)handler();
+  assert.equal(rows(),chest);assert.equal(elements.get("exerciseListMore").hidden,true);
+  vm.runInContext('selectGroup("back",false)',context);
+  assert.equal(rows(),10,"another muscle group starts again from its top ten");
+  context.document.getElementById("searchInput").value="zzzz-no-match";for(const handler of elements.get("searchInput").listeners.input)handler({target:elements.get("searchInput")});
+  assert.equal(rows(),0);assert.equal(elements.get("exerciseListMore").hidden,true,"nothing to expand when every match is shown");
+});

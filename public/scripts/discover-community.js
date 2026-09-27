@@ -17,7 +17,7 @@
     function communityDateLabel(value){if(value===null||value===undefined||value==="")return"Shared plan";const numeric=Number(value),date=new Date(Number.isFinite(numeric)&&numeric>0?numeric:value);return Number.isNaN(date.getTime())?"Shared plan":`Shared ${new Intl.DateTimeFormat(undefined,{month:"short",year:"numeric"}).format(date)}`;}
     function sharedPlanDayMarkup(day,plan){
       const items=plan.days[day]||[],isRest=(plan.restDays||[plan.restDay]).includes(day),list=items.map((item)=>`<li><strong>${escapeHtml(communityExerciseName(item))}</strong><small>${Number(item.sets)} sets × ${escapeHtml(item.reps)}</small></li>`).join("");
-      return`<section class="shared-plan-day ${isRest?"is-rest":""}" aria-label="${escapeHtml(day)}: ${isRest?"recovery day":`${items.length} exercise${items.length===1?"":"s"}`}"><h4>${escapeHtml(day.slice(0,3))}<span>${isRest?"Recovery":`${items.length} exercise${items.length===1?"":"s"}`}</span></h4>${isRest?"<p>REST / RECOVERY</p>":items.length?`<ul>${list}</ul>`:"<p>Open training day</p>"}</section>`;
+      return`<section class="shared-plan-day ${isRest?"is-rest":""}" aria-label="${escapeHtml(day)}: ${isRest?"recovery day":`${items.length} exercise${items.length===1?"":"s"}`}"><h4>${escapeHtml(day.slice(0,3))}<span>${isRest?"Recovery":`${items.length} exercise${items.length===1?"":"s"}`}</span></h4>${isRest?"<p>Rest and recovery</p>":items.length?`<ul>${list}</ul>`:"<p>Open training day</p>"}</section>`;
     }
     function communityPlanCard(record,index){
       const stats=communityPlanStats(record),applied=state.communityAppliedId===record.id&&state.communityAppliedUpdatedAt===Number(record.updatedAt);

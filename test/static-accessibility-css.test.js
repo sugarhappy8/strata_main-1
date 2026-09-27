@@ -31,7 +31,7 @@ test("the focusable horizontal comparison region has a visible focus treatment",
   const css=read("public/styles/styles.css");
   const app=homeClient();
   assert.match(app,/class="compare-table-wrap" role="region"[^>]*tabindex="0"/);
-  assert.match(css,/\.compare-table-wrap:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--orange-text\);[^}]*box-shadow:/);
+  assert.match(css,/\.compare-table-wrap:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--focus-ring,#6f8e27\);[^}]*box-shadow:/);
 });
 
 test("compact mobile navigation keeps account actions and every muscle group easy to reach",()=>{

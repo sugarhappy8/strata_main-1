@@ -307,6 +307,9 @@ test("training journeys use real browser controls and isolated local fixtures",{
     assert.match(await page.locator("#startWorkout").textContent(),/Start workout/);
     assert.equal(await page.locator("#differentWorkout").isVisible(),true);assert.match(await page.locator("#differentWorkout").textContent(),/Create a different workout/);
     assert.equal(new URL(await page.locator("#differentWorkout a").getAttribute("href"),baseUrl).hash,"#sessionBuilder");
+    await page.click("#calendarWeekly > summary");await page.fill("#calendarWeeklyTime","07:15");await page.selectOption("#calendarWeeklyAlarm","60");
+    assert.match(await page.locator("#calendarWeeklySummary").textContent(),/^Monday at 7:15\sAM, every week, with a reminder 1 hour before\. Re-download after you change your plan\.$/);assert.equal(await page.locator("#calendarWeeklyLink").getAttribute("download"),"strata-weekly-training.ics");
+    const weeklyIcs=decodeURIComponent((await page.locator("#calendarWeeklyLink").getAttribute("href")).replace(/^data:text\/calendar;charset=utf-8,/,""));assert.match(weeklyIcs,/DTSTART:\d{8}T071500\r\n[\s\S]*RRULE:FREQ=WEEKLY;BYDAY=MO\r\n[\s\S]*TRIGGER:-PT60M/);assert.equal((weeklyIcs.match(/BEGIN:VEVENT/g)||[]).length,1);
     await capture(page,"train-scheduled-mobile.png");
     const startLayout=await page.evaluate(()=>{const start=globalThis.document.querySelector("#startWorkout").getBoundingClientRect(),hero=globalThis.getComputedStyle(globalThis.document.querySelector(".hero"));return{bottom:start.bottom,viewport:globalThis.innerHeight,heroDisplay:hero.display,overflow:globalThis.document.documentElement.scrollWidth-globalThis.document.documentElement.clientWidth};});
     assert.equal(startLayout.heroDisplay,"none","The entitled mobile workout summary should lead instead of a second marketing hero");assert.ok(startLayout.bottom<=startLayout.viewport-56,`Start action must fit above mobile navigation (${startLayout.bottom}/${startLayout.viewport})`);assert.ok(startLayout.overflow<=1);
@@ -429,7 +432,7 @@ test("training journeys use real browser controls and isolated local fixtures",{
     assert.ok(await page.locator("[data-compare]").count()>0,"A currently entitled member should retain homepage comparison controls");
     await goto(page,"/workout.html");await page.locator("#trainingRoom").waitFor({state:"visible"});await page.waitForFunction(()=>globalThis.document.querySelector("#planStatus")?.textContent==="You have not built a weekly plan yet.");
     assert.equal(await page.locator("#openPlannerFromEmpty").isVisible(),true);assert.match(await page.locator("#openPlannerFromEmpty").textContent(),/Build your first week/);
-    for(const selector of ["#resumeWorkout","#chooseScheduledDay","#startWorkout","#differentWorkout","#editWorkoutWeek"])assert.equal(await page.locator(selector).isHidden(),true,`${selector} must stay hidden before a weekly plan exists`);
+    for(const selector of ["#resumeWorkout","#chooseScheduledDay","#startWorkout","#differentWorkout","#editWorkoutWeek","#calendarWeekly"])assert.equal(await page.locator(selector).isHidden(),true,`${selector} must stay hidden before a weekly plan exists`);
     assert.equal(await page.locator("#planDayField").isHidden(),true);assert.equal(await page.locator("#historyStats").isHidden(),true);assert.match(await page.locator("#historyList").textContent(),/progress appears after your first completed workout/i);
     await goto(page,"/discover.html");
     const firstWeekAction=page.getByRole('link',{name:'Build your first week',exact:true});
