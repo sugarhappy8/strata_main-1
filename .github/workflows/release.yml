@@ -1,0 +1,47 @@
+name: Release
+
+# Pushing a vX.Y.Z tag publishes a GitHub release whose notes are the matching
+# docs/release-X.Y.Z.md guide. Re-running for an existing release is a no-op.
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish GitHub release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out the tagged commit
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Publish the release guide as release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          notes="docs/release-${version}.md"
+          if [ ! -f "$notes" ]; then
+            echo "::error::Missing ${notes}; add the release guide before tagging ${TAG}."
+            exit 1
+          fi
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release ${TAG} already exists; nothing to publish."
+            exit 0
+          fi
+          subtitle="$(head -n 1 "$notes" | sed -E 's/^# (Build [0-9.]+ — )?//')"
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "STRATA ${version} — ${subtitle}" \
+            --notes-file "$notes"

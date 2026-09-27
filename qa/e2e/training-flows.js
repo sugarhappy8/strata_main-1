@@ -293,11 +293,11 @@ test("training journeys use real browser controls and isolated local fixtures",{
     const seed=await context.request.put("/api/plan",{headers:{Origin:baseUrl,"X-CSRF-Token":current.csrfToken,"X-Strata-User":user.id},data:{plan:fixtureWeek(),expectedPlanUpdatedAt:current.planUpdatedAt}});assert.equal(seed.status(),200);
     await goto(page,"/workout.html?day=Sunday");
     await page.locator("#trainingRoom").waitFor({state:"visible"});
-    assert.equal(await page.locator("#startTitle").textContent(),"Nothing scheduled.");
+    assert.equal(await page.locator("#startTitle").textContent(),"Recovery day.");
     assert.equal(await page.locator("#planStatus").textContent(),"Nothing is scheduled for this day.");
     assert.equal(await page.locator("#startWorkout").isHidden(),true,"An empty recovery day must not leave a dead Start button");
     assert.equal(await page.locator("#resumeWorkout").isHidden(),true);
-    assert.equal(await page.locator("#chooseScheduledDay").isVisible(),true);assert.match(await page.locator("#chooseScheduledDay").textContent(),/Choose another day/);
+    assert.equal(await page.locator("#chooseScheduledDay").isVisible(),true);assert.match(await page.locator("#chooseScheduledDay").textContent(),/^Go to (?:Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day /);
     assert.equal(await page.locator("#editWorkoutWeek").isVisible(),true);assert.match(await page.locator("#editWorkoutWeek").textContent(),/Edit weekly plan/);
     assert.equal(await page.locator("#openPlannerFromEmpty").isHidden(),true);
     assert.equal(await page.locator("#differentWorkout").isHidden(),true,"An empty day must not offer an alternative workout before one exists");

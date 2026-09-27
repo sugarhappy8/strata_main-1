@@ -69,15 +69,33 @@ test("Progress derives truthful summaries and lets the renderer replace zero car
   const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],now=new Date("2026-09-09T12:00:00"),weeklyPlan={days:Object.fromEntries(days.map(day=>[day,day==="Wednesday"?[{exerciseId:"press"}]:[]]))};
   const empty=Progress.snapshot({workouts:[],weeklyPlan,days,now});
   assert.equal(empty.completed.length,0);assert.equal(empty.adherence,"0 / 1");
-  const workout={id:"w1",status:"completed",date:"2026-09-09",planDay:"Wednesday",startedAt:1,exerciseSummaries:[{exerciseId:"press",measurement:"reps",loadType:"external",unit:"kg",completedSets:3,maxWeight:20,maxReps:8,volume:480}]};
-  const summary=Progress.snapshot({workouts:[workout],weeklyPlan,days,now});
-  assert.equal(summary.adherence,"1 / 1");assert.equal(summary.volume,"480 kg·reps");assert.equal(summary.sessions,"1");
-  const nodes=new Map(["progressAdherence","progressVolume","progressConsistency","progressSessions","progressAdherenceDetail","progressVolumeDetail","progressConsistencyDetail","progressSessionsDetail","repeatImprovementScope","repeatImprovementTitle","personalBestScope","personalBestTitle","repeatImprovementList","personalBestList","progressFirstWorkout","progressHistoryContent"].map(id=>[id,{id,hidden:false,textContent:"",innerHTML:""}]));
+  const workout={id:"w1",status:"completed",date:"2026-09-09",planDay:"Wednesday",startedAt:2,exerciseSummaries:[{exerciseId:"press",measurement:"reps",loadType:"external",unit:"kg",completedSets:3,maxWeight:20,maxReps:8,volume:480}]};
+  const lastWeek={id:"w0",status:"completed",date:"2026-09-02",planDay:"Wednesday",startedAt:1,exerciseSummaries:[{exerciseId:"press",measurement:"reps",loadType:"external",unit:"kg",completedSets:3,maxWeight:17.5,maxReps:8,volume:400}]};
+  const summary=Progress.snapshot({workouts:[workout,lastWeek],weeklyPlan,days,now});
+  assert.equal(summary.adherence,"1 / 1");assert.equal(summary.volume,"480 kg");assert.match(summary.volumeDetail,/\+20% vs last week/);assert.equal(summary.sessions,"2");
+  assert.equal(summary.records.length,1,"one comparable exercise produces one record instead of a duplicate improvement and best");
+  assert.deepEqual(summary.records[0].change,{direction:"up",text:"+2.5 kg"});assert.equal(summary.records[0].newBest,true);
+  assert.deepEqual(summary.weeks.slice(-2).map(week=>[week.workouts,week.current]),[[1,false],[1,true]]);
+  const nodes=new Map(["progressAdherence","progressVolume","progressConsistency","progressSessions","progressAdherenceDetail","progressVolumeDetail","progressConsistencyDetail","progressSessionsDetail","progressRecordScope","progressRecordList","progressWeeks","progressWeeksMax","progressWeeksNote","progressFirstWorkout","progressHistoryContent"].map(id=>[id,{id,hidden:false,textContent:"",innerHTML:""}]));
   const renderer=Render.createProgressRenderer({element:id=>nodes.get(id),escapeHtml:value=>String(value),exerciseName:id=>id,readableDate:value=>value,days});
   renderer.render({workouts:[],weeklyPlan,historyAvailable:true,hasMore:false,now});
   assert.equal(nodes.get("progressFirstWorkout").hidden,false);assert.equal(nodes.get("progressHistoryContent").hidden,true);
   renderer.render({workouts:[workout],weeklyPlan,historyAvailable:true,hasMore:false,now});
   assert.equal(nodes.get("progressFirstWorkout").hidden,true);assert.equal(nodes.get("progressHistoryContent").hidden,false);assert.equal(nodes.get("progressSessions").textContent,"1");
+  assert.equal((nodes.get("progressWeeks").innerHTML.match(/<li class="progress-week/g)||[]).length,8);assert.match(nodes.get("progressWeeks").innerHTML,/This week: 1 workout · 480 kg/);
+  assert.equal((nodes.get("progressRecordList").innerHTML.match(/<article class="progress-record/g)||[]).length,1);assert.match(nodes.get("progressRecordList").innerHTML,/First log/);
+  renderer.render({workouts:[workout],weeklyPlan,historyAvailable:true,hasMore:true,now});
+  assert.equal(nodes.get("progressRecordScope").textContent,"Within your 100 most recent sessions");assert.equal(nodes.get("progressSessions").textContent,"1+");
+});
+
+test("Progress week boundaries survive a daylight-saving change",()=>{
+  const previous=process.env.TZ;process.env.TZ="America/New_York";
+  try{
+    const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],now=new Date("2026-03-11T12:00:00");
+    const workouts=[{id:"before-shift",status:"completed",date:"2026-03-02",startedAt:1,exerciseSummaries:[]},{id:"after-shift",status:"completed",date:"2026-03-10",startedAt:2,exerciseSummaries:[]}];
+    assert.equal(Progress.fourWeekConsistency(workouts,days,now),2,"the week before the clock change must not collapse into the current week");
+    assert.deepEqual(Progress.weeklyHistory(workouts,days,now).slice(-2).map(week=>week.workouts),[1,1]);
+  }finally{if(previous===undefined)delete process.env.TZ;else process.env.TZ=previous;}
 });
 
 test("Discover catalog keeps community and personal display rules outside the page shell",()=>{

@@ -172,14 +172,14 @@ function previousComparable(items){
 }
 function renderPreviousComparable(items){
   const previous=previousComparable(items),partial=state.workoutHistoryHasMore;el("todayPreviousLabel").textContent=partial?"Previous comparable · 100 most recent":"Previous comparable performance";
-  if(previous){el("todayPreviousValue").textContent=`${exerciseName(previous.summary.exerciseId)} · ${previous.metric.formatted}`;el("todayPreviousDetail").textContent=`${previous.metric.label} in ${previous.workout.title||"a workout"} on ${readableDate(previous.workout.date)}. ${partial?"Found in the 100 most recent sessions; ":""}compare the same format and unit.`;return;}
+  if(previous){el("todayPreviousValue").textContent=`${exerciseName(previous.summary.exerciseId)} · ${previous.metric.formatted}`;el("todayPreviousDetail").textContent=`${previous.metric.label} in ${previous.workout.title||"a workout"} on ${readableDate(previous.workout.date)}.${partial?" Found in the 100 most recent sessions.":""} Compare the same format and unit.`;return;}
   el("todayPreviousValue").textContent=partial?"Nothing comparable in the 100 most recent sessions":"Nothing comparable logged yet";el("todayPreviousDetail").textContent=partial?"Older sessions are not included here. Complete one of these movements or open full history for more context.":"Complete one of these movements to establish a like-for-like baseline.";
 }
 function renderPlanOverview(pulse){
   if(!el("planWorkspaceDays"))return;
   const days=pulse.scheduledDays,exercises=weeklyPlanCount(state.weeklyPlan),sets=Monthly.DAYS.flatMap((day)=>state.weeklyPlan?.days?.[day]||[]).reduce((total,item)=>total+Math.max(0,Number(item?.sets)||0),0),hasWeek=days>0;
   el("planWorkspaceDays").textContent=String(days);el("planWorkspaceMovements").textContent=String(exercises);el("planWorkspaceSets").textContent=String(sets);
-  el("planWorkspaceSummary").textContent=hasWeek?`${days} training day${days===1?"":"s"}, ${exercises} exercise${exercises===1?"":"s"}, and ${sets} working set${sets===1?"":"s"} are assigned in your saved week.`:"You have not built a weekly plan yet.";
+  el("planWorkspaceSummary").textContent=hasWeek?`Scheduled: ${scheduledDays().join(", ")}.`:"You have not built a weekly plan yet.";
   const action=el("planWorkspaceAction");if(action){action.href="/planner.html";action.innerHTML=hasWeek?'Edit weekly plan <span aria-hidden="true">→</span>':'Build your first week <span aria-hidden="true">→</span>';}
 }
 function workoutHistoryStatus(){const status=["loading","ready","error"].includes(state.workoutHistoryStatus)?state.workoutHistoryStatus:(state.workoutHistoryAvailable?"ready":"error");return status==="ready"&&!state.workoutHistoryAvailable?"error":status;}

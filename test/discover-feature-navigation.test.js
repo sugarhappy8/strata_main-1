@@ -94,7 +94,7 @@ test("Strata+ explains its three score types once beside the relevant tools",()=
   assert.match(guide,/Match for you[\s\S]*How well the exercise fits your goals, equipment, experience, and saved limitations\./);
   assert.match(guide,/Community rating[\s\S]*The average rating submitted by STRATA members\./);
   assert.match(html,/Browse all exercises, view recommendations, compare options, or update the preferences used for your matches\./);
-  assert.match(html,/Review completed workouts, logged volume, consistency, and repeat-exercise results\./);
+  assert.match(html,/Completed workouts, weekly volume, consistency, and how each exercise is moving\./);
 });
 
 test("Strata+ loads bounded state, API, navigation, feature controllers, rendering, events, and shell files in dependency order",()=>{
@@ -225,21 +225,22 @@ test("Today presents one primary action with an honest, comparable training brie
 
 test("Progress reports bounded log-derived measures without pretending to assess recovery",()=>{
   const html=read("pages","discover.html"),script=discoverScript();
-  for(const id of ["progressWorkspace","progressAdherence","progressVolume","progressConsistency","progressSessions","repeatImprovementList","personalBestList"]){
+  for(const id of ["progressWorkspace","progressAdherence","progressVolume","progressConsistency","progressSessions","progressWeeks","progressRecordList"]){
     assert.match(html,new RegExp(`\\bid="${id}"`),id);
   }
   assert.match(html,/They are training records, not a health assessment/);
-  assert.match(html,/load volume is load × repetitions from completed sets/);
+  assert.match(html,/volume is load × reps from completed sets/);
+  assert.equal((html.match(/class="progress-list"/g)||[]).length,1,"each exercise result is listed once, not as both an improvement and a best");
   assert.match(script,/\/api\/workouts\?limit=100&offset=0/);
   assert.match(script,/summaryKey\(summary,metric\)/);
-  assert.match(html,/Weeks with at least one completed session, last four weeks/);
+  assert.match(html,/Calendar weeks with at least one completed workout/);
   assert.match(script,/summary\.loadType!=="external"/,"assistance and bodyweight must not be added to external load volume");
   const assistedMetricLine=script.split("\n").find((line)=>line.includes('summary.loadType==="assisted"'))||"";
   assert.match(assistedMetricLine,/summary\.minAssistance/,"assisted records must use the stored minimum assistance");
   assert.doesNotMatch(assistedMetricLine,/summary\.maxWeight/,"null external-load records must not become zero-assistance records");
   assert.match(script,/Nothing comparable in the 100 most recent sessions/);
-  assert.match(script,/RECENT REPEAT IMPROVEMENTS/);
-  assert.match(script,/RECENT PERFORMANCE HIGHS/);
+  assert.match(script,/Within your 100 most recent sessions/);
+  assert.match(script,/Rounding \(not flooring\) keeps a daylight-saving shift/);
   assert.match(html,/id="progressFirstWorkout"[^>]*hidden/);
   assert.match(html,/Your first workout starts the story/);
   assert.match(html,/id="progressHistoryContent"/);

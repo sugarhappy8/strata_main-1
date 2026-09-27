@@ -83,10 +83,16 @@ test("progress logic excludes malformed history and compares each supported metr
     {...base,id:"first",startedAt:1,exerciseSummaries:[{exerciseId:"pullup",completedSets:1,loadType:"assisted",minAssistance:30,maxReps:6,unit:"kg"}]},
     {...base,id:"second",startedAt:2,exerciseSummaries:[{exerciseId:"pullup",completedSets:1,loadType:"assisted",minAssistance:20,maxReps:8,unit:"kg"}]}
   ];
-  const records=DiscoverProgress.progressRecords(history);
-  assert.equal(records.improvements.length,1);
-  assert.equal(records.improvements[0].previous.formatted,"30 kg assistance");
-  assert.equal(records.bests[0].metric.value,20);
+  const records=DiscoverProgress.exerciseRecords(history);
+  assert.equal(records.length,1,"an assisted exercise is reported once");
+  assert.equal(records[0].previous.metric.formatted,"30 kg assistance");
+  assert.equal(records[0].best.metric.value,20);
+  assert.deepEqual(records[0].change,{direction:"up",text:"10 kg less assistance"});
+  assert.equal(records[0].newBest,true);
+  assert.deepEqual(DiscoverProgress.metricChange({key:"time",value:40,higher:true},{key:"time",value:45,higher:true}),{direction:"down",text:"−5 sec"});
+  assert.deepEqual(DiscoverProgress.metricChange({key:"reps",value:9,higher:true},{key:"reps",value:8,higher:true}),{direction:"up",text:"+1 rep"});
+  assert.deepEqual(DiscoverProgress.metricChange({key:"load:lb",value:100,higher:true},{key:"load:lb",value:100,higher:true}),{direction:"same",text:"No change"});
+  assert.deepEqual(DiscoverProgress.metricChange({key:"reps",value:9,higher:true},null),{direction:"first",text:"First log"});
 
   const days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   assert.equal(DiscoverProgress.fourWeekConsistency([{date:"not-a-date",completedAt:"bad"}],days,new Date("2026-09-09T12:00:00")),0);

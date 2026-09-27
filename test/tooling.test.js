@@ -31,6 +31,13 @@ test("one check command owns the complete pre-release verification sequence",()=
   assert.match(workflow,/npx playwright install --with-deps chromium firefox webkit/);
   assert.match(workflow,/run: npm run check/);
   assert.doesNotMatch(workflow,/run: npm run coverage/,"the release gate already owns coverage");
+
+  const release=read(".github/workflows/release.yml");
+  assert.match(release,/tags:\s*\n\s*- "v\*\.\*\.\*"/,"releases publish only from version tags");
+  assert.match(release,/permissions:\s*\n\s*contents: write/);
+  assert.match(release,/notes="docs\/release-\$\{version\}\.md"/,"release notes come from the reviewed release guide");
+  assert.match(release,/TAG: \$\{\{ github\.ref_name \}\}/);
+  assert.doesNotMatch(release.slice(release.indexOf("run: |")),/\$\{\{/,"the publish script reads the tag from the environment, never inline expressions");
 });
 
 test("coverage reports application code and enforces calibrated regression floors",()=>{

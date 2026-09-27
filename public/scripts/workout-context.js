@@ -36,8 +36,8 @@
 
       $("startTitle").textContent=state.day===W.today()?"Today’s workout":`${state.day} workout`;
       if(!items.length){
-        $("startTitle").textContent="Nothing scheduled.";$("planStatus").textContent="Nothing is scheduled for this day.";$("startHint").textContent=scheduledDay?`${scheduledDay} is the next day with a planned workout.`:"Choose another day or edit your weekly plan.";
-        if(scheduledDay){choose.hidden=false;choose.dataset.day=scheduledDay;choose.innerHTML='Choose another day <span aria-hidden="true">→</span>';}else delete choose.dataset.day;
+        $("startTitle").textContent="Recovery day.";$("planStatus").textContent="Nothing is scheduled for this day.";$("startHint").textContent=scheduledDay?`${scheduledDay} is the next day with a planned workout.`:"Choose another day or edit your weekly plan.";
+        if(scheduledDay){choose.hidden=false;choose.dataset.day=scheduledDay;choose.innerHTML=`Go to ${scheduledDay} <span aria-hidden="true">→</span>`;}else delete choose.dataset.day;
         return;
       }
 

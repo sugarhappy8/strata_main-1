@@ -87,7 +87,7 @@ test("workout context exposes exactly one truthful action for each plan state",(
 
   const plan=emptyWeek();plan.days.Monday=[{exerciseId:"press",sets:3,reps:"8–12"}];
   const emptyDay=render({plan});
-  assert.equal(emptyDay.startTitle.textContent,"Nothing scheduled.");
+  assert.equal(emptyDay.startTitle.textContent,"Recovery day.");assert.match(emptyDay.chooseScheduledDay.innerHTML,/^Go to Monday /);
   assert.equal(emptyDay.planStatus.textContent,"Nothing is scheduled for this day.");
   assert.equal(emptyDay.editWorkoutWeek.hidden,false);assert.equal(emptyDay.chooseScheduledDay.hidden,false);assert.equal(emptyDay.chooseScheduledDay.dataset.day,"Monday");assert.equal(emptyDay.startWorkout.hidden,true);assert.equal(emptyDay.differentWorkout.hidden,true);
 
