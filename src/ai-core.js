@@ -18,7 +18,7 @@ const EXERCISE_BY_ID=new Map(EXERCISES.map((/** @type {any} */ exercise)=>[exerc
 /** @param {string} code @param {string} message @param {number} [status] */
 function aiError(code,message,status=502){return Object.assign(new Error(message),{code,status});}
 /** Plain single-line text: control, zero-width, and direction characters become spaces. @param {unknown} value @param {number} max */
-function text(value,max){return String(value??"").replace(/[\u0000-\u001f\u007f​-‏‪-‮⁦-⁩]/g," ").replace(/\s+/g," ").trim().slice(0,max);}
+function text(value,max){return String(value??"").replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g," ").replace(/\s+/g," ").trim().slice(0,max);}
 /** @template T @param {unknown} value @param {readonly T[]} allowed @returns {T|null} */
 function pick(value,allowed){const found=allowed.find((item)=>item===value);return found===undefined?null:found;}
 /** @param {unknown} value */
@@ -89,10 +89,10 @@ const RULES=`You are Strata AI, the planning assistant inside STRATA, a strength
 Safety: you are not a doctor or dietitian. Do not diagnose, treat pain or injury, or advise on pregnancy, medication, or eating disorders. Suggest a qualified professional instead and do not propose a plan in that case.
 Answer with exactly one JSON object and nothing else: {"reply":"...","week":null,"nutrition":null,"suggestions":[],"search":[]}
 reply: at most 90 words, warm and plain, no markdown.
-week: only when the member asks for a new or changed weekly plan. Shape: {"title":"...","focus":"balanced|strength|hypertrophy","sessionMinutes":30|45|60|75|90,"days":[{"day":"Monday","name":"Upper body","exercises":[{"code":"CH1","sets":3,"reps":"8-12"}]}]}
+week: only when the member asks for a new or changed weekly plan. Shape: {"title":"...","focus":"balanced|strength|hypertrophy","days":[{"day":"Monday","name":"Upper body","exercises":[{"code":"CH1","sets":3,"reps":"8-12"}]}]}
 Exercises: STRATA's library has 320 exercises. The list below is a shortlist chosen for this request. Use its codes. For another STRATA exercise the member asks for by name, write {"name":"exact exercise name","sets":3,"reps":"8-12"} instead of a code.
 Search: if the member wants exercises that are not in the shortlist, reply briefly, leave week empty, and put up to 6 short search words in "search" (for example ["landmine press","nordic curl"]). STRATA will send matching exercises.
-Week rules: 1 to 6 training days; days you leave out are rest days. 3 to 7 exercises per training day, never the same exercise twice in a day. About one working set per 2.5 minutes of session time. Cover every major muscle group across the week unless the member asks for a focus. Respect the member's equipment and movement limits.
+Week rules: 1 to 6 training days; days you leave out are rest days. 3 to 7 exercises per training day, never the same exercise twice in a day. Match the member's time with working sets per day: 30 min about 10, 45 min about 16, 60 min about 22, 75 min about 28, 90 min about 34. Cover every major muscle group across the week unless the member asks for a focus. Respect the member's equipment and movement limits.
 nutrition: only when the member asks about calories or eating, or accepts your offer. Shape: {"goal":"fat_loss|maintenance|muscle_gain","pace":"gentle|moderate","pattern":"steady|zigzag|flexible_day","flexibleDay":"Saturday" or null,"macros":"balanced|higher_protein" or null}. Never state calorie numbers; STRATA calculates them.
 After proposing a week, end the reply by offering matching calorie targets, unless nutrition was already discussed.
 suggestions: up to 3 short, specific tips based on the member's data, as {"text":"..."}. To replace an exercise in the saved plan add "swap":{"day":"Monday","from":"exact exercise name from the saved plan","to":"CODE or exact exercise name"}.`;
@@ -188,8 +188,9 @@ function interpretWeek(value,byCode,limitations){
   if(trainingDays.length<1||trainingDays.length>6)return {issue:"Strata AI's week did not pass STRATA's checks. Ask again, perhaps with fewer or simpler requirements."};
   const restDays=DAYS.filter((day)=>!days[day]);
   const plan=sanitizePlan({version:1,restDay:restDays[0]??null,restDays,days:Object.fromEntries(DAYS.map((day)=>[day,(days[day]||[]).map((item)=>({exerciseId:item.exerciseId,sets:item.sets,reps:item.reps}))]))});
-  const sessionMinutes=pick(Number(value.sessionMinutes),SESSION_MINUTES)??nearestSessionMinutes(summary.reduce((sum,day)=>sum+day.minutes,0)/summary.length);
-  return {title:text(value.title,60)||"Your Strata AI week",focus:pick(value.focus,CHOICES.focus)??"balanced",sessionMinutes,plan,days:DAYS.map((day)=>summary.find((item)=>item.day===day)).filter(Boolean),restDays,trainingDays,workingSets:summary.reduce((sum,day)=>sum+day.workingSets,0),notes:[...notes]};
+  // Session length always comes from STRATA's estimate, so the week, Plan, and nutrition targets agree.
+  const averageMinutes=estimatedMinutes(summary.reduce((sum,day)=>sum+day.workingSets,0)/summary.length),sessionMinutes=nearestSessionMinutes(averageMinutes);
+  return {title:text(value.title,60)||"Your Strata AI week",focus:pick(value.focus,CHOICES.focus)??"balanced",sessionMinutes,averageMinutes,plan,days:DAYS.map((day)=>summary.find((item)=>item.day===day)).filter(Boolean),restDays,trainingDays,workingSets:summary.reduce((sum,day)=>sum+day.workingSets,0),notes:[...notes]};
 }
 
 /** @param {any} value */

@@ -7,7 +7,7 @@ const{analyzeFrontend,dependencyCycles,htmlScripts,loadPolicy,validateFrontend}=
 test("large interactive pages keep enforced logic, state, API, rendering, events, and entry boundaries",()=>{
   const policy=loadPolicy(),analysis=analyzeFrontend(undefined,policy),errors=validateFrontend(analysis,policy);
   assert.deepEqual(errors,[]);
-  assert.equal(analysis.pages.length,7);
+  assert.equal(analysis.pages.length,8);
   assert.deepEqual(dependencyCycles(analysis.modules),[]);
   for(const page of analysis.pages){
     assert.equal(page.modules.at(-1).role,"entry");

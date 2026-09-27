@@ -102,7 +102,7 @@
     suggest:()=>ask("suggestions",""),
     starter:index=>{const starter=logic.STARTERS[index];if(!starter)return;nodes.message.value=starter.message;return send();},
     inputChanged:()=>{view.setFormError("");view.renderComposer(state);},
-    refine:()=>{nodes.message.placeholder="What should change? For example: make Friday shorter, or swap squats for leg press.";nodes.message.focus();},
+    refine:()=>{nodes.message.placeholder="What should change? For example: a shorter Friday.";nodes.message.focus();},
     retry:id=>{
       const index=state.messages.findIndex(message=>message.id===id&&message.role==="error");
       const entry=state.messages[index];if(!entry?.retry||state.pending)return;
@@ -147,6 +147,7 @@
       if(handleAccessError(error))return;
       nodes.statusTitle.textContent="STRATA couldn’t load your account";nodes.statusDetail.textContent="Check your connection, then refresh this page.";nodes.status.dataset.tone="offline";return;
     }
+    store.clearAll(storage,{except:state.user.id});
     const saved=logic.restoreConversation(store.load(storage,state.user.id));
     state.messages=saved.messages;
     if(saved.pending)state.pending={...saved.pending,request:{status:"running",position:0}};

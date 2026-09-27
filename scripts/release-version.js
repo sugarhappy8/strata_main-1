@@ -25,6 +25,7 @@ const DEFAULT_MANIFEST=Object.freeze({
   textFiles:Object.freeze([
     "README.md",
     "public/pages/account.html",
+    "public/pages/ai.html",
     "public/pages/admin.html",
     "public/pages/contact.html",
     "public/pages/delete-account.html",

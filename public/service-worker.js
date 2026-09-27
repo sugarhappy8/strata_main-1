@@ -108,6 +108,13 @@ const PRECACHE_URLS=[
   "/discover-coaching-meals.js?v=8.7.0",
   "/discover.js?v=8.7.0",
   "/training-block-core.js?v=8.7.0",
+  "/ai.css?v=8.7.0",
+  "/ai-logic.js?v=8.7.0",
+  "/ai-state.js?v=8.7.0",
+  "/ai-api.js?v=8.7.0",
+  "/ai-render.js?v=8.7.0",
+  "/ai-events.js?v=8.7.0",
+  "/ai.js?v=8.7.0",
   "/exercises.json?v=8.7.0",
   "/fonts/manrope-latin.woff2",
   "/fonts/dm-mono-400-latin.woff2",
@@ -122,7 +129,7 @@ const PRECACHE_URLS=[
   "/icons/apple-touch-icon.png"
 ];
 const PUBLIC_ASSET_URLS=new Set(PRECACHE_URLS.map((entry) => new URL(entry,self.location.origin).href));
-const PRIVATE_HTML_PATHS=new Set(["/","/index.html","/account.html","/verify-email","/verify-email.html","/forgot-password","/forgot-password.html","/reset-password","/reset-password.html","/delete-account","/delete-account.html","/discover.html","/workout.html","/onboarding.html","/admin","/admin.html"]);
+const PRIVATE_HTML_PATHS=new Set(["/","/index.html","/account.html","/verify-email","/verify-email.html","/forgot-password","/forgot-password.html","/reset-password","/reset-password.html","/delete-account","/delete-account.html","/discover.html","/workout.html","/onboarding.html","/ai","/ai.html","/admin","/admin.html"]);
 const PUBLIC_HTML_FALLBACKS=new Map([
   ["/install","/install.html"],
   ["/pricing","/pricing.html"],

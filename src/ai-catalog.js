@@ -32,8 +32,14 @@ const SPLIT=/\b(?:push\W*pull(?:\W*legs?)?|ppl|upper\W*lower|full\W*body|total\W
 const RESTRICT=/\b(?:only|just|nothing but|no gym|at home|home workout|home gym|hotel|travel(?:ling|ing)?)\b/;
 const GENERIC=new Set(["with","and","the","a","to","on","of","one","single","arm","leg","seated","standing","lying","machine","cable","dumbbell","barbell","band","resistance","smith","ez","bar","bench","bodyweight","assisted","alternating","incline","decline","flat","press","raise","row","curl","extension","fly","squat"]);
 
+/** Singular form for matching, so "presses", "squats", and "raises" match "press", "squat", and "raise". @param {string} word */
+function singular(word){
+  if(word.length<4||/(?:ss|us|is)$/.test(word))return word;
+  if(/(?:ss|x|ch|sh)es$/.test(word))return word.slice(0,-2);
+  return word.endsWith("s")?word.slice(0,-1):word;
+}
 /** @param {unknown} value */
-function normalize(value){return String(value??"").toLowerCase().replace(/[’']/g,"").replace(/[^a-z0-9]+/g," ").replace(/\b([a-z]{3,})s\b/g,"$1").trim();}
+function normalize(value){return String(value??"").toLowerCase().replace(/[’']/g,"").replace(/[^a-z0-9]+/g," ").trim().split(" ").map(singular).join(" ");}
 /** @param {string} value */
 function bigrams(value){const words=value.split(" ").filter(Boolean);return words.slice(1).map((word,index)=>`${words[index]} ${word}`);}
 

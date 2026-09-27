@@ -10,6 +10,11 @@
     const{panel,statusNode,signupLink,loginLink,trialButton,buyButton,openLink,manageLink,checkButton}=nodes;
     const pageReason=new URLSearchParams(locationImpl.search).get("reason");
     const trialRequested=new URLSearchParams(locationImpl.search).get("trial")==="1";
+    // Members sent here from Strata AI return to it after signing up, signing in, or starting the trial.
+    if(pageReason==="ai"){
+      signupLink.href="/account.html?mode=signup&next=ai";loginLink.href="/account.html?mode=login&next=ai";openLink.href="/ai";
+      if(openLink.firstChild?.nodeType===3)openLink.firstChild.textContent="Open Strata AI ";
+    }
 
     function setStatus(message,tone="",{focus=false}={}){
       statusNode.setAttribute("role",tone==="error"?"alert":"status");
@@ -85,6 +90,8 @@
       if(!signedIn){
         const message=trialRequested
           ?"Sign in or create an account to start your one free 7-day Strata+ trial. No card is required."
+          :pageReason==="ai"
+            ?"Strata AI is included with Strata+. Create an account or sign in, then start your free 7-day trial. No card required."
           :pageReason==="access"||pageReason==="discovery-required"
             ?"Sign in or create an account, then start the free trial or explicitly subscribe for $2.99 USD per month to continue."
             :"Create an account or sign in before starting the trial or subscribing, so access follows you across devices.";
@@ -94,9 +101,11 @@
       if(canceled){setStatus("Your previous monthly subscription is canceled and will not renew. You can explicitly start a new subscription whenever you choose.","warn");return;}
       if(!online){setStatus("You are offline. Reconnect before starting a trial or opening secure checkout.","warn");return;}
       if(checkoutBlocked){setStatus("New payment sessions are disabled for this account. Contact STRATA for help.","warn");return;}
+      if(trial?.eligible&&pageReason==="ai"){setStatus("Strata AI is included with Strata+. Start your free 7-day trial to use it. No card required and no automatic charge.");return;}
       if(state.configError){setStatus(`${state.configError}${trial?.eligible?" You can still start your free 7-day trial; no card required.":""}`,"warn");return;}
       if(trial?.eligible){setStatus("Your account is eligible for one free 7-day Strata+ trial. No card required and no automatic charge.");return;}
       if(pageReason==="access-revoked"){setStatus("Strata+ access is no longer active, usually because a subscription ended or a charge was refunded or reversed. You may subscribe again or contact STRATA if this is unexpected.","warn");return;}
+      if(pageReason==="ai"){setStatus("Strata AI is included with Strata+ for $2.99 USD per month. It renews monthly until canceled.");return;}
       if(pageReason==="access"||pageReason==="discovery-required"){setStatus("Strata+ is $2.99 USD per month and renews monthly until canceled.");return;}
       if(trial&&trial.eligible===false)setStatus("This account has already used its free trial. Subscribe for $2.99 USD per month; it renews monthly until canceled.");
       else setStatus("Signed in and ready for secure Paddle checkout.");

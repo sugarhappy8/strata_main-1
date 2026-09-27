@@ -36,17 +36,12 @@
           <div>
             <p class="eyebrow"><a href="/discover.html">Strata+</a> · Strata AI</p>
             <h1 id="aiTitle">Don’t feel like planning? <em>Ask Strata AI.</em></h1>
-            <p class="ai-lede">Tell it your schedule, equipment, and goals. Strata AI builds a week from all 320 STRATA exercises, offers matching nutrition targets, and suggests improvements. Nothing changes until you apply it.</p>
+            <p class="ai-lede">Tell it your schedule, equipment, and goals. Strata AI builds a week from all 320 STRATA exercises, offers calorie targets from STRATA’s own calculator, and suggests improvements. Nothing changes until you apply it.</p>
           </div>
-          <aside class="ai-status" id="aiStatus" data-tone="checking" aria-labelledby="aiStatusTitle">
-            <p class="ai-status-line"><span class="ai-status-dot" aria-hidden="true"></span><strong id="aiStatusTitle">Checking Strata AI…</strong></p>
-            <p id="aiStatusDetail"></p>
-            <ul class="ai-promises">
-              <li><strong>Every exercise</strong><span>Picks from STRATA’s full library, including any you name.</span></li>
-              <li><strong>Real calorie math</strong><span>Targets come from STRATA’s calculator, never guessed.</span></li>
-              <li><strong>You decide</strong><span>Review each proposal, then apply it or ask for changes.</span></li>
-            </ul>
-          </aside>
+          <div class="ai-status" id="aiStatus" data-tone="checking" role="group" aria-labelledby="aiStatusTitle">
+            <span class="ai-status-dot" aria-hidden="true"></span>
+            <p><strong id="aiStatusTitle">Checking Strata AI…</strong><span id="aiStatusDetail"></span></p>
+          </div>
         </div>
       </section>
 
@@ -64,10 +59,10 @@
             <ol class="ai-thread" id="aiConversation" aria-label="Messages"></ol>
             <form class="ai-composer" id="aiForm" novalidate>
               <label class="sr-only" for="aiMessage">Message to Strata AI</label>
-              <textarea id="aiMessage" name="message" rows="3" maxlength="1200" placeholder="For example: 4 days a week, 45 minutes, dumbbells at home, I want stronger legs." aria-describedby="aiComposerHint aiFormError"></textarea>
+              <textarea id="aiMessage" name="message" rows="2" maxlength="1200" placeholder="Describe your week: days, time, equipment, and goals." aria-describedby="aiComposerHint aiFormError"></textarea>
               <p class="ai-form-error" id="aiFormError" role="alert" hidden></p>
               <div class="ai-composer-bar">
-                <p class="ai-composer-hint" id="aiComposerHint"><span id="aiCount">0 / 1,200</span> · Enter to send, Shift+Enter for a new line</p>
+                <p class="ai-composer-hint" id="aiComposerHint"><span id="aiCount">0 / 1,200</span><span class="ai-hint-keys"> · Enter to send, Shift+Enter for a new line</span></p>
                 <div class="ai-composer-actions">
                   <button class="ai-button" id="aiSuggest" type="button" disabled>Review my plan</button>
                   <button class="ai-button ai-button-primary" id="aiSend" type="submit" disabled>Ask Strata AI</button>
@@ -88,7 +83,7 @@
             <section class="ai-side-card">
               <h2>What Strata AI sees</h2>
               <p>Your saved plan, personal setup, and a summary of recent workouts and nutrition logs. It never receives your name, email, or account ID.</p>
-              <p>Your conversation stays in this browser tab. STRATA keeps each answer only until this page collects it.</p>
+              <p>Your conversation stays in this browser tab. STRATA holds each answer in memory for up to 10 minutes so this page can collect it, and never saves your messages.</p>
             </section>
             <p class="ai-disclaimer">Strata AI can make mistakes. Check a week before you train it and stop any exercise that causes pain. It is not medical or dietary advice. See the <a href="/privacy">privacy policy</a>.</p>
           </aside>

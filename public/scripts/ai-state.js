@@ -23,10 +23,11 @@
   function clear(storage,userId){
     try{storage?.removeItem?.(key(userId));}catch{/* Nothing to forget when storage is unavailable. */}
   }
-  /** Forgets every stored conversation, for sign-out. */
-  function clearAll(storage){
+  /** Forgets stored conversations: every one at sign-out, or all but the signed-in member's on page load. */
+  function clearAll(storage,{except=null}={}){
     try{
-      const keys=[];for(let index=0;index<(storage?.length||0);index+=1){const name=storage.key(index);if(name?.startsWith(PREFIX))keys.push(name);}
+      const keep=except==null?null:key(except),keys=[];
+      for(let index=0;index<(storage?.length||0);index+=1){const name=storage.key(index);if(name?.startsWith(PREFIX)&&name!==keep)keys.push(name);}
       keys.forEach(name=>storage.removeItem(name));
     }catch{/* Nothing to forget when storage is unavailable. */}
   }

@@ -58,7 +58,8 @@
 
   function weekStats(week){
     const days=Array.isArray(week?.trainingDays)?week.trainingDays.length:0;
-    return `${days} training day${days===1?"":"s"} · about ${whole(week?.sessionMinutes)} min · ${whole(week?.workingSets)} working sets`;
+    const sets=Math.round(Number(week?.workingSets)||0);
+    return `${days} training day${days===1?"":"s"} · about ${whole(week?.averageMinutes??week?.sessionMinutes)} min each · ${whole(sets)} working set${sets===1?"":"s"}`;
   }
   const focusLabel=value=>FOCUS[value]||FOCUS.balanced;
 
@@ -76,7 +77,7 @@
     const alignment=nutrition?.alignment;
     if(!isRecord(alignment)||!Array.isArray(alignment.workoutDays))return "";
     const source=nutrition.basedOn==="proposed"?"this week":"your saved plan";
-    return `Your personal setup’s training days will change to ${list(alignment.workoutDays.map(shortDay))}, ${whole(alignment.sessionMinutes)} minutes each, so the targets match ${source}.`;
+    return `Your personal setup will change to ${list(alignment.workoutDays.map(shortDay))} with ${whole(alignment.sessionMinutes)}-minute sessions, so the targets match ${source}.`;
   }
   function dailyTargets(preview){
     const targets=Array.isArray(preview?.dailyTargets)?preview.dailyTargets:[];

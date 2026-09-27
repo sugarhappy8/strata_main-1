@@ -406,7 +406,7 @@
       ]
     },
     "src/ai-core.js": {
-      "role": "Strata AI prompt, exercise candidates, and proposal validation",
+      "role": "Strata AI prompt rules and proposal validation",
       "maxLines": 260,
       "allowedDependencies": [
         "src/ai-catalog.js",
@@ -421,7 +421,7 @@
     },
     "src/ai-catalog.js": {
       "role": "Strata AI library search and per-request exercise shortlists",
-      "maxLines": 120,
+      "maxLines": 130,
       "allowedDependencies": [
         "src/plans.js"
       ]
