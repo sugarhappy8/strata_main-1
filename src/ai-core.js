@@ -108,17 +108,18 @@ function requestText({kind,message="",history=[]}){
 /**
  * Builds the chat for the model, trimming history and then the default shortlist to fit a small context.
  * Exercises the member named, and exercises found by a search, are never trimmed.
- * @param {{kind:"chat"|"suggestions",message?:string,history?:Array<{role:string,content:string}>,context:string,candidates:Array<{code:string,id:string,name:string,sub:string,equipment:string,reps:string,group:string}>,keep?:Set<string>,note?:string}} input
+ * @param {{kind:"chat"|"suggestions",message?:string,history?:Array<{role:string,content:string}>,context:string,candidates:Array<{code:string,id:string,name:string,sub:string,equipment:string,reps:string,group:string}>,keep?:Set<string>,note?:string,compact?:boolean}} input
  */
-function promptMessages({kind,message="",history=[],context,candidates,keep=new Set(),note=""}){
+function promptMessages({kind,message="",history=[],context,candidates,keep=new Set(),note="",compact=false}){
   const exerciseLines=(/** @type {typeof candidates} */ list)=>list.map((item)=>`${item.code} ${item.name} (${item.sub}; ${item.equipment}; ${item.reps})`).join("\n");
   const question=kind==="suggestions"?SUGGESTION_REQUEST:text(message,LIMITS.messageChars);
-  let turns=history.slice(-LIMITS.historyTurns),list=candidates;
+  let turns=compact?[]:history.slice(-LIMITS.historyTurns),list=candidates;
   const build=()=>[{role:"system",content:`${RULES}\n\nMember data:\n${context}\n\nShortlist (code name (target; equipment; typical reps)):\n${exerciseLines(list)}${note?`\n\n${note}`:""}`},...turns,{role:"user",content:question}];
   const size=()=>build().reduce((sum,item)=>sum+item.content.length,0);
   while(size()>LIMITS.promptChars&&turns.length)turns=turns.slice(2);
-  for(const share of [4,3,2]){
-    if(size()<=LIMITS.promptChars)break;
+  // Compact prompts, used after the model server reports a context overflow, go straight to the smallest shortlist.
+  for(const share of compact?[2]:[4,3,2]){
+    if(!compact&&size()<=LIMITS.promptChars)break;
     const counts=new Map();
     list=candidates.filter((item)=>{if(keep.has(item.id))return true;const count=counts.get(item.group)||0;counts.set(item.group,count+1);return count<share;});
   }
@@ -154,7 +155,7 @@ function sanitizeHistory(value){
  * @param {any} raw @param {Map<string,any>} byCode @param {string[]} limitations
  */
 function resolveExercise(raw,byCode,limitations){
-  const byCodeMatch=byCode.get(String(raw?.code??"").trim().toUpperCase());
+  const byCodeMatch=byCode.get(String(raw?.code??"").trim().toUpperCase())??byCode.get(String(raw?.name??"").trim().toUpperCase());
   if(byCodeMatch)return byCodeMatch;
   const named=exerciseByName(raw?.name??raw?.code);
   if(!named||!allowedByLimits(named,limitations.map((item)=>String(item).replace(/^no-/,""))))return null;

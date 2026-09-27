@@ -66,7 +66,7 @@ test("prompts stay within a small model's context without losing named exercises
 
 test("a proposed week keeps only real, allowed exercises within STRATA's limits",()=>{
   const reply=interpret({reply:"Here you go.",week:{title:"",focus:"power",sessionMinutes:50,days:[
-    {day:"mon",name:"Upper",exercises:[{code:code("flat-dumbbell-press").toLowerCase(),sets:9,reps:"8-12"},{code:code("flat-dumbbell-press"),sets:3},{name:"Nordic Hamstring Curl",sets:0,reps:"nonsense"},{code:"ZZ9"},{name:"Imaginary Press"}]},
+    {day:"mon",name:"Upper",exercises:[{code:code("flat-dumbbell-press").toLowerCase(),sets:9,reps:"8-12"},{code:code("flat-dumbbell-press"),sets:3},{name:"Nordic Hamstring Curl",sets:0,reps:"nonsense"},{code:"ZZ9"},{name:"Imaginary Press"},{name:code("hack-squat"),sets:2}]},
     {day:"Monday",name:"Duplicate day",exercises:[{code:"CH1"},{code:"BK1"}]},
     {day:"Wednesday",name:"Too little",exercises:[{code:"CH1"}]},
     {day:"Friday",name:"Too much",exercises:Array.from({length:8},(_,index)=>({code:candidates[index].code,sets:6}))},
@@ -74,10 +74,10 @@ test("a proposed week keeps only real, allowed exercises within STRATA's limits"
   ]}});
   const week=reply.week;
   assert.ok(week,"the valid day still makes a week");
-  assert.equal(week.title,"Your Strata AI week");assert.equal(week.focus,"balanced");assert.equal(week.averageMinutes,23);assert.equal(week.sessionMinutes,30,"session length comes from STRATA's estimate, never the model's claim");
+  assert.equal(week.title,"Your Strata AI week");assert.equal(week.focus,"balanced");assert.equal(week.averageMinutes,28);assert.equal(week.sessionMinutes,30,"session length comes from STRATA's estimate, never the model's claim");
   assert.deepEqual(week.trainingDays,["Monday"]);assert.equal(week.restDays.length,6);assert.equal(week.plan.restDay,"Tuesday");
-  assert.deepEqual(week.days[0].exercises.map((entry)=>[entry.exerciseId,entry.sets,entry.reps]),[["flat-dumbbell-press",6,"8–12"],["nordic-hamstring-curl",1,"3–8"]]);
-  assert.equal(week.workingSets,7);assert.equal(week.days[0].minutes,core.estimatedMinutes(7));
+  assert.deepEqual(week.days[0].exercises.map((entry)=>[entry.exerciseId,entry.sets,entry.reps]),[["flat-dumbbell-press",6,"8–12"],["nordic-hamstring-curl",1,"3–8"],["hack-squat",2,"6–12"]],"a code written as a name still resolves");
+  assert.equal(week.workingSets,9);assert.equal(week.days[0].minutes,core.estimatedMinutes(9));
   assert.deepEqual(week.notes.sort(),["A day that did not meet STRATA's limits was left out.","Exercises STRATA does not list, or that your movement limits exclude, were left out."]);
   const limited=interpret({reply:"ok",week:{days:[{day:"Tuesday",exercises:[{name:"Nordic Hamstring Curl"},{code:"CH1"},{code:"BK1"}]}]}},{limitations:["no-floor"]});
   assert.deepEqual(limited.week.days[0].exercises.map((entry)=>entry.exerciseId),[candidates[0].id,candidates.find((entry)=>entry.code==="BK1").id],"movement limits apply to exercises named outside the shortlist");

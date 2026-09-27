@@ -22,6 +22,8 @@
       if(starter&&!starter.disabled)void actions.starter(Number(starter.dataset.starter));
     });
     nodes.conversation.addEventListener("click",event=>{
+      const followUp=event.target.closest?.("button[data-followup]");
+      if(followUp&&!followUp.disabled){void actions.followUp(Number(followUp.dataset.followup));return;}
       const control=event.target.closest?.("button[data-action]");
       if(!control||control.disabled)return;
       const action=control.dataset.action,id=control.dataset.id;

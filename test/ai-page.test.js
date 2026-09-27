@@ -49,6 +49,15 @@ test("proposals are described in plain words",()=>{
   assert.deepEqual(logic.dailyTargets(undefined),[]);
 });
 
+test("quick replies follow only the latest proposed week",()=>{
+  const message=assistant("a1",{week});
+  assert.deepEqual(logic.followUps(message,{latest:true}).map((item)=>item.label),["Add matching calorie targets","Make sessions shorter"]);
+  assert.deepEqual(logic.followUps(message),[]);
+  assert.deepEqual(logic.followUps(assistant("a2",{week,nutrition:{changes:{}}}),{latest:true}).map((item)=>item.index),[1],"a week that already has targets does not offer them again");
+  assert.deepEqual(logic.followUps(assistant("a3",{}),{latest:true}),[]);
+  assert.match(logic.FOLLOW_UPS[0].message,/calorie targets/);
+});
+
 test("a swap replaces exactly one planned exercise, or nothing when the plan has changed",()=>{
   const plan={version:1,restDay:"Sunday",restDays:["Sunday"],days:{Monday:[{instanceId:"i1",exerciseId:"flat-dumbbell-press",sets:4,reps:"8–12"},{instanceId:"i2",exerciseId:"hack-squat",sets:3,reps:"6–12"}],Tuesday:[]}};
   const action={type:"swap",day:"Monday",instanceId:"i1",fromExerciseId:"flat-dumbbell-press",toExerciseId:"incline-machine-chest-press",toReps:"6–12"};

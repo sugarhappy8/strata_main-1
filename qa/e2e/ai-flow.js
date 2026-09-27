@@ -171,7 +171,10 @@ test("a Strata+ member plans a week, adds nutrition, applies a suggestion, and p
     assert.deepEqual(trainingDays(await savedPlan(context)),["Monday","Wednesday","Friday"]);
 
     // Nutrition needs the personal setup first, then comes from STRATA's calculator.
-    await page.fill("#aiMessage","Yes, set matching calories");await page.keyboard.press("Enter");
+    assert.deepEqual(await week.locator(".ai-followup").allTextContents(),["Add matching calorie targets","Make sessions shorter"]);
+    await week.getByRole("button",{name:"Add matching calorie targets"}).click();
+    await page.locator("#aiConversation .ai-turn-user").nth(1).waitFor();
+    assert.equal(await page.locator("#aiConversation .ai-followup").count(),0,"quick replies belong to the latest answer only");
     const setup=await lastAnswer(page,2);
     await setup.getByRole("link",{name:"Complete personal setup"}).waitFor({state:"visible"});
     const profile={version:4,measurementSystem:"metric",preferredLoadUnit:"kg",age:32,heightCm:175,weightKg:78,bodyFatPercent:null,sexForEquation:"female",goal:"maintenance",goalPace:"moderate",experience:"intermediate",dailyMovement:"mostly_seated",additionalActivityMinutesPerWeek:0,additionalActivityIntensity:"moderate",workoutDays:["Tuesday","Thursday"],sessionMinutes:60,usualExercises:[],availableEquipment:[],movementLimitations:[],caloriePattern:"steady",flexibleDay:null,macroPreference:null,timeZone:"UTC",mealPreferences:null};

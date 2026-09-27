@@ -1,4 +1,7 @@
-STRATA AI — plan notes (not built yet)
+STRATA AI — plan notes
+
+Status: built in STRATA Build 8.8.0. See docs/release-8.8.0.md for what shipped and
+docs/deployment.md ("Strata AI") for the Render and Atomic Chat setup.
 
 GOAL
 - Add "Strata AI" to the website, powered by a local LLM running on my PC
@@ -37,4 +40,4 @@ HOSTING SETUP (my side)
 - Add to Render environment variables: AI_BASE_URL, AI_API_KEY, AI_MODEL.
 - The PC must stay on for the AI to work.
 
-PLAN: build as STRATA Build 8.8 once the local API and key are working.
+Shipped as STRATA Build 8.8.0.

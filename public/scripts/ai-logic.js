@@ -15,6 +15,11 @@
     Object.freeze({label:"Set calories for gentle fat loss",message:"Set up my calorie targets for gentle fat loss."})
   ]);
   const SUGGESTION_PROMPT="Review my plan and suggest improvements.";
+  // One-tap replies under the latest proposed week; the first accepts Strata AI's nutrition offer.
+  const FOLLOW_UPS=Object.freeze([
+    Object.freeze({label:"Add matching calorie targets",message:"Yes, please set calorie targets that match this week."}),
+    Object.freeze({label:"Make sessions shorter",message:"Make each session about 15 minutes shorter."})
+  ]);
   const GOALS=Object.freeze({fat_loss:"Fat loss",maintenance:"Maintenance",muscle_gain:"Muscle gain"});
   const FOCUS=Object.freeze({balanced:"Balanced",strength:"Strength",hypertrophy:"Muscle growth"});
   const MACROS=Object.freeze({balanced:"Balanced macros",higher_protein:"Higher protein"});
@@ -54,6 +59,12 @@
     for(const turn of turns){if(!paired.length&&turn.role==="assistant")continue;if(paired.at(-1)?.role===turn.role)paired[paired.length-1]=turn;else paired.push(turn);}
     if(paired.at(-1)?.role==="user")paired.pop();
     return paired.slice(-LIMITS.historyTurns*2);
+  }
+
+  /** Follow-ups for an answer: only the latest one, only for a week, and never a nutrition offer already answered. */
+  function followUps(message,{latest=false}={}){
+    if(!latest||!message?.result?.week)return [];
+    return FOLLOW_UPS.map((item,index)=>({...item,index})).filter(item=>item.index!==0||!message.result.nutrition);
   }
 
   function weekStats(week){
@@ -126,5 +137,5 @@
   }
   function newId(){return `m${Date.now().toString(36)}${Math.random().toString(36).slice(2,8)}`;}
 
-  return Object.freeze({LIMITS,STARTERS,SUGGESTION_PROMPT,alignmentText,dailyTargets,describeWeek,errorView,focusLabel,historyFor,messageError,newId,nutritionLines,patternLabel,pendingText,planExerciseCount,pollDelay,restoreConversation,statusView,swapPlan,weekStats});
+  return Object.freeze({FOLLOW_UPS,LIMITS,STARTERS,SUGGESTION_PROMPT,alignmentText,dailyTargets,describeWeek,errorView,focusLabel,followUps,historyFor,messageError,newId,nutritionLines,patternLabel,pendingText,planExerciseCount,pollDelay,restoreConversation,statusView,swapPlan,weekStats});
 });

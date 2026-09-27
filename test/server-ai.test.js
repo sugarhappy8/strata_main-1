@@ -7,7 +7,7 @@ const ROOT=join(__dirname,"..");
 let server,directory,base,fake,fakeBase;
 
 // A stand-in for the member's OpenAI-compatible model server (Atomic Chat, llama.cpp, Ollama).
-const model={requests:[],replies:[],delayMs:0,rejectStructured:false,status:200};
+const model={requests:[],replies:[],delayMs:0,rejectStructured:false,status:200,contextLimit:false,truncateNext:false};
 function nextReply(){return model.replies.length?model.replies.shift():{reply:"Happy to help.",week:null,nutrition:null,suggestions:[]};}
 async function startFakeModel(){
   fake=http.createServer((req,res)=>{
@@ -20,8 +20,10 @@ async function startFakeModel(){
       const payload=JSON.parse(body);model.requests.push(payload);
       if(model.rejectStructured&&payload.response_format){send(400,{error:"response_format not supported"});return;}
       if(model.status!==200){send(model.status,{error:"down"});return;}
+      if(model.contextLimit&&payload.messages.length>2){send(400,{error:{message:"the request exceeds the available context size"}});return;}
+      if(model.truncateNext){model.truncateNext=false;send(200,{choices:[{message:{role:"assistant",content:'{"reply":"Here is a very long answer that'},finish_reason:"length"}]});return;}
       if(model.delayMs)await new Promise((resolve)=>setTimeout(resolve,model.delayMs));
-      const reply=nextReply(),content=typeof reply==="string"?reply:`<think>planning…</think>${JSON.stringify(reply)}`;
+      const next=nextReply(),reply=typeof next==="function"?next(payload):next,content=typeof reply==="string"?reply:`<think>planning…</think>${JSON.stringify(reply)}`;
       send(200,{choices:[{message:{role:"assistant",content}}]});
     });
   });
@@ -154,6 +156,8 @@ test("model failures, busy queues, and daily limits fail with clear codes",async
   model.rejectStructured=true;model.replies.push({reply:"Answered without JSON mode.",week:null,nutrition:null,suggestions:[]});
   const fallback=await settle(member,(await ask(member)).data.request.id);assert.equal(fallback.data.request.status,"done");assert.equal(fallback.data.request.result.reply,"Answered without JSON mode.");model.rejectStructured=false;
   model.status=503;const down=await settle(member,(await ask(member)).data.request.id);assert.equal(down.data.request.error.code,"AI_UNAVAILABLE");model.status=200;
+  assert.equal((await request("/api/ai/status",member)).data.usedToday,2,"a request the model never received does not count");
+  model.status=524;const slowGateway=await settle(member,(await ask(member)).data.request.id);assert.equal(slowGateway.data.request.error.code,"AI_TIMEOUT","a tunnel timeout reads as a slow answer");model.status=200;
   assert.equal((await request(`/api/ai/requests/${fallback.data.request.id}`,other)).status,404,"members cannot read each other's requests");
   model.delayMs=400;
   const slow=await ask(member);assert.equal(slow.status,202);
@@ -161,7 +165,39 @@ test("model failures, busy queues, and daily limits fail with clear codes",async
   const queued=await ask(other);assert.equal(queued.status,202);assert.equal(queued.data.request.status,"queued");assert.equal(queued.data.request.position,1);
   const third=await account("failures-third"),full=await ask(third);assert.equal(full.status,503);assert.equal(full.data.code,"AI_BUSY");
   await settle(member,slow.data.request.id);await settle(other,queued.data.request.id);model.delayMs=0;
-  for(let used=4;used<6;used++)await settle(member,(await ask(member)).data.request.id);
+  while((await request("/api/ai/status",member)).data.usedToday<6)await settle(member,(await ask(member)).data.request.id);
   const limited=await ask(member);assert.equal(limited.status,429);assert.equal(limited.data.code,"AI_DAILY_LIMIT");
   assert.equal((await request("/api/ai/status",member)).data.remainingToday,0);
+});
+
+test("context overflows and cut-off answers are retried in a smaller form",async()=>{
+  const member=await account("limits");model.requests.length=0;
+  const history=[{role:"user",content:"Plan a week"},{role:"assistant",content:"Here is a week."}];
+  model.contextLimit=true;model.replies.push({reply:"A compact answer.",week:null,nutrition:null,suggestions:[]});
+  const compact=await settle(member,(await ask(member,{message:"Make it shorter",history})).data.request.id);
+  assert.equal(compact.data.request.status,"done",JSON.stringify(compact.data));assert.equal(compact.data.request.result.reply,"A compact answer.");
+  const last=model.requests.at(-1);assert.equal(last.messages.length,2,"the retry drops the conversation history");
+  model.contextLimit=false;model.requests.length=0;
+  model.truncateNext=true;model.replies.push({reply:"Short now.",week:null,nutrition:null,suggestions:[]});
+  const shorter=await settle(member,(await ask(member)).data.request.id);
+  assert.equal(shorter.data.request.status,"done");assert.equal(shorter.data.request.result.reply,"Short now.");
+  assert.equal(model.requests.length,2);assert.match(model.requests[1].messages[0].content,/previous answer was cut off/);assert.equal(model.requests[1].temperature,0.1);
+});
+
+test("the model can search all 320 exercises once and use what it finds",async()=>{
+  const member=await account("search");model.requests.length=0;
+  const codeFor=(payload,name)=>new RegExp(`^(\\w+\\d+) ${name} \\(`,"m").exec(payload.messages[0].content)?.[1];
+  model.replies.push({reply:"Let me look those up.",week:null,nutrition:null,suggestions:[],search:["landmine press","nordic curl"]});
+  model.replies.push((payload)=>({reply:"Here is a day with both.",nutrition:null,suggestions:[],week:{title:"Unusual day",days:[{day:"Monday",name:"Mixed",exercises:[{code:codeFor(payload,"Half-Kneeling Landmine Press"),sets:3,reps:"8-12"},{code:codeFor(payload,"Nordic Hamstring Curl"),sets:3,reps:"3-8"},{code:"CH1",sets:3}]}]}}));
+  const done=await settle(member,(await ask(member,{message:"Build me a day with some unusual exercises"})).data.request.id),result=done.data.request.result;
+  assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.deepEqual(result.searched,["landmine press","nordic curl"]);
+  assert.deepEqual(result.week.days[0].exercises.map((item)=>item.exerciseId).slice(0,2),["half-kneeling-landmine-press","nordic-hamstring-curl"]);
+  assert.equal(model.requests.length,2,"one search, then one answer");
+  assert.doesNotMatch(model.requests[0].messages[0].content,/Half-Kneeling Landmine Press/,"the first shortlist did not include it");
+  assert.match(model.requests[1].messages[0].content,/STRATA searched its library for: landmine press, nordic curl/);
+  model.requests.length=0;
+  model.replies.push({reply:"Searching.",week:null,search:["underwater basket weaving"]},{reply:"STRATA has no exercise like that, but here are close options.",week:null,search:["asked again"]});
+  const none=await settle(member,(await ask(member,{message:"Add underwater basket weaving"})).data.request.id);
+  assert.equal(none.data.request.status,"done");assert.match(none.data.request.result.reply,/no exercise like that/);
+  assert.equal(model.requests.length,2,"the model cannot search twice");assert.match(model.requests[1].messages[0].content,/STRATA found no library exercises for: underwater basket weaving/);
 });

@@ -76,7 +76,8 @@ function readRequest(value){
     if(score)scored.push({exercise:entry.exercise,score:score+Number(entry.exercise.score)/100});
   }
   scored.sort((a,b)=>b.score-a.score);
-  return {groups:[...groups],subs:[...subs],equipment:[...equipment],onlyEquipment:equipment.size>0&&RESTRICT.test(raw),named:scored.slice(0,SHORTLIST.named).map((item)=>String(item.exercise.id))};
+  const top=scored.slice(0,SHORTLIST.named);
+  return {groups:[...groups],subs:[...subs],equipment:[...equipment],onlyEquipment:equipment.size>0&&RESTRICT.test(raw),named:top.map((item)=>String(item.exercise.id)),exact:top.filter((item)=>item.score>=100).map((item)=>String(item.exercise.id))};
 }
 
 /** @param {any} exercise @param {string[]} blocked */
@@ -84,18 +85,19 @@ function allowedByLimits(exercise,blocked){return !blocked.some((trait)=>Array.i
 
 /**
  * The shortlist for one request, with short codes grouped by muscle. Movement limits always apply;
- * equipment and experience shape the default picks, while exercises the member names are always offered.
+ * equipment and experience shape the default picks. Exercises the member names in full are always offered;
+ * partial matches rank first when they suit the member's equipment and experience.
  * @param {{equipment?:string[],limitations?:string[],experience?:string,pinned?:string[],request?:string,extra?:string[],perGroup?:number}} [options]
  */
 function candidateExercises({equipment=[],limitations=[],experience="intermediate",pinned=[],request="",extra=[],perGroup=SHORTLIST.perGroup}={}){
   const wants=readRequest(request),blocked=limitations.map((item)=>String(item).replace(/^no-/,"")),level=LEVEL[experience]??2;
   const allowedEquipment=new Set(wants.onlyEquipment?[...wants.equipment,"Bodyweight"]:equipment),preferred=new Set(wants.equipment);
-  const focus=new Set([...wants.groups]),subs=new Set(wants.subs),always=new Set([...pinned,...wants.named,...extra]);
+  const focus=new Set([...wants.groups]),subs=new Set(wants.subs),always=new Set([...pinned,...wants.exact,...extra]),partial=new Set(wants.named);
   /** @type {Array<{code:string,id:string,name:string,group:string,sub:string,equipment:string,reps:string}>} */
   const list=[];
   for(const [group,prefix] of GROUPS){
     const limit=focus.size?(focus.has(group)?Math.max(perGroup,SHORTLIST.focusGroup):Math.min(perGroup,SHORTLIST.otherGroup)):perGroup;
-    const rank=(/** @type {any} */ exercise)=>Number(exercise.score)+(subs.has(exercise.sub)?40:0)+(preferred.has(exercise.equipment)?20:0);
+    const rank=(/** @type {any} */ exercise)=>Number(exercise.score)+(partial.has(exercise.id)?60:0)+(subs.has(exercise.sub)?40:0)+(preferred.has(exercise.equipment)?20:0);
     const pool=EXERCISES.filter((/** @type {any} */ exercise)=>exercise.group===group&&allowedByLimits(exercise,blocked)).sort((/** @type {any} */ a,/** @type {any} */ b)=>rank(b)-rank(a)||a.name.localeCompare(b.name));
     /** @type {any[]} */
     const eligible=pool.filter((/** @type {any} */ exercise)=>(LEVEL[exercise.level]??3)<=level&&(!allowedEquipment.size||allowedEquipment.has(exercise.equipment)));

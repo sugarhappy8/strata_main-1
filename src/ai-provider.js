@@ -5,6 +5,8 @@
 // sends the configured key, and never lets a slow model hold a request open indefinitely.
 
 const REASONING=/<think>[\s\S]*?<\/think>/gi;
+// Gateway timeouts, including Cloudflare's 100-second limit (524), mean the model was too slow.
+const TIMEOUT_STATUSES=new Set([408,504,522,524]);
 
 /** @param {string} code @param {string} message @param {number} [status] */
 function providerError(code,message,status=503){return Object.assign(new Error(message),{code,status});}
@@ -43,6 +45,8 @@ function createAiProvider({baseUrl="",apiKey="",model="",timeoutMs=120000,extraH
   /** @param {Response} response */
   function assertOk(response){
     if(response.status===401||response.status===403)throw providerError("AI_AUTH","Strata AI refused this server's key. The owner needs to check the AI settings.");
+    if(TIMEOUT_STATUSES.has(response.status))throw providerError("AI_TIMEOUT","Strata AI took too long to answer. Try a shorter request.");
+    if(response.status===400||response.status===413)throw providerError("AI_TOO_LARGE","Strata AI could not take a request that large. Start a new conversation or ask something shorter.",502);
     if(!response.ok)throw providerError("AI_UNAVAILABLE","Strata AI is unavailable right now. Try again soon.");
   }
   async function health(){
@@ -55,11 +59,12 @@ function createAiProvider({baseUrl="",apiKey="",model="",timeoutMs=120000,extraH
     const body={model:name,messages,temperature,max_tokens:maxTokens,stream:false};
     const withOptions=()=>({...body,response_format:{type:"json_object"},chat_template_kwargs:{enable_thinking:false}});
     let response=await send("/chat/completions",{method:"POST",body:JSON.stringify(structured?withOptions():body)},timeoutMs);
-    if(response.status===400&&structured){structured=false;response=await send("/chat/completions",{method:"POST",body:JSON.stringify(body)},timeoutMs);}
+    // Stop sending the options only when a plain request then succeeds; a 400 can also mean the prompt was too long.
+    if(response.status===400&&structured){const plain=await send("/chat/completions",{method:"POST",body:JSON.stringify(body)},timeoutMs);if(plain.ok)structured=false;response=plain;}
     assertOk(response);
-    const payload=await response.json().catch(()=>null),content=payload?.choices?.[0]?.message?.content;
+    const payload=await response.json().catch(()=>null),choice=payload?.choices?.[0],content=choice?.message?.content;
     if(typeof content!=="string"||!stripReasoning(content))throw providerError("AI_EMPTY","Strata AI returned an empty answer. Try again.",502);
-    return {text:stripReasoning(content),data:extractJson(content)};
+    return {text:stripReasoning(content),data:extractJson(content),truncated:choice?.finish_reason==="length"};
   }
   return {configured,model:name,complete,health};
 }

@@ -87,6 +87,8 @@
 .ai-swap .ai-applied { margin:0; }
 .ai-applied a { color:var(--studio-text,#f2f3eb); text-underline-offset:4px; }
 .ai-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+.ai-followups { display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 0; padding:0; list-style:none; }
+.ai-followup { width:auto; min-height:40px; padding:8px 14px; font-size:.875rem; border-radius:999px; }
 
 .ai-button { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:0 18px; color:var(--studio-text,#f2f3eb); font:600 .875rem/1.2 var(--body); text-decoration:none; background:transparent; border:1px solid var(--studio-line,#393d32); border-radius:999px; transition:border-color .16s ease,background-color .16s ease,color .16s ease; }
 .ai-button:hover:not(:disabled) { border-color:var(--accent); }

@@ -76,7 +76,7 @@
       }))]);
     }
 
-    function messageNode(message){
+    function messageNode(message,latest){
       if(message.role==="user")return el("li",{className:"ai-turn ai-turn-user"},[el("p",{text:message.text})]);
       if(message.role==="error")return el("li",{className:"ai-turn ai-turn-error"},[el("p",{text:message.error?.message||"Strata AI could not answer."}),message.error?.retry&&message.retry?button("Try again","retry",message.id):null]);
       const result=message.result||{};
@@ -89,7 +89,8 @@
           result.weekIssue?el("p",{className:"ai-note ai-note-warn",text:result.weekIssue}):null,
           result.nutrition?nutritionCard(message):null,
           result.suggestions?.length?suggestionsCard(message):null,
-          message.notice?el("p",{className:"ai-note ai-note-warn",text:message.notice}):null
+          message.notice?el("p",{className:"ai-note ai-note-warn",text:message.notice}):null,
+          ...(()=>{const replies=logic.followUps(message,{latest});return replies.length?[el("ul",{className:"ai-followups",attrs:{"aria-label":"Quick replies"}},replies.map(item=>el("li",{},[el("button",{className:"ai-starter ai-followup",text:item.label,attrs:{type:"button","data-followup":item.index}})])))]:[];})()
         ])
       ]);
     }
@@ -98,13 +99,14 @@
     /** Updates only the messages that changed, so screen readers and scroll position are not disturbed. */
     function renderConversation(state){
       current=state;
-      const list=nodes.conversation,seen=new Set();
+      const list=nodes.conversation,seen=new Set(),latestId=state.messages.at(-1)?.id;
       state.messages.forEach((message,index)=>{
-        const signature=JSON.stringify([message.applied||null,message.notice||"",state.applying.startsWith(`${message.id}:`)?state.applying:""]);
+        const latest=message.id===latestId;
+        const signature=JSON.stringify([message.applied||null,message.notice||"",latest,state.applying.startsWith(`${message.id}:`)?state.applying:""]);
         seen.add(message.id);
         let entry=rendered.get(message.id);
         if(!entry||entry.signature!==signature){
-          const node=messageNode(message);node.dataset.id=message.id;
+          const node=messageNode(message,latest);node.dataset.id=message.id;
           if(entry)entry.node.replaceWith(node);
           entry={node,signature};rendered.set(message.id,entry);
         }
@@ -112,6 +114,7 @@
       });
       for(const [id,entry] of rendered)if(!seen.has(id)){entry.node.remove();rendered.delete(id);}
       for(const control of list.querySelectorAll("button[data-action^='apply']"))control.disabled=Boolean(state.applying);
+      for(const control of list.querySelectorAll("button[data-followup]"))control.disabled=Boolean(state.pending||state.busy);
       let pending=list.querySelector(".ai-turn-pending");
       if(state.pending){
         if(!pending)pending=el("li",{className:"ai-turn ai-turn-pending",attrs:{"aria-busy":"true"}},[el("span",{className:"ai-avatar",text:"AI",attrs:{"aria-hidden":"true"}}),el("div",{className:"ai-thinking"},[el("span",{className:"ai-dots",attrs:{"aria-hidden":"true"}},[el("i"),el("i"),el("i")]),el("p",{})])]);

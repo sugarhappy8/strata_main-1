@@ -58,6 +58,11 @@ test("focus, equipment, experience, and movement limits shape the shortlist",()=
   assert.ok(limited.every((item)=>!byId.get(item.id).traits?.some((trait)=>trait==="overhead"||trait==="deep-knee")),"movement limits apply even to named exercises");
   const named=candidateExercises({request:"add nordic hamstring curls",equipment:["Machine"]});
   assert.ok(named.some((item)=>item.id==="nordic-hamstring-curl"),"a named exercise is offered even outside the member's equipment");
+  const atHome=candidateExercises({equipment:["Dumbbells"],request:"stronger legs at home with dumbbells, include bulgarian split squats"});
+  assert.equal(atHome.find((item)=>item.group==="legs")?.id,"bulgarian-split","an exercise named in full comes first");
+  assert.ok(atHome.some((item)=>item.id==="front-foot-elevated-dumbbell-split-squat"),"close matches that suit the equipment rank early");
+  assert.equal(atHome.some((item)=>item.id==="barbell-split-squat"),false,"close matches never bring in equipment the member lacks");
+  assert.deepEqual(readRequest("bulgarian split squats").exact,["bulgarian-split"]);
   const extra=candidateExercises({extra:["landmine-rotation"]});
   assert.ok(extra.some((item)=>item.id==="landmine-rotation"));assert.equal(groupCount(extra,"core"),SHORTLIST.perGroup+1,"search results never displace default picks");
 });

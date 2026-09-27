@@ -30,7 +30,7 @@ test("the client sends the key, the model, and JSON options to the configured se
   const provider=createAiProvider({baseUrl:"https://ai.example.test/v1/",apiKey:"secret-key",model:"local-model",extraHeaders:{"CF-Access-Client-Id":"id"},fetchImpl});
   assert.equal(provider.configured,true);assert.equal(provider.model,"local-model");
   const result=await provider.complete({messages:[{role:"user",content:"hello"}],maxTokens:50,temperature:0.2});
-  assert.deepEqual(result,{text:'{"reply":"ok"}',data:{reply:"ok"}});
+  assert.deepEqual(result,{text:'{"reply":"ok"}',data:{reply:"ok"},truncated:false});
   assert.equal(calls[0].url,"https://ai.example.test/v1/chat/completions");
   assert.equal(calls[0].init.headers.Authorization,"Bearer secret-key");assert.equal(calls[0].init.headers["CF-Access-Client-Id"],"id");
   assert.deepEqual(calls[0].body.response_format,{type:"json_object"});assert.deepEqual(calls[0].body.chat_template_kwargs,{enable_thinking:false});
@@ -51,6 +51,7 @@ test("failures map to clear codes without exposing server details",async()=>{
   const cases=[
     [{status:401,body:{}},"AI_AUTH"],[{status:403,body:{}},"AI_AUTH"],[{status:500,body:{}},"AI_UNAVAILABLE"],
     [new TypeError("fetch failed"),"AI_OFFLINE"],[Object.assign(new Error("slow"),{name:"TimeoutError"}),"AI_TIMEOUT"],
+    [{status:524,body:{}},"AI_TIMEOUT"],[{status:504,body:{}},"AI_TIMEOUT"],[{status:413,body:{}},"AI_TOO_LARGE"],
     [answer("   "),"AI_EMPTY"],[answer("<think>only thinking</think>"),"AI_EMPTY"],[{body:{choices:[]}},"AI_EMPTY"]
   ];
   for(const [response,code] of cases){
@@ -80,4 +81,13 @@ test("settings come from the environment with safe defaults and bounds",()=>{
   assert.equal(plain.insecure,true,"production never sends the key over plain HTTP");assert.equal(plain.provider.baseUrl,"");
   assert.equal(aiSettings({NODE_ENV:"production",AI_BASE_URL:"http://127.0.0.1:1337/v1"}).insecure,false,"this machine is allowed");
   assert.equal(aiSettings({NODE_ENV:"development",AI_BASE_URL:"http://192.168.1.4:1337/v1"}).insecure,false);
+});
+
+test("a rejected prompt is reported as too large without turning JSON mode off",async()=>{
+  const {calls,fetchImpl}=fakeFetch([{status:400,body:{}},{status:400,body:{}},{body:{choices:[{message:{content:'{"reply":"cut'},finish_reason:"length"}]}}]);
+  const provider=createAiProvider({baseUrl:"https://ai.example.test/v1",model:"m",fetchImpl});
+  await assert.rejects(provider.complete({messages:[]}),{code:"AI_TOO_LARGE"});
+  const cut=await provider.complete({messages:[]});
+  assert.ok(calls[2].body.response_format,"both attempts failed, so the server's JSON support was not the problem");
+  assert.equal(cut.truncated,true);assert.equal(cut.data,null);
 });

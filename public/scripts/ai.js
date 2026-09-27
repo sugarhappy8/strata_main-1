@@ -101,6 +101,7 @@
     send,
     suggest:()=>ask("suggestions",""),
     starter:index=>{const starter=logic.STARTERS[index];if(!starter)return;nodes.message.value=starter.message;return send();},
+    followUp:index=>{const reply=logic.FOLLOW_UPS[index];if(!reply)return;nodes.message.value=reply.message;return send();},
     inputChanged:()=>{view.setFormError("");view.renderComposer(state);},
     refine:()=>{nodes.message.placeholder="What should change? For example: a shorter Friday.";nodes.message.focus();},
     retry:id=>{

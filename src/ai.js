@@ -14,6 +14,9 @@ const {profilePayload}=require("./coaching");
 const {workoutPayload}=require("./workouts");
 
 const DAY_MS=24*60*60*1000;
+// Failures that happen before the model does any work do not count against the member's daily requests.
+const REFUNDED=new Set(["AI_OFFLINE","AI_AUTH","AI_UNAVAILABLE","AI_NOT_CONFIGURED"]);
+const SHORTER="Your previous answer was cut off. Keep the reply under 40 words and use at most 5 exercises per day.";
 /** @param {number} time @param {unknown} zone */
 function weekdayName(time,zone){try{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:String(zone||"UTC")}).format(time);}catch{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}).format(time);}}
 
@@ -79,11 +82,13 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       const context=memberContext({profile:data.profile,plan:data.plan,workouts:data.workouts,nutrition:data.nutrition,today:data.weekday});
       /** @type {string[]} */
       let extra=[],candidates=shortlist(extra);
+      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:job.history,context,candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:1100,temperature});
       const ask=async(/** @type {string} */ note)=>{
-        const messages=promptMessages({kind:job.kind,message:job.message,history:job.history,context,candidates,keep:new Set([...pinned,...named,...extra]),note});
-        const first=await provider.complete({messages,maxTokens:1100,temperature:0.3});
-        // A small local model occasionally breaks its JSON; one quieter retry usually fixes it.
-        return first.data?first:provider.complete({messages,maxTokens:1100,temperature:0.1});
+        let compact=false,first;
+        // A context overflow gets one compact retry without history and with a smaller shortlist.
+        try{first=await complete(note,false,0.3);}catch(error){if(/** @type {any} */(error)?.code!=="AI_TOO_LARGE")throw error;compact=true;first=await complete(note,true,0.3);}
+        // A small local model occasionally breaks or overruns its JSON; one quieter retry usually fixes it.
+        return first.data?first:complete([note,first.truncated?SHORTER:""].filter(Boolean).join("\n\n"),compact,0.1);
       };
       let completion=await ask("");
       // The model may ask STRATA to search the full library once before it answers.
@@ -105,6 +110,7 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
     }catch(error){
       const failure=/** @type {any} */(error);
       job.error={code:failure?.code||"AI_FAILED",message:failure?.status?failure.message:"Strata AI could not finish that request. Try again."};job.status="failed";
+      if(REFUNDED.has(job.error.code)&&usage.has(job.usageKey))usage.set(job.usageKey,Math.max(0,(usage.get(job.usageKey)||0)-1));
       if(!failure?.status)logger?.warn?.("ai.request_failed",{error});
     }finally{
       job.finishedAt=now();delete job.message;delete job.history;
@@ -166,8 +172,8 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       if([...jobs.values()].some((job)=>job.userId===String(session.id)&&(job.status==="queued"||job.status==="running")))throw aiError("AI_REQUEST_IN_PROGRESS","Strata AI is still working on your last request.",409);
       if(usedToday(session.id)>=dailyLimit)throw aiError("AI_DAILY_LIMIT",`You have used today's ${dailyLimit} Strata AI requests. They reset at midnight UTC.`,429);
       if(queue.length>=maxQueue)throw aiError("AI_BUSY","Strata AI is busy with other members. Try again in a minute.",503);
-      usage.set(`${session.id}:${today()}`,usedToday(session.id)+1);
-      const job={id:randomUUID(),userId:String(session.id),kind,message,history,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
+      const usageKey=`${session.id}:${today()}`;usage.set(usageKey,usedToday(session.id)+1);
+      const job={id:randomUUID(),userId:String(session.id),kind,message,history,usageKey,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
       jobs.set(job.id,job);queue.push(job);pump();
       json(res,202,{request:publicJob(job),csrfToken:session.csrf_token});
     }catch(error){
