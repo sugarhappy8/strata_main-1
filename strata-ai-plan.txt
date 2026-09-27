@@ -1,0 +1,40 @@
+STRATA AI — plan notes (not built yet)
+
+GOAL
+- Add "Strata AI" to the website, powered by a local LLM running on my PC
+  (via Atomic Chat or a similar app) that exposes an OpenAI-compatible API with an API key.
+
+FRONT PAGE
+- Homepage call-to-action: "Don't feel like planning things yourself? Ask Strata AI to do it for you."
+- Button routing:
+  - Has Strata+   -> goes to the Strata AI page.
+  - No Strata+    -> goes to the pricing/payment page.
+  - Signed out    -> sign up / log in first, then the same routing.
+- The server also enforces the Strata+ check (can't be bypassed via the API).
+
+WHAT THE AI DOES
+1. Suggests a training week from a chat (days, time, equipment, goal).
+   - Uses only real STRATA catalog exercises.
+   - Shown like the existing week review; the user taps "Apply to my plan" to save it.
+2. Then offers nutrition (optional).
+   - Proposes goal, pace, calorie pattern, and macro tracking.
+   - STRATA's own calculator computes the calorie numbers (not the AI).
+   - If the user accepts, it applies to their personal setup and Nutrition refreshes.
+3. Gives suggestions any time (missed muscle groups, calorie gaps, exercise swaps).
+   - Suggestions that change something have their own Apply button.
+
+RULES
+- Nothing is saved without an explicit tap, and the change is shown first.
+- The server validates all AI output (real exercises, sane sets, calorie limits).
+- Strata+ only, with a daily limit per user, and the existing medical/eating-disorder guardrails.
+- If the PC or model is offline: show a friendly "Strata AI is resting" message; the normal planner still works.
+- Privacy policy update describing the AI.
+
+HOSTING SETUP (my side)
+- Install Atomic Chat (or LM Studio / Ollama), load a model (e.g. Llama 3.1 8B or Qwen 2.5 7B).
+- Turn on its local API server (OpenAI-compatible, e.g. http://localhost:1234/v1) and set an API key.
+- Expose it with a tunnel (Cloudflare Tunnel or ngrok) so the live site can reach it.
+- Add to Render environment variables: AI_BASE_URL, AI_API_KEY, AI_MODEL.
+- The PC must stay on for the AI to work.
+
+PLAN: build as STRATA Build 8.8 once the local API and key are working.
