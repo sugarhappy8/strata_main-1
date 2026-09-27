@@ -125,7 +125,7 @@ test("Strata+ shows Resume for an active session and only real metrics for popul
   assert.equal(await page.locator("#todayAlternativeWorkout").isHidden(),true,"An active session must remain the only workout action");
   await page.locator('.destination-link[data-feature-target="progress"]').click();await page.locator("#progressHistoryContent").waitFor({state:"visible"});
   assert.equal(await page.locator("#progressLoadingState").isHidden(),true);assert.equal(await page.locator("#progressLoadError").isHidden(),true);assert.equal(await page.locator("#progressFirstWorkout").isHidden(),true);
-  assert.notEqual((await page.locator("#progressAdherence").textContent()).trim(),"");assert.match(await page.locator("#progressSessions").textContent(),/^2$/);assert.match(await page.locator("#repeatImprovementList").textContent(),/30 kg\s*→\s*40 kg/);assert.match(await page.locator("#personalBestList").textContent(),/Incline Smith Press/);
+  assert.notEqual((await page.locator("#progressAdherence").textContent()).trim(),"");assert.match(await page.locator("#progressSessions").textContent(),/^2$/);const records=page.locator("#progressRecordList .progress-record");assert.equal(await records.count(),1,"one exercise produces one record row");assert.match(await records.first().textContent(),/Incline Smith Press[\s\S]*40 kg[\s\S]*\+10 kg[\s\S]*New best/);assert.equal(await page.locator("#progressWeeks .progress-week").count(),8);
   await capture(page,"strata-plus-progress-mobile.png");
   assert.equal(await page.locator("#scoreGuide").isHidden(),true);healthy(f);
 });

@@ -36,18 +36,16 @@
 .coaching-meal-suggestions-head h4,.coaching-meal-suggestions-head h5 { margin:6px 0 0; color:inherit; font:700 clamp(1.35rem,3vw,2.15rem)/1 var(--body); letter-spacing:-.04em; overflow-wrap:anywhere; }
 .coaching-meal-suggestions-head .small-button { flex:none; min-height:46px; color:var(--accent); border-color:#5a654b; }
 .coaching-meal-suggestions-head .small-button:disabled { color:#8a8e84; border-color:#42463e; cursor:not-allowed; opacity:.8; }
-.coaching-meal-remaining { min-width:0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); margin:0; border:1px solid #3a3f34; border-radius:10px; overflow:hidden; }
-.coaching-meal-remaining > div { min-width:0; display:grid; gap:7px; padding:15px; border-right:1px solid #3a3f34; }
-.coaching-meal-remaining > div:last-child { border-right:0; }
+.coaching-meal-remaining { min-width:0; display:flex; flex-wrap:wrap; gap:8px; margin:0; }
+.coaching-meal-remaining > div { min-width:0; display:flex; align-items:baseline; gap:8px; padding:7px 12px; border:1px solid #3a3f34; border-radius:999px; }
+.coaching-meal-remaining > div[hidden] { display:none; }
 .coaching-meal-remaining dt { color:var(--studio-muted); font:500 .625rem var(--mono); text-transform:uppercase; }
-.coaching-meal-remaining dd { margin:0; color:var(--accent); font:700 clamp(1.1rem,2.4vw,1.55rem)/1 var(--body); overflow-wrap:anywhere; }
+.coaching-meal-remaining dd { margin:0; color:var(--accent); font:700 .875rem/1.2 var(--body); overflow-wrap:anywhere; }
 .coaching-meal-status { min-height:20px; margin:0; color:var(--studio-muted); font-size:.75rem; line-height:1.55; }
 .coaching-meal-list { min-width:0; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:0; padding:0; list-style:none; }
 .coaching-meal-card { min-width:0; display:flex; flex-direction:column; gap:12px; padding:18px; border:1px solid #3c4237; border-radius:10px; background:#1c2019; }
 .coaching-meal-card > header { min-width:0; display:flex; align-items:start; justify-content:space-between; gap:10px; }
-.coaching-meal-card h6 { margin:0; font:700 1rem/1.25 var(--body); overflow-wrap:anywhere; }
-.coaching-meal-favorite { flex:0 0 auto; width:44px; height:44px; border:1px solid #59634b; border-radius:50%; color:var(--accent); background:transparent; font-size:1rem; }
-.coaching-meal-favorite[aria-pressed="true"] { color:var(--ink); background:var(--accent); }
+.coaching-meal-card h5 { margin:0; font:700 1rem/1.25 var(--body); overflow-wrap:anywhere; }
 .coaching-meal-card > p { margin:0; color:var(--studio-muted); font-size:.75rem; line-height:1.55; }
 .coaching-meal-components { display:grid; gap:9px; margin:0; padding:0; list-style:none; }
 .coaching-meal-components li { min-width:0; display:grid; gap:3px; padding:11px 0; border-top:1px solid #353a31; }
@@ -55,6 +53,12 @@
 .coaching-meal-components strong { font-size:.8125rem; }
 .coaching-meal-components span { color:var(--accent); font:500 .625rem/1.4 var(--mono); }
 .coaching-meal-components small { color:var(--studio-muted); font-size:.6875rem; line-height:1.45; }
+.coaching-meal-components details { margin-top:4px; }
+.coaching-meal-components summary { width:fit-content; min-height:32px; display:flex; align-items:center; gap:6px; color:var(--studio-text); cursor:pointer; font:500 .6875rem var(--mono); letter-spacing:.04em; list-style:none; text-transform:uppercase; }
+.coaching-meal-components summary::-webkit-details-marker { display:none; }
+.coaching-meal-components summary::before { content:"+"; width:18px; height:18px; display:grid; place-items:center; border:1px solid #59634b; border-radius:50%; color:var(--accent); }
+.coaching-meal-components details[open] summary::before { content:"−"; }
+.coaching-meal-components details small { display:block; margin-top:4px; }
 .coaching-meal-card dl { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); margin:auto 0 0; border-top:1px solid #353a31; border-left:1px solid #353a31; }
 .coaching-meal-card dl > div { min-width:0; display:grid; gap:4px; padding:10px; border-right:1px solid #353a31; border-bottom:1px solid #353a31; }
 .coaching-meal-card dt { color:var(--studio-muted); font:500 .5625rem var(--mono); text-transform:uppercase; }
@@ -62,21 +66,6 @@
 .coaching-meal-allergens { padding-top:10px; border-top:1px solid #353a31; color:#f0c4bb!important; }
 .coaching-meal-disclaimer { margin:0; padding-top:13px; border-top:1px solid #34382f; color:var(--studio-muted); font-size:.6875rem; line-height:1.65; }
 .coaching-meal-disclaimer a { color:var(--accent); text-underline-offset:3px; }
-
-.coaching-meal-suggestions-light { color:var(--ink); border-color:var(--line); background:#f0efe9; }
-.coaching-meal-suggestions-light .coaching-meal-suggestions-head .small-button { color:#35420c; border-color:#858a7b; }
-.coaching-meal-suggestions-light .coaching-meal-remaining { border-color:#c6c8be; background:#fff; }
-.coaching-meal-suggestions-light .coaching-meal-remaining > div { border-color:#c6c8be; }
-.coaching-meal-suggestions-light .coaching-meal-remaining dt,.coaching-meal-suggestions-light .coaching-meal-status,.coaching-meal-suggestions-light .coaching-meal-card > p,.coaching-meal-suggestions-light .coaching-meal-card dt,.coaching-meal-suggestions-light .coaching-meal-disclaimer { color:var(--muted); }
-.coaching-meal-suggestions-light .coaching-meal-remaining dd { color:#485617; }
-.coaching-meal-suggestions-light .coaching-meal-card { border-color:#c6c8be; background:#fff; }
-.coaching-meal-suggestions-light .coaching-meal-components li { border-color:#d5d7ce; }
-.coaching-meal-suggestions-light .coaching-meal-components span { color:#485617; }
-.coaching-meal-suggestions-light .coaching-meal-components small { color:var(--muted); }
-.coaching-meal-suggestions-light .coaching-meal-card dl,.coaching-meal-suggestions-light .coaching-meal-card dl > div,.coaching-meal-suggestions-light .coaching-meal-allergens,.coaching-meal-suggestions-light .coaching-meal-disclaimer { border-color:#d5d7ce; }
-.coaching-meal-suggestions-light .coaching-meal-favorite { color:#485617; border-color:#858a7b; }
-.coaching-meal-suggestions-light .coaching-meal-allergens { color:#8c2d1c!important; }
-.coaching-meal-suggestions-light .coaching-meal-disclaimer a { color:#35420c; }
 
 @media(max-width:900px) {
   .coaching-meal-preferences-head { grid-template-columns:minmax(0,1fr); gap:10px; }
@@ -89,19 +78,17 @@
 }
 @media(max-width:560px) {
   .coaching-meal-preferences { gap:14px; margin-top:22px; padding-top:22px; }
-  .coaching-meal-preference-basics,.coaching-food-chips,.coaching-food-chips-compact,.coaching-meal-list,.coaching-meal-remaining { grid-template-columns:minmax(0,1fr); }
+  .coaching-meal-preference-basics,.coaching-food-chips,.coaching-food-chips-compact,.coaching-meal-list { grid-template-columns:minmax(0,1fr); }
   .coaching-meal-preference-basics > label:last-child,.coaching-allergy-none,.coaching-meal-card:last-child { grid-column:auto; max-width:none; }
   .coaching-food-choice-group { padding:15px; }
   .coaching-food-chips label > span { justify-content:flex-start; border-radius:8px; text-align:left; }
   .coaching-meal-suggestions-head { align-items:stretch; flex-direction:column; gap:14px; }
   .coaching-meal-suggestions-head .small-button { width:100%; text-align:center; }
-  .coaching-meal-remaining > div { border-right:0; border-bottom:1px solid #3a3f34; }
-  .coaching-meal-remaining > div:last-child { border-bottom:0; }
 }
 @media(max-width:359px) {
   .coaching-meal-suggestions { padding:16px; }
   .coaching-meal-card dl { grid-template-columns:minmax(0,1fr); }
 }
 @media(forced-colors:active) {
-  .coaching-food-chips input:checked + span,.coaching-meal-favorite[aria-pressed="true"] { outline:3px solid CanvasText; outline-offset:-3px; }
+  .coaching-food-chips input:checked + span { outline:3px solid CanvasText; outline-offset:-3px; }
 }

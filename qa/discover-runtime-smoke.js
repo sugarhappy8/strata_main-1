@@ -95,7 +95,7 @@ assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>feature
   for(let count=0;count<5;count+=1)await new Promise(setImmediate);
   assert.equal(elements.get("discoveryLoadError").hidden,true,"a successful retry must clear the error UI");
   const todayComparable=/Flat Dumbbell Press/.test(elements.get("todayPreviousValue").textContent);
-  const progressRendered=elements.get("progressSessions").textContent==="1"&&/kg·reps/.test(elements.get("progressVolume").textContent);
+  const progressRendered=elements.get("progressSessions").textContent==="1"&&/\d kg$/.test(elements.get("progressVolume").textContent)&&/Flat Dumbbell Press/.test(elements.get("progressRecordList").innerHTML);
   vm.runInContext("globalThis.savedProgressWorkouts=state.workouts;state.workouts=[];renderProgress();",context);
   const firstWorkoutState=elements.get("progressFirstWorkout").hidden===false&&elements.get("progressHistoryContent").hidden===true;
   vm.runInContext("state.workouts=savedProgressWorkouts;renderProgress();",context);

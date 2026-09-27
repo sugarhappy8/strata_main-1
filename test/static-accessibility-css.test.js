@@ -132,7 +132,7 @@ test("workout empty days and planner mobile hand-offs expose useful 44px actions
   assert.match(workoutHtml,/href="\/planner\.html">Return to free Plan<\/a>/);
   assert.match(workoutHtml,/id="openPlannerFromEmpty"[^>]*>Build your first week/);
   assert.match(workoutHtml,/id="editWorkoutWeek"[^>]*>Edit weekly plan/);
-  assert.match(workoutHtml,/id="chooseScheduledDay"[^>]*>Choose another day/);
+  assert.match(workoutHtml,/id="chooseScheduledDay"[^>]*>Go to next workout day/);
   assert.match(workoutHtml,/id="checkInForm"[^>]*aria-labelledby="checkInTitle"/);
   for(const id of ["checkInDifficulty","checkInEnergy","checkInComfort","checkInEnjoyment"])assert.match(workoutHtml,new RegExp(`id="${id}" required`));
   assert.match(workoutHtml,/STRATA does not detect recovery, fatigue, pain, or injury/);

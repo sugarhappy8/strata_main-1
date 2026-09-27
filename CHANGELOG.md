@@ -1,5 +1,27 @@
 # Changelog
 
+## 8.6.0 — Organized Strata+ destinations
+
+- Replace Progress's overlapping "repeat improvements" and "personal bests" lists with one exercise-records list showing the latest result, the change since the last comparable session, and the best, with a "New best" badge.
+- Add an eight-week workouts-per-week chart, week-over-week volume change, and a 2 × 2 phone summary to Progress, with one always-visible link to Nutrition.
+- Count Progress consistency and weekly history correctly across daylight-saving changes.
+- Reorder Nutrition as targets, today's intake with a logged-vs-target meter, the week at a glance with per-day logged progress, meal ideas, and a "Behind the numbers" evidence group; align the diary fields and panel gutters and fold meal ingredients behind a disclosure.
+- Remove duplicated headings and copy across Overview, Plan, Personal setup, Exercises, and Train, state the suggested week's shared load cue once, and keep rest days compact.
+- Fix unreadable small buttons on dark panels, wrapped button arrows, the Account next-workout eyebrow, Plan tool kickers, and the weight-scenario cards; an axe contrast audit now passes on every page at desktop and phone widths.
+- Move Strata+-only styles into `discover.css`, consolidate superseded shared rules, and delete styles for components removed in 8.5. No migration, API, or calculation change.
+
+See the [8.6.0 release guide](docs/release-8.6.0.md).
+
+## 8.5.0 — Clear destinations, one home for each tool
+
+- Give Strata+ six visible destinations—Overview, Plan, Train, Nutrition, Progress, and Exercises—with one canonical home for each tool and one shared personal setup.
+- Move generated training weeks to Plan behind an explicit review that transfers exercises, sets, and repetitions only and never silently overwrites a remotely changed week.
+- Give Nutrition the only calorie diary and meal-suggestion surface, with maintenance shown as one daily value and its calculation, uncertainty, and alternate goals in disclosures.
+- Include the build 8.1 calculation corrections: standard MET reference oxygen at every age for generic activity, exact generated-session seconds in weekly energy accounting, withheld above-range optional set targets, stricter early/late calibration coverage, and replayed-evidence protection.
+- Add homepage shortcuts, compact page headings, and mobile wayfinding across public, account, planning, and training pages.
+
+See the [8.5.0 release guide](docs/release-8.5.0.md).
+
 ## 8.0.1 — Individualized activity and deficit model
 
 - Replace the ambiguous whole-day activity answer for new coaching profiles with explicit non-workout daily movement and optional separate weekly activity minutes/intensity.
