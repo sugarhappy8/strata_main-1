@@ -7,7 +7,7 @@ const {CATALOG_FINGERPRINT:MEAL_CATALOG_FINGERPRINT,sanitizeMealPreferences}=req
 const {DAYS,EXERCISES}=require("./plans");
 const {buildTraining,CATALOG_FINGERPRINT}=require("./coaching-training-core");
 
-const GENERATION_VERSION="coaching-week-v6";
+const GENERATION_VERSION="coaching-week-v7";
 const EQUIPMENT=[...new Set(EXERCISES.map((exercise)=>String(exercise.equipment)))].sort();
 const EXERCISE_BY_ID=new Map(EXERCISES.map((exercise)=>[String(exercise.id),exercise]));
 const ACTIVITY_FACTORS=LEGACY_ACTIVITY_FACTORS;
@@ -22,8 +22,9 @@ function object(value,label,code){if(!value||typeof value!=="object"||Array.isAr
 function exactKeys(value,allowed,label,code){const extra=Object.keys(value).filter((key)=>!allowed.includes(key));if(extra.length)throw coachingError(`${label} contains unsupported fields: ${extra.join(", ")}.`,code);}
 /** @param {unknown} value @param {number} min @param {number} max @param {string} label @param {string} [code] */
 function integer(value,min,max,label,code){if(typeof value!=="number"||!Number.isSafeInteger(value)||value<min||value>max)throw coachingError(`${label} must be a whole number from ${min} to ${max}.`,code);return value;}
-/** @param {unknown} value @param {number} min @param {number} max @param {string} label @param {string} [code] */
-function decimal(value,min,max,label,code){if(typeof value!=="number"||!Number.isFinite(value)||value<min||value>max)throw coachingError(`${label} must be from ${min} to ${max}.`,code);return Math.round(value*10)/10;}
+/** Body measurements keep two decimals so pound and inch entries survive the round trip (180 lb stays 180 lb).
+ * @param {unknown} value @param {number} min @param {number} max @param {string} label @param {string} [code] @param {number} [digits] */
+function decimal(value,min,max,label,code,digits=1){if(typeof value!=="number"||!Number.isFinite(value)||value<min||value>max)throw coachingError(`${label} must be from ${min} to ${max}.`,code);const scale=10**digits;return Math.round(value*scale)/scale;}
 /** @template {string} T @param {unknown} value @param {readonly T[]} allowed @param {string} label @returns {T} */
 function choice(value,allowed,label){if(typeof value!=="string"||!allowed.includes(/** @type {T} */(value)))throw coachingError(`${label} is invalid.`);return /** @type {T} */(value);}
 /** @template {number} T @param {unknown} value @param {readonly T[]} allowed @param {string} label @returns {T} */
@@ -48,7 +49,7 @@ function sanitizeCoachingProfile(value,{allowLegacyProfile=false}={}){
   const legacyProfile=version<3,structuredActivity=version===4;
   const measurementSystem=choice(input.measurementSystem,["metric","imperial"],"Measurement system");
   const preferredLoadUnit=choice(input.preferredLoadUnit,["kg","lb"],"Preferred load unit");
-  const age=integer(input.age,legacyProfile&&allowLegacyProfile?18:19,80,"Age"),heightCm=decimal(input.heightCm,120,230,"Height"),weightKg=decimal(input.weightKg,35,300,"Weight");
+  const age=integer(input.age,legacyProfile&&allowLegacyProfile?18:19,80,"Age"),heightCm=decimal(input.heightCm,120,230,"Height",undefined,2),weightKg=decimal(input.weightKg,35,300,"Weight",undefined,2);
   const bodyFatPercent=input.bodyFatPercent==null?null:decimal(input.bodyFatPercent,3,65,"Body-fat percentage");
   if(input.sexForEquation==null&&!(legacyProfile&&allowLegacyProfile&&bodyFatPercent!=null))throw coachingError("Sex used by the energy equation is required for a new or updated coaching profile.");
   const sexForEquation=input.sexForEquation==null?null:choice(input.sexForEquation,["female","male"],"Sex used by the energy equation");
@@ -77,7 +78,7 @@ function sanitizeCoachingProfile(value,{allowLegacyProfile=false}={}){
     const exerciseId=String(exercise.exerciseId||"");
     if(!EXERCISE_BY_ID.has(exerciseId))throw coachingError(`Usual exercise ${index+1} is not in the exercise library.`);
     if(seen.has(exerciseId))throw coachingError("Each usual exercise may only be entered once.");seen.add(exerciseId);
-    return {exerciseId,maxSets:integer(exercise.maxSets,1,20,"Maximum sets"),maxReps:integer(exercise.maxReps,1,100,"Maximum reps"),maxWeightKg:exercise.maxWeightKg==null?null:decimal(exercise.maxWeightKg,0,1000,"Maximum load")};
+    return {exerciseId,maxSets:integer(exercise.maxSets,1,20,"Maximum sets"),maxReps:integer(exercise.maxReps,1,100,"Maximum reps"),maxWeightKg:exercise.maxWeightKg==null?null:decimal(exercise.maxWeightKg,0,1000,"Maximum load",undefined,2)};
   });
   const rawEquipment=input.availableEquipment??[];
   if(!Array.isArray(rawEquipment)||rawEquipment.length>20||rawEquipment.some((item)=>typeof item!=="string"||!EQUIPMENT.includes(item))||new Set(rawEquipment).size!==rawEquipment.length)throw coachingError("Available equipment contains an invalid or repeated option.");
@@ -105,7 +106,7 @@ function sanitizeDailyLog(value){
   const values=[input.proteinG,input.carbsG,input.fatG],provided=values.filter((item)=>item!=null).length;
   if(provided!==0&&provided!==3)throw coachingError("Enter protein, carbohydrates, and fat together, or leave all macros blank.","INVALID_COACHING_LOG");
   if(input.complete!=null&&typeof input.complete!=="boolean")throw coachingError("Intake completeness must be true, false, or left blank.","INVALID_COACHING_LOG");
-  return {calories:integer(input.calories,0,20000,"Calories",code),proteinG:provided?integer(input.proteinG,0,2000,"Protein",code):null,carbsG:provided?integer(input.carbsG,0,3000,"Carbohydrates",code):null,fatG:provided?integer(input.fatG,0,1000,"Fat",code):null,morningWeightKg:input.morningWeightKg==null?null:decimal(input.morningWeightKg,35,300,"Morning weight",code),complete:input.complete==null?null:input.complete};
+  return {calories:integer(input.calories,0,20000,"Calories",code),proteinG:provided?integer(input.proteinG,0,2000,"Protein",code):null,carbsG:provided?integer(input.carbsG,0,3000,"Carbohydrates",code):null,fatG:provided?integer(input.fatG,0,1000,"Fat",code):null,morningWeightKg:input.morningWeightKg==null?null:decimal(input.morningWeightKg,35,300,"Morning weight",code,2),complete:input.complete==null?null:input.complete};
 }
 
 /** @param {number} timestamp @param {string} timeZone */

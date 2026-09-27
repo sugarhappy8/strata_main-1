@@ -83,9 +83,11 @@ test("version 4 dashboard explains each separate activity input and the bounded 
     render.renderDashboard(profile,model,[],"2026-09-16");
     assert.match(el("coachingWeekExplanation").textContent,/on your feet.*1 generated STRATA session \(40 min\).*180 min of vigorous other activity.*1 known exercise/);
     assert.match(el("coachingTdeeDetail").textContent,/ordinary daily movement: about 2,200 kcal\/day.*generated sessions: about 160 kcal\/week.*other activity: about 300 kcal\/week.*Population EER cross-check: about 2,500 kcal\/day \(low active\); context only, not an override/);
-    assert.match(el("coachingTargetDetail").textContent,/0\.5% body weight\/week requested.*400 kcal\/day actual deficit.*composition floor about 1,800 kcal\/day applied/);
-    assert.match(el("coachingTargetDetail").textContent,/resting cross-check differs by about 425 kcal and widens the planning range.*lower sensitivity scenario stays within planner limits/);
-    assert.match(el("coachingGoalComparison").innerHTML,/0\.5% body weight\/week requested/);
+    assert.match(el("coachingTargetDetail").textContent,/400 kcal\/day below maintenance, about 0\.5% of body weight per week \(0\.5% requested\)\. A body-composition floor of about 1,800 kcal\/day limits the deficit\./);
+    assert.match(el("coachingTargetDetail").textContent,/differs from the resting estimate by about 425 kcal, which widens the planning range\. The lower weight scenario stays within the planner’s limits\./);
+    assert.match(el("coachingGoalComparison").innerHTML,/about 0\.5% of body weight per week/);
+    assert.equal(el("coachingTargetMath").textContent,"2,300 maintenance − 100 deficit = 2,200 kcal/day","the target reads as maintenance minus the deficit");
+    assert.equal(el("coachingTargetDays").hidden,true,"a steady week needs no per-day breakdown");
     assert.equal(el("coachingTdee").textContent,"2,300 kcal/day");
     assert.match(el("coachingTdeeDetail").textContent,/Planning range: 2,000–2,600 kcal\/day.*Not a measured value or a confidence interval/);
     assert.equal(el("coachingTarget").textContent,"2,200 kcal/day");
@@ -95,8 +97,9 @@ test("version 4 dashboard explains each separate activity input and the bounded 
     assert.doesNotMatch(comparison,/<strong>about|<strong>.*–/);
     assert.doesNotMatch(el("coachingCalorieWeek").innerHTML,/<strong>about/);
     render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,dailyTargets:[{day:"Tuesday",date:"2026-09-15",calories:2050},{day:"Wednesday",date:"2026-09-16",calories:2300}]}},[],"2026-09-16");
-    assert.equal(el("coachingTarget").textContent,"2,050–2,300 kcal/day");
-    assert.match(el("coachingTargetDetail").textContent,/Scheduled daily targets; the weekly total is preserved/);
+    assert.equal(el("coachingTarget").textContent,"2,175 kcal/day average");
+    assert.equal(el("coachingTargetDays").textContent,"Every day 2,050–2,300");assert.equal(el("coachingTargetDays").hidden,false);
+    assert.match(el("coachingTargetDetail").textContent,/Each kind of day has one target, and the seven days add up to exactly seven times the average\./);
     assert.equal(el("coachingTdee").textContent,"2,300 kcal/day","a varying daily schedule must not replace maintenance with a range");
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
@@ -140,3 +143,16 @@ test("partial and unavailable sessions disclose missing movements while calorie 
     assert.match(markup,/Recovery day/);assert.match(el("coachingWeekLabel").textContent,/2 scheduled days/);assert.match(el("coachingPlanMethod").textContent,/partial or unavailable sessions/);assert.match(el("coachingTrainingCoverage").textContent,/Thursday: Knee-dominant legs, Upper-body pull/);assert.match(el("coachingCalorieWeek").innerHTML,/2,200 kcal/);assert.match(el("coachingProgressSummary").innerHTML,/2,200 kcal/);assert.equal(el("coachingDashboard").hidden,false);
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
+
+test("the diary totals entered macros, flags a mismatch, and can copy the total into calories",()=>{
+  const fixture=controllerFixture(async()=>({})),{el,controller}=fixture;controller.state.profile.macroPreference="balanced";
+  el("coachingCaloriesEaten").value="1250";el("coachingProteinEaten").value="90";el("coachingCarbsEaten").value="120";el("coachingFatEaten").value="40";
+  el("coachingLogForm").listeners.input();
+  assert.equal(el("coachingMacroHint").hidden,false);assert.match(el("coachingMacroHintText").textContent,/add up to 1,200 kcal.*That is 50 kcal less than the 1,250 kcal entered\./);
+  assert.equal(el("coachingUseMacroCalories").hidden,false);assert.equal(el("coachingUseMacroCalories").textContent,"Use 1,200 kcal");
+  el("coachingUseMacroCalories").listeners.click({currentTarget:el("coachingUseMacroCalories")});
+  assert.equal(el("coachingCaloriesEaten").value,"1200");assert.equal(el("coachingUseMacroCalories").hidden,true);assert.doesNotMatch(el("coachingMacroHintText").textContent,/more than|less than/);
+  el("coachingFatEaten").value="";el("coachingLogForm").listeners.input();assert.equal(el("coachingMacroHint").hidden,true,"incomplete macros show no total");
+  controller.state.profile.macroPreference=null;el("coachingFatEaten").value="40";el("coachingLogForm").listeners.input();assert.equal(el("coachingMacroHint").hidden,true,"macro tracking off hides the total");
+});
+

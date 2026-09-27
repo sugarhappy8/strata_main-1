@@ -330,8 +330,8 @@
           </header>
           <p class="coaching-method-note" id="coachingModelUpdate" role="status" hidden></p>
           <section class="coaching-metrics" aria-label="Energy estimates">
-            <article><span>Maintenance is</span><strong id="coachingTdee">—</strong><details class="metric-explanation"><summary>See calculation</summary><small id="coachingTdeeDetail">Daily planning estimate; actual needs can differ</small></details></article>
-            <article class="coaching-metric-accent"><span id="coachingGoalLabel">Selected target</span><strong id="coachingTarget">—</strong><details class="metric-explanation"><summary>Target details</summary><small id="coachingTargetDetail">Daily calorie target</small></details></article>
+            <article><span>Maintenance is</span><strong id="coachingTdee">—</strong><p class="metric-math">Calories that keep your weight steady</p><details class="metric-explanation"><summary>See calculation</summary><ol class="energy-steps" id="coachingTdeeSteps" aria-label="How maintenance is calculated" hidden></ol><small id="coachingTdeeDetail">Daily planning estimate; actual needs can differ</small></details></article>
+            <article class="coaching-metric-accent"><span id="coachingGoalLabel">Selected target</span><strong id="coachingTarget">—</strong><p class="metric-math" id="coachingTargetMath"></p><p class="metric-days" id="coachingTargetDays" hidden></p><details class="metric-explanation"><summary>Target details</summary><small id="coachingTargetDetail">Daily calorie target</small></details></article>
           </section>
           <p class="nutrition-estimate-note">Planning estimates. Complete diary days and morning weights refine them over time.</p>
           <section class="coaching-progress-section" aria-labelledby="coachingProgressTitle">
@@ -344,6 +344,7 @@
               <label class="coaching-macro-log" for="coachingProteinEaten"><span>Protein (g)</span><input id="coachingProteinEaten" name="proteinGrams" type="number" min="0" max="2000" step="1" inputmode="numeric" /></label>
               <label class="coaching-macro-log" for="coachingCarbsEaten"><span>Carbs (g)</span><input id="coachingCarbsEaten" name="carbGrams" type="number" min="0" max="3000" step="1" inputmode="numeric" /></label>
               <label class="coaching-macro-log" for="coachingFatEaten"><span>Fat (g)</span><input id="coachingFatEaten" name="fatGrams" type="number" min="0" max="1000" step="1" inputmode="numeric" /></label>
+              <p class="coaching-macro-hint" id="coachingMacroHint" role="status" aria-live="polite" hidden><span id="coachingMacroHintText"></span><button class="text-button" id="coachingUseMacroCalories" type="button" hidden>Use this total</button></p>
               <label class="coaching-log-complete" for="coachingDayComplete"><input id="coachingDayComplete" name="complete" type="checkbox" /><span><strong>Day total is complete</strong><small>Include this day when future weekly estimates assess aligned intake and morning weights.</small></span></label>
               <button class="button button-accent" id="coachingSaveLog" type="submit">Save intake <span aria-hidden="true">→</span></button>
               <p id="coachingLogStatus" role="status" aria-live="polite">Choose a day and enter its current total.</p>
@@ -355,7 +356,7 @@
           </section>
           <section class="coaching-meal-suggestions" id="coachingFood" aria-labelledby="coachingFoodTitle">
             <header class="coaching-meal-suggestions-head"><div><p class="kicker kicker-light">Meal ideas for what is left</p><h4 id="coachingFoodTitle" tabindex="-1">OPTIONS FOR THIS DAY.</h4></div><button class="small-button" id="coachingFoodRefresh" type="button" aria-controls="coachingFoodOptions" disabled>Refresh suggestions <span aria-hidden="true">↻</span></button></header>
-            <dl class="coaching-meal-remaining" id="coachingFoodRemaining" aria-label="Remaining nutrition used for meal suggestions"><div><dt>Calories left</dt><dd>—</dd></div><div data-meal-macro="protein"><dt>Protein left</dt><dd>—</dd></div><div data-meal-macro="carbs"><dt>Carbs left</dt><dd>—</dd></div><div data-meal-macro="fat"><dt>Fat left</dt><dd>—</dd></div></dl>
+            <dl class="coaching-meal-remaining" id="coachingFoodRemaining" aria-label="Remaining nutrition used for meal suggestions"><div><dt>Calories left</dt><dd>—</dd></div><div data-meal-macro="protein"><dt>Protein left</dt><dd>—</dd></div><div data-meal-macro="carbs"><dt>Carbs left</dt><dd>—</dd></div><div data-meal-macro="fat"><dt>Fat left</dt><dd>—</dd></div></dl><p class="coaching-meal-note" id="coachingFoodMacroNote" hidden></p>
             <p class="coaching-meal-status" id="coachingFoodStatus" role="status" aria-live="polite" aria-atomic="true">Save your food preferences to load options for the selected day.</p>
             <ul class="coaching-meal-list" id="coachingFoodOptions" aria-busy="false" aria-label="Meal suggestions"></ul>
             <p class="coaching-meal-disclaimer">Ingredient amounts are scaled for the suggested portion. These are approximate STRATA editorial recipe estimates informed by generic <a href="https://fdc.nal.usda.gov/" target="_blank" rel="noreferrer">USDA FoodData Central reference data <span aria-hidden="true">↗</span></a>; no specific FDC record or branded product is verified, and costs are not live grocery prices. Verify actual portions, every label, and cross-contact risk—STRATA cannot guarantee allergy safety.</p>

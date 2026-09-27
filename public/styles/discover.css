@@ -1767,3 +1767,24 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
 .nutrition-more .coaching-projection-data div { border-color:#3a3f34; }
 .nutrition-more :is(.coaching-projection-data dt,.coaching-projection-data span,.coaching-projection > p:last-child,.coaching-method-card > p,.coaching-method-card ul) { color:var(--studio-muted); }
 .nutrition-more .coaching-method-card a { color:var(--accent); }
+
+/* Build 8.7: Nutrition shows its arithmetic. Maintenance lists each step, the target reads as
+   maintenance ± the goal adjustment with one value per kind of day, and the diary totals macros. */
+.nutrition-workspace .coaching-metrics .metric-math { margin:0; color:var(--studio-muted); font-size:.8125rem; line-height:1.45; }
+.nutrition-workspace .coaching-metrics .metric-days { margin:6px 0 0; color:var(--studio-text); font:600 .8125rem/1.4 var(--body); }
+.nutrition-workspace .coaching-metrics .metric-days[hidden] { display:none; }
+.nutrition-workspace .coaching-metrics .coaching-metric-accent :is(.metric-math,.metric-days) { color:var(--ink); }
+.energy-steps { margin:10px 0 6px; padding:0; list-style:none; border-top:1px solid #414936; }
+.energy-steps[hidden] { display:none; }
+.energy-steps li { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:7px 0; border-bottom:1px solid #2c3127; }
+.coaching-metrics .energy-steps li span { color:var(--studio-muted); font:400 .8125rem/1.35 var(--body); letter-spacing:0; text-transform:none; }
+.coaching-metrics .energy-steps li strong { margin:0; color:var(--studio-text); font:600 .8125rem/1.35 var(--body); letter-spacing:0; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.coaching-metrics .energy-steps li.is-total { border-bottom:0; }
+.coaching-metrics .energy-steps li.is-total :where(span,strong) { color:var(--accent); font-weight:700; }
+.coaching-macro-hint { grid-column:1/-1; display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin:0; color:var(--studio-muted); font-size:.8125rem; line-height:1.45; }
+.coaching-macro-hint[hidden] { display:none; }
+.coaching-macro-hint .text-button { min-height:36px; padding:6px 12px; border:1px solid #5a654b; border-radius:999px; color:var(--accent); background:transparent; font:600 .75rem var(--body); cursor:pointer; }
+.coaching-macro-hint .text-button:hover { border-color:var(--accent); }
+.coaching-macro-hint .text-button[hidden] { display:none; }
+.coaching-meal-note { margin:10px 0 0; color:var(--studio-muted); font-size:.8125rem; line-height:1.45; }
+.coaching-meal-note[hidden] { display:none; }

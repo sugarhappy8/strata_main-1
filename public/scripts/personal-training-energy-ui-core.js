@@ -61,5 +61,43 @@
     return{label:varies?`${low.toLocaleString()}–${high.toLocaleString()} kcal/day`:calorieTargetLabel(low),varies};
   }
 
-  return Object.freeze({DAILY_MOVEMENTS,ACTIVITY_INTENSITIES,profileDraftToEnergy,profileEnergyToDraft,hasAdditionalActivity,calorieTargetLabel,maintenanceDisplay,dailyTargetDisplay});
+  const whole=(value)=>Math.round(Number(value)||0).toLocaleString();
+  const signed=(value)=>{const rounded=Math.round(Number(value)||0);return `${rounded<0?"−":"+"}${Math.abs(rounded).toLocaleString()}`;};
+  const DAY_TYPES=Object.freeze({higher_training_day:"Training days",lower_rest_day:"Rest days",standard:"Other days"});
+
+  // The target as arithmetic a member can check: maintenance ± the goal adjustment, then one value per kind of day.
+  function targetSummary(nutrition){
+    // The headline is the average of the days themselves, so it always agrees with the day cards and the diary.
+    const targets=Array.isArray(nutrition?.dailyTargets)?nutrition.dailyTargets:[],values=targets.map(item=>positiveCalories(item?.calories)),maintenance=positiveCalories(nutrition?.maintenance?.targetKcal??nutrition?.maintenance),goal=nutrition?.selectedGoal;
+    if(!values.length||values.some(value=>value==null))return{label:"Review required",math:"",days:""};
+    const selected=Math.round(values.reduce((sum,value)=>sum+value,0)/values.length);
+    const groups=new Map();targets.forEach((item,index)=>{const name=item.kind==="flexible_day"?String(item.day||"Flexible day"):DAY_TYPES[item.kind]||"Every day",group=groups.get(name)||[];group.push(values[index]);groups.set(name,group);});
+    const varies=Math.min(...values)!==Math.max(...values),difference=selected-(maintenance??selected);
+    const math=maintenance==null?"":goal==="maintenance"||!difference?`Matches maintenance of ${whole(maintenance)} kcal`:`${whole(maintenance)} maintenance ${difference<0?"−":"+"} ${whole(Math.abs(difference))} ${difference<0?"deficit":"surplus"} = ${whole(selected)} kcal/day`;
+    const days=varies?[...groups].map(([name,group])=>`${name} ${Math.min(...group)===Math.max(...group)?whole(group[0]):`${whole(Math.min(...group))}–${whole(Math.max(...group))}`}`).join(" · "):"";
+    return{label:`${whole(selected)} kcal/day${varies?" average":""}`,math,days,varies,selected,maintenance,difference};
+  }
+
+  // Each step of the version-4 maintenance estimate, so the total can be checked line by line.
+  function maintenanceSteps(nutrition){
+    const activity=nutrition?.activityBreakdown,resting=Number(nutrition?.rmrKcal),pal=Number(activity?.movementPal),maintenance=nutrition?.maintenance,target=positiveCalories(maintenance?.targetKcal),baseline=positiveCalories(maintenance?.baselineKcal);
+    if(!activity||!(resting>0)||!(pal>0)||target==null||baseline==null)return null;
+    // Whole-calorie rows that add up exactly on screen: the movement row absorbs sub-calorie rounding.
+    const workouts=Number(activity.plannedTrainingWeekKcal)||0,other=Number(activity.additionalActivityWeekKcal)||0,workoutsDaily=Math.round(workouts/7),otherDaily=Math.round(other/7),estimate=Math.round(Number(activity.targetKcal)||resting*pal+workouts/7+other/7),movement=estimate-workoutsDaily-otherDaily,adjustment=target-baseline;
+    return[
+      {label:"Resting energy",value:`${whole(resting)} kcal`},
+      {label:`× ${pal.toFixed(2)} for daily movement`,value:`${whole(movement)} kcal`},
+      {label:`+ planned workouts (${whole(workouts)} kcal/week ÷ 7)`,value:`${signed(workoutsDaily)} kcal`},
+      ...(other>0?[{label:`+ other activity (${whole(other)} kcal/week ÷ 7)`,value:`${signed(otherDaily)} kcal`}]:[]),
+      {label:"= estimated daily expenditure",value:`${whole(estimate)} kcal`},
+      {label:"Rounded to the nearest 25 kcal",value:`${whole(baseline)} kcal`},
+      ...(adjustment?[{label:"Calibration from your logged intake and weight",value:`${signed(adjustment)} kcal`}]:[]),
+      {label:"Maintenance",value:`${whole(target)} kcal/day`,total:true}
+    ];
+  }
+
+  // 4 kcal per gram of protein and carbohydrate, 9 per gram of fat.
+  function macroCalories(macros){const grams=[macros?.proteinG,macros?.carbsG,macros?.fatG].map(value=>value===""||value==null?null:Number(value));return grams.some(value=>value==null||!Number.isFinite(value)||value<0)?null:Math.round(4*grams[0]+4*grams[1]+9*grams[2]);}
+
+  return Object.freeze({DAILY_MOVEMENTS,ACTIVITY_INTENSITIES,profileDraftToEnergy,profileEnergyToDraft,hasAdditionalActivity,calorieTargetLabel,maintenanceDisplay,dailyTargetDisplay,targetSummary,maintenanceSteps,macroCalories});
 });

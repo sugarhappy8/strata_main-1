@@ -2,7 +2,7 @@
 
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const {ACTIVITY_CATEGORY_MAP,baselineFor,calibrateMaintenance,macroTarget,nasemEer,nutritionFor}=require("../src/energy-planning-core");
+const {ACTIVITY_CATEGORY_MAP,baselineFor,calibrateMaintenance,distribute,macroTarget,nasemEer,nutritionFor}=require("../src/energy-planning-core");
 
 function profile(overrides={}){return {version:3,age:40,heightCm:175,weightKg:75,bodyFatPercent:null,sexForEquation:"male",goal:"maintenance",goalPace:"moderate",lifestyleActivity:"moderately_active",workoutDays:["Monday","Wednesday","Friday"],caloriePattern:"steady",flexibleDay:null,macroPreference:"balanced",...overrides};}
 function structuredProfile(overrides={}){const output=profile({version:4,dailyMovement:"mostly_seated",additionalActivityMinutesPerWeek:0,additionalActivityIntensity:"moderate",...overrides});delete output.lifestyleActivity;return output;}
@@ -186,4 +186,29 @@ test("a contradictory recent weight or unrounded unsafe lower scenario blocks an
   assert.equal(maintenance.weightBasis.requiresReview,true);assert.equal(maintenance.weightBasis.weightKg,75);
   assert.throws(()=>nutritionFor(profile({goal:"fat_loss"}),"2026-09-07",evidence),{code:"DEFICIT_REQUIRES_REVIEW"});
   assert.throws(()=>nutritionFor(profile({sexForEquation:"female",age:32,heightCm:170,weightKg:59.6,lifestyleActivity:"sedentary",goalPace:"gentle",goal:"fat_loss"}),"2026-09-07"),{code:"DEFICIT_REQUIRES_REVIEW"});
+});
+
+test("zigzag and flexible weeks show one clean target per kind of day and keep the week exact",()=>{
+  for(const [caloriePattern,flexibleDay,goal] of [["zigzag",null,"fat_loss"],["zigzag",null,"maintenance"],["flexible_day","Saturday","muscle_gain"]]){
+    const output=nutritionFor(structuredProfile({caloriePattern,flexibleDay,goal}),"2026-09-07",null,{sessions:[["Monday",52],["Wednesday",57],["Friday",60]].map(([day,minutes])=>({day,status:"ready",estimatedDurationMinutes:minutes,exercises:[{exerciseId:"test"}]}))});
+    const selected=goal==="fat_loss"?output.deficit.targetKcal:goal==="muscle_gain"?output.bulk.targetKcal:output.maintenance.targetKcal,byKind=new Map();
+    for(const day of output.dailyTargets)byKind.set(day.kind,[...(byKind.get(day.kind)||[]),day.calories]);
+    assert.ok(byKind.size>1,`${caloriePattern} varies the week`);
+    for(const [kind,values] of byKind)assert.equal(new Set(values).size,1,`${caloriePattern} ${kind} days share one target even when sessions differ in length`);
+    assert.ok(output.dailyTargets.every(day=>day.calories%5===0),"daily targets are multiples of 5 kcal");
+    assert.equal(output.weeklyTargetKcal,selected*7);assert.equal(output.dailyTargets.reduce((sum,day)=>sum+day.calories,0),selected*7);
+  }
+});
+
+test("the daily split is exact, shared within a day type, and within 15 kcal of each raw share",()=>{
+  for(let selected=1200;selected<=4200;selected+=175){
+    const patterns=[Array(7).fill(1),[1,1,1,1,1,1.15/.975,1]];
+    for(let trainingDays=1;trainingDays<=6;trainingDays++)for(const bonus of [70,160,310])patterns.push(Array.from({length:7},(_,day)=>(selected-bonus*trainingDays/7+(day<trainingDays?bonus:0))/selected));
+    for(const weights of patterns){
+      const days=distribute(selected,weights),sum=weights.reduce((a,b)=>a+b,0);
+      assert.equal(days.reduce((a,b)=>a+b,0),selected*7);
+      days.forEach((value,index)=>{assert.equal(value%5,0);assert.ok(Math.abs(value-selected*7*weights[index]/sum)<=15);});
+      weights.forEach((weight,i)=>weights.forEach((other,j)=>{if(weight===other)assert.equal(days[i],days[j]);}));
+    }
+  }
 });

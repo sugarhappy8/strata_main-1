@@ -35,12 +35,14 @@ test("version 4 stores split activity while versions 1–3 remain read-only comp
   assert.throws(()=>sanitizeCoachingProfile(profile({version:2}),{allowLegacyProfile:true}),/requires meal preferences/);
   assert.throws(()=>sanitizeCoachingProfile(profile({lifestyleActivity:"extremely_active"})),/cannot accept the old whole-day activity field/);assert.equal(sanitizeCoachingProfile(profile({version:1,lifestyleActivity:"extremely_active"}),{allowLegacyProfile:true}).lifestyleActivity,"extremely_active");
   for(const invalid of [{dailyMovement:"active"},{additionalActivityMinutesPerWeek:-1},{additionalActivityMinutesPerWeek:1261},{additionalActivityMinutesPerWeek:1.5},{additionalActivityIntensity:"extreme"}])assert.throws(()=>sanitizeCoachingProfile(profile(invalid)),/invalid|whole number/i);
-  const week=generateCoachingWeek(current,1,"2026-09-07",1_000);assert.equal(week.schemaVersion,4);assert.equal(week.generationVersion,"coaching-week-v6");assert.equal(week.energyModelVersion,ENERGY_MODEL_VERSION);assert.equal(week.nutrition.maintenance.calibration.modelVersion,ENERGY_MODEL_VERSION);assert.equal(week.mealCatalogFingerprint,MEAL_CATALOG_FINGERPRINT);assert.match(week.methodology.cautions.join(" "),/allergen safety/i);assert.match(week.methodology.references.map(({label})=>label).join(" "),/Adult Compendium.*Older Adult Compendium.*Repeated-weight.*Self-reported/i);
+  const week=generateCoachingWeek(current,1,"2026-09-07",1_000);assert.equal(week.schemaVersion,4);assert.equal(week.generationVersion,"coaching-week-v7");assert.equal(week.energyModelVersion,ENERGY_MODEL_VERSION);assert.equal(week.nutrition.maintenance.calibration.modelVersion,ENERGY_MODEL_VERSION);assert.equal(week.mealCatalogFingerprint,MEAL_CATALOG_FINGERPRINT);assert.match(week.methodology.cautions.join(" "),/allergen safety/i);assert.match(week.methodology.references.map(({label})=>label).join(" "),/Adult Compendium.*Older Adult Compendium.*Repeated-weight.*Self-reported/i);
 });
 
 test("daily logs require bounded calories and either zero or all three macros",()=>{
   assert.deepEqual(sanitizeDailyLog({calories:2100}),{calories:2100,proteinG:null,carbsG:null,fatG:null,morningWeightKg:null,complete:null});
-  assert.deepEqual(sanitizeDailyLog({calories:2100,proteinG:150,carbsG:225,fatG:65,morningWeightKg:81.26,complete:true}),{calories:2100,proteinG:150,carbsG:225,fatG:65,morningWeightKg:81.3,complete:true});
+  assert.deepEqual(sanitizeDailyLog({calories:2100,proteinG:150,carbsG:225,fatG:65,morningWeightKg:81.264,complete:true}),{calories:2100,proteinG:150,carbsG:225,fatG:65,morningWeightKg:81.26,complete:true});
+  // 0.01 kg keeps every 0.1 lb entry intact: 180 lb is stored as 81.65 kg and reads back as 180.0 lb, not 179.9.
+  for(let pounds=150;pounds<=250;pounds=Math.round((pounds+.1)*10)/10){const stored=sanitizeDailyLog({calories:0,morningWeightKg:Math.round(pounds*.45359237*100)/100}).morningWeightKg;assert.equal(Math.round(stored/.45359237*10)/10,pounds);}
   assert.throws(()=>sanitizeDailyLog({calories:2100,proteinG:150}),/together/);
   assert.throws(()=>sanitizeDailyLog({calories:-1}),/0 to 20000/);
   assert.throws(()=>sanitizeDailyLog({calories:1000,note:"private"}),/unsupported fields: note/);

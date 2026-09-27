@@ -101,7 +101,7 @@ test("Strata+ loads bounded state, API, navigation, feature controllers, renderi
   const html=read("pages","discover.html"),names=discoverModules;
   let previous=-1;
   for(const name of names){const index=html.indexOf(`src="${name}?v=`);assert.ok(index>previous,`${name} must load after its dependencies`);previous=index;}
-  const reviewedBudgets=new Map([["personal-training-energy-ui-core.js",80],["personal-training-ui-core.js",220],["personal-training-meals-ui-core.js",140]]);
+  const reviewedBudgets=new Map([["personal-training-energy-ui-core.js",110],["personal-training-ui-core.js",220],["personal-training-meals-ui-core.js",140]]);
   for(const name of names.slice(0,-1))assert.ok(read("scripts",name).split("\n").length<=(reviewedBudgets.get(name)||120),`${name} should remain a small boundary module`);
   assert.ok(read("scripts","discover.js").split("\n").length<=725,"the incremental shell should stay below the state-repair module budget");
 });

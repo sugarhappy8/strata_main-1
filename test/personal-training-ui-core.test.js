@@ -103,9 +103,9 @@ test("discover form aliases map to the strict coaching API contract",()=>{
   });
   assert.equal(result.ok,true);
   assert.deepEqual(result.payload,{
-    version:4,measurementSystem:"imperial",preferredLoadUnit:"lb",age:28,heightCm:177.8,weightKg:81.6,bodyFatPercent:null,sexForEquation:"male",
+    version:4,measurementSystem:"imperial",preferredLoadUnit:"lb",age:28,heightCm:177.8,weightKg:81.65,bodyFatPercent:null,sexForEquation:"male",
     goal:"muscle_gain",goalPace:"moderate",trainingGoal:"balanced",experience:"advanced",dailyMovement:"on_feet",additionalActivityMinutesPerWeek:0,additionalActivityIntensity:"moderate",workoutDays:["Tuesday","Saturday"],sessionMinutes:60,
-    usualExercises:[{exerciseId:"incline-curl",maxSets:3,maxReps:10,maxWeightKg:13.6}],availableEquipment:["Dumbbells"],movementLimitations:["no-overhead"],
+    usualExercises:[{exerciseId:"incline-curl",maxSets:3,maxReps:10,maxWeightKg:13.61}],availableEquipment:["Dumbbells"],movementLimitations:["no-overhead"],
     caloriePattern:"flexible_day",flexibleDay:"Saturday",macroPreference:"balanced",timeZone:"Asia/Dubai"
   });
 });
@@ -167,8 +167,10 @@ test("training focus is independent of calorie goal and preserves a balanced def
 });
 
 test("advertised imperial weight bounds round-trip to valid canonical endpoints",()=>{
-  for(const [pounds,kilograms] of [[77.2,35],[661.4,300]]){assert.equal(Ui.dailyWeightToKilograms(pounds,"imperial"),kilograms);const result=Ui.profileDraftToMetric({...validDraft(),weight:pounds,weightUnit:"lb"});assert.equal(result.ok,true);assert.equal(result.payload.weightKg,kilograms);}
+  for(const [pounds,kilograms] of [[77.2,35.02],[661.4,300]]){assert.equal(Ui.dailyWeightToKilograms(pounds,"imperial"),kilograms);assert.equal(Ui.kilogramsToPounds(kilograms),pounds,"the endpoint reads back as entered");const result=Ui.profileDraftToMetric({...validDraft(),weight:pounds,weightUnit:"lb"});assert.equal(result.ok,true);assert.equal(result.payload.weightKg,kilograms);}
   assert.equal(Ui.dailyWeightToKilograms(661.5,"imperial"),null);assert.equal(Ui.dailyWeightToKilograms(77.1,"imperial"),null);
+  // Every 0.1 lb entry reads back exactly as typed (180 lb previously came back as 179.9 lb).
+  for(let tenths=772;tenths<=6614;tenths+=1){const pounds=tenths/10;assert.equal(Ui.dailyWeightFromKilograms(Ui.dailyWeightToKilograms(pounds,"imperial"),"imperial"),pounds);}
 });
 
 test("calibration presents aligned evidence, held prior state, and heuristic sensitivity",()=>{
