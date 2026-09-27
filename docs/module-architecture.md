@@ -112,9 +112,9 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/admin-user-actions.js` | Audited administrator account and payment actions | 87 | 86 | 9.2 KiB | 160 | `src/access-controls.js`, `src/plans.js` |
 | `src/admin.js` | Administrative authorization and actions | 209 | 195 | 12.4 KiB | 280 | `src/access-controls.js`, `src/admin-user-actions.js`, `src/plans.js` |
 | `src/ai-catalog.js` | Strata AI library search and per-request exercise shortlists | 126 | 114 | 10.5 KiB | 130 | `src/plans.js` |
-| `src/ai-core.js` | Strata AI prompt rules and proposal validation | 258 | 237 | 19.9 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
+| `src/ai-core.js` | Strata AI prompt rules and proposal validation | 260 | 239 | 20.0 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
 | `src/ai-provider.js` | OpenAI-compatible model client and Strata AI settings | 88 | 80 | 6.3 KiB | 90 | — |
-| `src/ai.js` | Strata AI request queue and review-only proposal API | 189 | 177 | 14.7 KiB | 200 | `src/ai-catalog.js`, `src/ai-core.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
+| `src/ai.js` | Strata AI request queue and review-only proposal API | 191 | 179 | 15.0 KiB | 200 | `src/ai-catalog.js`, `src/ai-core.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
 | `src/auth.js` | Authentication and account lifecycle | 815 | 772 | 53.6 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |
 | `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 126 | 120 | 17.6 KiB | 140 | — |
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 240 | 233 | 22.8 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |

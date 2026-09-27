@@ -82,7 +82,7 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       const context=memberContext({profile:data.profile,plan:data.plan,workouts:data.workouts,nutrition:data.nutrition,today:data.weekday});
       /** @type {string[]} */
       let extra=[],candidates=shortlist(extra);
-      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:job.history,context,candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:1100,temperature});
+      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:job.history,context,candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:900,temperature});
       const ask=async(/** @type {string} */ note)=>{
         let compact=false,first;
         // A context overflow gets one compact retry without history and with a smaller shortlist.
@@ -97,6 +97,8 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
         extra=searchCatalog(searched,limitations);candidates=shortlist(extra);
         completion=await ask(extra.length?`STRATA searched its library for: ${searched.join(", ")}. The matches are now in the shortlist. Answer the member now and do not search again.`:`STRATA found no library exercises for: ${searched.join(", ")}. Answer with the shortlist, say what was not found, and do not search again.`);
       }
+      // Content-free diagnostics help the owner tell a weak model from a broken tunnel; answers are never logged.
+      if(!completion.data)logger?.warn?.("ai.unreadable_answer",{chars:String(completion.text||"").length,truncated:Boolean(completion.truncated),startsWithBrace:/^\s*\{/.test(String(completion.text||""))});
       const result=/** @type {any} */(interpretReply(completion.data,{candidates,plan:data.plan,limitations}));
       if(result.nutrition){
         if(!data.profile)result.nutrition={changes:result.nutrition,needsSetup:true,message:"Calorie targets come from your personal setup. Complete it once, then ask again."};

@@ -79,7 +79,9 @@ test("status, waiting, and error states read clearly",()=>{
   assert.deepEqual(logic.statusView({configured:true,online:true,remainingToday:27,dailyLimit:30}),{tone:"online",title:"Strata AI is ready",detail:"27 of 30 requests left today",canAsk:true});
   const offline=logic.statusView({configured:true,online:false,remainingToday:5,dailyLimit:30});assert.equal(offline.tone,"offline");assert.equal(offline.canAsk,true);
   assert.equal(logic.pendingText({status:"queued",position:1}),"You’re next in line…");assert.equal(logic.pendingText({status:"queued",position:3}),"You’re number 3 in line…");
-  assert.equal(logic.pendingText({status:"running"},1000),"Strata AI is planning…");assert.match(logic.pendingText({status:"running"},60000),/Still working/);
+  assert.equal(logic.pendingText({status:"running"},1000),"Strata AI is planning…");
+  assert.equal(logic.pendingText({status:"running"},12400),"Strata AI is planning… 12 s. Most answers take 10–30 seconds.");
+  assert.equal(logic.pendingText({status:"running"},61000),"Still working (61 s). Detailed weeks can take up to a minute…");
   assert.deepEqual(logic.errorView({code:"AI_OFFLINE",message:"Offline."}),{code:"AI_OFFLINE",message:"Offline.",retry:true});
   assert.equal(logic.errorView({code:"AI_DAILY_LIMIT",message:"Limit."}).retry,false);assert.match(logic.errorView(null).message,/could not finish/);
   assert.deepEqual([0,19999,20000,59999,60000].map(logic.pollDelay),[1500,1500,2500,2500,4000]);
