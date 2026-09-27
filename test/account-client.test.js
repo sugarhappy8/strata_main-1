@@ -180,7 +180,7 @@ test("ordinary Account foreground restores purge first and reopen only the same 
     pending.resolve(jsonResponse(200,{csrfToken:"foreground-two",user:scenario.next}));await foreground;await settle();
     assert.equal(page.elements.get("signedInCard").hidden,!scenario.reopens,scenario.name);
     if(scenario.reopens)assert.match(page.elements.get("signedInIdentity").textContent,/FOREGROUND PRIVATE SENTINEL/,scenario.name);
-    else{assert.equal(page.elements.get("accountLoadingTitle").textContent,"ACCOUNT ACCESS CHANGED.",scenario.name);assert.doesNotMatch([...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML}`).join(" "),/REPLACEMENT PRIVATE SENTINEL/,scenario.name);}
+    else{assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.",scenario.name);assert.doesNotMatch([...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML}`).join(" "),/REPLACEMENT PRIVATE SENTINEL/,scenario.name);}
   }
 });
 
@@ -222,7 +222,7 @@ test("exports and Paddle portal links require the original account identity imme
     }});
     await settle();const button=page.elements.get(scenario.button);await button.emit("click",{currentTarget:button});await settle();
     assert.equal(identityReads,2,scenario.name);assert.deepEqual(page.downloads,[],scenario.name);assert.deepEqual(page.navigations,[],scenario.name);assert.equal(page.objectUrls.length,0,scenario.name);
-    assert.equal(page.elements.get("signedInCard").hidden,true,scenario.name);assert.equal(page.elements.get("accountLoadingTitle").textContent,"ACCOUNT ACCESS CHANGED.",scenario.name);
+    assert.equal(page.elements.get("signedInCard").hidden,true,scenario.name);assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.",scenario.name);
   }
 });
 
@@ -491,7 +491,7 @@ test("subscription controls use the CSRF-protected Paddle portal and clear priva
   assert.match(page.elements.get("accountBillingStatus").textContent,/invalid subscription-management link/i);
   assert.equal(page.elements.get("accountBillingStatus").classList.contains("bad"),true);
   sessionExpired=true;await page.elements.get("accountManageSubscription").emit("click",{currentTarget:page.elements.get("accountManageSubscription")});await settle();
-  assert.equal(page.elements.get("signedInCard").hidden,true);assert.equal(page.elements.get("accountLoadingTitle").textContent,"ACCOUNT ACCESS CHANGED.");assert.equal(page.elements.get("signedInIdentity").textContent,"");assert.equal(page.elements.get("accountBillingDetail").textContent,"");
+  assert.equal(page.elements.get("signedInCard").hidden,true);assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.");assert.equal(page.elements.get("signedInIdentity").textContent,"");assert.equal(page.elements.get("accountBillingDetail").textContent,"");
 });
 
 test("returning dashboard prioritizes an in-progress workout as the single next action",async()=>{
@@ -508,9 +508,9 @@ test("returning dashboard prioritizes an in-progress workout as the single next 
   assert.equal(page.elements.get("accountPrimaryLabel").textContent,"Continue workout");
   assert.equal(page.elements.get("accountPrimaryAction").href,"/workout.html#resume=workout-1");
   assert.equal(page.elements.get("accountNextEyebrow").textContent,"Workout in progress");
-  assert.equal(page.elements.get("accountNextTitle").textContent,"MONDAY UPPER");
+  assert.equal(page.elements.get("accountNextTitle").textContent,"Monday upper");
   assert.match(page.elements.get("accountNextDetail").textContent,/1 of 5 sets completed/i);
-  assert.equal(page.elements.get("accountAdaptationTitle").textContent,"FINISH THE OPEN SESSION.");
+  assert.equal(page.elements.get("accountAdaptationTitle").textContent,"Finish the open session.");
 });
 
 test("weekly progress and recent bests use only comparable saved workout summaries",async()=>{
@@ -535,12 +535,12 @@ test("weekly progress and recent bests use only comparable saved workout summari
   assert.equal(page.elements.get("accountWeekScore").textContent,"1/2");
   assert.match(page.elements.get("accountWeekDetail").textContent,/2 saved sessions and 7 completed sets/i);
   assert.match(page.elements.get("accountWeekDays").innerHTML,/class="complete today"/);
-  assert.equal(page.elements.get("accountNextTitle").textContent,`${next} WORKOUT`);
+  assert.equal(page.elements.get("accountNextTitle").textContent,`${next} workout`);
   assert.match(page.elements.get("accountWinsList").innerHTML,/Session complete/);
   assert.match(page.elements.get("accountWinsList").innerHTML,/Flat Dumbbell Press/);
   assert.match(page.elements.get("accountWinsList").innerHTML,/Saved-history best · Top load 30 kg/);
   assert.doesNotMatch(page.elements.get("accountWinsList").innerHTML,/Assisted Pull Up/);
-  assert.equal(page.elements.get("accountAdaptationTitle").textContent,"PROGRESS IS MOVING.");
+  assert.equal(page.elements.get("accountAdaptationTitle").textContent,"Progress is moving.");
 });
 
 test("partial history labels comparisons as recent rather than all-time records",async()=>{
@@ -607,7 +607,7 @@ test("dashboard refuses to combine plan or workout data across account changes",
   assert.equal(page.requests.some(({path})=>path.startsWith("/api/workouts")),false);
   assert.equal(page.elements.get("signedInCard").hidden,true);
   assert.equal(page.elements.get("accountLoading").hidden,false);
-  assert.equal(page.elements.get("accountLoadingTitle").textContent,"ACCOUNT ACCESS CHANGED.");
+  assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.");
   assert.equal(page.elements.get("accountReload").hidden,false);
   assert.equal(page.elements.get("signedInIdentity").textContent,"");assert.equal(page.elements.get("accountGreeting").textContent,"");assert.equal(page.elements.get("accountPlanCount").textContent,"");
   await page.elements.get("accountReload").emit("click");
@@ -627,7 +627,7 @@ test("dashboard rechecks identity after workout history before combining private
   await settle();
   assert.equal(identityReads,2);
   assert.equal(page.elements.get("signedInCard").hidden,true);
-  assert.equal(page.elements.get("accountLoadingTitle").textContent,"ACCOUNT ACCESS CHANGED.");
+  assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.");
   assert.doesNotMatch(page.elements.get("accountWinsList").innerHTML,/CHANGED ACCOUNT PRIVATE TITLE/);
 });
 

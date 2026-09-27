@@ -40,7 +40,7 @@ test("the 7.8.1 editorial homepage and four-destination product identity remain 
   const home=read("index.html"),discover=read("discover.html"),planner=read("planner.html"),workout=read("workout.html");
   assert.match(home,/<section class="hero"[^>]*aria-labelledby="hero-title"/);
   assert.match(home,/<div class="hero-media" role="img" aria-label="Athlete performing a pull-up in a gym">/);
-  assert.match(home,/<h1 id="hero-title">YOUR NEXT<br \/>WORKOUT\.<br \/><em>READY\.<\/em><\/h1>/);
+  assert.match(home,/<h1 id="hero-title">Your next<br \/>workout\.<br \/><em>Ready\.<\/em><\/h1>/);
   assert.ok(home.indexOf('class="hero"')<home.indexOf('id="rankings"'),"The editorial hero must lead instead of opening on the exercise catalog");
   assert.match(home,/src="\/images\/strata-layers\.jpg"/);
   assert.match(home,/src="\/images\/training-story\.jpg"/);

@@ -5,7 +5,7 @@
 .recommendation-feedback h3{margin:4px 0 6px;font:700 clamp(22px,2.6vw,34px)/1 "Manrope",sans-serif;letter-spacing:-.04em}
 .recommendation-feedback p{margin:0;max-width:66ch;color:#555851;line-height:1.55}
 .recommendation-feedback .feedback-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;max-width:390px}
-.recommendation-feedback button{min-height:44px;padding:10px 14px;border:1px solid rgba(16,17,15,.25);background:#fff;color:#10110f;font:600 12px/1 "DM Mono",monospace;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.recommendation-feedback button{min-height:44px;padding:10px 14px;border:1px solid rgba(16,17,15,.25);background:#fff;color:#10110f;font:600 13px/1 var(--body,"Manrope",Arial,sans-serif);letter-spacing:0;cursor:pointer}
 .recommendation-feedback button:hover,.recommendation-feedback button:focus-visible{border-color:#c9351f;box-shadow:0 0 0 3px rgba(201,53,31,.17);outline:none}
 .recommendation-feedback button[aria-pressed="true"]{border-color:#10110f;background:#10110f;color:#fff}
 .recommendation-feedback button:disabled{cursor:not-allowed;opacity:.55}
@@ -18,7 +18,7 @@
 .local-signals-panel>p{margin:0 0 16px}
 .local-signals-toggle{display:flex;gap:12px;align-items:flex-start;font-weight:700;cursor:pointer}
 .local-signals-toggle input{width:20px;height:20px;margin:2px 0 0;accent-color:#c9351f}
-.local-signals-panel button{min-height:44px;margin:8px 8px 0 0;padding:10px 14px;border:1px solid #10110f;background:#fff;color:#10110f;font:600 12px/1 "DM Mono",monospace;text-transform:uppercase;cursor:pointer}
+.local-signals-panel button{min-height:44px;margin:8px 8px 0 0;padding:10px 14px;border:1px solid #10110f;background:#fff;color:#10110f;font:600 13px/1 var(--body,"Manrope",Arial,sans-serif);cursor:pointer}
 .local-signals-panel button:focus-visible,.local-signals-toggle input:focus-visible{outline:3px solid #c9351f;outline-offset:3px}
 .local-signals-panel details{margin-top:18px}
 .local-signals-panel summary{min-height:44px;display:flex;align-items:center;font-weight:700;cursor:pointer}
@@ -30,13 +30,13 @@
   box-shadow:0 24px 70px rgba(0,0,0,.36);display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;
 }
 .signal-consent-host:empty{display:none}
-.signal-consent-kicker{margin:0 0 7px;color:#ed6b4a;font:500 11px/1.3 "DM Mono",monospace;text-transform:uppercase;letter-spacing:.08em}
+.signal-consent-kicker{margin:0 0 7px;color:#d4f578;font:600 12.5px/1.3 var(--body,"Manrope",Arial,sans-serif);letter-spacing:0}
 .signal-consent h2{margin:0 0 8px;color:inherit;font:700 clamp(22px,3vw,32px)/1.05 "Manrope",sans-serif;letter-spacing:-.04em}
 .signal-consent div>p:last-child{margin:0;max-width:68ch;color:rgba(245,240,231,.72);font:400 12px/1.6 "Manrope",sans-serif}
 .signal-consent-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px;max-width:310px}
-.signal-consent button,.signal-consent a{min-height:44px;padding:11px 13px;border:1px solid rgba(245,240,231,.38);display:inline-flex;align-items:center;justify-content:center;background:transparent;color:inherit;font:600 11px/1 "DM Mono",monospace;text-transform:uppercase;letter-spacing:.035em;text-decoration:none;cursor:pointer}
-.signal-consent button:first-child{border-color:#ed6b4a;background:#ed6b4a;color:#10110f}
-.signal-consent button:hover,.signal-consent button:focus-visible,.signal-consent a:hover,.signal-consent a:focus-visible{outline:3px solid #ed6b4a;outline-offset:2px}
+.signal-consent button,.signal-consent a{min-height:44px;padding:11px 13px;border:1px solid rgba(245,240,231,.38);display:inline-flex;align-items:center;justify-content:center;background:transparent;color:inherit;font:600 12.5px/1 var(--body,"Manrope",Arial,sans-serif);letter-spacing:0;text-decoration:none;cursor:pointer}
+.signal-consent button:first-child{border-color:#d4f578;background:#d4f578;color:#10110f}
+.signal-consent button:hover,.signal-consent button:focus-visible,.signal-consent a:hover,.signal-consent a:focus-visible{outline:3px solid #d4f578;outline-offset:2px}
 .local-signals-divider{height:1px;margin:18px 0;background:rgba(16,17,15,.15)}
 
 @media(max-width:700px){

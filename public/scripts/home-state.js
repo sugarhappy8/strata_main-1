@@ -8,14 +8,14 @@
 
   function createState(){
     return{
-      group:"chest",sub:"all",query:"",equipment:"all",level:"all",sort:"score",compare:[],
+      group:"chest",sub:"all",query:"",equipment:"all",level:"all",sort:"score",compare:[],showAll:false,
       exercises:[],user:null,accountStatus:"loading",accountVerifiedAt:0,recheckAccountId:null,catalogStatus:"loading"
     };
   }
 
   function setCatalog(state,catalog){state.exercises=logic.normalizeCatalog(catalog);state.catalogStatus="ready";return state.exercises;}
   function failCatalog(state){state.exercises=[];state.compare=[];state.catalogStatus="error";}
-  function selectGroup(state,group){if(!logic.GROUPS[group])return false;state.group=group;state.sub="all";return true;}
+  function selectGroup(state,group){if(!logic.GROUPS[group])return false;state.group=group;state.sub="all";state.showAll=false;return true;}
   function selectSubfilter(state,sub){if(sub!=="all"&&!logic.GROUPS[state.group]?.subs.includes(sub))return false;state.sub=sub;return true;}
   function resetFilters(state){state.sub="all";state.equipment="all";state.level="all";state.query="";}
   function clearComparison(state){state.compare=[];}

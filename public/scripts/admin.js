@@ -30,7 +30,7 @@
   function lockPrivateView(message){
     clearAdminData();state.admin=null;state.csrfToken="";state.authorized=false;document.body.classList.remove("admin-ready");
     el("dashboard").hidden=true;el("accessPanel").hidden=false;el("accessActions").hidden=true;
-    el("adminIdentity").textContent="Revalidating administrator";el("lastUpdated").textContent="Private data is locked.";el("accessTitle").textContent="CHECKING ADMIN ACCESS.";
+    el("adminIdentity").textContent="Revalidating administrator";el("lastUpdated").textContent="Private data is locked.";el("accessTitle").textContent="Checking admin access.";
     el("accessMessage").textContent=message;el("adminMain").setAttribute("aria-busy","true");
   }
 
@@ -42,7 +42,7 @@
     clearAdminData();state.admin=null;state.csrfToken="";state.authorized=false;document.body.classList.remove("admin-ready");
     el("dashboard").hidden=true;el("accessPanel").hidden=false;
     el("adminIdentity").textContent=signedOut?"No administrator session":"Access unavailable";el("lastUpdated").textContent="Private data is locked.";
-    el("accessTitle").textContent=signedOut?"SIGN IN REQUIRED.":"ADMIN ACCESS REQUIRED.";el("accessMessage").textContent=message;el("accessActions").hidden=false;el("adminMain").setAttribute("aria-busy","false");
+    el("accessTitle").textContent=signedOut?"Sign in required.":"Admin access required.";el("accessMessage").textContent=message;el("accessActions").hidden=false;el("adminMain").setAttribute("aria-busy","false");
     if(focus)requestAnimationFrame(()=>el("accessTitle").focus({preventScroll:false}));
   }
 
@@ -188,7 +188,7 @@
       if(result.user.isAdmin!==true&&result.user.admin!==true){showAccess("This account is signed in, but it is not an approved STRATA administrator.");return;}
       state.admin=result.user;state.csrfToken=cleanString(result.csrfToken,"");setIdentity(result.user);
       const adminSession=await client.adminSession();if(!privateOperationIsCurrent(operation))return;if(adminSession.admin!==true){showAccess("This account is signed in, but it is not an approved STRATA administrator.");return;}openDashboard();
-    }catch(error){if(privateOperationIsCurrent(operation)&&!handleAuthorizationFailure(error)){el("accessTitle").textContent="ADMIN SERVICE UNAVAILABLE.";el("accessMessage").textContent=friendlyError(error);el("accessActions").hidden=false;el("adminMain").setAttribute("aria-busy","false");}}
+    }catch(error){if(privateOperationIsCurrent(operation)&&!handleAuthorizationFailure(error)){el("accessTitle").textContent="Admin service unavailable.";el("accessMessage").textContent=friendlyError(error);el("accessActions").hidden=false;el("adminMain").setAttribute("aria-busy","false");}}
   }
 
   const {handlePageShow,handleVisibilityChange}=StrataAdminSession.createSessionCoordinator({

@@ -106,7 +106,7 @@ test("the six Strata+ destinations retain keyboard focus, mobile identity, reduc
   }
   assert.equal(await page.locator("#scoreGuide").isHidden(),true,"Coaching should not show the exercise-score guide");await primary.filter({hasText:"Exercises"}).first().click();assert.equal(await page.locator("#scoreGuide").isVisible(),true);assert.equal(await page.locator("#scoreGuideDetails").evaluate((node)=>node.open),false);assert.equal(await page.locator("#scoreGuide").count(),1);
 
-  await primary.filter({hasText:"Plan"}).first().click();assert.equal(await page.locator("#planSummaryTitle").textContent(),"YOUR WEEKLY PLAN");
+  await primary.filter({hasText:"Plan"}).first().click();assert.equal(await page.locator("#planSummaryTitle").textContent(),"Your weekly plan");
   for(const id of ["workoutBuilderDetails","planAheadDetails","reuseWeekDetails"])assert.equal(await page.locator(`#${id}`).evaluate((node)=>node.open),false);
   await page.setViewportSize({width:1440,height:1000});await capture(page,"strata-plus-plan-desktop.png");await page.setViewportSize({width:390,height:844});await capture(page,"strata-plus-plan-mobile.png");
   await page.locator("#planAheadDetails > summary").click();await page.locator('#planAheadDetails [data-feature-target="monthly"]').click();await page.locator("#monthlyPlan").waitFor({state:"visible"});

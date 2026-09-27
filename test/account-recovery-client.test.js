@@ -89,8 +89,8 @@ function createPage(page,route,{hash="",search="",sessionSeed={}}={}){
 async function settle(){for(let index=0;index<5;index+=1)await new Promise(setImmediate);}
 
 test("recovery pages keep guidance, fallback, and retention copy explicit",()=>{
-  assert.match(htmlByPage["forgot-password"],/id="recoveryTitle"[^>]*>SEND RESET LINK</);
-  assert.match(htmlByPage["reset-password"],/<noscript>[\s\S]*JAVASCRIPT REQUIRED[\s\S]*Request a new link/);
+  assert.match(htmlByPage["forgot-password"],/id="recoveryTitle"[^>]*>Send reset link</);
+  assert.match(htmlByPage["reset-password"],/<noscript>[\s\S]*JavaScript required[\s\S]*Request a new link/);
   assert.match(htmlByPage["reset-password"],/id="newPasswordToggle"[^>]*type="button"[^>]*aria-controls="newPassword"/);
   assert.match(htmlByPage["reset-password"],/id="confirmPasswordToggle"[^>]*type="button"[^>]*aria-controls="confirmPassword"/);
   assert.match(htmlByPage["delete-account"],/copied by somebody else remain as independent copies/i);

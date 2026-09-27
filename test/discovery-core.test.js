@@ -195,7 +195,7 @@ test("weekly pulse reports only honest today or next-session plan facts",()=>{
   days.Wednesday=[{exerciseId:"one",sets:3},{exerciseId:"two",sets:2}];days.Friday=[{exerciseId:"three",sets:4}];
   const plan={version:1,restDay:"Sunday",days},today=Core.weeklyPulse(plan,{today:"Wednesday",profileDays:4}),next=Core.weeklyPulse(plan,{today:"Thursday",profileDays:4}),wrapped=Core.weeklyPulse(plan,{today:"Saturday",profileDays:4});
   assert.deepEqual({day:today.day,isToday:today.isToday,movements:today.movements,workingSets:today.workingSets,scheduledDays:today.scheduledDays,progress:today.progressPercent},{day:"Wednesday",isToday:true,movements:2,workingSets:5,scheduledDays:2,progress:50});
-  assert.equal(next.day,"Friday");assert.equal(next.offset,1);assert.match(next.title,/TOMORROW/);
+  assert.equal(next.day,"Friday");assert.equal(next.offset,1);assert.equal(next.title,"Tomorrow · 1 movement.");
   assert.equal(wrapped.day,"Wednesday");assert.equal(wrapped.offset,4);
   for(const pulse of [today,next,wrapped])assert.doesNotMatch(`${pulse.title} ${pulse.detail}`,/completed|recovered|ready|readiness/i);
   const empty=Core.weeklyPulse({version:1,restDay:"Sunday",days:Object.fromEntries(Core.WEEKDAYS.map((day)=>[day,[]]))},{today:"Monday",profileDays:3});

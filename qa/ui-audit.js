@@ -134,7 +134,7 @@ let browser;
 
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const publicHeaderLinks=await page.locator(".desktop-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
-    assert.deepEqual(publicHeaderLinks,[["#rankings","Rankings"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Homepage desktop navigation must match the four product destinations used everywhere else");
+    assert.deepEqual(publicHeaderLinks,[["#rankings","Exercises"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Homepage desktop navigation must match the four product destinations used everywhere else");
     assert.match((await page.locator(".discovery-offer").textContent())||"",/7 days[\s\S]*\$2\.99 USD per month[\s\S]*renews monthly until canceled/i);
     for(const [label,control] of [["homepage primary action",page.locator(".hero .button-accent").first()]]){
       const ratio=await contrastRatio(control);assert.ok(ratio>=4.5,`${label} text contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1`);
@@ -208,7 +208,7 @@ let browser;
     await page.setViewportSize({width:390,height:844});
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const mobilePublicLinks=await page.locator(".mobile-public-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
-    assert.deepEqual(mobilePublicLinks,[["#rankings","Rankings"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Mobile homepage navigation must keep the four primary product destinations");
+    assert.deepEqual(mobilePublicLinks,[["#rankings","Exercises"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Mobile homepage navigation must keep the four primary product destinations");
     assert.equal(await page.locator('.footer-links a[href="/policies"]').count(),1,"Mobile homepage footer must expose one Policies destination");
     assert.equal(await page.locator('.footer-links a:is([href="/terms"],[href="/privacy"],[href="/refunds"])').count(),0,"Homepage footer must not duplicate policy-directory links");
     const smallPublicTargets=await page.locator(".mobile-public-nav a").evaluateAll((nodes)=>nodes.filter((node)=>{const rect=node.getBoundingClientRect();return rect.width<44||rect.height<44;}).map((node)=>node.textContent.trim()));
@@ -283,7 +283,7 @@ let browser;
     await page.locator('.destination-link[data-feature-target="explore"]').click();
     await page.locator('.feature-block[data-feature-target="recommendations"]').click();
     await page.locator("#recommendationTitle").waitFor({state:"visible"});
-    assert.equal(((await page.locator("#recommendationTitle").textContent())||"").replace(/\s+/g," ").trim(),"BEST EXERCISES FOR YOU.","Recommendation heading must not depend on a member's display name");
+    assert.equal(((await page.locator("#recommendationTitle").textContent())||"").replace(/\s+/g," ").trim(),"Best exercises for you.","Recommendation heading must not depend on a member's display name");
     const recommendationContrast=await contrastRatio(page.locator("#recommendationTitle"));
     assert.ok(recommendationContrast>=4.5,`Recommendation title contrast is ${recommendationContrast.toFixed(2)}:1; expected at least 4.5:1`);
     await page.locator('#recommendationGrid [data-toggle-shortlist]').first().click();

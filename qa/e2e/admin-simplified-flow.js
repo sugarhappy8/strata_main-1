@@ -68,7 +68,7 @@ test("bound owner uses simplified Admin while non-admins remain blocked",{timeou
     await ownerPage.getByRole("button",{name:/Open Member One/}).click();
     await ownerPage.locator("#userDialog").waitFor({state:"visible"});
     await ownerPage.getByRole("button",{name:/Suspend account/}).click();
-    const review=ownerPage.getByRole("dialog",{name:"SUSPEND ACCOUNT?"});
+    const review=ownerPage.getByRole("dialog",{name:"Suspend account?"});
     await review.waitFor({state:"visible"});
     assert.match(await review.locator("#confirmDescription").textContent(),/lose signed-in access[\s\S]*member@example\.test/i);
     assert.equal(await review.getByRole("button",{name:"Cancel",exact:true}).count(),1);
@@ -101,7 +101,7 @@ test("bound owner uses simplified Admin while non-admins remain blocked",{timeou
       return json(route,{error:"Forbidden"},403);
     });
     await nonAdminPage.goto(`${server.baseUrl}/admin.html`,{waitUntil:"domcontentloaded"});
-    await nonAdminPage.getByRole("heading",{name:"ADMIN ACCESS REQUIRED."}).waitFor({state:"visible"});
+    await nonAdminPage.getByRole("heading",{name:"Admin access required."}).waitFor({state:"visible"});
     assert.equal(await nonAdminPage.locator("#dashboard").isHidden(),true);
     assert.deepEqual(nonAdminRequests,["GET /api/me"],"a non-admin must be rejected before private Admin APIs are requested");
     assert.equal(await nonAdminPage.locator("#elevationPanel,#elevationPassword,#elevationCode").count(),0);

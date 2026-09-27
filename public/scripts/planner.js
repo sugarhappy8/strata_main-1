@@ -329,7 +329,7 @@ function renderInsights(){
   if(!INSIGHTS||!state.plan){el("planInsights").hidden=true;return;}
   el("planInsights").hidden=false;
   const analysis=INSIGHTS.analyzePlan(state.plan,state.exercises),largest=analysis.days.reduce((best,day)=>day.workingSets>best.workingSets?day:best,analysis.days[0]);
-  el("insightMetrics").innerHTML=`<div><span>Planning estimate</span><strong>${analysis.metrics.estimatedMinutes} min</strong><small>sets + transitions</small></div><div><span>Largest day</span><strong>${largest.workingSets?escapeHtml(largest.day):"—"}</strong><small>${largest.workingSets} working sets</small></div><div><span>Primary areas</span><strong>${analysis.muscles.length}</strong><small>catalog groups</small></div><div><span>Equipment setups</span><strong>${analysis.equipment.length}</strong><small>across the week</small></div>`;
+  el("insightMetrics").innerHTML=`<div><span>Planning estimate</span><strong>${analysis.metrics.estimatedMinutes} min</strong><small>Sets and transitions</small></div><div><span>Largest day</span><strong>${largest.workingSets?escapeHtml(largest.day):"—"}</strong><small>${largest.workingSets} working sets</small></div><div><span>Primary areas</span><strong>${analysis.muscles.length}</strong><small>Catalog groups</small></div><div><span>Equipment setups</span><strong>${analysis.equipment.length}</strong><small>Across the week</small></div>`;
   el("insightMuscles").innerHTML=insightRows(analysis.muscles,"Add movements to see primary-muscle distribution.");
   el("insightPatterns").innerHTML=insightRows(analysis.patterns,"Add movements to see pattern distribution.");
   el("insightEquipment").innerHTML=insightRows(analysis.equipment,"Add movements to see equipment concentration.");

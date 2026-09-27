@@ -16,7 +16,7 @@
       const candidate=selectedActivationCandidate();if(!candidate)return false;
       const directClaim=logic.isEmptyPlan(state.plan);state.activationDirectClaim=directClaim;
       el("devicePlanEyebrow").textContent=directClaim?"Your first week is ready":"Your preview survived";
-      el("devicePlanTitle").innerHTML=directClaim?'SAVE YOUR <em>WEEK.</em>':'BRING YOUR <em>WEEK WITH YOU.</em>';
+      el("devicePlanTitle").innerHTML=directClaim?'Save your <em>week.</em>':'Bring your <em>week with you.</em>';
       el("devicePlanLead").textContent=directClaim
         ? "Your account week is empty. Save this device week directly—there is no existing schedule to compare or replace."
         : "Your account and this browser have different weeks. Nothing has been copied or overwritten. Compare both, then explicitly claim the device week or keep the account week.";

@@ -19,7 +19,7 @@ body { line-height:1.5; }
 .home-page .hero-data { max-width:230px; }
 .home-page .ticker { display:none; }
 .start-directory { padding:28px 0; background:#f3f4ef; color:#10110f; border-bottom:1px solid #d2d6cc; }
-.start-directory-title { margin:0 0 14px; font-size:.8rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.start-directory-title { margin:0 0 14px; font-size:.8rem; font-weight:700; letter-spacing:0; }
 .start-directory nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
 .start-directory a { position:relative; display:flex; flex-direction:column; gap:8px; min-width:0; padding:20px 38px 20px 20px; color:inherit; background:#fff; border:1px solid #d2d6cc; border-radius:12px; text-decoration:none; }
 .start-directory a:hover { border-color:#6f8e27; background:#f4f9e8; }
@@ -57,3 +57,31 @@ body { line-height:1.5; }
   .planner-page .week-toolbar { padding-block:20px; }
 }
 @media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+
+/* Build 8.7 brand layer. This file loads last on every page, so the shared language lives here:
+   one type family in sentence case, one olive accent, pill-shaped actions, and calmer lists. */
+:root { --focus-ring:#6f8e27; }
+:root body :is(.button,.small-button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button,.header-account):not(.icon-button),
+:root body :is(.studio-user,.user-menu,.header-actions) :is(a,button) { border-radius:999px; }
+:root body :is(.button,.small-button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button):not(.compact) { padding-inline:20px; }
+:root body :is(.button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button):not(.compact) { font-size:.9375rem; }
+:root body :is(.small-button,.button.compact,.compact-button) { font-size:.875rem; }
+/* A toolbar segment attached to a card edge keeps its square seam. */
+.plus-studio .community-plan-toolbar .small-button { border-radius:0; }
+.home-page .exercise-title h3 { font:700 1.125rem/1.3 var(--display); letter-spacing:-.01em; }
+.home-page .exercise-title p { font-size:.8125rem; }
+.home-page .exercise-list-more { display:flex; justify-content:center; padding:28px 0 8px; }
+.home-page .exercise-list-more[hidden] { display:none; }
+.home-page .exercise-list-more .button { justify-content:center; min-width:220px; border-color:var(--ink); color:var(--ink); background:transparent; }
+.home-page .exercise-list-more .button:hover,.home-page .exercise-list-more .button:focus-visible { color:var(--white); background:var(--ink); }
+.home-page .discovery-offer h2 { font-size:clamp(2.75rem,5.5vw,4.5rem); line-height:1.06; }
+.home-page .discovery-offer p:not(.kicker) { font-size:1rem; line-height:1.7; }
+@media (max-width:680px) {
+  .home-page .exercise-title h3 { font-size:1.0625rem; }
+  .home-page .discovery-offer h2 { font-size:clamp(2.25rem,11vw,3.25rem); }
+}
+/* Header utilities read as one pair of quiet pill actions on every product page. */
+@media (min-width:761px) {
+  .planner-page .user-menu :is(a,button) { min-height:40px; padding:0 16px; border:1px solid rgba(255,255,255,.3); color:var(--white); font:600 .8125rem/1 var(--body); }
+  .planner-page .user-menu :is(a,button):hover { border-color:var(--accent); color:var(--accent); }
+}
