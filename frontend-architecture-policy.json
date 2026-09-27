@@ -92,6 +92,18 @@
         {"file":"public/scripts/pricing.js","role":"entry","maxLines":220}
       ]
     },
+    "ai": {
+      "html": "public/pages/ai.html",
+      "modules": [
+        {"file":"public/scripts/personal-training-energy-ui-core.js","role":"logic","global":"StrataPersonalTrainingEnergyUi","maxLines":110},
+        {"file":"public/scripts/ai-logic.js","role":"logic","global":"StrataAiLogic","maxLines":150},
+        {"file":"public/scripts/ai-state.js","role":"state","global":"StrataAiState","maxLines":50},
+        {"file":"public/scripts/ai-api.js","role":"api","global":"StrataAiApi","maxLines":50},
+        {"file":"public/scripts/ai-render.js","role":"render","global":"StrataAiRender","maxLines":170},
+        {"file":"public/scripts/ai-events.js","role":"events","global":"StrataAiEvents","maxLines":50},
+        {"file":"public/scripts/ai.js","role":"entry","maxLines":180}
+      ]
+    },
     "account": {
       "html": "public/pages/account.html",
       "modules": [

@@ -53,6 +53,10 @@
     "src/coaching-training-core.js",
     "src/coaching-prescription-core.js",
     "src/coaching-evidence.js",
-    "src/energy-scenarios-core.js"
+    "src/energy-scenarios-core.js",
+    "src/ai-provider.js",
+    "src/ai-catalog.js",
+    "src/ai-core.js",
+    "src/ai.js"
   ]
 }

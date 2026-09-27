@@ -27,6 +27,7 @@
     if(/^\/workout\.html\?day=(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/.test(raw||""))return raw;
     if(raw==="workout"||raw==="/workout.html")return "/workout.html";
     if(raw==="onboarding"||raw==="/onboarding.html")return "/onboarding.html";
+    if(raw==="ai"||raw==="/ai"||raw==="/ai.html")return "/ai";
     return "/planner.html";
   }
 
@@ -37,6 +38,7 @@
     else if(destination==="/admin")query.set("next","admin");
     else if(destination.startsWith("/workout.html"))query.set("next",destination==="/workout.html"?"workout":destination);
     else if(destination==="/onboarding.html")query.set("next","onboarding");
+    else if(destination==="/ai")query.set("next","ai");
     else{
       query.set("next","planner");
       const add=new URL(destination,"https://strata.local").searchParams.get("add");

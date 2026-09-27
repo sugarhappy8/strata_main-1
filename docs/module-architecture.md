@@ -1,12 +1,12 @@
 # Module architecture evidence
 
-Build 8.0.1 keeps extraction as an enforceable boundary. `npm run architecture:check` inventories both server JavaScript and the seven largest interactive browser surfaces. It reports physical lines, nonblank lines, bytes, reviewed line budgets, and every statically analyzable local dependency. It fails when a module exceeds its budget, gains an unapproved dependency, is omitted from the relevant policy, loads out of dependency order, references a missing local module, introduces a dependency cycle, or uses server module loading that cannot be audited.
+Build 8.0.1 keeps extraction as an enforceable boundary. `npm run architecture:check` inventories both server JavaScript and the eight largest interactive browser surfaces. It reports physical lines, nonblank lines, bytes, reviewed line budgets, and every statically analyzable local dependency. It fails when a module exceeds its budget, gains an unapproved dependency, is omitted from the relevant policy, loads out of dependency order, references a missing local module, introduces a dependency cycle, or uses server module loading that cannot be audited.
 
 The policies live in `architecture-policy.json` and `frontend-architecture-policy.json`; they should change only with an intentional architecture review. A larger line budget is not the default response to a failure: first decide whether the module has accumulated another responsibility.
 
 ## Dependency direction
 
-Build 8.0.0 added focused modules for coaching evidence, energy calibration, sensitivity scenarios, training selection, and exercise prescriptions. The current profile-version-4 work adds one pure server activity-budget leaf and one pure browser energy-field leaf. The current inventory covers 54 server modules and 74 browser modules across 7 page boundaries. Existing module budgets remain enforced; new responsibilities have their own reviewed limits.
+Build 8.0.0 added focused modules for coaching evidence, energy calibration, sensitivity scenarios, training selection, and exercise prescriptions. The current profile-version-4 work adds one pure server activity-budget leaf and one pure browser energy-field leaf. Build 8.8.0 adds Strata AI as four server modules (provider client, exercise shortlist, proposal rules, and the queued request service) and one new page boundary. The current inventory covers 58 server modules and 82 browser modules across 8 page boundaries. Existing module budgets remain enforced; new responsibilities have their own reviewed limits.
 
 ```text
 root bootstrap
@@ -64,7 +64,7 @@ The current report inventories 74 modules across 7 page boundaries, with zero cy
 
 Home still coordinates comparison state through its existing logic, state, API, rendering, and event modules. Plan retains its canonical empty-plan, save, reset, and conflict boundaries. Train retains focused workout context and progression renderers. The pure `session-selection-core.js` retains the four explicit workout-builder selection modes; its form events remain in `discover-session.js`.
 
-`frontend-architecture-policy.json` enforces one-way, page-local boundaries for Home, Strata+, Plan, Train, Pricing, Account, and Admin. Each page supplies logic, mutable state, same-origin API access, rendering, event binding, and exactly one final coordinator. Shared cores load before consumers. The report resolves CommonJS imports and published `Strata*` globals, checks dependency direction, and verifies the HTML script order.
+`frontend-architecture-policy.json` enforces one-way, page-local boundaries for Home, Strata+, Plan, Train, Strata AI, Pricing, Account, and Admin. Each page supplies logic, mutable state, same-origin API access, rendering, event binding, and exactly one final coordinator. Shared cores load before consumers. The report resolves CommonJS imports and published `Strata*` globals, checks dependency direction, and verifies the HTML script order.
 
 ```text
 shared domain logic
@@ -92,7 +92,7 @@ The original coordinator sizes below provide historical context; the after sizes
 | Account | `account.js` 835 → 271 | logic 238; state 31; API 68; render 186; events 44 |
 | Admin | `admin.js` 848 → 203 | state 53; logic 92; API 45; render 189; session 53; events 53 |
 
-These totals are not presented as deleted functionality: much of the former coordinator code moved into named leaves, and new user-facing behavior was added. The evidence of improvement is the enforced direction, independent tests, smaller orchestration roots, and zero-cycle report—not a lower aggregate line count. `node scripts/frontend-architecture-report.js` prints the exact live line/nonblank/byte table and every resolved dependency for all 74 browser modules across seven page boundaries.
+These totals are not presented as deleted functionality: much of the former coordinator code moved into named leaves, and new user-facing behavior was added. The evidence of improvement is the enforced direction, independent tests, smaller orchestration roots, and zero-cycle report—not a lower aggregate line count. `node scripts/frontend-architecture-report.js` prints the exact live line/nonblank/byte table and every resolved dependency for all 82 browser modules across eight page boundaries.
 
 ## Resulting module sizes
 
@@ -111,7 +111,11 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/admin-mfa.js` | Session-bound administrator email MFA challenge and delivery | 62 | 55 | 4.6 KiB | 100 | — |
 | `src/admin-user-actions.js` | Audited administrator account and payment actions | 87 | 86 | 9.2 KiB | 160 | `src/access-controls.js`, `src/plans.js` |
 | `src/admin.js` | Administrative authorization and actions | 209 | 195 | 12.4 KiB | 280 | `src/access-controls.js`, `src/admin-user-actions.js`, `src/plans.js` |
-| `src/auth.js` | Authentication and account lifecycle | 812 | 769 | 53.4 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |
+| `src/ai-catalog.js` | Strata AI library search and per-request exercise shortlists | 126 | 114 | 10.5 KiB | 130 | `src/plans.js` |
+| `src/ai-core.js` | Strata AI prompt rules and proposal validation | 258 | 237 | 19.9 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
+| `src/ai-provider.js` | OpenAI-compatible model client and Strata AI settings | 88 | 80 | 6.3 KiB | 90 | — |
+| `src/ai.js` | Strata AI request queue and review-only proposal API | 189 | 177 | 14.7 KiB | 200 | `src/ai-catalog.js`, `src/ai-core.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
+| `src/auth.js` | Authentication and account lifecycle | 815 | 772 | 53.6 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |
 | `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 126 | 120 | 17.6 KiB | 140 | — |
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 240 | 233 | 22.8 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
 | `src/billing.js` | Commercial entitlement, checkout, trial, webhook, and reconciliation service | 719 | 690 | 44.5 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
@@ -144,7 +148,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 137 | 124 | 5.7 KiB | 140 | — |
 | `src/progression.js` | Pure per-set performance progression and comparison rules | 177 | 175 | 13.2 KiB | 300 | `src/plans.js` |
 | `src/schema.js` | Shared storage schema and statements | 364 | 358 | 44.3 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/product-signals-schema.js`, `src/training-loop-schema.js` |
-| `src/server.js` | HTTP composition root | 801 | 776 | 42.4 KiB | 820 | `src/access-controls.js`, `src/admin.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
+| `src/server.js` | HTTP composition root | 817 | 792 | 43.2 KiB | 820 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
 | `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.8 KiB | 60 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 84 | 77 | 4.9 KiB | 105 | `src/plans.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |
@@ -155,7 +159,11 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/training.js` | Check-ins, deterministic progression, blocks, and approved adaptations | 358 | 346 | 24.8 KiB | 450 | `src/plans.js`, `src/progression.js` |
 | `src/workouts.js` | Workout validation, history summaries, and authenticated lifecycle | 214 | 208 | 14.3 KiB | 230 | `src/plans.js` |
 
-Snapshot result: 54 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 7 page boundaries and 74 browser modules with zero cycles and zero violations.
+Snapshot result: 58 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 82 browser modules with zero cycles and zero violations.
+
+## Strata AI
+
+`src/ai-provider.js` is the only module that talks to the model. It sends the configured key to the configured OpenAI-compatible base URL, bounds every call with a timeout, and maps failures to stable codes. `src/ai-catalog.js` chooses a per-request shortlist from the full exercise library: default picks per muscle group, every exercise, muscle, or piece of equipment the member names, and the results of one optional model-requested search. `src/ai-core.js` holds the prompt rules and turns model JSON into proposals: unknown exercises, movement-limit conflicts, oversized days, and invalid nutrition choices are dropped or rejected, weeks pass through `sanitizePlan`, and calorie targets come from `generateCoachingWeek`, never from the model. `src/ai.js` owns entitlement, CSRF, rate, daily, and queue limits, and runs requests from an in-memory queue so no HTTP request waits on the model; the page polls for the result. Nothing in these modules writes member data. The page applies a proposal through the existing plan and personal-setup endpoints with their revision checks.
 
 ## Static boundary types
 

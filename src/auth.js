@@ -518,6 +518,7 @@ function createAuthService({
     if(/^\/workout\.html\?day=(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)$/.test(next))return next;
     if(next==="workout"||next==="/workout.html")return "/workout.html";
     if(next==="onboarding"||next==="/onboarding.html")return "/onboarding.html";
+    if(next==="ai"||next==="/ai"||next==="/ai.html")return "/ai";
     if(next==="/planner.html"||next==="/discover.html"||/^\/planner\.html\?add=[a-z0-9-]{2,80}$/.test(next))return next;
     return "/planner.html";
   }
@@ -529,6 +530,7 @@ function createAuthService({
     else if(next==="/admin")params.set("next","admin");
     else if(next.startsWith("/workout.html"))params.set("next",next==="/workout.html"?"workout":next);
     else if(next==="/onboarding.html")params.set("next","onboarding");
+    else if(next==="/ai")params.set("next","ai");
     return `/account.html?${params}`;
   }
   function verificationLocation(requestedNext,{error="",sent=false,purpose=""}={}){
@@ -539,6 +541,7 @@ function createAuthService({
     else if(next==="/admin")params.set("next","admin");
     else if(next.startsWith("/workout.html"))params.set("next",next==="/workout.html"?"workout":next);
     else if(next==="/onboarding.html")params.set("next","onboarding");
+    else if(next==="/ai")params.set("next","ai");
     if(purpose==="login"||purpose==="signup")params.set("purpose",purpose);
     if(error)params.set("error",error);
     if(sent)params.set("sent","1");

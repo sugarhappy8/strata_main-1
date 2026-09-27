@@ -91,6 +91,24 @@ Permanent deletion retains one explicit destructive review dialog but no typed c
 
 `GET /api/account/sessions` lists only the signed-in member's active sessions and exposes opaque public identifiers plus creation, expiry, and current-session state. `POST /api/account/sessions/revoke` and `POST /api/account/sessions/revoke-others` are CSRF-protected, account-scoped mutations; the current session cannot be removed through the selective route. `POST /api/account/export` is also authenticated, CSRF-protected, account-scoped, rate-limited, and returned with private `no-store` attachment headers. Workout history uses stable keyset pages so the response is not buffered or silently capped; because the download does not hold a long database transaction, concurrent account changes can be reflected progressively. Exercise these controls after deployment, confirm another browser is actually signed out, and inspect an export for expected account data and the documented secret/provider/admin exclusions without placing the download in deployment logs or support tickets.
 
+## Strata AI
+
+Strata AI is off until `AI_BASE_URL` and `AI_MODEL` are set. It works with any OpenAI-compatible chat server; the pilot runs a local model in Atomic Chat on the owner's PC.
+
+1. In Atomic Chat, load the model and keep the local server bound to `127.0.0.1` with LAN access off.
+2. Turn on remote access with an API key. Copy the public `https://…/v1` address and the key.
+3. In Render, set `AI_BASE_URL` to that address, `AI_API_KEY` to the key, and `AI_MODEL` to the exact model ID that `GET /v1/models` lists. Never commit these values or paste the key into chat, tickets, or logs.
+4. Deploy, sign in with a Strata+ account, open `/ai`, and confirm the status reads "Strata AI is ready".
+
+Operational notes:
+
+- A Cloudflare quick tunnel gets a new address each time it restarts. Update `AI_BASE_URL` in Render when that happens, or use a named tunnel for a stable address. If the endpoint sits behind Cloudflare Access, set `AI_ACCESS_CLIENT_ID` and `AI_ACCESS_CLIENT_SECRET` to a service token.
+- In production a plain `http://` address other than this machine is ignored, so the key never travels unencrypted. The server logs `ai.insecure_base_url_ignored` when that happens.
+- Requests wait in an in-memory queue: `AI_MAX_CONCURRENT` (default 3) run at once and `AI_MAX_QUEUE` (default 20) can wait. Match `AI_MAX_CONCURRENT` to the model server's parallel slots. Each member gets `AI_DAILY_LIMIT` requests per UTC day (default 30). `AI_TIMEOUT_MS` (default 120000) bounds each model call.
+- The queue, results, and daily counts live in one process's memory and reset on restart. Answers are kept for 10 minutes so the page can collect them.
+- The model receives the member's saved plan, personal setup, and summaries of recent workouts and nutrition logs. It never receives the member's name, email, or account ID. Logs record request kind, outcome code, and duration only; they never include messages or answers.
+- When the PC is off or the tunnel is down, `/ai` shows that Strata AI may be offline, and every other STRATA feature keeps working.
+
 ## Paddle monthly subscription
 
 Paddle is the merchant of record for the $2.99 USD per month Strata+ subscription. The public amount, USD currency, monthly frequency, and catalog identifiers must stay aligned with the live catalog. Since Build 7.5.1, the application does not embed either current catalog ID: `PADDLE_PRODUCT_ID` and `PADDLE_PRICE_ID` are operator-supplied `sync: false` values in `render.yaml`, and checkout remains unavailable until both identify the same valid monthly catalog item. The browser consumes the product selected and validated by the same-origin server instead of pinning an older product in public code. New checkout creation also fails closed unless Paddle's returned current catalog item reports a unit price of exactly 299 minor units in USD.
