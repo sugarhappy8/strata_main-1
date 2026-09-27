@@ -22,7 +22,7 @@ class ClassList{
   contains(name){return this.values.has(name);}
 }
 class Element{
-  constructor(id){this.id=id;this.value="";this.innerHTML="";this.textContent="";this.hidden=false;this.open=false;this.disabled=false;this.dataset={};this.attributes={};this.classList=new ClassList();this.parentElement={classList:new ClassList()};this.listeners={};this.queryResults=new Map();}
+  constructor(id){this.id=id;this.style={};this.value="";this.innerHTML="";this.textContent="";this.hidden=false;this.open=false;this.disabled=false;this.dataset={};this.attributes={};this.classList=new ClassList();this.parentElement={classList:new ClassList()};this.listeners={};this.queryResults=new Map();}
   addEventListener(type,handler){(this.listeners[type]||=[]).push(handler);}
   async emit(type,event={}){for(const handler of this.listeners[type]||[])await handler(event);}
   setAttribute(name,value){this.attributes[name]=String(value);}
@@ -30,6 +30,7 @@ class Element{
   showModal(){this.open=true;}
   close(){this.open=false;}
   focus(){}
+  contains(){return false;}
   reset(){}
   scrollIntoView(){}
   append(){}
@@ -220,9 +221,15 @@ assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>feature
   await context.dismissRacePromise;context.forceIdentityChange=false;
   result.dismissRaceSafe=navigations.at(-1)==="/discover.html"&&elements.get("discoveryLoadError").hidden===false&&mainElement.hidden===true&&vm.runInContext("state.user===null&&state.csrfToken===''&&state.progressionSuggestion===null&&state.trainingBlock===null",context);
   await vm.runInContext("init()",context);
+  // Returning with the same session hides the view only while the account is re-checked, then restores it untouched.
+  vm.runInContext("state.compare=['flat-dumbbell-press']",context);elements.get("coachingCaloriesEaten").value="1777";
+  const sameSessionPromise=vm.runInContext("revalidateMemberWorkspaceWhenVisible()",context);
+  result.focusConcealedWhileChecking=mainElement.inert===true&&mainElement.style.visibility==="hidden"&&vm.runInContext("state.user?.id==='u1'",context);
+  await sameSessionPromise;
+  result.focusSameSessionKept=mainElement.inert===false&&mainElement.hidden===false&&mainElement.style.visibility===""&&elements.get("coachingCaloriesEaten").value==="1777"&&elements.get("userName").textContent!=="Checking account…"&&vm.runInContext("state.user.id==='u1'&&state.csrfToken==='csrf'&&state.compare.length===1&&state.weeklyPlan!==null",context);
   context.forceIdentityChange=true;
   const focusPromise=vm.runInContext("revalidateMemberWorkspaceWhenVisible()",context);
-  result.focusPrivacyCleared=mainElement.hidden===true&&elements.get("userName").textContent==="Checking account…"&&vm.runInContext("state.user===null&&state.csrfToken===''&&state.workouts.length===0&&state.weeklyPlan===null",context);
+  result.focusPrivacyCleared=mainElement.inert===true&&mainElement.style.visibility==="hidden";
   await focusPromise;context.forceIdentityChange=false;
   result.focusAccountSafe=navigations.at(-1)==="/discover.html"&&mainElement.hidden===true&&vm.runInContext("state.user===null&&state.workouts.length===0&&state.trainingBlock===null",context);
   assert.equal(result.recommendations,8);
@@ -239,6 +246,6 @@ assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>feature
   assert.equal(result.unknownHashFeature,"library");
   assert.equal(result.battleSlots,4);
   assert.ok(result.battleRows>=10);
-  for(const key of ["discoveryFetch","battleBuilder","battleTable","battleVisible","battleStatus","detailOpen","bodyLocked","scoreAudit","evidence","alternatives","ratings","ratingDraftPreserved","communityFetch","communityRendered","communitySevenDayPreview","communityConfirmation","communityApplied","communityPlanLink","sessionGenerated","sessionOptions","sessionAdded","sessionPlanRevision","sessionPlanLink","sessionConflictHandled","weeklyPulse","todayComparable","progressRendered","firstWorkoutState","trainingBlockSaved","trainingBlockReview","blockControlsWorked","progressionFormatted","progressionAccepted","dismissRaceSafe","focusPrivacyCleared","focusAccountSafe"])assert.equal(result[key],true,key);
+  for(const key of ["discoveryFetch","battleBuilder","battleTable","battleVisible","battleStatus","detailOpen","bodyLocked","scoreAudit","evidence","alternatives","ratings","ratingDraftPreserved","communityFetch","communityRendered","communitySevenDayPreview","communityConfirmation","communityApplied","communityPlanLink","sessionGenerated","sessionOptions","sessionAdded","sessionPlanRevision","sessionPlanLink","sessionConflictHandled","weeklyPulse","todayComparable","progressRendered","firstWorkoutState","trainingBlockSaved","trainingBlockReview","blockControlsWorked","progressionFormatted","progressionAccepted","dismissRaceSafe","focusConcealedWhileChecking","focusSameSessionKept","focusPrivacyCleared","focusAccountSafe"])assert.equal(result[key],true,key);
   console.log(JSON.stringify(result,null,2));
 })().catch(error=>{console.error(error);process.exitCode=1;});

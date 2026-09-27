@@ -1,5 +1,19 @@
 # Changelog
 
+## 8.6.1 — Reliable drafts and offline workouts
+
+- Keep unsaved Strata+ input when you return to the tab: the view is hidden while the account is re-checked, then restored as it was for the same session. A different account, a signed-out session, or ended access still clears it, and a failed check keeps the input in memory until a retry succeeds.
+- Check each offline workout value with the same rules as the online logger before saving it, so an invalid entry can no longer make the device draft unreadable. Drafts saved by older builds reopen with any invalid value cleared and listed.
+- Keep completed offline sets read-only until they are unchecked, and refuse to finish an offline workout without a completed set, matching the server rule so every finished workout can sync.
+- Show "Couldn't save — Retry" until a device write succeeds; finishing, re-rendering, and reconnecting no longer replace a failed save with "Saved on device", and leaving the page warns while changes exist only in the tab.
+- Point superset guidance only at sets that exist when paired exercises have different set counts.
+- Use 45, 35, 25, 10, 5, and 2.5 lb plates for the plate calculator in pound mode, and list the assumed plates.
+- Fill the last line of share-card text before truncating, adding an ellipsis only when words are left out.
+- Default the admin activity report to 30 days when the range is missing or blank.
+- Strip invisible control and direction characters from exercise notes, which the server rejects.
+
+See the [8.6.1 release guide](docs/release-8.6.1.md).
+
 ## 8.6.0 — Organized Strata+ destinations
 
 - Replace Progress's overlapping "repeat improvements" and "personal bests" lists with one exercise-records list showing the latest result, the change since the last comparable session, and the best, with a "New best" badge.

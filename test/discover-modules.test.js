@@ -119,3 +119,12 @@ test("Discover detail, community, session, and sharing factories expose focused 
   const sharing=Sharing.createSharing({state,titleCase:value=>value});
   assert.deepEqual(sharing.cardLines("ranking"),{eyebrow:"PERSONALIZED SHORTLIST",title:"balanced selection",score:"91",scoreLabel:"TOP PERSONAL MATCH",lines:["1. Press — 91% match"],footer:"3 days · Intermediate · community ratings separate"});
 });
+
+test("share-card text fills its last line before truncating and marks only omitted words",()=>{
+  const sharing=Sharing.createSharing({state:{},titleCase:value=>value}),draw=(text,maxLines=2,width=12)=>{const drawn=[],ctx={measureText:value=>({width:[...value].length}),fillText:(value,x,y)=>drawn.push([value,y])};return{end:sharing.wrapCanvasText(ctx,text,0,100,width,10,maxLines),drawn};};
+  assert.deepEqual(draw("alpha beta gamma delta"),{end:120,drawn:[["alpha beta",100],["gamma delta",110]]});
+  assert.deepEqual(draw("alpha beta gamma delta epsilon").drawn,[["alpha beta",100],["gamma delta…",110]]);
+  assert.deepEqual(draw("Supercalifragilistic press").drawn,[["Supercalifr…",100],["press",110]]);
+  assert.deepEqual(draw("  one   two  ",3),{end:110,drawn:[["one two",100]]});
+  assert.deepEqual(draw(""),{end:110,drawn:[]});
+});

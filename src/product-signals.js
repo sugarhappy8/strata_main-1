@@ -95,7 +95,9 @@ function createProductSignalsService({store,admin,trustedOrigin,requestAddress,r
     }
     const session=await admin.requireAdmin(req,res);
     if(!session)return;
-    const requested=Number(url.searchParams.get("days"));
+    // Number(null) and Number("") are 0, so a missing or blank range must be
+    // recognized before conversion to keep the intended 30-day default.
+    const rawDays=url.searchParams.get("days")?.trim()||"",requested=rawDays?Number(rawDays):Number.NaN;
     const days=Number.isSafeInteger(requested)?Math.max(1,Math.min(RETENTION_DAYS,requested)):30;
     const timestamp=Number(clock()),throughDay=utcDay(timestamp),sinceDay=dayBefore(timestamp,days-1);
     const rows=await store.productSignalCounts(sinceDay,throughDay);

@@ -152,6 +152,20 @@ test("a Strata+ member builds, tracks, reloads, and safely refreshes a coaching 
     await page.click("#coachingEditProfile");await page.uncheck("#coachingMacrosEnabled");const macrosOffPromise=page.waitForResponse((response)=>new URL(response.url()).pathname==="/api/coaching/profile"&&response.request().method()==="PUT");await page.click("#coachingGenerate");const macrosOff=await macrosOffPromise;assert.equal(macrosOff.status(),200,await macrosOff.text());await page.locator("#coachingDashboard").waitFor({state:"visible"});assert.equal(await page.locator(".coaching-macro-log").first().isHidden(),true);assert.equal(await page.locator("#coachingProteinEaten").inputValue(),"");
     await page.fill("#coachingCaloriesEaten","1875");const calorieOnlyPromise=page.waitForResponse((response)=>new URL(response.url()).pathname===`/api/coaching/logs/${date}`&&response.request().method()==="PUT");await page.click("#coachingSaveLog");const calorieOnly=await calorieOnlyPromise;assert.equal(calorieOnly.status(),200,await calorieOnly.text());assert.deepEqual(calorieOnly.request().postDataJSON().log,{calories:1875,morningWeightKg:82,complete:true});
 
+    // Returning to the tab with the same session keeps unsaved intake and setup edits and does not rebuild the workspace.
+    let discoveryReloads=0;const countDiscovery=(request)=>{if(new URL(request.url()).pathname==="/api/discovery")discoveryReloads+=1;};page.on("request",countDiscovery);
+    const revealed=()=>page.waitForFunction(()=>{const main=globalThis.document.querySelector("main");return Boolean(main)&&!main.hidden&&!main.inert&&main.style.visibility==="";});
+    await page.fill("#coachingCaloriesEaten","1777");await page.evaluate(()=>{const age=globalThis.document.querySelector("#coachingAge");age.value="41";age.dispatchEvent(new Event("input",{bubbles:true}));});
+    const recheck=page.waitForResponse((response)=>new URL(response.url()).pathname==="/api/me");await page.evaluate(()=>globalThis.dispatchEvent(new Event("focus")));await recheck;await revealed();
+    assert.equal(await page.inputValue("#coachingCaloriesEaten"),"1777","unsaved intake survives a same-account tab return");assert.equal(await page.inputValue("#coachingAge"),"41","unsaved setup edits survive a same-account tab return");
+    assert.equal(await page.locator("#coachingDashboard").isVisible(),true);await page.waitForLoadState("networkidle");
+    // A failed re-check keeps the view hidden and the input in memory until a retry confirms the same account.
+    await page.route("**/api/me",(route)=>route.abort());await page.evaluate(()=>globalThis.dispatchEvent(new Event("focus")));await page.locator("#discoveryLoadError").waitFor({state:"visible"});
+    assert.match(await page.locator("#discoveryLoadErrorMessage").textContent(),/Unsaved changes stay in this tab until STRATA confirms your account\./);assert.equal(await page.locator("main").isHidden(),true);
+    await page.unroute("**/api/me");await page.click("#discoveryRetry");await revealed();
+    assert.equal(await page.inputValue("#coachingCaloriesEaten"),"1777");assert.equal(await page.locator("#discoveryLoadError").isHidden(),true);
+    assert.equal(discoveryReloads,0,"the same session is restored without rebuilding the workspace");page.off("request",countDiscovery);await page.waitForLoadState("networkidle");
+
     let releaseDiscovery,finishDiscovery;const discoveryGate=new Promise((resolveGate)=>{releaseDiscovery=resolveGate;}),discoveryHandled=new Promise((resolveHandled)=>{finishDiscovery=resolveHandled;});
     await page.route("**/api/discovery",async(route)=>{await discoveryGate;try{await route.continue();}finally{finishDiscovery();}});await signup(context,"replacement");
     await page.evaluate(()=>globalThis.dispatchEvent(new Event("focus")));await page.waitForFunction(()=>globalThis.document.querySelector("#userName")?.textContent==="Checking account…");

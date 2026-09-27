@@ -38,7 +38,7 @@
     });
     $("sessionEntries").addEventListener("input",(event)=>{
       const note=event.target.closest("[data-entry-note]");
-      if(note&&!state.blocked){const entry=entryFor(note);if(entry&&state.workout.status==="active"){entry.note=note.value;markDirty();}return;}
+      if(note&&!state.blocked){const entry=entryFor(note);if(entry&&state.workout.status==="active"){entry.note=W.cleanNote(note.value);markDirty();}return;}
       const input=event.target.closest("[data-actual]");if(!input||state.blocked)return;
       const entry=state.workout?.entries.find((item)=>item.id===input.closest("[data-entry]").dataset.entry),set=entry?.sets[Number(input.closest("[data-set]").dataset.set)];
       if(!set||set.completed||state.workout.status!=="active")return;
@@ -65,7 +65,7 @@
       if(action.hasAttribute("data-duplicate-set")){try{const index=W.duplicateSet(entry,Number(action.dataset.duplicateSet));markDirty();renderSession();$("sessionEntries").querySelector(`[data-entry="${CSS.escape(entry.id)}"] [data-set="${index}"] input:not(:disabled)`)?.focus();}catch(error){errorMessage(error.message);}return;}
       if(action.hasAttribute("data-remove-set")){try{W.removeSet(entry,Number(action.dataset.removeSet));markDirty();renderSession();$("sessionEntries").querySelector(`[data-entry="${CSS.escape(entry.id)}"] [data-add-set]`)?.focus();}catch(error){errorMessage(error.message);}return;}
       if(action.hasAttribute("data-calc-warmup")){const card=action.closest("[data-entry]"),sets=W.warmupSets(card.querySelector("[data-warmup-load]").value),result=card.querySelector("[data-warmup-result]");result.textContent=sets.length?sets.map((set)=>`${set.percent}% · ${number(set.load)} ${entry.unit} × ${set.reps}`).join("  →  "):"Enter a working load above 0 and no more than 1,000.";return;}
-      if(action.hasAttribute("data-calc-plates")){const card=action.closest("[data-entry]"),breakdown=W.plateBreakdown(card.querySelector("[data-plate-target]").value,card.querySelector("[data-bar-weight]").value),result=card.querySelector("[data-plate-result]");result.textContent=breakdown.remainder===null?"Enter a target at least as heavy as the bar.":`${breakdown.pairs.length?breakdown.pairs.map((item)=>`${item.count} × ${number(item.plate)} ${entry.unit}`).join(" + "):"No plates"} per side${breakdown.achievable?".":` · ${number(breakdown.remainder)} ${entry.unit} per side cannot be made with common plates.`}`;return;}
+      if(action.hasAttribute("data-calc-plates")){const card=action.closest("[data-entry]"),breakdown=W.plateBreakdown(card.querySelector("[data-plate-target]").value,card.querySelector("[data-bar-weight]").value,W.plateInventory(entry.unit)),result=card.querySelector("[data-plate-result]");result.textContent=breakdown.remainder===null?"Enter a target at least as heavy as the bar.":`${breakdown.pairs.length?breakdown.pairs.map((item)=>`${item.count} × ${number(item.plate)} ${entry.unit}`).join(" + "):"No plates"} per side${breakdown.achievable?".":` · ${number(breakdown.remainder)} ${entry.unit} per side cannot be made with these plates.`}`;return;}
       const button=action.closest("[data-complete]");if(!button)return;
       const index=Number(button.dataset.complete),set=entry.sets[index],invalid=button.closest("tr").querySelector("input[aria-invalid=true]");
       if(invalid){invalid.focus();errorMessage("Correct this set’s highlighted actual value before completing it.");return;}

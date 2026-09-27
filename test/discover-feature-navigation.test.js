@@ -291,6 +291,11 @@ test("Strata+ clears private state before focus and visibility account revalidat
   assert.match(script,/String\(data\.user\?\.id\|\|""\)!==String\(identity\.user\?\.id\|\|""\)/);
   assert.match(script,/identity\.user\?\.discovery\?\.active!==true/);
   assert.match(script,/async function revalidateMemberWorkspaceWhenVisible\(\)\{[\s\S]*?clearPrivateWorkspace\(\);[\s\S]*?await init\(\)/);
+  assert.match(script,/main\.inert=true;main\.style\.visibility="hidden"/,"the private view is hidden, not cleared, while the session is re-checked");
+  assert.match(script,/String\(identity\.csrfToken\|\|""\)===state\.csrfToken&&identity\.user\?\.discovery\?\.active===true\)\{[^}]*revealPrivateWorkspace\(\)/,"only the same session with active access gets its view back");
+  assert.match(script,/loadMemberDashboard\(generation,\{keepForms:true\}\)/);
+  assert.match(script,/if\(training&&!keepForms\)/,"a background refresh never rewrites the training-block form");
+  assert.match(script,/Unsaved changes stay in this tab until STRATA confirms your account\./);
   assert.match(script,/window\.addEventListener\?\.\("focus"/);
   assert.match(script,/document\.addEventListener\("visibilitychange"/);
 });
@@ -320,7 +325,9 @@ test("Strata+ initial loading offers a normalized, retryable error without repla
   assert.match(script,/error\.redirecting=true;redirect\("\/account\.html\?mode=login&next=discover"\)/);
   assert.match(script,/redirect:\(path\)=>window\.location\.replace\(path\)/);
   assert.match(script,/if\(!error\?\.redirecting&&!error\?\.stale\)showInitialLoadError\(error\)/);
-  assert.match(script,/"discoveryRetry"\)\.addEventListener\("click",\(\)=>\{void actions\.init\(\);\}\)/);
+  assert.match(script,/const retryLoad=\(\)=>\{void\(state\.user\?actions\.revalidateMemberWorkspaceWhenVisible\(\):actions\.init\(\)\);\};/,"a signed-in view retries its account check; a failed first load reloads");
+  assert.match(script,/"discoveryRetry"\)\.addEventListener\("click",retryLoad\)/);
+  assert.match(script,/addEventListener\?\.\("online",\(\)=>\{if\(!el\("discoveryLoadError"\)\.hidden\)retryLoad\(\);\}\)/);
   assert.match(css,/\.discovery-load-error\[hidden\]\s*\{\s*display:none/);
   assert.match(script,/class="loading-card load-error-card"/,"Failed requests should not keep showing the loading animation");
   assert.match(css,/\.load-error-card::before\s*\{[^}]*content:"!"/,"Failed workspaces should show an unmistakable error state");

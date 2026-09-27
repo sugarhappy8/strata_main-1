@@ -53,6 +53,51 @@ test("superset pairs guide alternating rounds while ordinary exercises keep thei
   assert.equal(W.nextIncompleteSet(workout).setIndex,1);assert.equal(W.nextIncompleteSet(workout).entryId,workout.entries[0].id);
 });
 
+test("an unequal superset pair points only at real unfinished sets",()=>{
+  const workout=makeWorkout(),group="unequal-pair";workout.entries[0].supersetGroup=group;workout.entries[1].supersetGroup=group;
+  workout.entries[0].sets=[{reps:8,weight:20,seconds:null,completed:true,effort:null}];
+  workout.entries[1].sets=[{reps:10,weight:null,seconds:null,completed:true,effort:null},W.blankSet()];
+  assert.deepEqual(W.nextIncompleteSet(workout),{entryIndex:1,setIndex:1,entryId:workout.entries[1].id,exerciseId:"push-up",remaining:3});
+  workout.entries[1].sets[1].completed=true;
+  assert.equal(W.nextIncompleteSet(workout).entryId,workout.entries[2].id,"a finished unequal pair moves on to the next exercise");
+  workout.entries[0].sets.push(W.blankSet(),W.blankSet());W.removeSet(workout.entries[0],2);
+  assert.deepEqual(W.nextIncompleteSet(workout),{entryIndex:0,setIndex:1,entryId:workout.entries[0].id,exerciseId:"press",remaining:3});
+  workout.entries.forEach((entry)=>entry.sets.forEach((set)=>{set.completed=true;}));
+  assert.equal(W.nextIncompleteSet(workout),null);
+});
+
+test("live input uses the same field rules as completion, so invalid values are never applied",()=>{
+  const reps={measurement:"reps",loadType:"external",effortType:"rir"},rpe={...reps,effortType:"rpe"},none={...reps,effortType:"none"};
+  for(const value of [-1,0,8.5,1001,Number.NaN])assert.match(W.inputError(reps,"reps",value),/repetitions from 1 to 1,000/,String(value));
+  for(const value of [0,3601,12.5])assert.match(W.inputError(reps,"seconds",value),/1 to 3,600 whole seconds/,String(value));
+  for(const value of [-0.5,1000.5,2.555,Number.POSITIVE_INFINITY])assert.match(W.inputError(reps,"weight",value),/0 to 1,000/,String(value));
+  assert.match(W.inputError(reps,"effort",10.5),/RIR must be from 0 to 10/);assert.match(W.inputError(rpe,"effort",0),/RPE must be from 1 to 10/);assert.match(W.inputError(reps,"effort",2.25),/half steps/);assert.match(W.inputError(none,"effort",2),/Choose RIR or RPE/);
+  for(const [field,value] of [["reps",8],["seconds",45],["weight",0],["weight",37.5],["effort",2.5],["reps",null]])assert.equal(W.inputError(reps,field,value),"",`${field} ${value}`);
+  assert.match(W.inputError(reps,"note","x"),/not recognized/);
+  assert.equal(W.cleanNote("Brace\u202E then\u0007 press"),"Brace then press");assert.equal(W.cleanNote("x".repeat(600)).length,500);assert.equal(W.cleanNote(null),"");
+});
+
+test("a draft poisoned by an older build reopens with each invalid value cleared and listed",()=>{
+  const workout=makeWorkout(),record={ownerId:"account:42",contextId:"device",workout,dirty:true};
+  workout.entries[0].sets[0]={reps:-1,weight:20,seconds:null,completed:false,effort:null};
+  workout.entries[1].sets[0]={reps:8.5,weight:null,seconds:null,completed:true,effort:null};
+  const raw=JSON.stringify(record);
+  assert.equal(W.readDraft(raw,"account:42"),null,"strict reads still refuse invalid values");
+  const repaired=W.repairDraft(raw,"account:42");
+  assert.deepEqual(repaired.repairs,[
+    {entryId:workout.entries[0].id,exerciseId:"press",setIndex:0,field:"reps",value:-1},
+    {entryId:workout.entries[1].id,exerciseId:"push-up",setIndex:0,field:"reps",value:8.5},
+    {entryId:workout.entries[1].id,exerciseId:"push-up",setIndex:0,field:"completed",value:true}
+  ]);
+  assert.deepEqual(repaired.record.workout.entries[0].sets[0],{reps:null,weight:20,seconds:null,completed:false,effort:null});
+  assert.equal(repaired.record.workout.entries[1].sets[0].completed,false);
+  assert.ok(W.readDraft(JSON.stringify(repaired.record),"account:42"),"the repaired record is valid again");
+  assert.deepEqual(W.repairDraft(JSON.stringify({ownerId:"account:42",workout}),"account:42").repairs.length,3);
+  assert.equal(W.repairDraft(raw,"account:43"),null,"repair never crosses accounts");
+  assert.equal(W.repairDraft(JSON.stringify({...record,workout:{...workout,status:"paused"}}),"account:42"),null,"structural problems still hide the draft");
+  assert.deepEqual(W.repairDraft(JSON.stringify({...record,workout:makeWorkout()}),"account:42").repairs,[],"a valid draft needs no repair");
+});
+
 test("actual catalog timed prescriptions and compact seconds shorthand infer timed logging",()=>{
   const timedIds=["superman-hold","prone-cobra","planche-lean","wall-external-rotation-isometric","copenhagen-plank","calf-isometric-hold","seated-calf-isometric-machine","side-plank","front-plank","hollow-body-hold"];
   for(const exerciseId of timedIds){
@@ -225,6 +270,10 @@ test("warm-up and plate calculators are deterministic and reject impossible inpu
   assert.deepEqual(W.warmupSets(100),[{percent:40,load:40,reps:8},{percent:60,load:60,reps:5},{percent:80,load:80,reps:3}]);
   assert.deepEqual(W.warmupSets(0),[]);
   assert.deepEqual(W.plateBreakdown(100,20),{pairs:[{plate:25,count:1},{plate:15,count:1}],remainder:0,achievable:true});
+  assert.deepEqual(W.plateInventory("lb"),[45,35,25,10,5,2.5]);assert.deepEqual(W.plateInventory("kg"),[25,20,15,10,5,2.5,1.25]);assert.deepEqual(W.plateInventory("stone"),W.plateInventory("kg"));
+  assert.deepEqual(W.plateBreakdown(135,45,W.plateInventory("lb")),{pairs:[{plate:45,count:1}],remainder:0,achievable:true});
+  assert.deepEqual(W.plateBreakdown(225,45,W.plateInventory("lb")),{pairs:[{plate:45,count:2}],remainder:0,achievable:true});
+  assert.deepEqual(W.plateBreakdown(136,45,W.plateInventory("lb")),{pairs:[{plate:45,count:1}],remainder:.5,achievable:false});
   assert.deepEqual(W.plateBreakdown(21,20),{pairs:[],remainder:.5,achievable:false});
   assert.equal(W.plateBreakdown(10,20).remainder,null);
 });
