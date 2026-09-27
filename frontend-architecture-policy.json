@@ -33,6 +33,7 @@
         {"file":"public/scripts/discover-progress.js","role":"logic","global":"StrataDiscoverProgress","maxLines":100},
         {"file":"public/scripts/discover-render.js","role":"render","global":"StrataDiscoverRender","maxLines":70},
         {"file":"public/scripts/discover-coaching-render.js","role":"render","global":"StrataDiscoverCoachingRender","maxLines":110},
+        {"file":"public/scripts/discover-coaching-trend.js","role":"render","global":"StrataDiscoverCoachingTrend","maxLines":60},
         {"file":"public/scripts/discover-catalog.js","role":"render","global":"StrataDiscoverCatalog","maxLines":110},
         {"file":"public/scripts/discover-detail.js","role":"render","global":"StrataDiscoverDetail","maxLines":75},
         {"file":"public/scripts/discover-community.js","role":"render","global":"StrataDiscoverCommunity","maxLines":75},

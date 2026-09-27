@@ -156,3 +156,27 @@ test("the diary totals entered macros, flags a mismatch, and can copy the total 
   controller.state.profile.macroPreference=null;el("coachingFatEaten").value="40";el("coachingLogForm").listeners.input();assert.equal(el("coachingMacroHint").hidden,true,"macro tracking off hides the total");
 });
 
+test("quick add raises the running total and saves it; copying fills the previous day's totals for review",async()=>{
+  let payload;const fixture=controllerFixture(async(_url,options)=>{payload=JSON.parse(options.body);return{csrfToken:"csrf",log:{date:"2026-09-07",...payload.log,revision:5}};}),{el,controller}=fixture;
+  el("coachingQuickAdd").value="350";await el("coachingQuickAddButton").listeners.click();
+  assert.equal(payload.log.calories,2150,"1,800 already entered plus 350");assert.equal(el("coachingQuickAdd").value,"");
+  payload=null;el("coachingQuickAdd").value="0";await el("coachingQuickAddButton").listeners.click();assert.equal(payload,null);assert.match(el("coachingLogStatus").textContent,/Enter 1–5,000 calories/);
+  controller.state.profile.macroPreference="balanced";controller.state.logs.push({date:"2026-09-06",calories:2240,proteinG:140,carbsG:250,fatG:70,revision:2});
+  el("coachingCopyPrevious").listeners.click();
+  assert.equal(el("coachingCaloriesEaten").value,"2240");assert.equal(el("coachingProteinEaten").value,"140");assert.equal(el("coachingFatEaten").value,"70");assert.match(el("coachingLogStatus").textContent,/Copied 2,240 kcal from the previous day\. Review it, then save\./);
+  el("coachingLogDate").value="2026-09-01";el("coachingCopyPrevious").listeners.click();assert.match(el("coachingLogStatus").textContent,/Nothing was saved for the previous day/);
+});
+
+test("logging streaks and weight trends use only real logs",()=>{
+  const day=(offset)=>new Date(Date.UTC(2026,8,27+offset)).toISOString().slice(0,10),logs=[-7,-6,-5,-4,-3,-1,0].map(offset=>({date:day(offset),calories:offset===-4?0:2000,morningWeightKg:82+offset*.1}));
+  assert.deepEqual(Diary.loggingStreak(logs,day(0)),{days:2,includesToday:true},"a zero-calorie day or a gap ends the streak");
+  assert.deepEqual(Diary.loggingStreak(logs.slice(0,-1),day(0)),{days:1,includesToday:false},"yesterday still counts before today is logged");
+  assert.deepEqual(Diary.loggingStreak(logs,"not-a-date"),{days:0,includesToday:false});
+  const trend=Diary.weightTrend(logs,day(0));
+  assert.equal(trend.points.length,7);assert.equal(trend.latestKg,82);
+  assert.ok(Math.abs(trend.averageKg-(81.4+81.5+81.6+81.7+81.9+82)/6)<1e-9,"the latest seven-day average uses every weight in that window");
+  assert.ok(Math.abs(trend.weeklyChangeKg-.7)<1e-9,"a steady 0.1 kg/day gain is a 0.7 kg/week trend, even with a missing day");
+  assert.equal(Diary.weightTrend([{date:day(0),morningWeightKg:80}],day(0)).weeklyChangeKg,null);
+  assert.equal(Diary.weightTrend(logs.filter(log=>log.date>=day(-3)),day(0)).weeklyChangeKg,null,"a rate needs weights spanning at least a week");
+});
+

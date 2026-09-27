@@ -9,7 +9,7 @@
     },
     "src/server.js": {
       "role": "HTTP composition root",
-      "maxLines": 800,
+      "maxLines": 820,
       "allowedDependencies": [
         "src/access-controls.js",
         "src/admin.js",

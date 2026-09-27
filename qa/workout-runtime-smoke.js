@@ -65,6 +65,9 @@ vm.createContext(context);for(const [name,source] of sources)vm.runInContext(sou
   for(let index=0;index<8&&!elements.get("trainingRoom").hidden;index++)await new Promise(setImmediate);
   await new Promise(setImmediate);
   assert.match(elements.get("planPreview").innerHTML,/runtime-first|Setup, cues/);
+  assert.equal(elements.get("calendarWeekly").hidden,false,"a plan with a training day offers weekly calendar reminders");
+  assert.match(decodeURIComponent(elements.get("calendarWeeklyLink").href),/^data:text\/calendar;charset=utf-8,BEGIN:VCALENDAR[\s\S]*RRULE:FREQ=WEEKLY;BYDAY=MO[\s\S]*END:VCALENDAR/);
+  assert.match(elements.get("calendarWeeklySummary").textContent,/^Monday at .+, every week\. Re-download after you change your plan\.$/);
   const startHandlers=elements.get("startWorkout").listeners.click||[];assert.equal(startHandlers.length,1);
   startHandlers[0]();
   assert.match(elements.get("sessionEntries").innerHTML,/Checking the next target/);

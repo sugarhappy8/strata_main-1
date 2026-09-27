@@ -293,3 +293,15 @@
 .memory-target h4{margin:0 0 10px;font-size:1.1rem}.memory-target small{display:block;margin:8px 0;color:var(--muted);font-size:.7rem;line-height:1.5}.memory-target .button{min-height:44px}
 .progression-target>strong{color:var(--lime);font-size:.9rem}.progression-sets{padding:0;margin:8px 0 0;list-style:none;font-size:.75rem;line-height:1.7;color:var(--muted)}
 @media(max-width:650px){.memory-target .button{width:100%}.memory-target{padding:14px}}
+
+/* Build 8.7: weekly calendar reminders for every planned training day. */
+.calendar-weekly{margin-top:18px;border-top:1px solid var(--line)}
+.calendar-weekly>summary{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 12px;min-height:52px;padding:14px 0;color:var(--muted);cursor:pointer;list-style:none}
+.calendar-weekly>summary::-webkit-details-marker{display:none}
+.calendar-weekly>summary span{color:var(--text);font-weight:700}
+.calendar-weekly>summary small{font-size:.82rem}
+.calendar-weekly>summary::after{content:"+";margin-left:auto;color:var(--lime);font-weight:700}
+.calendar-weekly[open]>summary::after{content:"\2212"}
+.calendar-weekly-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;align-items:end;gap:12px;padding:2px 0 8px}
+.calendar-weekly-body .muted{grid-column:1/-1;margin:0}
+@media(max-width:650px){.calendar-weekly-body{grid-template-columns:1fr}.calendar-weekly-body .button{width:100%}}

@@ -43,6 +43,38 @@ test("calendar helper creates a private device calendar file for the next planne
   assert.equal(Calendar.nextPlannedSession(emptyWeek(),DAYS,new Date(2026,8,7)),null);
 });
 
+test("weekly calendar file repeats every planned day at the chosen time with an optional reminder",()=>{
+  const plan=emptyWeek();plan.days.Monday=[{exerciseId:"squat",sets:3},{exerciseId:"press",sets:4}];plan.days.Friday=[{exerciseId:"row",sets:1}];
+  const from=new Date(2026,8,9,9),schedule=Calendar.weeklySchedule(plan,DAYS,{time:"07:30",alarmMinutes:15,from});
+  assert.deepEqual(schedule.days,["Monday","Friday"]);
+  assert.equal(schedule.filename,"strata-weekly-training.ics");
+  assert.equal(decodeURIComponent(schedule.href.replace(/^data:text\/calendar;charset=utf-8,/,"")),schedule.ics);
+  const lines=schedule.ics.split("\r\n"),events=schedule.ics.split("BEGIN:VEVENT").slice(1);
+  assert.equal(events.length,2);
+  assert.ok(schedule.ics.endsWith("END:VCALENDAR\r\n"));
+  assert.ok(lines.every((line)=>Buffer.byteLength(line)<=75));
+  assert.match(events[0],/UID:strata-weekly-monday@stratafitness\.online\r\nSEQUENCE:\d+\r\nDTSTAMP:\d{8}T\d{6}Z\r\nDTSTART:20260914T073000\r\nDTEND:20260914T083000\r\nRRULE:FREQ=WEEKLY;BYDAY=MO\r\n/);
+  assert.match(events[0],/SUMMARY:STRATA · Monday workout\r\nDESCRIPTION:2 movements · 7 working sets\. Open STRATA to start\.\r\nBEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Monday workout\r\nTRIGGER:-PT15M\r\nEND:VALARM\r\nEND:VEVENT/);
+  assert.match(events[1],/DTSTART:20260911T073000\r\n.*RRULE:FREQ=WEEKLY;BYDAY=FR\r\n.*DESCRIPTION:1 movement · 1 working set\. Open STRATA to start\./s);
+  // A later download keeps each weekday's UID and raises SEQUENCE, so calendar apps update the event.
+  const later=Calendar.weeklySchedule(plan,DAYS,{time:"07:30",from:new Date(2026,8,10,9)}),sequence=(ics)=>Number(/SEQUENCE:(\d+)/.exec(ics)[1]);
+  assert.match(later.ics,/UID:strata-weekly-monday@stratafitness\.online/);
+  assert.ok(sequence(later.ics)>sequence(schedule.ics));
+  // Today counts when it is a planned day; no reminder omits the alarm.
+  const today=Calendar.weeklySchedule(plan,DAYS,{time:"18:00",alarmMinutes:0,from:new Date(2026,8,14,9)});
+  assert.match(today.ics,/DTSTART:20260914T180000\r\nDTEND:20260914T190000/);
+  assert.doesNotMatch(today.ics,/VALARM/);
+  assert.equal(Calendar.weeklySchedule(plan,DAYS,{time:"25:00",from}),null);
+  assert.equal(Calendar.weeklySchedule(plan,DAYS,{time:"7:30",from}),null);
+  assert.equal(Calendar.weeklySchedule(emptyWeek(),DAYS,{from}),null);
+});
+
+test("single-day calendar files fold long lines to 75 octets",()=>{
+  const event=Calendar.event({day:"Wednesday",date:"2026-09-09",movements:12,workingSets:36}),ics=decodeURIComponent(event.href.split(",").slice(1).join(","));
+  assert.ok(ics.split("\r\n").every((line)=>Buffer.byteLength(line)<=75));
+  assert.match(ics.replace(/\r\n /g,""),/DESCRIPTION:12 planned movements · 36 working sets\. Open STRATA when you are ready to train\./);
+});
+
 test("workout renderer keeps the training essentials visible and nests configuration under More",()=>{
   const catalog=[{id:"press",name:"Standing Press",equipment:"Barbell / Smith",reps:"8–12",group:"Shoulders",sub:"Front Delts",score:90,metrics:{stability:8}}];
   const plan=emptyWeek();plan.days.Monday=[{instanceId:"press-one",exerciseId:"press",sets:2,reps:"8–12"}];

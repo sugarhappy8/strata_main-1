@@ -335,8 +335,14 @@
           </section>
           <p class="nutrition-estimate-note">Planning estimates. Complete diary days and morning weights refine them over time.</p>
           <section class="coaching-progress-section" aria-labelledby="coachingProgressTitle">
-            <div class="coaching-section-head"><div><p class="kicker kicker-light">Daily intake log</p><h4 id="coachingProgressTitle">TODAY’S INTAKE.</h4></div><p>Enter the running total for the whole day, then mark it complete when it is final. You can correct the past 42 days without changing this saved week.</p></div>
+            <div class="coaching-section-head"><div><p class="kicker kicker-light">Daily intake log</p><h4 id="coachingProgressTitle">TODAY’S INTAKE.</h4><p class="coaching-streak" id="coachingStreak" hidden></p></div><p>Enter the running total for the whole day, then mark it complete when it is final. You can correct the past 42 days without changing this saved week.</p></div>
             <div class="coaching-progress-summary" id="coachingProgressSummary" role="status" aria-live="polite"></div>
+            <div class="coaching-quick-log" role="group" aria-labelledby="coachingQuickLabel">
+              <label for="coachingQuickAdd"><span id="coachingQuickLabel">Add a meal or snack</span><input id="coachingQuickAdd" type="number" min="1" max="5000" step="1" inputmode="numeric" placeholder="kcal, e.g. 450" /></label>
+              <button class="small-button" id="coachingQuickAddButton" type="button">Add &amp; save</button>
+              <span class="coaching-quick-chips"><button type="button" data-quick-add="100" aria-label="Add 100 calories and save">+100</button><button type="button" data-quick-add="250" aria-label="Add 250 calories and save">+250</button><button type="button" data-quick-add="500" aria-label="Add 500 calories and save">+500</button></span>
+              <button class="text-button" id="coachingCopyPrevious" type="button">Copy previous day</button>
+            </div>
             <form class="coaching-log-form" id="coachingLogForm" novalidate>
               <label class="coaching-log-date" for="coachingLogDate"><span>Day</span><select id="coachingLogDate" name="date"></select></label>
               <label class="coaching-log-calories" for="coachingCaloriesEaten"><span>Cumulative daily calories</span><input id="coachingCaloriesEaten" name="calories" type="number" min="0" max="20000" step="1" inputmode="numeric" aria-describedby="coachingCaloriesHelp" required /><small id="coachingCaloriesHelp">Replace this number as the day progresses; do not enter only the latest meal.</small></label>
@@ -353,6 +359,10 @@
           <section class="coaching-nutrition-section" aria-labelledby="coachingNutritionTitle">
             <div class="coaching-section-head"><div><p class="kicker kicker-light">Seven-day view</p><h4 id="coachingNutritionTitle">THIS WEEK AT A GLANCE.</h4></div><p id="coachingPatternExplanation">Each day is part of one weekly target.</p></div>
             <div class="coaching-calorie-week" id="coachingCalorieWeek"></div>
+          </section>
+          <section class="coaching-trend-section" aria-labelledby="coachingTrendTitle">
+            <div class="coaching-section-head"><div><p class="kicker kicker-light">Morning weights</p><h4 id="coachingTrendTitle">WEIGHT TREND.</h4></div><p id="coachingTrendSummary">Log a morning weight on two or more days to see your trend.</p></div>
+            <figure class="coaching-trend" id="coachingTrendChart"></figure>
           </section>
           <section class="coaching-meal-suggestions" id="coachingFood" aria-labelledby="coachingFoodTitle">
             <header class="coaching-meal-suggestions-head"><div><p class="kicker kicker-light">Meal ideas for what is left</p><h4 id="coachingFoodTitle" tabindex="-1">OPTIONS FOR THIS DAY.</h4></div><button class="small-button" id="coachingFoodRefresh" type="button" aria-controls="coachingFoodOptions" disabled>Refresh suggestions <span aria-hidden="true">↻</span></button></header>
@@ -643,6 +653,7 @@
     <script src="discover-progress.js?v=8.6.1"></script>
     <script src="discover-render.js?v=8.6.1"></script>
     <script src="discover-coaching-render.js?v=8.6.1"></script>
+    <script src="discover-coaching-trend.js?v=8.6.1"></script>
     <script src="discover-catalog.js?v=8.6.1"></script>
     <script src="discover-detail.js?v=8.6.1"></script>
     <script src="discover-community.js?v=8.6.1"></script>

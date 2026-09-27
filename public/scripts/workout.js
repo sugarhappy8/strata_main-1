@@ -141,7 +141,12 @@
     }catch(error){toast(saveError(error));}
     finally{buttons.forEach((button)=>button.disabled=false);}
   }
-  function renderPlan(){contextView.render();}
+  function renderPlan(){contextView.render();updateWeeklyCalendar();}
+  function updateWeeklyCalendar(){
+    const alarm=Number($("calendarWeeklyAlarm").value)||0,schedule=C.weeklySchedule(state.plan,W.DAYS,{time:$("calendarWeeklyTime").value||"18:00",alarmMinutes:alarm});$("calendarWeekly").hidden=!schedule;if(!schedule)return;
+    const time=new Date(`2026-01-05T${$("calendarWeeklyTime").value||"18:00"}:00`).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}),days=new Intl.ListFormat(undefined,{type:"conjunction"}).format(schedule.days);
+    $("calendarWeeklyLink").href=schedule.href;$("calendarWeeklyLink").download=schedule.filename;$("calendarWeeklySummary").textContent=`${days} at ${time}, every week${alarm?`, with a reminder ${alarm===60?"1 hour":`${alarm} minutes`} before`:""}. Re-download after you change your plan.`;
+  }
   function memoryReadyFor(workout){return !workout||state.memoryExhausted||workout.entries.every((entry)=>memoryFor(entry));}
   function mergeMemory(items){state.memoryHistory=[...new Map([...state.memoryHistory,...items].map((item)=>[item.id,item])).values()].sort((a,b)=>b.startedAt-a.startedAt);}
   async function loadWorkoutMemory(workoutId){
@@ -391,7 +396,7 @@
       $("modeNotice").textContent="The workout room could not load. Your saved sessions and device drafts have been kept.";
     }finally{state.loading=false;}
   }
-  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save}});
+  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,updateWeeklyCalendar,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save}});
   setInterval(tick,1000);
   void initialize();
 })();

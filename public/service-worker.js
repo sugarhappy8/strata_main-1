@@ -97,6 +97,7 @@ const PRECACHE_URLS=[
   "/discover-progress.js?v=8.6.1",
   "/discover-render.js?v=8.6.1",
   "/discover-coaching-render.js?v=8.6.1",
+  "/discover-coaching-trend.js?v=8.6.1",
   "/discover-catalog.js?v=8.6.1",
   "/discover-detail.js?v=8.6.1",
   "/discover-community.js?v=8.6.1",
