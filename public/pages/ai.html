@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#10110f" />
+    <meta name="description" content="Strata AI plans your training week from STRATA’s 320 exercises, offers matching nutrition targets, and suggests improvements you approve." />
+    <meta name="application-name" content="STRATA" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="STRATA" />
+    <title>Strata AI — STRATA</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="stylesheet" href="/fonts.css?v=8.7.0" />
+    <link rel="stylesheet" href="/experience.css?v=8.7.0" />
+    <link rel="stylesheet" href="/discover.css?v=8.7.0" />
+    <link rel="stylesheet" href="/product-signals.css?v=8.7.0" />
+    <link rel="stylesheet" href="/ai.css?v=8.7.0" />
+    <script src="/motion.js?v=8.7.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=8.7.0" />
+  </head>
+  <body class="plus-studio ai-page">
+    <a class="skip-link" href="#aiMessage">Skip to the Strata AI message box</a>
+    <header class="studio-header">
+      <a class="brand" href="/" aria-label="STRATA home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>STRATA</span></a>
+      <nav class="studio-nav studio-nav-desktop" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a class="active" href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
+      <div class="studio-user"><span id="userName">Member</span><a class="studio-account" href="/account.html">Account</a><button id="logoutButton" type="button">Sign out</button></div>
+      <nav class="studio-nav studio-nav-mobile" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a class="active" href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
+    </header>
+
+    <main id="main">
+      <section class="ai-hero" aria-labelledby="aiTitle">
+        <div class="studio-container ai-hero-layout">
+          <div>
+            <p class="eyebrow"><a href="/discover.html">Strata+</a> · Strata AI</p>
+            <h1 id="aiTitle">Don’t feel like planning? <em>Ask Strata AI.</em></h1>
+            <p class="ai-lede">Tell it your schedule, equipment, and goals. Strata AI builds a week from all 320 STRATA exercises, offers matching nutrition targets, and suggests improvements. Nothing changes until you apply it.</p>
+          </div>
+          <aside class="ai-status" id="aiStatus" data-tone="checking" aria-labelledby="aiStatusTitle">
+            <p class="ai-status-line"><span class="ai-status-dot" aria-hidden="true"></span><strong id="aiStatusTitle">Checking Strata AI…</strong></p>
+            <p id="aiStatusDetail"></p>
+            <ul class="ai-promises">
+              <li><strong>Every exercise</strong><span>Picks from STRATA’s full library, including any you name.</span></li>
+              <li><strong>Real calorie math</strong><span>Targets come from STRATA’s calculator, never guessed.</span></li>
+              <li><strong>You decide</strong><span>Review each proposal, then apply it or ask for changes.</span></li>
+            </ul>
+          </aside>
+        </div>
+      </section>
+
+      <section class="ai-workspace" aria-label="Strata AI conversation">
+        <div class="studio-container ai-layout">
+          <div class="ai-chat">
+            <div class="ai-chat-head">
+              <h2>Conversation</h2>
+              <button class="ai-button ai-button-quiet" id="aiReset" type="button" hidden>New conversation</button>
+            </div>
+            <div class="ai-empty" id="aiEmpty">
+              <p class="ai-empty-title">Start with a goal, or pick one of these.</p>
+              <ul class="ai-starters" id="aiStarters" aria-label="Example requests"></ul>
+            </div>
+            <ol class="ai-thread" id="aiConversation" aria-label="Messages"></ol>
+            <form class="ai-composer" id="aiForm" novalidate>
+              <label class="sr-only" for="aiMessage">Message to Strata AI</label>
+              <textarea id="aiMessage" name="message" rows="3" maxlength="1200" placeholder="For example: 4 days a week, 45 minutes, dumbbells at home, I want stronger legs." aria-describedby="aiComposerHint aiFormError"></textarea>
+              <p class="ai-form-error" id="aiFormError" role="alert" hidden></p>
+              <div class="ai-composer-bar">
+                <p class="ai-composer-hint" id="aiComposerHint"><span id="aiCount">0 / 1,200</span> · Enter to send, Shift+Enter for a new line</p>
+                <div class="ai-composer-actions">
+                  <button class="ai-button" id="aiSuggest" type="button" disabled>Review my plan</button>
+                  <button class="ai-button ai-button-primary" id="aiSend" type="submit" disabled>Ask Strata AI</button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <aside class="ai-side" aria-label="About Strata AI">
+            <section class="ai-side-card">
+              <h2>How it works</h2>
+              <ol class="ai-steps">
+                <li><strong>Ask</strong><span>Describe your week in your own words: days, time, equipment, goals, exercises you love or can’t do.</span></li>
+                <li><strong>Review</strong><span>Strata AI proposes a week. STRATA checks every exercise, set, and day before you see it.</span></li>
+                <li><strong>Apply</strong><span>Save the week to Plan, add matching nutrition targets, or try a suggested swap.</span></li>
+              </ol>
+            </section>
+            <section class="ai-side-card">
+              <h2>What Strata AI sees</h2>
+              <p>Your saved plan, personal setup, and a summary of recent workouts and nutrition logs. It never receives your name, email, or account ID.</p>
+              <p>Your conversation stays in this browser tab. STRATA keeps each answer only until this page collects it.</p>
+            </section>
+            <p class="ai-disclaimer">Strata AI can make mistakes. Check a week before you train it and stop any exercise that causes pain. It is not medical or dietary advice. See the <a href="/privacy">privacy policy</a>.</p>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="build-footer">STRATA · Build 8.7.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+
+    <dialog class="ai-dialog" id="aiConfirm" aria-labelledby="aiConfirmTitle" aria-describedby="aiConfirmText">
+      <form method="dialog">
+        <h2 id="aiConfirmTitle">Replace your weekly plan?</h2>
+        <p id="aiConfirmText"></p>
+        <div class="ai-actions"><button class="ai-button" value="cancel">Keep my plan</button><button class="ai-button ai-button-primary" value="replace">Replace plan</button></div>
+      </form>
+    </dialog>
+    <p class="sr-only" id="aiAnnounce" role="status" aria-live="polite"></p>
+    <noscript><div class="no-script-note" role="status"><strong>Strata AI needs JavaScript.</strong> Your plan and nutrition tools remain available in Strata+.</div></noscript>
+
+    <script src="/pwa.js?v=8.7.0"></script>
+    <script src="/product-signals.js?v=8.7.0"></script>
+    <script src="/personal-training-energy-ui-core.js?v=8.7.0"></script>
+    <script src="/ai-logic.js?v=8.7.0"></script>
+    <script src="/ai-state.js?v=8.7.0"></script>
+    <script src="/ai-api.js?v=8.7.0"></script>
+    <script src="/ai-render.js?v=8.7.0"></script>
+    <script src="/ai-events.js?v=8.7.0"></script>
+    <script src="/ai.js?v=8.7.0"></script>
+  </body>
+</html>

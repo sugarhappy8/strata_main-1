@@ -13,6 +13,8 @@ const { createAdminService } = require("./admin");
 const { createWorkoutService } = require("./workouts");
 const { createTrainingService } = require("./training");
 const { createCoachingService } = require("./coaching");
+const { createAiService } = require("./ai");
+const { aiSettings,createAiProvider } = require("./ai-provider");
 const { createSetupService } = require("./setup");
 const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
@@ -59,6 +61,7 @@ const PAYMENT_CONFIG = getPaymentConfig(process.env);
 const EMAIL_CONFIG = getEmailVerificationConfig(process.env);
 const ADMIN_EMAIL = configuredAdminEmail(process.env.ADMIN_EMAIL);
 const ENFORCE_PADDLE_IPS=String(process.env.PADDLE_ENFORCE_IP_ALLOWLIST||"").toLowerCase()==="true";
+const AI_SETTINGS=aiSettings(process.env);
 const LOGGER=createLogger();
 // Browser URLs deliberately remain stable even though files are grouped by
 // purpose on disk. Only entries in this map can ever be served publicly.
@@ -98,6 +101,14 @@ const STATIC_FILES = new Map([
   ["plan-insights-core.js","scripts/plan-insights-core.js"],
   ["planner.html","pages/planner.html"],
   ["discover.html","pages/discover.html"],
+  ["ai.html","pages/ai.html"],
+  ["ai.css","styles/ai.css"],
+  ["ai-logic.js","scripts/ai-logic.js"],
+  ["ai-state.js","scripts/ai-state.js"],
+  ["ai-api.js","scripts/ai-api.js"],
+  ["ai-render.js","scripts/ai-render.js"],
+  ["ai-events.js","scripts/ai-events.js"],
+  ["ai.js","scripts/ai.js"],
   ["install.html","pages/install.html"],
   ["offline.html","pages/offline.html"],
   ["pricing.html","pages/pricing.html"],
@@ -213,9 +224,10 @@ const PAGE_ALIASES = new Map([
   ["/forgot-password","forgot-password.html"],
   ["/reset-password","reset-password.html"],
   ["/delete-account","delete-account.html"],
-  ["/admin","admin.html"]
+  ["/admin","admin.html"],
+  ["/ai","ai.html"]
 ]);
-const PROTECTED_HTML = new Set(["discover.html","workout.html","onboarding.html"]);
+const PROTECTED_HTML = new Set(["discover.html","workout.html","onboarding.html","ai.html"]);
 const PRIVATE_HTML = new Set(["index.html","account.html","verify-email.html","forgot-password.html","reset-password.html","delete-account.html","admin.html",...PROTECTED_HTML]);
 const MIME = {
   ".html":"text/html; charset=utf-8",
@@ -236,6 +248,7 @@ let support;
 let workouts;
 let training;
 let coaching;
+let ai;
 let setup;
 let productSignals;
 let billing;
@@ -417,6 +430,7 @@ async function handleApi(req,res,url) {
   if (await support.handleApi(req,res,url)) return;
   if (await auth.handleApi(req,res,url)) return;
   if (await admin.handleApi(req,res,url)) return;
+  if (await ai.handleApi(req,res,url)) return;
   if (await training.handleApi(req,res,url)) return;
   if (await coaching.handleApi(req,res,url)) return;
   if (await workouts.handleApi(req,res,url)) return;
@@ -663,7 +677,7 @@ async function serveStatic(req,res,url) {
     return;
   }
   if (PROTECTED_HTML.has(requested)&&!await hasCurrentDiscoveryAccess(activeSession.id)) {
-    res.writeHead(302,{...securityHeaders(),Location:"/pricing?reason=discovery-required","Cache-Control":"no-store"});
+    res.writeHead(302,{...securityHeaders(),Location:requested==="ai.html"?"/pricing?reason=ai":"/pricing?reason=discovery-required","Cache-Control":"no-store"});
     res.end();
     return;
   }
@@ -746,6 +760,8 @@ async function start() {
   workouts=createWorkoutService({store,auth,requireAccess:requireDiscoveryAccess,rateAllowed,http:{json,bodyJson}});
   training=createTrainingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
   coaching=createCoachingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
+  ai=createAiService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
   setup=createSetupService({
     store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,
     getPlanSnapshot:planSnapshotFor,getPreferencesSnapshot:preferencesSnapshotFor,getUserPayload:userPayload,

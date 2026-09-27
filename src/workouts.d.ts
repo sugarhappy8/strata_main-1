@@ -35,3 +35,4 @@ export function summarizeWorkout(workout:Record<string,any>):{
     }>;
   }>;
 };
+export function workoutPayload(row:Record<string,any>|null|undefined,summary?:boolean,includeMemory?:boolean):Record<string,any>|null;

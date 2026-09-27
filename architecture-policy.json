@@ -13,6 +13,8 @@
       "allowedDependencies": [
         "src/access-controls.js",
         "src/admin.js",
+        "src/ai-provider.js",
+        "src/ai.js",
         "src/auth.js",
         "src/billing.js",
         "src/coaching.js",
@@ -390,6 +392,39 @@
       "role": "Explicit dynamic sensitivity scenarios with propagated maintenance uncertainty",
       "maxLines": 100,
       "allowedDependencies": []
+    },
+    "src/ai.js": {
+      "role": "Strata AI request queue and review-only proposal API",
+      "maxLines": 200,
+      "allowedDependencies": [
+        "src/ai-catalog.js",
+        "src/ai-core.js",
+        "src/coaching-core.js",
+        "src/coaching-evidence.js",
+        "src/coaching.js",
+        "src/workouts.js"
+      ]
+    },
+    "src/ai-core.js": {
+      "role": "Strata AI prompt, exercise candidates, and proposal validation",
+      "maxLines": 260,
+      "allowedDependencies": [
+        "src/ai-catalog.js",
+        "src/coaching-core.js",
+        "src/plans.js"
+      ]
+    },
+    "src/ai-provider.js": {
+      "role": "OpenAI-compatible model client and Strata AI settings",
+      "maxLines": 90,
+      "allowedDependencies": []
+    },
+    "src/ai-catalog.js": {
+      "role": "Strata AI library search and per-request exercise shortlists",
+      "maxLines": 120,
+      "allowedDependencies": [
+        "src/plans.js"
+      ]
     }
   }
 }
