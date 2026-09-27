@@ -28,6 +28,8 @@ Build 8.5 gave each Strata+ tool one home. Build 8.6 cleans up what those homes 
 
 No database migration, server change, API change, billing change, or new asset is required. Coaching profiles, weekly snapshots, diary entries, workouts, and plans keep their existing formats and calculations. The public build and asset versions are `8.6.0` (Build 8.6), which refreshes the versioned service-worker cache so installed apps receive the new styles and scripts.
 
+Releases now publish from the **Release** workflow. Running it on `main` tags the `package.json` version at that commit and uses the matching `docs/release-X.Y.Z.md` guide as the notes. Pushing a matching `vX.Y.Z` tag still works, and re-running for an existing release changes nothing.
+
 ## Validation
 
 Local results on Node 24:

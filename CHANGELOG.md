@@ -9,6 +9,7 @@
 - Remove duplicated headings and copy across Overview, Plan, Personal setup, Exercises, and Train, state the suggested week's shared load cue once, and keep rest days compact.
 - Fix unreadable small buttons on dark panels, wrapped button arrows, the Account next-workout eyebrow, Plan tool kickers, and the weight-scenario cards; an axe contrast audit now passes on every page at desktop and phone widths.
 - Move Strata+-only styles into `discover.css`, consolidate superseded shared rules, and delete styles for components removed in 8.5. No migration, API, or calculation change.
+- Publish releases from the **Release** workflow: running it on `main` tags the package version and uses `docs/release-X.Y.Z.md` as the release notes. Pushing a matching `vX.Y.Z` tag still works.
 
 See the [8.6.0 release guide](docs/release-8.6.0.md).
 

@@ -84,7 +84,7 @@ npm run load:100:shared # same workload behind one shared IP
 
 Coverage is enforced at calibrated application-code floors, not chased to 100%. Performance budgets are conservative regression tripwires, not production capacity claims. See [docs/testing.md](docs/testing.md), [docs/performance.md](docs/performance.md), and [qa/README.md](qa/README.md) for exact scope and prerequisites.
 
-Before a release, audit managed version references with `npm run release:check`. Preview a bump with `npm run release:version -- --dry-run x.y.z` or `x.y.z.NNN`, then apply it without `--dry-run`. Four-part public builds retain an npm-compatible three-part package version and store the exact public build in `strataBuild`. The tool changes only its explicit release manifest. After the release commit is pushed, pushing a matching `vX.Y.Z` tag runs `.github/workflows/release.yml`, which publishes `docs/release-X.Y.Z.md` as the GitHub release notes.
+Before a release, audit managed version references with `npm run release:check`. Preview a bump with `npm run release:version -- --dry-run x.y.z` or `x.y.z.NNN`, then apply it without `--dry-run`. Four-part public builds retain an npm-compatible three-part package version and store the exact public build in `strataBuild`. The tool changes only its explicit release manifest. After the release commit reaches `main`, run the **Release** workflow (`.github/workflows/release.yml`) on `main`, or push a matching `vX.Y.Z` tag. It tags the commit when needed and publishes `docs/release-X.Y.Z.md` as the GitHub release notes.
 
 ## Accounts, plans, and administrator access
 

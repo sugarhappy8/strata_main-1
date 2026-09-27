@@ -33,11 +33,13 @@ test("one check command owns the complete pre-release verification sequence",()=
   assert.doesNotMatch(workflow,/run: npm run coverage/,"the release gate already owns coverage");
 
   const release=read(".github/workflows/release.yml");
-  assert.match(release,/tags:\s*\n\s*- "v\*\.\*\.\*"/,"releases publish only from version tags");
+  assert.match(release,/tags:\s*\n\s*- "v\*\.\*\.\*"\s*\n\s*workflow_dispatch:/,"a version tag or a manual run publishes a release");
   assert.match(release,/permissions:\s*\n\s*contents: write/);
+  assert.match(release,/version="\$\(node -p 'require\("\.\/package\.json"\)\.version'\)"/,"the release version comes from package.json");
+  assert.match(release,/"\$REF_NAME" != "\$tag"/,"a pushed tag must match the package version");
+  assert.match(release,/"\$REF_NAME" != "\$DEFAULT_BRANCH"/,"manual releases run only from the default branch");
   assert.match(release,/notes="docs\/release-\$\{version\}\.md"/,"release notes come from the reviewed release guide");
-  assert.match(release,/TAG: \$\{\{ github\.ref_name \}\}/);
-  assert.doesNotMatch(release.slice(release.indexOf("run: |")),/\$\{\{/,"the publish script reads the tag from the environment, never inline expressions");
+  assert.doesNotMatch(release.slice(release.indexOf("run: |")),/\$\{\{/,"the publish script reads refs from the environment, never inline expressions");
 });
 
 test("coverage reports application code and enforces calibrated regression floors",()=>{
