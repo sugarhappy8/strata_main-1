@@ -1,0 +1,331 @@
+STRATA POLAR LOOP — plan notes (Build 8.8.6)
+
+Status: planned for STRATA Build 8.8.6; not built yet. This replaces the earlier WHOOP plan:
+WHOOP (and Oura) allow only 10 members until they approve an app, while Polar's API is
+self-serve with no approval step and no member cap. The Polar facts below come from public
+sources and Polar's example code; polar.com could not be reached while this was written, so
+step 0 of BUILD ORDER confirms them with a real Polar Loop and API client.
+
+GOAL
+- Every STRATA member can connect their own Polar account (and their Polar Loop) to their own
+  STRATA account.
+- STRATA imports that member's recovery, sleep, heart rate, heart rate variability (HRV), and
+  workouts, and uses them to show:
+  - Recovery: how well the body recharged overnight.
+  - Stress: whether the body shows more stress signals than usual.
+  - Sleep: how long and how well the member slept.
+  - Heart rate: resting heart rate and the day's heart rate.
+- Train offers a lighter session on poor-recovery days, Progress and a new Recovery destination
+  show trends next to training, and Nutrition and Strata AI can use the data if the member
+  switches them on.
+- Polar measures, STRATA explains, the member decides. Nothing in the plan or targets changes
+  without a tap, and nothing is presented as a diagnosis or medical advice.
+- Built brand-neutral ("Connected devices"), so WHOOP, Oura, or Withings can be added later
+  without redoing the pages.
+
+WHY THE POLAR LOOP
+- A screen-free band like WHOOP, with no subscription.
+- Tracks 24/7 heart rate, sleep stages with a sleep score, nightly HRV and breathing rate,
+  Nightly Recharge (overnight recovery), cardio load, and automatically detected workouts.
+- Open API (Polar AccessLink): register the app yourself, no approval, no member cap, no fee.
+- Trade-offs:
+  - Polar has no all-day stress score, so STRATA builds a stress signal from overnight HRV,
+    resting heart rate, and breathing rate (see THE SCORES).
+  - Polar's API keeps only about 28 days of sleep, recovery, and heart rate history, so STRATA
+    must import every day and keep its own copy.
+  - Automatically detected workouts are all labeled "Other indoor", so STRATA matches them to
+    its own sessions by time.
+
+ONE MEMBER, ONE POLAR ACCOUNT (account rules)
+- A STRATA account connects at most one Polar account, and a Polar account can be connected to
+  only one STRATA account (the Polar user id is unique).
+- Polar itself enforces one registration per app: registering a Polar account that is already
+  registered answers 409 Conflict. STRATA then says: "This Polar account is already connected
+  to another STRATA account. Disconnect it there first." It never reveals which account.
+  - If the 409 belongs to this same member (a disconnect that did not reach Polar), deregister
+    and register again instead of refusing.
+- Each connect request is tied to the member and the browser session that started it. If the
+  member signs out or switches accounts before Polar sends them back, the callback stores
+  nothing (the same rule as STRATA's existing account-changed protection).
+- STRATA registers the member with Polar using a random connection id, never their email.
+- Polar tokens never reach the browser, and every read is scoped to the signed-in member.
+- Disconnect always works, even after Strata+ lapses: deregister at Polar, then delete the
+  tokens and the imported data.
+- Deleting a STRATA account deregisters at Polar and deletes every device row with the account.
+- Account export includes the device data STRATA stored, never the tokens.
+- If the member removes STRATA inside the Polar Flow app, the next Polar call is refused and the
+  connection shows "Reconnect Polar". Nothing else breaks.
+
+WHO CAN USE IT (see OPEN DECISIONS)
+- Recommended: connecting is part of Strata+, like the pages that use the data. Free accounts see
+  what it does and a pricing link.
+- If Strata+ lapses, syncing pauses and resumes on renewal. Stored data stays until disconnect.
+
+CONNECT FLOW (what the member sees)
+1. Account → new "Connected devices" card → "Connect Polar", following Polar's brand rules.
+2. A consent panel lists what STRATA reads (sleep, Nightly Recharge, heart rate and HRV,
+   workouts, daily activity, profile basics), what each is used for, how long it is kept, and a
+   privacy policy link. Health data needs this explicit consent; STRATA records when it was
+   given and which consent text was shown.
+3. Continue → Polar sign-in and approval → back on Account: "Polar connected. Importing your
+   last 28 days…", then "Last synced 2 minutes ago".
+4. The card shows the connected Polar account, last sync, Sync now, Disconnect (with a confirm
+   dialog), and three switches:
+   - Use recovery for workout suggestions (on by default)
+   - Show device activity in Nutrition (off by default)
+   - Share a recovery summary with Strata AI (off by default)
+5. Every state has its own message: not set up on this server, not connected, importing,
+   connected, no data yet (wear the Loop tonight and sync the Polar Flow app), learning your
+   usual levels (the first nights), waiting for Polar to sync, reconnect needed, and declined
+   at Polar.
+
+THE SCORES (plain words, always "compared with your usual")
+- Usual levels come from the member's own last 28 nights: the median, and a typical range from
+  the middle half of those nights. Comparisons appear after 7 nights; before that the card says
+  "Learning your usual levels (3 of 7 nights)".
+1. Recovery: Polar's own Nightly Recharge status (very poor, poor, compromised, OK, good, very
+   good), plus its two parts:
+   - ANS charge (-10 to +10, around 0 is usual): how well the nervous system settled overnight.
+   - Sleep charge: last night's sleep score compared with the usual.
+   STRATA shows Polar's numbers as they are and does not recalculate them.
+2. Stress signals (STRATA's own, from overnight data): low, usual, or higher than usual.
+   - Inputs: ANS charge, overnight HRV (RMSSD), overnight average heart rate, and breathing
+     rate, each compared with the member's usual range.
+   - "Higher than usual" when ANS charge is clearly below usual, or at least two of: HRV below
+     its usual range, heart rate above it, breathing rate above it. Thresholds are tuned in step
+     3 with a few weeks of real data.
+   - Wording: "More stress signals than usual: lower HRV and a higher overnight heart rate than
+     your usual nights." Never "you are stressed" or a health claim.
+   - Daytime stress from 24/7 heart rate is a later experiment; heart rate alone is a weak
+     stress measure, so 8.8.6 does not claim it.
+3. Sleep: Polar's sleep score, time asleep, deep, light, and REM sleep, interruptions, and sleep
+   start and end, plus sleep time against the member's usual.
+4. Heart rate: resting (overnight) heart rate against the usual, and the day's heart rate range
+   from the 24/7 samples.
+5. Training load: Polar's cardio load for detected workouts, next to STRATA's own sets and
+   volume.
+
+WHAT STRATA DOES WITH THE DATA
+1. Overview: a "Today" card with recovery status, stress signals, last night's sleep, and
+   resting heart rate, each with one line of why. It links to the Recovery destination and to
+   Train.
+2. Recovery (new Strata+ destination; see OPEN DECISIONS):
+   - Today in detail: the scores above and what they are based on.
+   - Trends for 4, 8, and 12 weeks: Nightly Recharge, HRV, resting heart rate, breathing rate,
+     sleep score and time asleep, with the usual range shaded.
+   - Training next to recovery: weekly STRATA volume and Polar cardio load beside average
+     recovery. Descriptive only, no cause-and-effect claims.
+   - An "About these numbers" panel: where each number comes from and its limits.
+3. Train, before starting today's session:
+   - OK, good, or very good: the normal session, with recovery shown as context.
+   - Compromised: the normal session, with a note that recovery is below the member's usual.
+   - Poor or very poor recovery, or stress signals higher than usual two nights running: offer
+     "Start a lighter session" (one set fewer per exercise, never below one, same weights)
+     beside the normal Start. It applies to today's workout only, the weekly plan is unchanged,
+     and the logged workout records that it was shortened for recovery.
+   - Afterwards: match the Polar workout that overlaps the STRATA session by at least half its
+     time, and show average and max heart rate, calories, and cardio load on the completion
+     screen and in history.
+   - Weight progression stays performance-based and unchanged.
+4. Nutrition (only with its switch on):
+   - Summarize Polar workouts that STRATA did not log over the last 4 weeks as minutes per week
+     and an intensity from heart rate, and offer them as a one-tap update to "Other activity" in
+     Personal setup. Targets change only through that save.
+   - Show Polar's daily calorie estimate beside STRATA's maintenance in See calculation,
+     labeled as Polar's estimate. It never sets targets.
+5. Strata AI (only with its switch on): requests include a short summary (last night's
+   recovery status, stress signals, sleep, and 7-day trends for HRV, resting heart rate, and
+   sleep). The AI may suggest a lighter or harder week; server validation and the medical
+   reply-only rules stay as they are.
+6. Admin: counts only (connected members, sync errors, webhook health), never a member's
+   health data.
+
+POLAR API FACTS TO BUILD ON (confirm in step 0)
+- Two API versions exist:
+  - AccessLink v3: the long-standing API. Authorize at
+    https://flow.polar.com/oauth2/authorization. Polar's example code keeps a single access token
+    with no refresh step. After sign-in, the member must be registered with the app
+    (POST /v3/users with a member id; 409 if already registered), and DELETE /v3/users/{id}
+    deregisters them.
+  - Dynamic API v4 (newer): sign-in through https://auth.polar.com (/oauth/authorize and
+    /oauth/token), short-lived access tokens (sources say 1 to 12 hours) with rotating refresh
+    tokens, fine-grained scopes such as sleep:read, nightly_recharge:read,
+    continuous_samples:read, activity:read, and training_sessions:read, and data under
+    https://www.polaraccesslink.com/v4/data. Sources disagree on some scope names.
+  - Recommendation: use v4 if Polar offers it to new apps (per-data consent, refresh tokens),
+    otherwise v3. Either way, only polar-client knows which version is in use.
+- Data STRATA needs: sleep (score, stages, times, interruptions), Nightly Recharge (status, ANS
+  charge, sleep charge, average heart rate, HRV, breathing rate), continuous heart rate samples,
+  workouts (start, duration, heart rate, calories, cardio load), and daily activity (steps,
+  active time, calories). v3 field names to check include nightly_recharge_status, ans_charge,
+  heart_rate_variability_avg, breathing_rate_avg, and sleep_score.
+- History: sleep, Nightly Recharge, and continuous heart rate go back about 28 days; workouts
+  about 30.
+- Webhooks: one webhook per app, created through the API. Polar sends a PING when it is created
+  and later events such as EXERCISE and ACTIVITY_SUMMARY; the full event list, including sleep,
+  is confirmed in step 0. Each delivery carries Polar-Webhook-Signature, an HMAC-SHA256 of the
+  raw body keyed with the webhook's signature_secret_key.
+- Rate limits grow with connected members: 500 + 20 per member every 15 minutes, and 5,000 +
+  100 per member every 24 hours. Every response reports usage in RateLimit-Usage,
+  RateLimit-Limit, and RateLimit-Reset headers.
+- Client registration: admin.polaraccesslink.com with a Polar Flow login; self-serve.
+- Follow Polar's API terms and brand guidelines for the button, name, and logo.
+
+SYNC
+- On connect: import everything Polar still holds (about 28 days).
+- Webhooks: verify the signature, answer quickly, drop duplicates, then read just the new
+  record. The PING at creation is answered even before the signing secret is saved.
+- Daily pull for every connected member (early morning, spread across members), fetching
+  anything without a webhook and anything missed. With only 28 days of history at Polar, a
+  member left unsynced for 4 weeks loses data, so each connection keeps a "synced through" date
+  and Admin shows members more than 3 days behind.
+- Sync now: at most every 5 minutes per member. Opening Overview with data older than 6 hours
+  starts a quiet refresh.
+- One limiter reads the RateLimit headers and stays under 80% of the current window. On 429,
+  wait until the window resets.
+- Budget: about 10 requests per member per day, far under Polar's 100 per member.
+- Jobs are saved in the database so a restart resumes them (STRATA runs as one process, like the
+  Strata AI queue).
+- v4 refresh tokens rotate: refresh one member at a time, and save the new refresh token before
+  using the new access token.
+- A refused token or a Polar-side removal marks the connection "reconnect needed".
+
+DATA STORED (brand-neutral, only what the features use)
+- device_connections: member, provider ("polar"), provider user id (unique per provider),
+  granted scopes, encrypted tokens and expiry, status, the three switches, consent time and
+  version, synced-through date, last sync, and last error.
+- device_oauth_states: one-time connect states, stored hashed, tied to member and session,
+  10-minute expiry.
+- wellness_nights: one row per member and night. Recovery status, ANS charge, sleep charge,
+  overnight heart rate, HRV, breathing rate, sleep score, sleep stages and times, and the stress
+  signal STRATA computed.
+- wellness_days: daily activity (steps, active time, calories) and a heart rate summary
+  (resting, minimum, average, maximum). Continuous heart rate detail is kept only as 30-minute
+  buckets for the latest 28 days.
+- wellness_workouts: device workouts (start, end, sport label, average and max heart rate,
+  calories, cardio load) and the STRATA workout they matched, if any.
+- device_sync_jobs and device_webhook_events: kept briefly, for retries and duplicate detection.
+- Every row belongs to a user id with ON DELETE CASCADE. Daily data is kept for 13 months while
+  connected and deleted on disconnect (see OPEN DECISIONS). Dates are the member's local
+  calendar days as Polar reports them.
+
+SECURITY AND PRIVACY
+- Tokens are encrypted at rest (AES-256-GCM, key in DEVICE_TOKEN_KEY, key id stored so the key
+  can be rotated) and are never logged, exported, or sent to the browser.
+- Connect starts with a CSRF-protected POST that returns Polar's URL, and the page then
+  navigates there; the site's content security policy only lets forms post to STRATA itself.
+- Connect state: 32 random bytes, stored hashed, single use, tied to member and session, 10
+  minutes.
+- Webhooks: raw-body HMAC check in constant time; events for unknown members are ignored.
+- Logs stay content-free (device.connected, device.sync_failed with an error code), like
+  ai.unreadable_answer.
+- Health data is sensitive: explicit consent at connect, the minimum data needed, clear
+  retention, deletion on disconnect or account deletion, and export on request.
+- Privacy policy and terms get a Connected devices section: what is read, why, retention,
+  deletion, the Strata AI summary only when switched on, never sold, and how to revoke in STRATA
+  or in Polar Flow. Recovery and stress numbers are informational, not medical advice.
+
+BUILD PLAN (code)
+- Server modules, each added to architecture-policy.json:
+  - devices-config: environment and preflight.
+  - devices-crypto: token encryption.
+  - devices-schema and devices-store: tables and queries for SQLite and Turso.
+  - wellness-core: pure logic for usual ranges, stress signals, the lighter-session rule, and
+    workout matching.
+  - polar-client: OAuth, registration, API reads, webhook verification, and the limiter. It is
+    the only module that knows the Polar API version.
+  - polar-mapping: turns Polar payloads into wellness rows.
+  - devices-sync: import, webhook jobs, daily pull, and token refresh.
+  - devices: routes.
+- Routes:
+  GET    /api/devices                         connections, status, and switches
+  POST   /api/devices/polar/connect           returns the Polar authorize URL
+  GET    /devices/polar/callback              finishes connecting, then redirects to Account
+  POST   /api/devices/polar/sync              Sync now (throttled)
+  PUT    /api/devices/settings                the three switches
+  DELETE /api/devices/polar                   deregister, then delete
+  GET    /api/wellness/today                  Overview, Train, and the Recovery page
+  GET    /api/wellness/trends?weeks=4|8|12    the Recovery page's charts
+  POST   /webhooks/polar                      signed Polar events
+- Browser: new modules for the Account card, the Overview Today card, the Recovery destination,
+  the Train recovery line and lighter-session start, and the history match, each within
+  frontend-architecture-policy.json. discover.js is at its size limit, so nothing new goes in it.
+- Workout records gain an optional "shortened for recovery" marker that history and export show.
+- scripts/polar-webhook.js: creates, shows, or removes the app's one webhook and prints the
+  signing secret to set on Render.
+
+TESTS
+- A fake Polar server (like the fake AI model): authorize page, token exchange (v3 long-lived,
+  v4 refresh rotation), registration including 409, 28-day endpoints, deregistration, signed
+  webhooks with PING, RateLimit headers, and 429s.
+- Unit: token encryption and tampering, connect-state lifecycle, webhook signatures, mapping of
+  every Polar field, missing or partial nights, the 7-night learning period, usual ranges,
+  stress-signal rules, the lighter-session rule, workout matching, and local dates.
+- Server: connect and callback, expired or reused state, changed session, Polar account already
+  connected (and the same member reconnecting), two members kept apart, disconnect and account
+  deletion deregistering and deleting, export without tokens, lapsed Strata+, webhooks for
+  unknown members.
+- Browser journeys: connect through the fake Polar, Today card and Recovery page on phone and
+  desktop, lighter-session start, history match, disconnect, and an axe sweep of every new
+  state.
+- Load: 100 connected members and a webhook burst stay under the limiter and lose nothing.
+
+SETUP (my side)
+- Get a Polar Loop, pair it with the Polar Flow app, and wear it for a few nights so Nightly
+  Recharge has data.
+- At admin.polaraccesslink.com (Polar Flow login), create an API client named STRATA with the
+  redirect URL https://<my domain>/devices/polar/callback (and, on v4, the scopes STRATA uses).
+- Render environment: POLAR_CLIENT_ID, POLAR_CLIENT_SECRET, DEVICE_TOKEN_KEY (32 random bytes,
+  base64), and optionally POLAR_REDIRECT_URI (defaults to APP_BASE_URL + the callback path).
+- After deploying, run: npm run polar:webhook -- --url https://<my domain>/webhooks/polar
+  Then set the printed secret as POLAR_WEBHOOK_SECRET and redeploy.
+- Connect my own Polar account in STRATA → Account → Connected devices, and check the Today card
+  the next morning.
+
+BUILD ORDER
+0. With my Loop and a test client, confirm: v3 or v4, which endpoints return Loop data, the
+   exact field names, the webhook events (sleep and Nightly Recharge included?), token
+   lifetimes, and the signature encoding. Save real sample responses as test fixtures.
+1. Foundations: brand-neutral tables, encryption, config and preflight, connect and disconnect
+   with registration and 409 handling, the Account card, and privacy policy and terms.
+   Done when: my Loop connects and disconnects, a second STRATA account cannot take the same
+   Polar account, and deleting an account removes everything.
+2. Sync: 28-day import, webhook endpoint and script, daily pull, limiter, restart-safe jobs,
+   and reconnect states.
+   Done when: a night synced in Polar Flow appears in STRATA within minutes, or by the next
+   daily pull at the latest.
+3. Scores: wellness-core with usual ranges, stress signals, the lighter-session rule, and
+   workout matching, tested with the saved fixtures.
+4. Pages: Overview Today card, the Recovery destination, the Train recovery line and lighter
+   session, and the history match.
+   Done when: every state reads clearly on phone and desktop, and the axe sweep is clean.
+5. Nutrition switch and Strata AI summary. These can move to 8.8.7 if 8.8.6 runs long.
+6. Release: release guide, changelog, README, version 8.8.6, SHA256SUMS, and the full release
+   gate.
+
+RISKS AND HOW THE PLAN HANDLES THEM
+- Polar API changes (v4 is new): one client module, a fake server, and saved real responses.
+- 28-day history at Polar: daily pulls, a synced-through date, and an Admin warning.
+- Loop data missing from the API: step 0 checks this with a real Loop before any page is built.
+- Webhooks paused or missed: the daily pull still fills every gap.
+- Numbers read as medical advice: Polar's own labels, "compared with your usual", no diagnoses,
+  and an "About these numbers" panel.
+- Few members own a Polar: the brand-neutral design lets WHOOP, Oura, or Withings follow.
+
+LATER (not in 8.8.6)
+- WHOOP and Oura, once their app approvals come through (each allows only 10 members before
+  approval).
+- Withings: open API; its scales could fill Nutrition's weight trend.
+- A Bluetooth chest strap such as the Polar H10, read directly by the website for live workout
+  heart rate and a morning HRV check (Chrome on Android and computers only).
+- Daytime stress from 24/7 heart rate or beat-to-beat data, if the data proves reliable.
+
+OPEN DECISIONS (recommended option first)
+1. Who can connect: Strata+ members only / every account.
+2. Where the details live: a new Recovery destination in Strata+ / inside Overview and Progress
+   only.
+3. Stress: show STRATA's stress signals next to Polar's recovery / show only Polar's own numbers.
+4. Poor recovery: offer a lighter session for today only / also propose weekly plan changes.
+5. On disconnect: delete the imported data / keep the history.
+6. Nutrition: Polar calories as evidence only / let them change calorie targets.
+7. Strata AI: off until the member switches it on / on as soon as Polar is connected.
