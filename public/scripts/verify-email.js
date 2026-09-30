@@ -189,7 +189,7 @@ async function readJson(path,options={}){
   return data;
 }
 
-function timestamp(value,{duration=false}={}){
+function timestamp(value){
   if(value instanceof Date)return value.getTime();
   if(typeof value==="string"&&value.trim()&&!/^\d+(?:\.\d+)?$/.test(value)){
     const parsed=Date.parse(value);
@@ -199,7 +199,6 @@ function timestamp(value,{duration=false}={}){
   if(!Number.isFinite(number)||number<=0)return 0;
   if(number>1e12)return number;
   if(number>1e9)return number*1000;
-  if(duration)return Date.now()+number*1000;
   return Date.now()+number*1000;
 }
 
@@ -210,11 +209,11 @@ function durationLabel(milliseconds){
   return `${minutes} minute${minutes===1?"":"s"}`;
 }
 
-function setResendAfter(value,{duration=false,prefix="Another code can be sent in"}={}){
+function setResendAfter(value,{prefix="Another code can be sent in"}={}){
   if(resendTimer)globalThis.clearTimeout(resendTimer);
   resendTimer=0;
   if(verificationSessionEnded){resendButton.disabled=true;return;}
-  const unlockAt=timestamp(value,{duration}),remaining=unlockAt-Date.now();
+  const unlockAt=timestamp(value),remaining=unlockAt-Date.now();
   if(remaining<=0){resendButton.disabled=false;return;}
   resendButton.disabled=true;
   statusText(`${prefix} about ${durationLabel(remaining)}.`);
@@ -420,7 +419,7 @@ function enhanceVerification(){
       setVerificationLocked(false);
       renderState("good","A fresh verification code is ready.");
       statusText("A fresh code was sent. Check your inbox and spam folder.");
-      setResendAfter(result.resendAfter,{duration:true,prefix:"Fresh code sent. You can request another code in"});
+      setResendAfter(result.resendAfter,{prefix:"Fresh code sent. You can request another code in"});
       requestAnimationFrame(()=>codeInput.focus({preventScroll:false}));
     }catch(error){
       if(error.purpose)setVerificationPurpose(error.purpose);
@@ -428,7 +427,7 @@ function enhanceVerification(){
         endVerificationSession(inactiveVerificationMessage(errorCode(error).includes("EXPIRED")));
         return;
       }
-      if(error.status===429||errorCode(error).includes("COOLDOWN"))setResendAfter(error.retryAfter,{duration:true,prefix:"Try sending another code again in"});
+      if(error.status===429||errorCode(error).includes("COOLDOWN"))setResendAfter(error.retryAfter,{prefix:"Try sending another code again in"});
       showError(friendlyError(error,"resend"),{markCode:false});
     }finally{
       setVerificationBusy(false);
