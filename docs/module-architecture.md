@@ -108,7 +108,6 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/account-self-service-schema.js` | Account self-service query catalog | 37 | 35 | 4.7 KiB | 55 | — |
 | `src/account-self-service-store.js` | SQLite and Turso account self-service storage parity | 72 | 67 | 4.2 KiB | 95 | `src/account-self-service-schema.js` |
 | `src/account-self-service.js` | Authenticated session inventory, revocation, and privacy-safe data export | 84 | 80 | 6.2 KiB | 150 | `src/account-export.js` |
-| `src/admin-mfa.js` | Session-bound administrator email MFA challenge and delivery | 62 | 55 | 4.6 KiB | 100 | — |
 | `src/admin-user-actions.js` | Audited administrator account and payment actions | 87 | 86 | 9.2 KiB | 160 | `src/access-controls.js`, `src/plans.js` |
 | `src/admin.js` | Administrative authorization and actions | 209 | 195 | 12.4 KiB | 280 | `src/access-controls.js`, `src/admin-user-actions.js`, `src/plans.js` |
 | `src/ai-catalog.js` | Strata AI library search and per-request exercise shortlists | 126 | 114 | 10.6 KiB | 130 | `src/plans.js` |
@@ -131,7 +130,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/coaching-training-core.js` | Repeatable goal-specific training composition with duration and coverage accounting | 107 | 106 | 13.3 KiB | 220 | `src/coaching-prescription-core.js`, `src/plans.js` |
 | `src/coaching.js` | Strata+ coaching profile, weekly snapshot, and daily-log API | 134 | 130 | 14.0 KiB | 180 | `src/coaching-core.js`, `src/coaching-evidence.js`, `src/energy-calibration-core.js`, `src/meal-planning-core.js` |
 | `src/database.js` | SQLite and Turso store adapters | 1198 | 1171 | 63.8 KiB | 1200 | `src/access-controls-store.js`, `src/account-self-service-store.js`, `src/billing-store.js`, `src/coaching-store.js`, `src/migrations.js`, `src/schema.js`, `src/store-contract.js`, `src/training-loop-store.js` |
-| `src/email.js` | Resend integration and email security | 388 | 355 | 19.9 KiB | 400 | `src/admin-mfa.js` |
+| `src/email.js` | Resend integration and email security | 387 | 354 | 20.0 KiB | 400 | — |
 | `src/energy-activity-core.js` | Profile-v4 non-workout and generated-session activity energy budget | 51 | 48 | 3.7 KiB | 100 | — |
 | `src/energy-calibration-core.js` | Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation | 158 | 153 | 22.8 KiB | 220 | — |
 | `src/energy-planning-core.js` | Versioned energy estimation, bounded trend calibration, and nutrition planning | 139 | 130 | 23.3 KiB | 190 | `src/energy-activity-core.js`, `src/energy-calibration-core.js`, `src/energy-scenarios-core.js`, `src/plans.js` |
@@ -161,7 +160,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/training-loop-store.js` | SQLite and Turso training-loop adapter parity | 136 | 133 | 7.1 KiB | 140 | `src/training-loop-schema.js` |
 | `src/training.js` | Check-ins, deterministic progression, blocks, and approved adaptations | 358 | 346 | 24.8 KiB | 450 | `src/plans.js`, `src/progression.js` |
 | `src/workouts.js` | Workout validation, history summaries, and authenticated lifecycle | 214 | 208 | 14.3 KiB | 230 | `src/plans.js` |
-Snapshot result: 61 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 82 browser modules with zero cycles and zero violations.
+Snapshot result: 60 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 82 browser modules with zero cycles and zero violations.
 
 ## Strata AI
 
