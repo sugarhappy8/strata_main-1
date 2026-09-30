@@ -9,7 +9,7 @@
     },
     "src/server.js": {
       "role": "HTTP composition root",
-      "maxLines": 820,
+      "maxLines": 830,
       "allowedDependencies": [
         "src/access-controls.js",
         "src/admin.js",
@@ -19,6 +19,7 @@
         "src/billing.js",
         "src/coaching.js",
         "src/database.js",
+        "src/devices.js",
         "src/email.js",
         "src/http.js",
         "src/observability.js",
@@ -149,6 +150,7 @@
         "src/account-self-service-store.js",
         "src/billing-store.js",
         "src/coaching-store.js",
+        "src/devices-store.js",
         "src/migrations.js",
         "src/schema.js",
         "src/store-contract.js",
@@ -157,7 +159,7 @@
     },
     "src/store-contract.js": {
       "role": "Storage boundary contract",
-      "maxLines": 175,
+      "maxLines": 180,
       "allowedDependencies": []
     },
     "src/migrations.js": {
@@ -175,6 +177,7 @@
         "src/account-self-service-schema.js",
         "src/billing-schema.js",
         "src/coaching-schema.js",
+        "src/devices-schema.js",
         "src/product-signals-schema.js",
         "src/training-loop-schema.js"
       ]
@@ -443,6 +446,64 @@
       "allowedDependencies": [
         "src/plans.js"
       ]
+    },
+    "src/devices.js": {
+      "role": "Strata+ connected devices: Polar connect flow, settings, disconnect, webhook, and wellness reads",
+      "maxLines": 280,
+      "allowedDependencies": [
+        "src/devices-config.js",
+        "src/devices-crypto.js",
+        "src/devices-sync.js",
+        "src/polar-client.js",
+        "src/wellness-core.js"
+      ]
+    },
+    "src/devices-config.js": {
+      "role": "Connected-device and Polar AccessLink settings",
+      "maxLines": 80,
+      "allowedDependencies": []
+    },
+    "src/devices-crypto.js": {
+      "role": "Sealed device tokens and connection secrets",
+      "maxLines": 60,
+      "allowedDependencies": []
+    },
+    "src/devices-schema.js": {
+      "role": "Connected-device, revocation, and wellness tables",
+      "maxLines": 170,
+      "allowedDependencies": []
+    },
+    "src/devices-store.js": {
+      "role": "Connected-device and wellness storage for SQLite and Turso",
+      "maxLines": 130,
+      "allowedDependencies": [
+        "src/devices-schema.js"
+      ]
+    },
+    "src/devices-sync.js": {
+      "role": "Polar import, daily re-check, and access revocation loop",
+      "maxLines": 140,
+      "allowedDependencies": [
+        "src/devices-crypto.js",
+        "src/polar-mapping.js"
+      ]
+    },
+    "src/polar-client.js": {
+      "role": "Polar AccessLink v3 HTTP client, rate limits, and webhook signatures",
+      "maxLines": 160,
+      "allowedDependencies": [
+        "src/devices-crypto.js"
+      ]
+    },
+    "src/polar-mapping.js": {
+      "role": "Range-checked Polar payloads as wellness rows",
+      "maxLines": 150,
+      "allowedDependencies": []
+    },
+    "src/wellness-core.js": {
+      "role": "Usual ranges, overnight stress signals, recovery labels, and trends",
+      "maxLines": 150,
+      "allowedDependencies": []
     }
   }
 }

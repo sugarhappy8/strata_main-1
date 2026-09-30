@@ -57,6 +57,15 @@
     "src/ai-provider.js",
     "src/ai-catalog.js",
     "src/ai-core.js",
-    "src/ai.js"
+    "src/ai.js",
+    "src/devices.js",
+    "src/devices-config.js",
+    "src/devices-crypto.js",
+    "src/devices-schema.js",
+    "src/devices-store.js",
+    "src/devices-sync.js",
+    "src/polar-client.js",
+    "src/polar-mapping.js",
+    "src/wellness-core.js"
   ]
 }

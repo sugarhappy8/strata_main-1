@@ -22,7 +22,12 @@ const ACCOUNT_EXPORT_QUERIES=Object.freeze({
   purchases:"SELECT transaction_id,price_id,product_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at FROM paddle_purchases WHERE user_id=? ORDER BY created_at,transaction_id",
   subscriptions:"SELECT subscription_id,transaction_id,status,price_id,product_id,scheduled_change_action,scheduled_change_at,current_period_ends_at,created_at,updated_at FROM paddle_subscriptions WHERE user_id=? ORDER BY created_at,subscription_id",
   adjustments:"SELECT a.adjustment_id,a.transaction_id,a.action,a.type,a.status,a.occurred_at,a.updated_at FROM paddle_adjustments a JOIN paddle_purchases p ON p.transaction_id=a.transaction_id WHERE p.user_id=? ORDER BY a.occurred_at,a.adjustment_id",
-  supportTickets:"SELECT id,reference,name,email,category,subject,reference_id,message,status,last_response_at,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY created_at,id"
+  supportTickets:"SELECT id,reference,name,email,category,subject,reference_id,message,status,last_response_at,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY created_at,id",
+  // Connected devices export what STRATA stored about the member, never the sealed token or Polar identifiers.
+  deviceConnections:"SELECT provider,status,settings_json,consent_version,connected_at,synced_through,last_sync_at FROM device_connections WHERE user_id=? ORDER BY provider",
+  wellnessNights:"SELECT provider,night_date,recovery_status,ans_charge,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at FROM wellness_nights WHERE user_id=? ORDER BY night_date,provider",
+  wellnessDays:"SELECT provider,day_date,resting_hr,min_hr,avg_hr,max_hr,samples,buckets_json,updated_at FROM wellness_days WHERE user_id=? ORDER BY day_date,provider",
+  wellnessWorkouts:"SELECT provider,external_id,started_at,local_date,duration_seconds,sport,calories,hr_avg,hr_max,cardio_load,updated_at FROM wellness_workouts WHERE user_id=? ORDER BY started_at,external_id"
 });
 const ACCOUNT_EXPORT_SINGLE_ROWS=new Set(["profile","weeklyPlan","monthlyPlan","preferences","trainingBlock","coachingProfile"]);
 const ACCOUNT_EXPORT_WORKOUTS_QUERY="SELECT id,workout_json,summary_json,started_at,revision,updated_at FROM workouts WHERE user_id=? AND (started_at>? OR (started_at=? AND id>?)) ORDER BY started_at,id LIMIT ?";
