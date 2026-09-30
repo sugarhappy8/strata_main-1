@@ -85,12 +85,14 @@ function sanitizeWorkout(value,now=Date.now()) {
   workout.entries=input.entries.map(workoutEntry);
   if (new Set(workout.entries.map((entry)=>entry.id)).size!==workout.entries.length) throw workoutError("Exercise entry IDs must be unique within a workout.");
   if (workout.status==="completed"&&!workout.entries.some((entry)=>entry.sets.some((set)=>set.completed))) throw workoutError("Complete at least one set before finishing a workout.");
+  // "recovery" marks a session the member chose to lighten after a poor night; the field is absent otherwise.
+  if (input.adjustment!==undefined&&input.adjustment!==null&&input.adjustment!=="") workout.adjustment=choice(input.adjustment,["recovery"],"Workout adjustment");
   return workout;
 }
 
 function summarizeWorkout(workout) {
   const {id,title,planDay,date,status,startedAt,completedAt,elapsedSeconds}=workout;
-  const result={id,title,planDay,date,status,startedAt,completedAt,elapsedSeconds,totalSets:0,completedSets:0,exerciseCount:workout.entries.length,exerciseSummaries:[]};
+  const result={id,title,planDay,date,status,startedAt,completedAt,elapsedSeconds,...(workout.adjustment?{adjustment:workout.adjustment}:{}),totalSets:0,completedSets:0,exerciseCount:workout.entries.length,exerciseSummaries:[]};
   const groups=new Map();
   for (const entry of workout.entries) {
     const {exerciseId,measurement,loadType,unit}=entry,key=JSON.stringify([exerciseId,measurement,loadType,unit]);

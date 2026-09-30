@@ -13,6 +13,7 @@ const { createAdminService } = require("./admin");
 const { createWorkoutService } = require("./workouts");
 const { createTrainingService } = require("./training");
 const { createCoachingService } = require("./coaching");
+const { createDevicesService,devicesSettings } = require("./devices");
 const { createAiService } = require("./ai");
 const { aiSettings,createAiProvider } = require("./ai-provider");
 const { createSetupService } = require("./setup");
@@ -45,7 +46,7 @@ const {
   securityHeaders,
   responseBody,
   json,
-  bodyJson,
+  bodyJson,bodyBuffer,
   bodyForm,
   redirect
 } = require("./http");
@@ -248,6 +249,7 @@ let support;
 let workouts;
 let training;
 let coaching;
+let devices;
 let ai;
 let setup;
 let productSignals;
@@ -425,6 +427,7 @@ function handleLiveness(req,res) {
 
 async function handleApi(req,res,url) {
   if (url.pathname==="/api/paddle/webhook") { await billing.handleWebhook(req,res); return; }
+  if (url.pathname==="/api/devices/polar/webhook") { await devices.handleWebhook(req,res); return; }
   if (["POST","PUT","PATCH","DELETE"].includes(req.method) && !sameOrigin(req)) { json(res,403,{error:"Cross-origin request rejected."}); return; }
   if (await productSignals.handleApi(req,res,url)) return;
   if (await support.handleApi(req,res,url)) return;
@@ -433,6 +436,7 @@ async function handleApi(req,res,url) {
   if (await ai.handleApi(req,res,url)) return;
   if (await training.handleApi(req,res,url)) return;
   if (await coaching.handleApi(req,res,url)) return;
+  if (await devices.handleApi(req,res,url)) return;
   if (await workouts.handleApi(req,res,url)) return;
   if (await setup.handleApi(req,res,url)) return;
   if (await billing.handleApi(req,res,url)) return;
@@ -760,6 +764,7 @@ async function start() {
   workouts=createWorkoutService({store,auth,requireAccess:requireDiscoveryAccess,rateAllowed,http:{json,bodyJson}});
   training=createTrainingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
   coaching=createCoachingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  devices=createDevicesService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
   ai=createAiService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
   setup=createSetupService({
@@ -793,6 +798,7 @@ function shutdown() {
   if (shuttingDown) return;
   shuttingDown=true;
   if (cleanup) clearInterval(cleanup);
+  devices?.stop();
   const deadline=setTimeout(()=>{
     console.error("Shutdown deadline reached; closing remaining connections.");
     server.closeAllConnections();

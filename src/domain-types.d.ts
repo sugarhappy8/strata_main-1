@@ -463,7 +463,7 @@ export interface ProductSignalsStore {
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -525,6 +525,10 @@ export interface AccountExportStoreRows {
   subscriptions:JsonObject[];
   adjustments:JsonObject[];
   supportTickets:JsonObject[];
+  deviceConnections:JsonObject[];
+  wellnessNights:JsonObject[];
+  wellnessDays:JsonObject[];
+  wellnessWorkouts:JsonObject[];
 }
 
 export interface AccountSelfServiceStore {
@@ -839,6 +843,53 @@ export interface LocalCoachingStoreDependencies {
 export interface TursoCoachingStoreDependencies {
   first(sql:string,args?:any[]):Promise<any>;
   all(sql:string,args?:any[]):Promise<any[]>;
+}
+
+export interface WellnessOwner {userId:string;provider:string;providerUserId:string;}
+export interface WellnessNightRecord {nightDate:string;recoveryStatus:number|null;ansCharge:number|null;ansChargeStatus:number|null;sleepCharge:number|null;heartRateAvg:number|null;hrvAvg:number|null;breathingRateAvg:number|null;sleepScore:number|null;sleepStart:string|null;sleepEnd:string|null;asleepSeconds:number|null;lightSeconds:number|null;deepSeconds:number|null;remSeconds:number|null;interruptionSeconds:number|null;updatedAt:number;}
+export interface WellnessDayRecord {dayDate:string;restingHr:number|null;minHr:number|null;avgHr:number|null;maxHr:number|null;samples:number;bucketsJson:string|null;updatedAt:number;}
+export interface WellnessWorkoutRecord {externalId:string;startedAt:number;localDate:string;durationSeconds:number;sport:string;calories:number|null;hrAvg:number|null;hrMax:number|null;cardioLoad:number|null;updatedAt:number;}
+export interface DeviceConnectionRecord {userId:string;provider:string;providerUserId:string;memberRef:string;tokenSealed:string;tokenExpiresAt:number|null;settingsJson:string;consentVersion:string;connectedAt:number;nextSyncAt:number;updatedAt:number;}
+export interface DeviceSyncRecord {userId:string;provider:string;providerUserId:string;status:string;syncedThrough:string|null;lastSyncAt:number|null;lastError:string|null;nextSyncAt:number;failures:number;updatedAt:number;}
+export interface DeviceConnectStateRecord {stateHash:string;userId:string;provider:string;sessionHash:string;redirectUri:string;createdAt:number;expiresAt:number;}
+export interface DeviceRevocationRecord {id:string;provider:string;providerUserId:string;tokenSealed:string;createdAt:number;nextAttemptAt:number;}
+export interface DeviceStore {
+  deviceConnection(userId:string,provider:string):Promise<any>;
+  deviceConnectionByProviderUser(provider:string,providerUserId:string):Promise<any>;
+  insertDeviceConnectState(record:DeviceConnectStateRecord):Promise<boolean>;
+  readDeviceConnectState(stateHash:string):Promise<any>;
+  consumeDeviceConnectState(stateHash:string,userId:string,sessionHash:string,now:number):Promise<any>;
+  discardDeviceConnectState(stateHash:string,now:number):Promise<void>;
+  upsertDeviceConnection(record:DeviceConnectionRecord):Promise<any>;
+  recordDeviceSync(record:DeviceSyncRecord):Promise<boolean>;
+  markDeviceConnectionDue(provider:string,providerUserId:string,dueAt:number,now:number):Promise<any>;
+  dueDeviceConnections(now:number,limit:number):Promise<any[]>;
+  updateDeviceSettings(userId:string,provider:string,settingsJson:string,expectedRevision:number,updatedAt:number):Promise<any>;
+  deleteDeviceData(userId:string,provider:string):Promise<any>;
+  insertDeviceRevocation(record:DeviceRevocationRecord):Promise<void>;
+  dueDeviceRevocations(now:number,limit:number):Promise<any[]>;
+  rescheduleDeviceRevocation(id:string,attempts:number,nextAttemptAt:number):Promise<void>;
+  deleteDeviceRevocation(id:string):Promise<void>;
+  cancelDeviceRevocations(provider:string,providerUserId:string):Promise<void>;
+  upsertWellnessNight(owner:WellnessOwner,night:WellnessNightRecord):Promise<void>;
+  upsertWellnessDay(owner:WellnessOwner,day:WellnessDayRecord):Promise<void>;
+  upsertWellnessWorkout(owner:WellnessOwner,workout:WellnessWorkoutRecord):Promise<void>;
+  wellnessNights(userId:string,provider:string,fromDate:string,toDate:string):Promise<any[]>;
+  wellnessDays(userId:string,provider:string,fromDate:string,toDate:string):Promise<any[]>;
+  wellnessWorkouts(userId:string,provider:string,fromTime:number,toTime:number):Promise<any[]>;
+  deleteExpiredDeviceData(now:number):Promise<void>;
+}
+export interface LocalDeviceStoreDependencies {
+  db:{exec(sql:string):unknown};
+  statements:Record<string,PreparedStatementLike>;
+  plainRow:(row:unknown,columns?:string[])=>any;
+}
+export interface TursoDeviceStoreDependencies {
+  client:{batch(statements:{sql:string;args:any[]}[],mode:"write"):Promise<QueryResultLike[]>};
+  first(sql:string,args?:any[]):Promise<any>;
+  all(sql:string,args?:any[]):Promise<any[]>;
+  run(sql:string,args?:any[]):Promise<QueryResultLike>;
+  plainRow:(row:unknown,columns?:string[])=>any;
 }
 export interface CoachingServiceDependencies {
   store:CoachingStore&Pick<TrainingServiceStore,"workouts"|"workout"|"workoutCheckIn">;

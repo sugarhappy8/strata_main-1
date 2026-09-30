@@ -10,6 +10,7 @@ export function summarizeWorkout(workout:Record<string,any>):{
   startedAt:number;
   completedAt:number|null;
   elapsedSeconds:number;
+  adjustment?:"recovery";
   totalSets:number;
   completedSets:number;
   exerciseCount:number;

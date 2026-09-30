@@ -9,6 +9,7 @@ const {createLocalAccountSelfServiceMethods,createTursoAccountSelfServiceMethods
 const {createLocalBillingMethods,createTursoBillingMethods}=require("./billing-store");
 const {createLocalAccessControlMethods,createTursoAccessControlMethods}=require("./access-controls-store");
 const {coachingDeletionBatch,createLocalCoachingMethods,createTursoCoachingMethods,deleteLocalCoachingData}=require("./coaching-store");
+const {createLocalDeviceMethods,createTursoDeviceMethods}=require("./devices-store");
 const {migrateLocalSchema,migrateTursoSchema}=require("./migrations");
 function plainValue(value) {
   return typeof value === "bigint" ? Number(value) : value;
@@ -164,9 +165,9 @@ function localStore(root) {
   const trainingMethods=createLocalTrainingMethods({db,statements,plainRow});
   const accountSelfServiceMethods=createLocalAccountSelfServiceMethods({db,statements,plainRow});
   const billingMethods=createLocalBillingMethods({db,statements,plainRow});
-  const coachingMethods=createLocalCoachingMethods({statements,plainRow});
+  const coachingMethods=createLocalCoachingMethods({statements,plainRow}),deviceMethods=createLocalDeviceMethods({db,statements,plainRow});
   return defineStore("local",{
-    ...coachingMethods,
+    ...coachingMethods,...deviceMethods,
     ...createLocalAccessControlMethods({db,statements,plainRow}),
     async ping() { return probeConnection(() => statements.ping.get()); },
     async userByEmail(email) { return plainRow(statements.userByEmail.get(email)); },
@@ -769,10 +770,10 @@ async function tursoStore(url,authToken,tursoClientFactory) {
   const trainingMethods=createTursoTrainingMethods({client,first,run,plainRow});
   const accountSelfServiceMethods=createTursoAccountSelfServiceMethods({client,first,run,all,plainRow});
   const billingMethods=createTursoBillingMethods({client,first,run,all,plainRow});
-  const coachingMethods=createTursoCoachingMethods({first,all});
+  const coachingMethods=createTursoCoachingMethods({first,all}),deviceMethods=createTursoDeviceMethods({client,first,all,run,plainRow});
 
   return defineStore("turso",{
-    ...coachingMethods,
+    ...coachingMethods,...deviceMethods,
     ...createTursoAccessControlMethods({client,first,plainRow,SQL}),
     // A successful query is the health signal. Some Turso-compatible row
     // implementations expose selected values only by numeric index, so the

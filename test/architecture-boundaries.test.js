@@ -21,7 +21,7 @@ test("domain services do not reach into the composition root or database adapter
     assert.ok(!byFile.get(file).dependencies.includes("src/server.js"));
     assert.ok(!byFile.get(file).dependencies.includes("src/database.js"));
   }
-  assert.deepEqual(byFile.get("src/database.js").dependencies,["src/access-controls-store.js","src/account-self-service-store.js","src/billing-store.js","src/coaching-store.js","src/migrations.js","src/schema.js","src/store-contract.js","src/training-loop-store.js"]);
+  assert.deepEqual(byFile.get("src/database.js").dependencies,["src/access-controls-store.js","src/account-self-service-store.js","src/billing-store.js","src/coaching-store.js","src/devices-store.js","src/migrations.js","src/schema.js","src/store-contract.js","src/training-loop-store.js"]);
 });
 
 test("dependency analysis covers import calls and rejects computed module loading",()=>{

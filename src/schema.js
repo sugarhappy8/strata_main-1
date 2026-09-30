@@ -5,6 +5,7 @@ const {TRAINING_LOOP_SCHEMA,TRAINING_LOOP_SQL}=require("./training-loop-schema")
 const {BILLING_SCHEMA,BILLING_SQL,BILLING_DELETION_BLOCKER,activeEntitlement,withEntitlementClock}=require("./billing-schema");
 const {ACCOUNT_SELF_SERVICE_SQL}=require("./account-self-service-schema");
 const {COACHING_SCHEMA,COACHING_SQL}=require("./coaching-schema");
+const {DEVICE_SCHEMA,DEVICE_SQL}=require("./devices-schema");
 
 // Central catalog shared by the local SQLite and Turso adapters.
 const WORKOUT_ACTIVE_INDEX="CREATE UNIQUE INDEX IF NOT EXISTS workouts_one_active_per_user ON workouts(user_id) WHERE CASE WHEN json_valid(workout_json) THEN json_extract(workout_json,'$.status') END='active'";
@@ -115,6 +116,7 @@ const SCHEMA = [
   WORKOUT_ACTIVE_INDEX,
   ...TRAINING_LOOP_SCHEMA,
   ...COACHING_SCHEMA,
+  ...DEVICE_SCHEMA,
   `CREATE TABLE IF NOT EXISTS plans (
     user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     plan_json TEXT NOT NULL,
@@ -339,7 +341,8 @@ const SQL = {
   deleteOldSupportRequestEvents:"DELETE FROM support_request_events WHERE created_at<?",
   ...PRODUCT_SIGNAL_SQL,
   ...TRAINING_LOOP_SQL,
-  ...COACHING_SQL
+  ...COACHING_SQL,
+  ...DEVICE_SQL
 };
 
 // Installed after the base schema so an existing database can reconcile the

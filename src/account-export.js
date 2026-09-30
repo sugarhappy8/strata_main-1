@@ -12,6 +12,18 @@ function jsonSnapshot(row,field){return row?{data:storedJson(row[field]),updated
 /** @param {any} row */
 function exportWorkout(row){return{id:String(row.id),workout:storedJson(row.workout_json),summary:storedJson(row.summary_json),startedAt:Number(row.started_at),revision:Number(row.revision),updatedAt:Number(row.updated_at)};}
 
+/** @param {unknown} value */
+function optionalText(value){return value==null?null:String(value);}
+/** Connected-device data STRATA stored for the member; tokens and Polar identifiers are never exported. @param {import("./domain-types").AccountExportStoreRows} rows */
+function exportDevices(rows){
+  return{
+    connections:(rows.deviceConnections||[]).map((row)=>({provider:String(row.provider),status:String(row.status),settings:storedJson(row.settings_json),consentVersion:String(row.consent_version),connectedAt:Number(row.connected_at),syncedThrough:optionalText(row.synced_through),lastSyncAt:optionalNumber(row.last_sync_at)})),
+    nights:(rows.wellnessNights||[]).map((row)=>({provider:String(row.provider),date:String(row.night_date),recoveryStatus:optionalNumber(row.recovery_status),ansCharge:optionalNumber(row.ans_charge),ansChargeStatus:optionalNumber(row.ans_charge_status),sleepCharge:optionalNumber(row.sleep_charge),heartRateAvg:optionalNumber(row.heart_rate_avg),hrvAvg:optionalNumber(row.hrv_avg),breathingRateAvg:optionalNumber(row.breathing_rate_avg),sleepScore:optionalNumber(row.sleep_score),sleepStart:optionalText(row.sleep_start),sleepEnd:optionalText(row.sleep_end),asleepSeconds:optionalNumber(row.asleep_seconds),lightSeconds:optionalNumber(row.light_seconds),deepSeconds:optionalNumber(row.deep_seconds),remSeconds:optionalNumber(row.rem_seconds),interruptionSeconds:optionalNumber(row.interruption_seconds),updatedAt:Number(row.updated_at)})),
+    days:(rows.wellnessDays||[]).map((row)=>({provider:String(row.provider),date:String(row.day_date),restingHr:optionalNumber(row.resting_hr),minHr:optionalNumber(row.min_hr),avgHr:optionalNumber(row.avg_hr),maxHr:optionalNumber(row.max_hr),samples:Number(row.samples),halfHours:row.buckets_json==null?null:storedJson(row.buckets_json),updatedAt:Number(row.updated_at)})),
+    workouts:(rows.wellnessWorkouts||[]).map((row)=>({provider:String(row.provider),id:String(row.external_id),startedAt:Number(row.started_at),date:String(row.local_date),durationSeconds:optionalNumber(row.duration_seconds),sport:optionalText(row.sport),calories:optionalNumber(row.calories),hrAvg:optionalNumber(row.hr_avg),hrMax:optionalNumber(row.hr_max),cardioLoad:optionalNumber(row.cardio_load),updatedAt:Number(row.updated_at)}))
+  };
+}
+
 /** @param {import("./domain-types").AccountExportStoreRows} rows @param {number} now */
 function exportPayload(rows,now){
   const profile=rows.profile;
@@ -32,7 +44,8 @@ function exportPayload(rows,now){
       subscriptions:rows.subscriptions.map((row)=>({id:String(row.subscription_id),transactionId:String(row.transaction_id),status:String(row.status),priceId:String(row.price_id),productId:String(row.product_id),scheduledChange:row.scheduled_change_action==null?null:{action:String(row.scheduled_change_action),effectiveAt:optionalNumber(row.scheduled_change_at)},currentPeriodEndsAt:optionalNumber(row.current_period_ends_at),createdAt:Number(row.created_at),updatedAt:Number(row.updated_at)})),
       adjustments:rows.adjustments.map((row)=>({id:String(row.adjustment_id),transactionId:String(row.transaction_id),action:String(row.action),type:row.type==null?null:String(row.type),status:String(row.status),occurredAt:Number(row.occurred_at),updatedAt:Number(row.updated_at)}))
     },
-    supportTickets:rows.supportTickets.map((row)=>({id:String(row.id),reference:String(row.reference),name:String(row.name),email:String(row.email),category:String(row.category),subject:String(row.subject),referenceId:row.reference_id==null?null:String(row.reference_id),message:String(row.message),status:String(row.status),lastResponseAt:optionalNumber(row.last_response_at),createdAt:Number(row.created_at),updatedAt:Number(row.updated_at)}))
+    supportTickets:rows.supportTickets.map((row)=>({id:String(row.id),reference:String(row.reference),name:String(row.name),email:String(row.email),category:String(row.category),subject:String(row.subject),referenceId:row.reference_id==null?null:String(row.reference_id),message:String(row.message),status:String(row.status),lastResponseAt:optionalNumber(row.last_response_at),createdAt:Number(row.created_at),updatedAt:Number(row.updated_at)})),
+    devices:exportDevices(rows)
   };
 }
 
