@@ -17,7 +17,7 @@
     function stateMessage(result){
       const connection=result?.connection;
       if(!result)return {title:"Loading your recovery…",message:"Checking your Polar connection.",connect:false};
-      if(!result.connected)return result.configured?{title:"Connect your Polar Loop",message:"See Polar’s Nightly Recharge, sleep, overnight stress signals, and heart rate here. Connect Polar in Account; it takes about a minute.",connect:true}:{title:"Recovery isn’t available yet",message:"Polar connections are not set up on this server yet.",connect:false};
+      if(!result.connected)return result.configured?{title:"Connect your Polar Loop",message:"See Polar’s Nightly Recharge, sleep, overnight stress signals, and heart rate here. Connect Polar in Account; it takes about a minute.",connect:true}:{title:"Recovery is coming soon",message:"Polar connections aren’t switched on yet. When they are, you can connect your Polar Loop from Account.",connect:false};
       if(connection?.status==="reconnect")return {title:"Polar needs you to reconnect",message:core.syncErrorText(connection.lastError||"POLAR_AUTH"),connect:true,label:"Reconnect in Account"};
       if(connection?.importing)return {title:"Importing from Polar…",message:"STRATA is reading up to 28 days of your Polar history. This page updates when you come back to it.",connect:false};
       if(result.summary?.state==="no-data")return {title:"No nights from Polar yet",message:"Wear your Loop to sleep. Polar’s Nightly Recharge appears here the morning after, once Polar has synced.",connect:false};

@@ -79,7 +79,7 @@
     if(!plus)return {...base,...facts,state:"paused",upgrade:true,badge:"Paused",title:"Polar syncing is paused",detail:SYNC_ERRORS.PLUS_INACTIVE};
     if(connection.importing)return {...base,...facts,state:"importing",suggestions:true,badge:"Importing",title:"Importing from Polar",detail:"STRATA is reading up to 28 days of your Polar history. This usually takes under a minute."};
     return {...base,...facts,state:"active",sync:true,recovery:true,suggestions:true,badge:"Connected",title:"Polar is connected",
-      detail:`Last synced ${ago(connection.lastSyncAt,now)}. STRATA checks Polar at least once a day and sooner when Polar reports new data.`,warning:syncErrorText(connection.lastError)};
+      detail:`Last synced ${ago(connection.lastSyncAt,now)}. STRATA checks Polar at least once a day and sooner when Polar reports new data.`,warning:connection.lastError==="PLUS_INACTIVE"?"":syncErrorText(connection.lastError)};
   }
 
   function recoveryTone(status){const value=Number(status);return !finite(status)?"none":value<=2?"low":value===3?"mid":"good";}

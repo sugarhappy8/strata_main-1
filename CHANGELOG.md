@@ -1,5 +1,16 @@
 # Changelog
 
+## 8.8.6 — Polar connected devices for Strata+
+
+- Let each Strata+ member connect their own Polar account from a new Connected devices card on Account, after a consent step. The OAuth return is completed by the session that started it, one Polar account links to one STRATA account, and tokens are sealed with AES-256-GCM and never leave the server.
+- Import Polar's last 28 days on connect, then sync at least daily and sooner after signed Polar webhooks, within Polar's reported rate limits. Syncing pauses while Strata+ is inactive, and members are asked to reconnect when Polar rejects their token.
+- Add the Recovery destination: Polar's Nightly Recharge, overnight stress signals compared only with the member's usual nights, sleep with stages, overnight and 24/7 heart rate, and 4-, 8-, and 12-week trends next to STRATA workouts and Polar cardio load. The Overview gains a recovery card, and all seven destinations stay visible on phones.
+- After a poor night, or two nights with more stress signals than usual, Train can offer a lighter session: the same exercises with one set fewer each, for that day only, without changing the Plan. History marks lighter sessions and shows the Polar workout recorded during each STRATA session.
+- Disconnecting or deleting the account deletes imported Polar data and ends STRATA's access at Polar; the account export includes Polar data without tokens or Polar identifiers. The Privacy Policy and Terms describe connected devices.
+- Add `npm run polar:webhook`, a Polar check in `npm run preflight:production`, Polar settings in `.env.example` and `render.yaml`, and a deployment guide section.
+
+See the [8.8.6 release guide](docs/release-8.8.6.md).
+
 ## 8.8.5 — Polish, accessibility, and cleanup
 
 - Keep the Strata+ destination tabs on screen when a destination opens or a link opens one directly, instead of sliding them under the sticky header.

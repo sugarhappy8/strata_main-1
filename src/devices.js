@@ -120,12 +120,12 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
     json(res,200,{authorizeUrl:client.authorizeUrl({state,redirectUri}),csrfToken:session.csrf_token});
   }
 
-  /** Polar sends the member back here. No session cookie arrives, so nothing is linked yet. @param {any} res @param {URL} url */
-  async function callback(res,url){
+  /** Polar sends the member back here. No session cookie arrives, so nothing is linked yet. @param {any} req @param {any} res @param {URL} url */
+  async function callback(req,res,url){
     const state=String(url.searchParams.get("state")||""),code=String(url.searchParams.get("code")||""),problem=url.searchParams.get("error");
     /** @param {string} outcome @param {Record<string,string>} [headers] */
     const back=(outcome,headers={})=>redirect(res,`/account.html?devices=${outcome}#connectedDevices`,headers);
-    if(!STATE.test(state)){back("polar-failed");return;}
+    if(!STATE.test(state)||!rateAllowed(req,"devices:callback",30,15*60*1000)){back("polar-failed");return;}
     const pending=await store.readDeviceConnectState(sha256(state)),time=now();
     if(!pending||pending.used_at!=null||Number(pending.expires_at)<=time){back("polar-expired");return;}
     if(problem||!code){await store.discardDeviceConnectState(sha256(state),time);back(problem==="access_denied"?"polar-declined":"polar-failed");return;}
@@ -233,7 +233,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
     if(!allowed)return false;
     try{
       if(method!==allowed&&!(allowed==="GET"&&method==="HEAD")){json(res,405,{error:"Method not allowed."},{Allow:allowed});return true;}
-      if(path==="/api/devices/polar/callback"){await callback(res,url);return true;}
+      if(path==="/api/devices/polar/callback"){await callback(req,res,url);return true;}
       // Status and disconnect work for every signed-in member, so a lapsed member can still see and remove a connection.
       if(path==="/api/devices"||path==="/api/devices/polar"){
         const session=await auth.requireSession(req,res);if(!session)return true;
@@ -258,6 +258,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
   /** Signed Polar events only make that member's connection due sooner; the data itself is always read from Polar. @param {any} req @param {any} res */
   async function handleWebhook(req,res){
     if(req.method!=="POST"){json(res,405,{error:"Method not allowed."},{Allow:"POST"});return;}
+    if(!rateAllowed(req,"devices:webhook",1200,60*1000)){json(res,429,{error:"Too many webhook deliveries."},{"Retry-After":"60"});return;}
     const raw=await bodyBuffer(req,64*1024);
     let event;
     try{event=JSON.parse(raw.toString("utf8"));}catch{json(res,400,{error:"Invalid webhook body."});return;}

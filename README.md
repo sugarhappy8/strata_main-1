@@ -1,8 +1,10 @@
 # STRATA — Exercise Rankings and Workout Planning
 
-STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly, community, and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 8.8.5 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, and a private owner dashboard.
+STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly, community, and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 8.8.6 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, Polar connections for Strata+ members, and a private owner dashboard.
 
-**Build 8.8.5 is the polish and cleanup release.** A page-by-page audit at desktop and phone widths fixed what it found: Strata+ destination tabs stay on screen when a destination opens, text that had turned dark on dark surfaces is readable again, the workout room shows friendly dates, and Nutrition offers to add food preferences instead of an inert Refresh button. Every page now has one top-level heading, keyboard focus on Strata AI stops above its pinned message box, and a phone shows the starter prompts before the first message instead of hiding them behind it. Strata AI treats a missing set count as three sets and keeps a failed question's Try again until it can be sent. Unused code and settings, and stylesheet rules for 25 retired classes, are gone, and the changelog, architecture notes, and checksums are current again. See the [8.8.5 release guide](docs/release-8.8.5.md).
+**Build 8.8.6 is the Polar connected-devices release for Strata+.** Each member can connect their own Polar account, such as a Polar Loop, to their own STRATA account from Account, after a consent step that explains what STRATA reads. STRATA imports the last 28 days, keeps its own copy, and syncs at least daily and sooner after Polar's signed webhooks. A new Recovery destination shows Polar's Nightly Recharge, overnight stress signals compared only with the member's own usual nights, sleep with stages, overnight and 24/7 heart rate, and 4-, 8-, or 12-week trends next to STRATA workouts and Polar cardio load. The Overview gets a recovery card, and after a poor night Train can offer a lighter session: the same exercises with one set fewer each, for that day only, without changing the Plan. Tokens are sealed with AES-256-GCM and never leave the server; disconnecting or deleting the account deletes the imported data and ends STRATA's access at Polar. The feature stays off until the owner sets the Polar settings; see the [8.8.6 release guide](docs/release-8.8.6.md) and [Polar connected devices in the deployment guide](docs/deployment.md#polar-connected-devices).
+
+The [8.8.5 release](docs/release-8.8.5.md) was the polish and cleanup release. A page-by-page audit at desktop and phone widths kept the Strata+ destination tabs on screen, restored readable contrast, gave every page one top-level heading, showed friendly workout dates, and removed unused code, settings, and 25 retired stylesheet classes.
 
 The [8.8.4 release](docs/release-8.8.4.md) made Strata AI responses apply correctly. Atomic Chat now receives its enforced llama.cpp JSON schema, so a workout cannot be hidden inside conversational text while the structured week is missing. “Only two rest days” means exactly five training days, and “make sessions longer” keeps the same days while moving every session to the next 15-minute tier. STRATA gives a mismatched answer one precise correction, then safely builds pure day-count or duration edits from the validated draft when the local model still misses the requirement. Questions can refer to the week on screen without changing it, equipment-only edits are catalog-checked, and medical wording is forced to a reply-only safety path.
 
@@ -24,13 +26,13 @@ The [7.8.7 release](docs/release-7.8.7.md) expanded the library to 320 movements
 
 **Build 7.8.3 restored STRATA's established visual identity and clarified Strata+.** The weekly plan is again the clear center of Plan, secondary tools are progressively disclosed, Today now distinguishes no-plan, next-scheduled, and active-session states, Train handles an empty selected day explicitly, and Progress never presents blank statistics as results. The 7.8.2 performance-based weight progression remains intact. See the [7.8.3 release guide](docs/release-7.8.3.md) for behavior and validation.
 
-The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 8.8.5 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
+The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 8.8.6 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
 
 STRATA also includes a login-free local weekly planner, account-synced plans, structured community-plan sharing, a deterministic 31-day workspace, community ratings, printable exports, and a private administrator help desk. Strata+ is a **$2.99 USD per month recurring subscription** and offers one optional free 7-day trial per eligible account. The trial requires no card, ends automatically, and never converts into a subscription; subscribing always requires explicit checkout. Paddle is the merchant of record, and the server grants paid access only after a matching transaction is provider-verified and linked to validated signed subscription state. Prior lifetime buyers remain grandfathered with no recurring charge.
 
 See [CHANGELOG.md](CHANGELOG.md) for the concise release history.
 
-Start at `/` for the no-account recommendation and complete-week preview, `/planner.html` for free manual planning, or `/discover.html` for the private six-destination Strata+ workspace: Overview, Plan, Train, Nutrition, Progress, and Exercises, with one shared personal setup. A guest week remains on the device through signup and is never allowed to overwrite an account Plan without a visible claim, compare, or keep choice. Signed-in plans, workouts, optional check-ins, training blocks, coaching profiles and weekly snapshots (including saved food preferences), daily nutrition logs with optional morning-weight and completeness evidence, and approved adaptations sync to the account. Remaining-day food options are derived when requested and are not stored as food eaten.
+Start at `/` for the no-account recommendation and complete-week preview, `/planner.html` for free manual planning, or `/discover.html` for the private seven-destination Strata+ workspace: Overview, Plan, Train, Nutrition, Recovery, Progress, and Exercises, with one shared personal setup. A guest week remains on the device through signup and is never allowed to overwrite an account Plan without a visible claim, compare, or keep choice. Signed-in plans, workouts, optional check-ins, training blocks, coaching profiles and weekly snapshots (including saved food preferences), daily nutrition logs with optional morning-weight and completeness evidence, and approved adaptations sync to the account. Remaining-day food options are derived when requested and are not stored as food eaten.
 
 ## Requirements
 
@@ -50,7 +52,7 @@ Copy `.env.example` to `.env` and fill in the required values when testing email
 
 ## Project structure
 
-Build 8.8.5 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
+Build 8.8.6 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
 
 ```text
 server.js          Stable npm/Render bootstrap
@@ -118,13 +120,13 @@ Account APIs, authentication routes, and health checks bypass the service worker
 
 ## Public pricing, support, and policies
 
-Build 8.8.5 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
+Build 8.8.6 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
 
 Paddle receives payment information; STRATA does not receive or store full payment-card or bank-account details. Do not change the displayed amount or monthly renewal interval independently of the live Paddle catalog. Members open short-lived Paddle portal links from Account to manage payment or cancellation. Before accepting payments, make sure the public operator details match the identity required by Paddle and applicable law rather than inventing missing legal information.
 
 ## Deployment
 
-Production is a Node web service, not a static site. The application fails closed in production without Turso credentials, preventing account data from being accepted into an ephemeral filesystem. Email verification and checkout each remain disabled until their complete provider configuration is present.
+Production is a Node web service, not a static site. The application fails closed in production without Turso credentials, preventing account data from being accepted into an ephemeral filesystem. Email verification, checkout, and Polar connected devices each remain disabled until their complete provider configuration is present.
 
 Use [docs/deployment.md](docs/deployment.md) for:
 
@@ -132,6 +134,7 @@ Use [docs/deployment.md](docs/deployment.md) for:
 - Resend domain and account-email configuration
 - Paddle catalog, checkout, webhook, and go-live checks
 - Strata AI model server, API key, and tunnel settings
+- Polar AccessLink client, token-encryption key, and webhook for connected devices
 - configuration preflight, liveness/readiness, deployment smoke, rollback, and production-limit checks
 
 The checked-in `render.yaml` is the source of truth for fixed deployment values and secret prompts. The checked-in `.env.example` documents every supported local variable without containing credentials.

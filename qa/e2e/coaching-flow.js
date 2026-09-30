@@ -79,7 +79,7 @@ test("a Strata+ member builds, tracks, reloads, and safely refreshes a coaching 
     await page.goto("/discover.html",{waitUntil:"domcontentloaded"});
     await page.waitForFunction(()=>globalThis.document.querySelector("#userName")?.textContent==="Coaching owner");
     const destinations=page.locator(".destination-nav .destination-link");
-    assert.equal(await destinations.count(),6);assert.equal(await destinations.filter({hasText:"Train"}).first().getAttribute("href"),"/workout.html");
+    assert.equal(await destinations.count(),7);assert.equal(await destinations.filter({hasText:"Train"}).first().getAttribute("href"),"/workout.html");
     await page.evaluate(async()=>{await globalThis.document.fonts.ready;});
     await page.locator('.destination-link[data-feature-target="nutrition"]').click();await page.click("#nutritionSetupLink");await page.locator("#coachingSetup").waitFor({state:"visible"});
     await page.evaluate(()=>new Promise((resolveFrame)=>globalThis.requestAnimationFrame(()=>globalThis.requestAnimationFrame(resolveFrame))));

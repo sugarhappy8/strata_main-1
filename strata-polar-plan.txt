@@ -1,6 +1,21 @@
 STRATA POLAR LOOP — plan notes (Build 8.8.6)
 
-Status: planned for STRATA Build 8.8.6; not built yet. This replaces the earlier WHOOP plan:
+Status: built in STRATA Build 8.8.6 for Strata+ members only (see docs/release-8.8.6.md).
+Step 0 of BUILD ORDER is still open: polar.com could not be reached while this was built, so the
+first real Polar Loop connection must confirm the field names, webhook event names, and timing.
+
+What shipped differs from this plan in these ways:
+- Strata+ only: free members see what the feature does and a Strata+ link.
+- The webhook address is /api/devices/polar/webhook, and a signed event only makes that
+  member's connection sync sooner; there are no separate sync-job or webhook-event tables.
+- Recovery trends live on the Recovery destination; Progress is unchanged.
+- Nutrition evidence and the Strata AI opt-in are left for 8.8.7; 8.8.6 ships only the
+  lighter-session switch.
+- Polar tokens are long-lived, so there is no token refresh; a rejected token asks the member
+  to reconnect.
+- Admin connection counts are not built yet.
+
+Earlier plan notes follow. This replaced the WHOOP plan:
 WHOOP (and Oura) allow only 10 members until they approve an app, while Polar's API is
 self-serve with no approval step and no member cap. The Polar facts below come from public
 sources and Polar's example code; polar.com could not be reached while this was written, so

@@ -49,6 +49,7 @@ test("the Account card offers the right actions for each connection state",()=>{
   const active=Core.connectionView({configured:true,plus:true,connection:connection()},NOW);
   assert.deepEqual([active.state,active.sync,active.recovery,active.disconnect,active.suggestions,active.facts,active.warning],["active",true,true,true,true,true,""]);assert.match(active.detail,/1 h ago/);
   assert.match(Core.connectionView({configured:true,plus:true,connection:connection({lastError:"POLAR_UNAVAILABLE"})},NOW).warning,/unavailable/);
+  assert.equal(Core.connectionView({configured:true,plus:true,connection:connection({lastError:"PLUS_INACTIVE"})},NOW).warning,"","a renewed member is not told syncing is paused");
   const importing=Core.connectionView({configured:true,plus:true,connection:connection({importing:true,lastSyncAt:null})});assert.equal(importing.state,"importing");assert.equal(importing.sync,false);
   const reconnect=Core.connectionView({configured:true,plus:true,connection:connection({status:"reconnect",lastError:"POLAR_AUTH"})});
   assert.deepEqual([reconnect.state,reconnect.connect,reconnect.connectLabel,reconnect.disconnect,reconnect.upgrade],["reconnect",true,"Reconnect Polar",true,false]);
@@ -267,7 +268,7 @@ test("the Overview card and Recovery destination show today's night and the chos
 test("Recovery explains every state before data exists and retries after a failure",async()=>{
   const cases=[
     [{configured:true,connected:false,connection:null},/Connect your Polar Loop/,true],
-    [{configured:false,connected:false,connection:null},/isn’t available yet/,false],
+    [{configured:false,connected:false,connection:null},/coming soon/,false],
     [wellnessToday({connection:activeConnection({status:"reconnect",lastError:"POLAR_AUTH"})}),/needs you to reconnect/,true],
     [wellnessToday({connection:activeConnection({importing:true,lastSyncAt:null})}),/Importing from Polar/,false],
     [wellnessToday({summary:{state:"no-data",lighterSession:{offer:false}}}),/No nights from Polar yet/,false]

@@ -117,6 +117,24 @@ Operational notes:
 - The model receives the member's saved plan, personal setup, and summaries of recent workouts and nutrition logs. It never receives the member's name, email, or account ID. Logs record request kind, outcome code, and duration only; they never include messages or answers.
 - When the PC is off or the tunnel is down, `/ai` shows that Strata AI may be offline, and every other STRATA feature keeps working.
 
+## Polar connected devices
+
+Strata+ members can connect their own Polar account (for example a Polar Loop) from Account. The feature is off until `POLAR_CLIENT_ID`, `POLAR_CLIENT_SECRET`, and `DEVICE_TOKEN_KEY` are set; until then the Strata+ Recovery destination says it is coming soon and Account shows no Connected devices card. Once configured, members connect from Account, Recovery fills in, and Train can offer a lighter session after a poor night.
+
+1. Sign in at [admin.polaraccesslink.com](https://admin.polaraccesslink.com) with the Polar account that will own the app and create an AccessLink client. Set its redirect URL to `https://<your domain>/api/devices/polar/callback` (STRATA builds the same address from `APP_BASE_URL`; set `POLAR_REDIRECT_URI` only if it must differ).
+2. In Render, set `POLAR_CLIENT_ID` and `POLAR_CLIENT_SECRET` from that client, and `DEVICE_TOKEN_KEY` to 32 random bytes written as base64: `node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. Keep a copy of the key somewhere safe: without it, stored Polar tokens cannot be read and members must reconnect.
+3. Deploy, then create the webhook from a machine that has the same `POLAR_*` and `APP_BASE_URL` values: `npm run polar:webhook -- create`. Polar shows the signing secret only once; set it as `POLAR_WEBHOOK_SECRET` and redeploy. `npm run polar:webhook -- status` lists the webhook and `-- delete` removes it. If Polar rejects an event name, pass the ones it accepts, for example `-- create --events EXERCISE,SLEEP`.
+4. Run `npm run preflight:production` and confirm the `devices.polar` check passes. Then connect a real Polar account with a Strata+ test member and confirm the first import, the Recovery page, and a disconnect.
+
+How it runs:
+
+- Connecting starts on Polar's sign-in page. Session cookies are `SameSite=Strict`, so Polar's return only parks its one-time code in a short-lived cookie limited to `/api/devices/polar/complete`; the Account page finishes the link with the same signed-in session that started it. A connection request expires after 10 minutes and is bound to that session.
+- Tokens are sealed with AES-256-GCM before they are stored and are never sent to the browser or included in exports. To rotate the key, move the current value to `DEVICE_TOKEN_KEY_PREVIOUS`, set a new `DEVICE_TOKEN_KEY`, and redeploy; tokens sealed with either key keep working.
+- The sync loop imports Polar's 28-day window on connect, then checks each connection at least once a day and sooner after a signed webhook. It stays under the rate limits Polar reports in every response, pauses while a member's Strata+ is inactive, and asks the member to reconnect if Polar rejects their token. `DEVICE_SYNC_INTERVAL_MS` (default 60000) sets how often it looks for due connections.
+- Disconnecting deletes the member's imported data and deregisters them at Polar. Account deletion does the same through a database trigger; if Polar cannot be reached, only the sealed token (without a user link) is kept for up to 30 days while the loop retries.
+- STRATA keeps imported nights, days, and workouts for about 13 months and half-hour heart-rate detail for 28 days. Logs record only event names such as `device.synced` and `device.sync_failed` with an outcome code, never tokens or health values.
+- Without `POLAR_WEBHOOK_SECRET`, webhooks are rejected and members still sync daily.
+
 ## Paddle monthly subscription
 
 Paddle is the merchant of record for the $2.99 USD per month Strata+ subscription. The public amount, USD currency, monthly frequency, and catalog identifiers must stay aligned with the live catalog. Since Build 7.5.1, the application does not embed either current catalog ID: `PADDLE_PRODUCT_ID` and `PADDLE_PRICE_ID` are operator-supplied `sync: false` values in `render.yaml`, and checkout remains unavailable until both identify the same valid monthly catalog item. The browser consumes the product selected and validated by the same-origin server instead of pinning an older product in public code. New checkout creation also fails closed unless Paddle's returned current catalog item reports a unit price of exactly 299 minor units in USD.
