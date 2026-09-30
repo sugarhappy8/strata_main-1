@@ -44,6 +44,7 @@
         <label class="field day-field" id="planDayField" hidden>Choose another day<select id="planDay"></select></label>
         <div class="session-brief" id="planBrief" aria-label="Selected workout summary" hidden></div>
         <div class="inline-error" id="trainHistoryNotice" hidden><p id="trainHistoryMessage" role="status"></p><button class="button secondary" type="button" id="retryWorkoutHistory">Retry workout history</button></div>
+        <div class="device-recovery" id="deviceRecovery" aria-live="polite" hidden></div>
         <div class="start-bottom"><p id="startHint" class="muted"></p><div class="start-actions"><button class="button primary" type="button" id="resumeWorkout" hidden>Resume workout <span aria-hidden="true">→</span></button><button class="button secondary" type="button" id="chooseScheduledDay" hidden>Go to next workout day <span aria-hidden="true">→</span></button><a class="button primary" id="openPlannerFromEmpty" href="/planner.html" hidden>Build your first week <span aria-hidden="true">↗</span></a><button class="button primary" type="button" id="startWorkout" hidden>Start workout <span aria-hidden="true">↗</span></button></div></div>
         <details class="calendar-weekly" id="calendarWeekly" hidden>
           <summary><span>Calendar reminders</span><small>Put every training day on your calendar</small></summary>
@@ -101,6 +102,7 @@
   <div class="toast" id="workoutToast" role="status" aria-live="polite"></div>
   <script src="/workout-core.js?v=8.8.5"></script>
   <script src="/discovery-core.js?v=8.8.5"></script>
+  <script src="/devices-core.js?v=8.8.5"></script>
   <script src="/workout-state.js?v=8.8.5"></script>
   <script src="/workout-api.js?v=8.8.5"></script>
   <script src="/workout-calendar.js?v=8.8.5"></script>
@@ -110,6 +112,7 @@
   <script src="/workout-guidance.js?v=8.8.5"></script>
   <script src="/workout-history.js?v=8.8.5"></script>
   <script src="/workout-events.js?v=8.8.5"></script>
+  <script src="/workout-recovery.js?v=8.8.5"></script>
   <script src="/product-signals.js?v=8.8.5" defer></script>
   <script src="/workout.js?v=8.8.5" defer></script>
   <script src="/pwa.js?v=8.8.5" defer></script>

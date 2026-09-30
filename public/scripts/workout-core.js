@@ -257,7 +257,7 @@
     const fields=["id","title","planDay","date","status","startedAt","completedAt","elapsedSeconds","restEndsAt","entries"];
     const normalized=normalizeWorkout(workout),result=Object.fromEntries(fields.map((field)=>[field,copy(normalized[field])]));
     result.entries=normalized.entries.map((entry)=>({id:entry.id,exerciseId:entry.exerciseId,planInstanceId:entry.planInstanceId,measurement:entry.measurement,loadType:entry.loadType,unit:entry.unit,prescribedReps:entry.prescribedReps,note:entry.note.trim(),effortType:entry.effortType,supersetGroup:entry.supersetGroup,replacedFromExerciseId:entry.replacedFromExerciseId,sets:entry.sets.map((set)=>({reps:set.reps,weight:set.weight,seconds:set.seconds,completed:set.completed,effort:set.effort}))}));
-    return result;
+    if(normalized.adjustment==="recovery")result.adjustment="recovery";return result;
   }
   function matches(saved,snapshot){
     try{return JSON.stringify(payload(saved))===JSON.stringify(payload(snapshot));}catch{return false;}

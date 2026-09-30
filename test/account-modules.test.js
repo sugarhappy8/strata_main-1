@@ -122,7 +122,7 @@ test("account event module binds controls without owning business logic",async()
 
 test("account page loads modules in dependency order before its coordinator",()=>{
   const html=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
-  const expected=["account-logic.js","account-state.js","account-api.js","account-render.js","account-events.js","account.js"];
+  const expected=["devices-core.js","account-logic.js","account-state.js","account-api.js","account-render.js","account-events.js","account-devices.js","account.js"];
   const positions=expected.map((asset)=>html.indexOf(`src="${asset}`));
   assert.ok(positions.every((position)=>position>=0));
   assert.deepEqual(positions,positions.slice().sort((a,b)=>a-b));

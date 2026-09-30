@@ -16,6 +16,7 @@
     progress:Object.freeze({panelId:"progressWorkspace",headingId:"progressWorkspaceTitle",label:"Progress"}),
     explore:Object.freeze({panelId:"exploreWorkspace",headingId:"exploreWorkspaceTitle",label:"Exercises"}),
     nutrition:Object.freeze({panelId:"nutritionWorkspace",headingId:"nutritionWorkspaceTitle",label:"Nutrition"}),
+    recovery:Object.freeze({panelId:"recoveryWorkspace",headingId:"recoveryWorkspaceTitle",label:"Recovery"}),
     coaching:Object.freeze({panelId:"coachingWorkspace",headingId:"coachingWorkspaceTitle",label:"Personal setup",parent:"nutrition"}),
     recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you",parent:"explore"}),
     library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library",parent:"explore"}),

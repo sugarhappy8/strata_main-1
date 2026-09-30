@@ -23,6 +23,7 @@
         {"file":"public/scripts/discovery-core.js","role":"logic","global":"StrataDiscovery","maxLines":400},
         {"file":"public/scripts/monthly-plan-core.js","role":"logic","global":"StrataMonthlyPlan","maxLines":330},
         {"file":"public/scripts/training-block-core.js","role":"logic","global":"StrataTrainingBlock","maxLines":160},
+        {"file":"public/scripts/devices-core.js","role":"logic","global":"StrataDevicesCore","maxLines":160},
         {"file":"public/scripts/personal-training-energy-ui-core.js","role":"logic","global":"StrataPersonalTrainingEnergyUi","maxLines":110},
         {"file":"public/scripts/personal-training-ui-core.js","role":"logic","global":"StrataPersonalTrainingUi","maxLines":220},
         {"file":"public/scripts/personal-training-diary-ui.js","role":"logic","global":"StrataPersonalTrainingDiaryUi","maxLines":80},
@@ -43,6 +44,7 @@
         {"file":"public/scripts/discover-coaching-meals.js","role":"events","global":"StrataDiscoverCoachingMeals","maxLines":120},
         {"file":"public/scripts/discover-coaching.js","role":"events","global":"StrataDiscoverCoaching","maxLines":100},
         {"file":"public/scripts/discover-program.js","role":"events","global":"StrataDiscoverProgram","maxLines":100},
+        {"file":"public/scripts/discover-recovery.js","role":"events","global":"StrataDiscoverRecovery","maxLines":140},
         {"file":"public/scripts/discover.js","role":"entry","maxLines":730}
       ]
     },
@@ -69,6 +71,7 @@
       "modules": [
         {"file":"public/scripts/workout-core.js","role":"logic","global":"StrataWorkout","maxLines":300},
         {"file":"public/scripts/discovery-core.js","role":"logic","global":"StrataDiscovery","maxLines":400},
+        {"file":"public/scripts/devices-core.js","role":"logic","global":"StrataDevicesCore","maxLines":160},
         {"file":"public/scripts/workout-state.js","role":"state","global":"StrataWorkoutState","maxLines":80},
         {"file":"public/scripts/workout-api.js","role":"api","global":"StrataWorkoutApi","maxLines":80},
         {"file":"public/scripts/workout-calendar.js","role":"logic","global":"StrataWorkoutCalendar","maxLines":50},
@@ -78,6 +81,7 @@
         {"file":"public/scripts/workout-guidance.js","role":"render","global":"StrataWorkoutGuidance","maxLines":130},
         {"file":"public/scripts/workout-history.js","role":"render","global":"StrataWorkoutHistory","maxLines":130},
         {"file":"public/scripts/workout-events.js","role":"events","global":"StrataWorkoutEvents","maxLines":120},
+        {"file":"public/scripts/workout-recovery.js","role":"events","global":"StrataWorkoutRecovery","maxLines":70},
         {"file":"public/scripts/workout.js","role":"entry","maxLines":450}
       ]
     },
@@ -107,11 +111,13 @@
     "account": {
       "html": "public/pages/account.html",
       "modules": [
+        {"file":"public/scripts/devices-core.js","role":"logic","global":"StrataDevicesCore","maxLines":160},
         {"file":"public/scripts/account-logic.js","role":"logic","global":"StrataAccountLogic","maxLines":270},
         {"file":"public/scripts/account-state.js","role":"state","global":"StrataAccountState","maxLines":50},
         {"file":"public/scripts/account-api.js","role":"api","global":"StrataAccountApi","maxLines":100},
         {"file":"public/scripts/account-render.js","role":"render","global":"StrataAccountRender","maxLines":210},
         {"file":"public/scripts/account-events.js","role":"events","global":"StrataAccountEvents","maxLines":70},
+        {"file":"public/scripts/account-devices.js","role":"events","global":"StrataAccountDevices","maxLines":160},
         {"file":"public/scripts/account.js","role":"entry","maxLines":280}
       ]
     },

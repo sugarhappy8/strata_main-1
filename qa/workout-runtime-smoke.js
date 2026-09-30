@@ -7,7 +7,7 @@ const {join}=require("node:path");
 
 const ROOT=join(__dirname,"..");
 const read=(...parts)=>fs.readFileSync(join(ROOT,"public",...parts),"utf8");
-const html=read("pages","workout.html"),sources=["workout-state.js","workout-api.js","workout-calendar.js","workout-progression.js","workout-render.js","workout-context.js","workout-guidance.js","workout-history.js","workout-events.js","workout.js"].map((name)=>[name,read("scripts",name)]),catalog=JSON.parse(read("data","exercises.json"));
+const html=read("pages","workout.html"),sources=["workout-state.js","workout-api.js","workout-calendar.js","workout-progression.js","workout-render.js","workout-context.js","workout-guidance.js","workout-history.js","workout-events.js","devices-core.js","workout-recovery.js","workout.js"].map((name)=>[name,read("scripts",name)]),catalog=JSON.parse(read("data","exercises.json"));
 const Workout=require(join(ROOT,"public/scripts/workout-core")),Discovery=require(join(ROOT,"public/scripts/discovery-core"));
 const {progressionForWorkout}=require(join(ROOT,"src/progression"));
 const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map((match)=>match[1]);
