@@ -106,7 +106,7 @@
     refine:()=>{nodes.message.placeholder="What should change? For example: a shorter Friday.";nodes.message.focus();},
     retry:id=>{
       const index=state.messages.findIndex(message=>message.id===id&&message.role==="error");
-      const entry=state.messages[index];if(!entry?.retry||state.pending)return;
+      const entry=state.messages[index];if(!entry?.retry||state.pending||state.busy)return;
       state.messages.splice(index,1);persist();return ask(entry.retry.kind,entry.retry.message,{addUserMessage:false});
     },
     applyWeek:id=>{const message=findMessage(id);return applying(message,"week",async()=>{
