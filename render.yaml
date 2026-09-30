@@ -64,8 +64,6 @@ services:
         sync: false
       - key: POLAR_CLIENT_SECRET
         sync: false
-      - key: POLAR_WEBHOOK_SECRET
-        sync: false
       - key: DEVICE_TOKEN_KEY
         sync: false
       - key: DEVICE_TOKEN_KEY_PREVIOUS

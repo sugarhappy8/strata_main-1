@@ -1,17 +1,17 @@
 // @ts-check
 "use strict";
 
-// Keeps connected devices in step with Polar. Polar keeps only about 28 days of sleep, recovery, and heart-rate
-// history, so every active connection is read at least daily and STRATA keeps its own copy; a webhook only makes
-// a connection due sooner. The schedule lives in the database (next_sync_at), so a restart simply resumes it.
+// Keeps connected devices in step with Polar. V4 is polling-only and keeps short-lived access credentials, so
+// every active connection is refreshed when needed and read at least daily. The schedule lives in the database.
 
-const {open}=require("./devices-crypto");
-const {dayFromHeartRate,nightsFromPolar,workoutsFromExercises}=require("./polar-mapping");
+const {open,seal}=require("./devices-crypto");
+const {parsePolarCredentials,serializePolarCredentials}=require("./polar-client");
+const {daysFromHeartRate,nightsFromPolar,workoutsFromExercises}=require("./polar-mapping");
 
 const DAY_MS=24*60*60*1000;
 const FIRST_IMPORT_DAYS=28;
 const RECHECK_DAYS=3;
-const RECONNECT_CODES=new Set(["POLAR_AUTH","DEVICE_KEY_MISSING","DEVICE_TOKEN_UNREADABLE"]);
+const RECONNECT_CODES=new Set(["POLAR_AUTH","POLAR_V4_RECONNECT","DEVICE_KEY_MISSING","DEVICE_TOKEN_UNREADABLE"]);
 
 /** @param {number} time */
 const isoDate=(time)=>new Date(time).toISOString().slice(0,10);
@@ -47,17 +47,20 @@ function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,i
     try{
       // Syncing pauses while Strata+ is inactive and resumes on renewal; stored data stays until disconnect.
       if(!await hasAccess(owner.userId)){await record({lastError:"PLUS_INACTIVE",nextSyncAt:now()+DAY_MS,failures});return {status:"paused"};}
-      const token=open(keys,String(row.token_sealed)),time=now(),today=isoDate(time);
-      const behind=row.synced_through?Math.round((Date.parse(`${today}T00:00:00Z`)-Date.parse(`${row.synced_through}T00:00:00Z`))/DAY_MS)+2:FIRST_IMPORT_DAYS;
-      const days=Math.min(FIRST_IMPORT_DAYS,Math.max(RECHECK_DAYS,Number.isFinite(behind)?behind:FIRST_IMPORT_DAYS)),from=isoDate(time-(days-1)*DAY_MS);
-      const nights=nightsFromPolar(await polar.sleep(token),await polar.nightlyRecharge(token),time);
-      for(const night of nights)if(night.nightDate>=from)await store.upsertWellnessNight(owner,night);
-      for(const workout of workoutsFromExercises(await polar.exercises(token),time))await store.upsertWellnessWorkout(owner,workout);
-      // One extra day covers members whose local date is already ahead of UTC.
-      for(let offset=days-1;offset>=-1;offset-=1){
-        const date=isoDate(time-offset*DAY_MS),day=dayFromHeartRate(date,await polar.heartRate(token,date),time);
-        if(day)await store.upsertWellnessDay(owner,day);
+      let credentials=parsePolarCredentials(open(keys,String(row.token_sealed)));
+      const refreshed=await polar.refreshCredentials(credentials);
+      credentials=refreshed.credentials;
+      if(refreshed.refreshed){
+        const saved=await store.updateDeviceToken({...owner,tokenSealed:seal(keys,serializePolarCredentials(credentials)),tokenExpiresAt:credentials.expiresAt,updatedAt:now()});
+        if(!saved)return {status:"stale"};
       }
+      const token=credentials.accessToken,time=now(),today=isoDate(time);
+      const behind=row.synced_through?Math.round((Date.parse(`${today}T00:00:00Z`)-Date.parse(`${row.synced_through}T00:00:00Z`))/DAY_MS)+2:FIRST_IMPORT_DAYS;
+      const days=Math.min(FIRST_IMPORT_DAYS,Math.max(RECHECK_DAYS,Number.isFinite(behind)?behind:FIRST_IMPORT_DAYS)),from=isoDate(time-(days-1)*DAY_MS),to=isoDate(time+DAY_MS);
+      const nights=nightsFromPolar(await polar.sleep(token,from,to),await polar.nightlyRecharge(token,from,to),time);
+      for(const night of nights)if(night.nightDate>=from)await store.upsertWellnessNight(owner,night);
+      for(const workout of workoutsFromExercises(await polar.exercises(token,from,to),time))await store.upsertWellnessWorkout(owner,workout);
+      for(const day of daysFromHeartRate(await polar.heartRate(token,from,to),time))await store.upsertWellnessDay(owner,day);
       await record({syncedThrough:today,lastSyncAt:time,nextSyncAt:nextDaily(owner.userId),failures:0});
       logger?.info?.("device.synced",{provider:owner.provider,days,nights:nights.length});
       return {status:"synced"};
@@ -71,18 +74,10 @@ function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,i
     }finally{running.delete(key);}
   }
 
-  /** Tells Polar the app no longer has access for connections that were disconnected or deleted. */
+  /** V4 has no remote deregistration API; discard any pending V3 revocations left by an older deployment. */
   async function processRevocations(){
     for(const row of await store.dueDeviceRevocations(now(),batchSize)){
-      const id=String(row.id);
-      let token;
-      try{token=open(keys,String(row.token_sealed));}catch{await store.deleteDeviceRevocation(id);continue;}
-      try{await polar.deregisterUser(token,String(row.provider_user_id));await store.deleteDeviceRevocation(id);logger?.info?.("device.revoked",{provider:String(row.provider)});}
-      catch(error){
-        const attempts=(Number(row.attempts)||0)+1,retryAt=Number(/** @type {any} */(error)?.retryAt)||0;
-        if(attempts>=10){await store.deleteDeviceRevocation(id);logger?.warn?.("device.revocation_abandoned",{provider:String(row.provider)});}
-        else await store.rescheduleDeviceRevocation(id,attempts,Math.max(backoff(attempts),retryAt));
-      }
+      await store.deleteDeviceRevocation(String(row.id));logger?.info?.("device.legacy_revocation_discarded",{provider:String(row.provider)});
     }
   }
 
@@ -98,8 +93,6 @@ function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,i
 
   return {
     syncConnection,tick,processRevocations,
-    /** A Polar webhook makes that member's connection due within a minute. @param {string} providerUserId */
-    markWebhook:(providerUserId)=>store.markDeviceConnectionDue("polar",providerUserId,now()+60*1000,now()),
     start(){
       if(timer)return;
       const run=()=>void tick().catch((error)=>logger?.error?.("device.sync_loop_failed",{error}));

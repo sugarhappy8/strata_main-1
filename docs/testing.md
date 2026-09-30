@@ -37,6 +37,12 @@ Coverage includes the process entry point, `src/**/*.js`, the shared pure browse
 4. E2E tests assert what a user can see or do; lower layers cover exhaustive input combinations.
 5. Tests use isolated temporary data and local fakes. No release check depends on a live Paddle, Resend, or Turso account.
 
+## Polar V4 provider boundary
+
+Polar unit, integration, and browser tests use a local V4 provider fake. They cover the exact `sleep:read`, `nightly_recharge:read`, `continuous_samples:read`, and `training_sessions:read` authorization scopes; the encrypted access-token and rotating-refresh-token envelope; persistence of refreshed credentials before data reads; V4 range endpoints; and the initial, manual, and scheduled polling paths. They also enforce that the current client has no webhook or remote deregistration path, that disconnect/account deletion removes credentials and imported data locally, and that members must use [account.polar.com](https://account.polar.com/) to remove Polar-side consent.
+
+Those fixtures do not prove live provider acceptance, response semantics, or units. V4 does not expose a documented stable Polar account identity through this flow, so tests can enforce one connection per STRATA account but cannot prove or implement cross-account Polar identity deduplication. Before making a live-provider claim, complete an authorized connection and retain only a redacted fixture that contains no tokens or stable member identifiers. In particular, compare Polar's displayed values with `meanNightlyRecoveryRri` and `meanNightlyRecoveryRespirationInterval`: STRATA derives per-minute heart and breathing rates as `60000 / interval`, and the synthetic fixtures verify that calculation path without establishing that live Polar values use the assumed interval units.
+
 ## Build 7.1.0 additions
 
 Workout validation and browser-core tests use real catalog data. Storage tests cover both adapters through the existing SQLite-backed transport fixture, additive migration, owner isolation, caps, CAS and online backup restoration. The Turso fixture does not exercise a hosted service. Onboarding and planner runtime checks cover failed writes, stale tabs, account switches and recovery. `qa/e2e/training-flows.js` adds real browser training journeys; retain it in `npm run check` even when the local browser binary is unavailable. Current results and limitations live in [release readiness](release-readiness.md).

@@ -164,7 +164,7 @@
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 145,
+      "maxLines": 160,
       "allowedDependencies": [
         "src/billing-schema.js"
       ]
@@ -448,7 +448,7 @@
       ]
     },
     "src/devices.js": {
-      "role": "Strata+ connected devices: Polar connect flow, settings, disconnect, webhook, and wellness reads",
+      "role": "Strata+ connected devices: Polar V4 connect flow, settings, local disconnect, and wellness reads",
       "maxLines": 280,
       "allowedDependencies": [
         "src/devices-config.js",
@@ -469,7 +469,7 @@
       "allowedDependencies": []
     },
     "src/devices-schema.js": {
-      "role": "Connected-device, revocation, and wellness tables",
+      "role": "Connected-device, legacy-revocation, and wellness tables",
       "maxLines": 170,
       "allowedDependencies": []
     },
@@ -481,23 +481,22 @@
       ]
     },
     "src/devices-sync.js": {
-      "role": "Polar import, daily re-check, and access revocation loop",
+      "role": "Polar V4 credential refresh, polling import, and legacy revocation cleanup",
       "maxLines": 140,
       "allowedDependencies": [
         "src/devices-crypto.js",
+        "src/polar-client.js",
         "src/polar-mapping.js"
       ]
     },
     "src/polar-client.js": {
-      "role": "Polar AccessLink v3 HTTP client, rate limits, and webhook signatures",
+      "role": "Polar AccessLink V4 OAuth, credential refresh, date ranges, and rate limits",
       "maxLines": 160,
-      "allowedDependencies": [
-        "src/devices-crypto.js"
-      ]
+      "allowedDependencies": []
     },
     "src/polar-mapping.js": {
-      "role": "Range-checked Polar payloads as wellness rows",
-      "maxLines": 150,
+      "role": "Range-checked Polar V4 and legacy V3 payloads as wellness rows",
+      "maxLines": 210,
       "allowedDependencies": []
     },
     "src/wellness-core.js": {

@@ -25,6 +25,7 @@ function legacyDatabase() {
   )`);
   database.prepare("INSERT INTO users(id,name,email,password_hash,password_salt,created_at) VALUES(?,?,?,?,?,?)").run("legacy-coach","Legacy Coach","legacy-coach@example.test","hash","salt",1000);
   database.prepare("INSERT INTO coaching_daily_logs(user_id,log_date,calories,protein_g,carbs_g,fat_g,revision,updated_at) VALUES(?,?,?,?,?,?,?,?)").run("legacy-coach","2030-03-04",2100,null,null,null,1,1001);
+  database.prepare("INSERT INTO device_revocations(id,provider,provider_user_id,token_sealed,created_at,next_attempt_at) VALUES(?,?,?,?,?,?)").run("legacy-polar","polar","123","sealed-v3-token",1000,2000);
   database.exec("CREATE INDEX IF NOT EXISTS discovery_trials_expires_at ON discovery_trials(expires_at)");
   database.exec("CREATE INDEX IF NOT EXISTS support_tickets_email ON support_tickets(email)");
   return database;
@@ -40,6 +41,7 @@ test("SQLite records each idempotent migration once",()=>{
     const second=migrateLocalSchema(database,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,now:()=>9999});
     assert.deepEqual(second.applied,[]);
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count,MIGRATIONS.length);
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM device_revocations").get().count,0);
     const indexes=new Set(database.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map(({name})=>name));
     assert.equal(indexes.has("discovery_trials_expires_at"),false);
     assert.equal(indexes.has("support_tickets_email"),false);
@@ -69,6 +71,7 @@ test("Turso migration runner records the same ordered ledger",async()=>{
     assert.deepEqual(first.applied,MIGRATIONS.map(({id})=>id));
     const stored=database.prepare("SELECT migration_id,applied_at FROM schema_migrations ORDER BY migration_id").all().map((row)=>({...row}));
     assert.deepEqual(stored,MIGRATIONS.map(({id})=>({migration_id:id,applied_at:5678})));
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM device_revocations").get().count,0);
     assert.deepEqual({...database.prepare("SELECT calories,morning_weight_kg,intake_complete,revision,updated_at FROM coaching_daily_logs WHERE user_id=?").get("legacy-coach")},{calories:2100,morning_weight_kg:null,intake_complete:null,revision:1,updated_at:1001});
     database.prepare("UPDATE coaching_daily_logs SET morning_weight_kg=?,intake_complete=? WHERE user_id=?").run(35,0,"legacy-coach");
     assert.deepEqual({...database.prepare("SELECT morning_weight_kg,intake_complete FROM coaching_daily_logs WHERE user_id=?").get("legacy-coach")},{morning_weight_kg:35,intake_complete:0});

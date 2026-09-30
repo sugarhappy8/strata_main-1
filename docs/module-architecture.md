@@ -6,7 +6,7 @@ The policies live in `architecture-policy.json` and `frontend-architecture-polic
 
 ## Dependency direction
 
-Build 8.0.0 added focused modules for coaching evidence, energy calibration, sensitivity scenarios, training selection, and exercise prescriptions. The current profile-version-4 work adds one pure server activity-budget leaf and one pure browser energy-field leaf. Build 8.8.0 added Strata AI as four server modules and one page boundary; Build 8.8.3 added structured draft validation and verifiable plan-edit contracts. Build 8.8.4 added an Atomic-compatible response-schema leaf and a deterministic fallback for measurable plan edits, and Build 8.8.5 removed the unused administrator email-MFA module. The current inventory covers 60 server modules and 82 browser modules across 8 page boundaries. Existing module budgets remain enforced; new responsibilities have their own reviewed limits.
+Build 8.0.0 added focused modules for coaching evidence, energy calibration, sensitivity scenarios, training selection, and exercise prescriptions. The current profile-version-4 work adds one pure server activity-budget leaf and one pure browser energy-field leaf. Build 8.8.0 added Strata AI as four server modules and one page boundary; Build 8.8.3 added structured draft validation and verifiable plan-edit contracts. Build 8.8.4 added an Atomic-compatible response-schema leaf and a deterministic fallback for measurable plan edits, and Build 8.8.5 removed the unused administrator email-MFA module. The current inventory covers 69 server modules and 86 browser modules across 8 page boundaries. Existing module budgets remain enforced; new responsibilities have their own reviewed limits.
 
 ```text
 root bootstrap
@@ -92,7 +92,7 @@ The original coordinator sizes below provide historical context; the after sizes
 | Account | `account.js` 835 → 271 | logic 240; state 31; API 68; render 186; events 44 |
 | Admin | `admin.js` 848 → 203 | state 53; logic 92; API 45; render 189; session 53; events 53 |
 
-These totals are not presented as deleted functionality: much of the former coordinator code moved into named leaves, and new user-facing behavior was added. The evidence of improvement is the enforced direction, independent tests, smaller orchestration roots, and zero-cycle report—not a lower aggregate line count. `node scripts/frontend-architecture-report.js` prints the exact live line/nonblank/byte table and every resolved dependency for all 82 browser modules across eight page boundaries.
+These totals are not presented as deleted functionality: much of the former coordinator code moved into named leaves, and new user-facing behavior was added. The evidence of improvement is the enforced direction, independent tests, smaller orchestration roots, and zero-cycle report—not a lower aggregate line count. `node scripts/frontend-architecture-report.js` prints the exact live line/nonblank/byte table and every resolved dependency for all 86 browser modules across eight page boundaries.
 
 ## Resulting module sizes
 
@@ -132,10 +132,10 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/database.js` | SQLite and Turso store adapters | 1199 | 1172 | 64.0 KiB | 1200 | `src/access-controls-store.js`, `src/account-self-service-store.js`, `src/billing-store.js`, `src/coaching-store.js`, `src/devices-store.js`, `src/migrations.js`, `src/schema.js`, `src/store-contract.js`, `src/training-loop-store.js` |
 | `src/devices-config.js` | Connected-device and Polar AccessLink settings | 64 | 57 | 3.4 KiB | 80 | — |
 | `src/devices-crypto.js` | Sealed device tokens and connection secrets | 47 | 39 | 2.5 KiB | 60 | — |
-| `src/devices-schema.js` | Connected-device, revocation, and wellness tables | 162 | 157 | 11.9 KiB | 170 | — |
-| `src/devices-store.js` | Connected-device and wellness storage for SQLite and Turso | 118 | 112 | 10.0 KiB | 130 | `src/devices-schema.js` |
-| `src/devices-sync.js` | Polar import, daily re-check, and access revocation loop | 113 | 102 | 6.6 KiB | 140 | `src/devices-crypto.js`, `src/polar-mapping.js` |
-| `src/devices.js` | Strata+ connected devices: Polar connect flow, settings, disconnect, webhook, and wellness reads | 277 | 260 | 21.1 KiB | 280 | `src/devices-config.js`, `src/devices-crypto.js`, `src/devices-sync.js`, `src/polar-client.js`, `src/wellness-core.js` |
+| `src/devices-schema.js` | Connected-device, legacy-revocation, and wellness tables | 161 | 156 | 12.0 KiB | 170 | — |
+| `src/devices-store.js` | Connected-device and wellness storage for SQLite and Turso | 120 | 114 | 10.3 KiB | 130 | `src/devices-schema.js` |
+| `src/devices-sync.js` | Polar V4 credential refresh, polling import, and legacy revocation cleanup | 106 | 95 | 6.1 KiB | 140 | `src/devices-crypto.js`, `src/polar-client.js`, `src/polar-mapping.js` |
+| `src/devices.js` | Strata+ connected devices: Polar V4 connect flow, settings, local disconnect, and wellness reads | 248 | 232 | 18.7 KiB | 280 | `src/devices-config.js`, `src/devices-crypto.js`, `src/devices-sync.js`, `src/polar-client.js`, `src/wellness-core.js` |
 | `src/email.js` | Resend integration and email security | 387 | 354 | 20.0 KiB | 400 | — |
 | `src/energy-activity-core.js` | Profile-v4 non-workout and generated-session activity energy budget | 51 | 48 | 3.7 KiB | 100 | — |
 | `src/energy-calibration-core.js` | Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation | 158 | 153 | 22.8 KiB | 220 | — |
@@ -144,7 +144,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/http.js` | HTTP transport helpers | 170 | 155 | 5.9 KiB | 180 | — |
 | `src/legacy-checkout.js` | Strict retired-checkout migration and completion policy | 71 | 66 | 7.4 KiB | 75 | `src/payments.js` |
 | `src/meal-planning-core.js` | Validated dietary preferences and deterministic remaining-day food options | 168 | 157 | 25.6 KiB | 300 | — |
-| `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 143 | 130 | 7.8 KiB | 145 | `src/billing-schema.js` |
+| `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 157 | 144 | 8.8 KiB | 160 | `src/billing-schema.js` |
 | `src/observability.js` | Structured request tracing and redacted operational logging | 81 | 72 | 4.0 KiB | 90 | — |
 | `src/paddle-catalog.js` | Paddle catalog, credential, exact checkout-price, and subscription-transition policy | 72 | 68 | 4.7 KiB | 80 | — |
 | `src/paddle-checkout-retirement.js` | Interrupted Paddle checkout retirement policy | 52 | 45 | 3.3 KiB | 80 | — |
@@ -152,13 +152,13 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/paddle-webhooks.js` | Paddle signature and webhook source verification | 118 | 108 | 4.6 KiB | 150 | — |
 | `src/payments.js` | Paddle integration boundary | 419 | 396 | 20.9 KiB | 430 | `src/paddle-catalog.js`, `src/paddle-checkout-retirement.js`, `src/paddle-subscriptions.js`, `src/paddle-webhooks.js` |
 | `src/plans.js` | Plan domain validation | 355 | 321 | 18.5 KiB | 380 | — |
-| `src/polar-client.js` | Polar AccessLink v3 HTTP client, rate limits, and webhook signatures | 133 | 125 | 8.5 KiB | 160 | `src/devices-crypto.js` |
-| `src/polar-mapping.js` | Range-checked Polar payloads as wellness rows | 137 | 126 | 8.0 KiB | 150 | — |
+| `src/polar-client.js` | Polar AccessLink V4 OAuth, credential refresh, date ranges, and rate limits | 140 | 132 | 11.1 KiB | 160 | — |
+| `src/polar-mapping.js` | Range-checked Polar V4 and legacy V3 payloads as wellness rows | 194 | 181 | 12.0 KiB | 210 | — |
 | `src/product-signals-schema.js` | Aggregate product-activity schema and statements | 23 | 20 | 1.4 KiB | 35 | — |
 | `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 137 | 124 | 5.7 KiB | 140 | — |
 | `src/progression.js` | Pure per-set performance progression and comparison rules | 177 | 175 | 13.2 KiB | 300 | `src/plans.js` |
 | `src/schema.js` | Shared storage schema and statements | 367 | 361 | 44.4 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/devices-schema.js`, `src/product-signals-schema.js`, `src/training-loop-schema.js` |
-| `src/server.js` | HTTP composition root | 824 | 799 | 44.0 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
+| `src/server.js` | HTTP composition root | 823 | 798 | 43.9 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
 | `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.8 KiB | 60 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 84 | 77 | 4.9 KiB | 105 | `src/plans.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |
@@ -169,7 +169,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/training.js` | Check-ins, deterministic progression, blocks, and approved adaptations | 358 | 346 | 24.8 KiB | 450 | `src/plans.js`, `src/progression.js` |
 | `src/wellness-core.js` | Usual ranges, overnight stress signals, recovery labels, and trends | 125 | 113 | 8.5 KiB | 150 | — |
 | `src/workouts.js` | Workout validation, history summaries, and authenticated lifecycle | 216 | 210 | 14.6 KiB | 230 | `src/plans.js` |
-Snapshot result: 69 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 82 browser modules with zero cycles and zero violations.
+Snapshot result: 69 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 86 browser modules with zero cycles and zero violations.
 
 ## Strata AI
 

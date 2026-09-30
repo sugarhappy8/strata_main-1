@@ -147,7 +147,7 @@ const STORE_METHODS = Object.freeze([
   "markSupportResponseSent",
   "claimSupportRequestEvent",
   "deleteOldSupportRequestEvents",
-  "deviceConnection","deviceConnectionByProviderUser","insertDeviceConnectState","readDeviceConnectState","consumeDeviceConnectState","discardDeviceConnectState","upsertDeviceConnection","recordDeviceSync","markDeviceConnectionDue","dueDeviceConnections","updateDeviceSettings","deleteDeviceData","insertDeviceRevocation","dueDeviceRevocations","rescheduleDeviceRevocation","deleteDeviceRevocation","cancelDeviceRevocations","upsertWellnessNight","upsertWellnessDay","upsertWellnessWorkout","wellnessNights","wellnessDays","wellnessWorkouts","deleteExpiredDeviceData",
+  "deviceConnection","deviceConnectionByProviderUser","insertDeviceConnectState","readDeviceConnectState","consumeDeviceConnectState","discardDeviceConnectState","upsertDeviceConnection","updateDeviceToken","recordDeviceSync","markDeviceConnectionDue","dueDeviceConnections","updateDeviceSettings","deleteDeviceData","insertDeviceRevocation","dueDeviceRevocations","rescheduleDeviceRevocation","deleteDeviceRevocation","cancelDeviceRevocations","upsertWellnessNight","upsertWellnessDay","upsertWellnessWorkout","wellnessNights","wellnessDays","wellnessWorkouts","deleteExpiredDeviceData",
   "close",
 ]);
 const STORE_METHOD_SET = new Set(STORE_METHODS);

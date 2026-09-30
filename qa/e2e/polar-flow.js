@@ -24,25 +24,31 @@ const isoDate=(time)=>new Date(time).toISOString().slice(0,10);
 function meaningfulViolation(violation){return ["serious","critical"].includes(violation.impact);}
 function violationSummary(violations){return violations.map((violation)=>`${violation.id} (${violation.impact}): ${violation.nodes.map((node)=>node.target.join(" ")).join(", ")}`).join("\n");}
 
-/** Polar's side: one member (4242) whose last night had a poor Nightly Recharge. */
+/** Polar V4 side: one member whose last night had a poor Nightly Recharge. */
 function startPolar(){
-  const state={registered:new Set(),removed:[],tokens:[]};
+  const state={tokens:[],deleteCalls:0};
   const nights=()=>Array.from({length:28},(_,index)=>{const age=27-index,wave=Math.sin(index/3);return {date:isoDate(Date.now()-age*DAY),status:age===0?2:[4,5,4,3,5,6,4][index%7],hrv:age===0?44:Math.round(56+wave*5),hr:age===0?57:Math.round(52-wave*2)};});
   const server=http.createServer(async(req,res)=>{
     const url=new URL(req.url,"http://polar.test");let body="";for await(const chunk of req)body+=chunk;
     const send=(status,data)=>{res.writeHead(status,{"Content-Type":"application/json"});res.end(data===undefined?"":JSON.stringify(data));};
-    if(url.pathname==="/oauth2/authorization"){
+    if(url.pathname==="/oauth/authorize"){
       const back=new URL(url.searchParams.get("redirect_uri"));back.searchParams.set("state",url.searchParams.get("state"));back.searchParams.set("code","e2e-code");
       res.writeHead(302,{Location:back.toString()});res.end();return;
     }
-    if(url.pathname==="/v2/oauth2/token"){state.tokens.push(new URLSearchParams(body).get("code"));return send(200,{access_token:"e2e-token",token_type:"bearer",expires_in:315360000,x_user_id:4242});}
+    if(url.pathname==="/oauth/token"){state.tokens.push(new URLSearchParams(body).get("code"));return send(200,{access_token:"e2e-token",refresh_token:"e2e-refresh",token_type:"bearer",expires_in:43200,scope:"sleep:read nightly_recharge:read continuous_samples:read training_sessions:read"});}
     if(req.headers.authorization!=="Bearer e2e-token")return send(401,{});
-    if(url.pathname==="/v3/users"&&req.method==="POST"){state.registered.add(4242);return send(200,{});}
-    if(url.pathname==="/v3/users/4242"&&req.method==="DELETE"){state.registered.delete(4242);state.removed.push(4242);res.writeHead(204);res.end();return;}
-    if(url.pathname==="/v3/users/sleep")return send(200,{nights:nights().map((night)=>({date:night.date,light_sleep:14400,deep_sleep:5200,rem_sleep:6100,sleep_score:80,sleep_charge:3,total_interruption_duration:900}))});
-    if(url.pathname==="/v3/users/nightly-recharge")return send(200,{recharges:nights().map((night)=>({date:night.date,nightly_recharge_status:night.status,ans_charge:night.status<=2?-4.2:1,ans_charge_status:night.status<=2?2:3,heart_rate_avg:night.hr,heart_rate_variability_avg:night.hrv,breathing_rate_avg:14.2}))});
-    if(/^\/v3\/users\/continuous-heart-rate\/\d{4}-\d{2}-\d{2}$/.test(url.pathname))return send(200,{heart_rate_samples:[{heart_rate:49,sample_time:"03:00:00"},{heart_rate:50,sample_time:"03:05:00"},{heart_rate:51,sample_time:"03:10:00"},{heart_rate:128,sample_time:"18:00:00"}]});
-    if(url.pathname==="/v3/exercises")return send(200,[]);
+    if(req.method==="DELETE")state.deleteCalls+=1;
+    if(url.pathname==="/v4/data/sleeps"){
+      if(!url.searchParams.has("features"))return send(200,{nightSleeps:nights().map((night)=>({sleepDate:night.date}))});
+      const sleepDate=url.searchParams.get("from");return send(200,{nightSleeps:[{sleepDate,sleepResult:{hypnogram:{sleepStart:`${sleepDate}T00:00:00Z`,sleepEnd:`${sleepDate}T07:08:20Z`}},sleepScore:{sleepScore:80,scoreRate:3},sleepEvaluation:{asleepDuration:"25700s",phaseDurations:{light:"14400s",deep:"5200s",rem:"6100s",unknown:"0s"},interruptions:{totalDuration:"900s"}}}]});
+    }
+    if(url.pathname==="/v4/data/nightly-recharge-results")return send(200,{nightlyRechargeResults:{nightlyRechargeResults:nights().map((night)=>({sleepResultDate:night.date,recoveryIndicator:night.status,ansStatus:night.status<=2?-4.2:1,ansRate:night.status<=2?2:3,meanNightlyRecoveryRri:Math.round(60000/night.hr),meanNightlyRecoveryRmssd:night.hrv,meanNightlyRecoveryRespirationInterval:4225}))}});
+    if(url.pathname==="/v4/data/continuous-samples"){
+      const from=Date.parse(`${url.searchParams.get("from")}T00:00:00Z`),to=Date.parse(`${url.searchParams.get("to")}T00:00:00Z`),heartRateSamplesPerDay=[];
+      for(let time=from;time<to;time+=DAY)heartRateSamplesPerDay.push({date:isoDate(time),samples:[{heartRate:49,offsetMillis:10800000},{heartRate:50,offsetMillis:11100000},{heartRate:51,offsetMillis:11400000},{heartRate:128,offsetMillis:64800000}]});
+      return send(200,{continuousSamples:{heartRateSamplesPerDay}});
+    }
+    if(url.pathname==="/v4/data/training-sessions/list")return send(200,{trainingSessions:[]});
     send(404,{});
   });
   return new Promise((resolve)=>server.listen(0,"127.0.0.1",()=>resolve({state,server,url:`http://127.0.0.1:${server.address().port}`})));
@@ -58,8 +64,8 @@ async function startApp(){
   const port=await unusedPort();baseUrl=`http://127.0.0.1:${port}`;runtimeDir=mkdtempSync(join(tmpdir(),"strata-polar-e2e-"));
   app=spawn(process.execPath,["server.js"],{cwd:ROOT,env:{HOST:"127.0.0.1",PORT:String(port),NODE_ENV:"test",TZ:"UTC",TRUST_PROXY:"true",SECURE_COOKIES:"false",ADMIN_EMAIL:"",TURSO_DATABASE_URL:"",TURSO_AUTH_TOKEN:"",STRATA_DATA_DIR:runtimeDir,
     ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS:"true",EMAIL_VERIFICATION_ENABLED:"false",PADDLE_CHECKOUT_ENABLED:"false",APP_BASE_URL:baseUrl,
-    POLAR_CLIENT_ID:"e2e-client",POLAR_CLIENT_SECRET:"e2e-secret",DEVICE_TOKEN_KEY:randomBytes(32).toString("base64"),POLAR_WEBHOOK_SECRET:"e2e-hook",DEVICE_SYNC_INTERVAL_MS:"300",
-    POLAR_AUTH_URL:`${polar.url}/oauth2/authorization`,POLAR_TOKEN_URL:`${polar.url}/v2/oauth2/token`,POLAR_API_URL:polar.url},stdio:["ignore","pipe","pipe"]});
+    POLAR_CLIENT_ID:"e2e-client",POLAR_CLIENT_SECRET:"e2e-secret",DEVICE_TOKEN_KEY:randomBytes(32).toString("base64"),DEVICE_SYNC_INTERVAL_MS:"300",
+    POLAR_AUTH_URL:`${polar.url}/oauth/authorize`,POLAR_TOKEN_URL:`${polar.url}/oauth/token`,POLAR_API_URL:`${polar.url}/v4/data`},stdio:["ignore","pipe","pipe"]});
   for(const stream of [app.stdout,app.stderr])stream.on("data",(chunk)=>{logs=(logs+chunk.toString()).slice(-16_384);});
   const deadline=Date.now()+WAIT_MS;
   while(Date.now()<deadline){
@@ -119,7 +125,7 @@ test("a Strata+ member connects their own Polar, sees recovery, trains lighter, 
   await page.check("#devicesConsentCheck");
   await Promise.all([page.waitForURL(/\/account\.html#connectedDevices$/),page.click("#devicesContinue")]);
   await page.waitForFunction(()=>globalThis.document.querySelector("#connectedDevices")?.dataset.state==="active",null,{timeout:30_000});
-  assert.deepEqual(polar.state.tokens,["e2e-code"]);assert.equal(polar.state.registered.has(4242),true);
+  assert.deepEqual(polar.state.tokens,["e2e-code"]);
   assert.equal(await page.locator("#devicesSuggestions").isChecked(),true);
   assert.equal(new URL(page.url()).searchParams.has("devices"),false,"the Polar return marker is removed from the address");
 
@@ -167,7 +173,7 @@ test("a Strata+ member connects their own Polar, sees recovery, trains lighter, 
   await page.click("#devicesDisconnect");
   await page.click('#devicesDisconnectDialog button[value="disconnect"]');
   await page.waitForFunction(()=>globalThis.document.querySelector("#connectedDevices")?.dataset.state==="disconnected");
-  assert.deepEqual(polar.state.removed,[4242]);
+  assert.equal(polar.state.deleteCalls,0,"V4 disconnect is local because Polar has no deregistration endpoint");
   const after=await (await context.request.get("/api/wellness/today")).json();
   assert.equal(after.connected,false);
   await context.close();

@@ -1,8 +1,8 @@
 # STRATA — Exercise Rankings and Workout Planning
 
-STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly, community, and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 8.8.6 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, Polar connections for Strata+ members, and a private owner dashboard.
+STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly, community, and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 8.8.7 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, Polar connections for Strata+ members, and a private owner dashboard.
 
-**Build 8.8.6 is the Polar connected-devices release for Strata+.** Each member can connect their own Polar account, such as a Polar Loop, to their own STRATA account from Account, after a consent step that explains what STRATA reads. STRATA imports the last 28 days, keeps its own copy, and syncs at least daily and sooner after Polar's signed webhooks. A new Recovery destination shows Polar's Nightly Recharge, overnight stress signals compared only with the member's own usual nights, sleep with stages, overnight and 24/7 heart rate, and 4-, 8-, or 12-week trends next to STRATA workouts and Polar cardio load. The Overview gets a recovery card, and after a poor night Train can offer a lighter session: the same exercises with one set fewer each, for that day only, without changing the Plan. Tokens are sealed with AES-256-GCM and never leave the server; disconnecting or deleting the account deletes the imported data and ends STRATA's access at Polar. The feature stays off until the owner sets the Polar settings; see the [8.8.6 release guide](docs/release-8.8.6.md) and [Polar connected devices in the deployment guide](docs/deployment.md#polar-connected-devices).
+**Build 8.8.7 is the Polar connected-devices release for Strata+, now migrated to Polar AccessLink V4.** Each member can connect their own Polar account, such as a Polar Loop, to their own STRATA account from Account, after a consent step that explains what STRATA reads. STRATA uses V4 granular read scopes, sealed access and refresh credentials, and polling at least daily. It imports the last 28 days and shows Polar's Nightly Recharge, overnight stress signals compared only with the member's own usual nights, sleep with stages, overnight and 24/7 heart rate, and 4-, 8-, or 12-week trends next to STRATA workouts and Polar cardio load. The Overview gets a recovery card, and after a poor night Train can offer a lighter session: the same exercises with one set fewer each, for that day only, without changing the Plan. Disconnecting or deleting the account deletes the sealed credentials and imported data. Existing V3 connections must reconnect. The feature stays off until the owner sets the Polar settings; see the [8.8.7 release guide](docs/release-8.8.7.md) and [Polar connected devices in the deployment guide](docs/deployment.md#polar-connected-devices).
 
 The [8.8.5 release](docs/release-8.8.5.md) was the polish and cleanup release. A page-by-page audit at desktop and phone widths kept the Strata+ destination tabs on screen, restored readable contrast, gave every page one top-level heading, showed friendly workout dates, and removed unused code, settings, and 25 retired stylesheet classes.
 
@@ -26,7 +26,7 @@ The [7.8.7 release](docs/release-7.8.7.md) expanded the library to 320 movements
 
 **Build 7.8.3 restored STRATA's established visual identity and clarified Strata+.** The weekly plan is again the clear center of Plan, secondary tools are progressively disclosed, Today now distinguishes no-plan, next-scheduled, and active-session states, Train handles an empty selected day explicitly, and Progress never presents blank statistics as results. The 7.8.2 performance-based weight progression remains intact. See the [7.8.3 release guide](docs/release-7.8.3.md) for behavior and validation.
 
-The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 8.8.6 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
+The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 8.8.7 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
 
 STRATA also includes a login-free local weekly planner, account-synced plans, structured community-plan sharing, a deterministic 31-day workspace, community ratings, printable exports, and a private administrator help desk. Strata+ is a **$2.99 USD per month recurring subscription** and offers one optional free 7-day trial per eligible account. The trial requires no card, ends automatically, and never converts into a subscription; subscribing always requires explicit checkout. Paddle is the merchant of record, and the server grants paid access only after a matching transaction is provider-verified and linked to validated signed subscription state. Prior lifetime buyers remain grandfathered with no recurring charge.
 
@@ -52,7 +52,7 @@ Copy `.env.example` to `.env` and fill in the required values when testing email
 
 ## Project structure
 
-Build 8.8.6 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
+Build 8.8.7 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
 
 ```text
 server.js          Stable npm/Render bootstrap
@@ -120,7 +120,7 @@ Account APIs, authentication routes, and health checks bypass the service worker
 
 ## Public pricing, support, and policies
 
-Build 8.8.6 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
+Build 8.8.7 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
 
 Paddle receives payment information; STRATA does not receive or store full payment-card or bank-account details. Do not change the displayed amount or monthly renewal interval independently of the live Paddle catalog. Members open short-lived Paddle portal links from Account to manage payment or cancellation. Before accepting payments, make sure the public operator details match the identity required by Paddle and applicable law rather than inventing missing legal information.
 
@@ -134,7 +134,7 @@ Use [docs/deployment.md](docs/deployment.md) for:
 - Resend domain and account-email configuration
 - Paddle catalog, checkout, webhook, and go-live checks
 - Strata AI model server, API key, and tunnel settings
-- Polar AccessLink client, token-encryption key, and webhook for connected devices
+- Polar AccessLink V4 client, granular OAuth scopes, refresh-token encryption, and polling sync
 - configuration preflight, liveness/readiness, deployment smoke, rollback, and production-limit checks
 
 The checked-in `render.yaml` is the source of truth for fixed deployment values and secret prompts. The checked-in `.env.example` documents every supported local variable without containing credentials.

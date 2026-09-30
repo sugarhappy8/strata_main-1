@@ -33,7 +33,7 @@ async function stores(){
 const night=(date,overrides={})=>({nightDate:date,recoveryStatus:4,ansCharge:1.5,ansChargeStatus:3,sleepCharge:3,heartRateAvg:52,hrvAvg:61,breathingRateAvg:14.2,sleepScore:81,sleepStart:"2026-09-27T23:00:00+03:00",sleepEnd:"2026-09-28T06:30:00+03:00",asleepSeconds:25000,lightSeconds:14000,deepSeconds:5000,remSeconds:6000,interruptionSeconds:900,updatedAt:NOW,...overrides});
 const day=(date,overrides={})=>({dayDate:date,restingHr:48,minHr:46,avgHr:70,maxHr:150,samples:1200,bucketsJson:JSON.stringify(Array(48).fill(60)),updatedAt:NOW,...overrides});
 const workout=(id,startedAt,overrides={})=>({externalId:id,startedAt,localDate:new Date(startedAt).toISOString().slice(0,10),durationSeconds:1800,sport:"Running",calories:300,hrAvg:140,hrMax:170,cardioLoad:60,updatedAt:NOW,...overrides});
-const connection=(userId,providerUserId,overrides={})=>({userId,provider:"polar",providerUserId,memberRef:`ref-${providerUserId}`,tokenSealed:`sealed-${providerUserId}`,tokenExpiresAt:null,settingsJson:JSON.stringify({recoverySuggestions:true}),consentVersion:"2026-10-polar-1",connectedAt:NOW,nextSyncAt:NOW+600000,updatedAt:NOW,...overrides});
+const connection=(userId,providerUserId,overrides={})=>({userId,provider:"polar",providerUserId,memberRef:`ref-${providerUserId}`,tokenSealed:`sealed-${providerUserId}`,tokenExpiresAt:null,settingsJson:JSON.stringify({recoverySuggestions:true}),consentVersion:"2026-10-polar-v4",connectedAt:NOW,nextSyncAt:NOW+600000,updatedAt:NOW,...overrides});
 
 async function scenario(store,suffix){
   const user=(id)=>({id:`${id}-${suffix}`,name:"Device Member",email:`${id}-${suffix}@example.test`,passwordHash:"hash",passwordSalt:"salt",createdAt:NOW-DAY,emailVerifiedAt:NOW-DAY});
@@ -57,15 +57,17 @@ async function scenario(store,suffix){
   result.connection.ghost=await store.upsertDeviceConnection(connection("nobody","999"));
 
   const ownerA={userId:a.id,provider:"polar",providerUserId:"111"},stranger={...ownerA,providerUserId:"999"};
+  result.token={updated:await store.updateDeviceToken({...ownerA,tokenSealed:"sealed-rotated",tokenExpiresAt:NOW+DAY,updatedAt:NOW+1}),stranger:await store.updateDeviceToken({...stranger,tokenSealed:"stolen",tokenExpiresAt:NOW+DAY,updatedAt:NOW+1})};
+  const rotated=await store.deviceConnection(a.id,"polar");result.token.value=[rotated.token_sealed,Number(rotated.token_expires_at)];
   await store.upsertWellnessNight(ownerA,night("2026-09-27"));
   await store.upsertWellnessNight(ownerA,night("2026-09-27",{recoveryStatus:5,hrvAvg:null,sleepScore:null,updatedAt:NOW+1}));
-  await store.upsertWellnessNight(ownerA,night("2026-09-28"));
+  await store.upsertWellnessNight(ownerA,night("2026-09-28",{ansCharge:13.4}));
   await store.upsertWellnessNight(stranger,night("2026-09-26"));
   await store.upsertWellnessDay(ownerA,day("2026-09-28"));await store.upsertWellnessDay(ownerA,day("2026-09-28",{restingHr:50}));await store.upsertWellnessDay(stranger,day("2026-09-27"));
   await store.upsertWellnessWorkout(ownerA,workout("w1",NOW-2*60*60*1000));await store.upsertWellnessWorkout(ownerA,workout("w1",NOW-2*60*60*1000,{calories:320}));await store.upsertWellnessWorkout(stranger,workout("w2",NOW));
   const nights=await store.wellnessNights(a.id,"polar","2026-09-01","2026-09-30");
   result.wellness={
-    nights:nights.map((row)=>[row.night_date,Number(row.recovery_status),Number(row.hrv_avg),Number(row.sleep_score),Number(row.updated_at)]),
+    nights:nights.map((row)=>[row.night_date,Number(row.recovery_status),Number(row.ans_charge),Number(row.hrv_avg),Number(row.sleep_score),Number(row.updated_at)]),
     windowed:(await store.wellnessNights(a.id,"polar","2026-09-28","2026-09-28")).length,
     days:(await store.wellnessDays(a.id,"polar","2026-09-01","2026-09-30")).map((row)=>[row.day_date,Number(row.resting_hr),JSON.parse(row.buckets_json).length]),
     workouts:(await store.wellnessWorkouts(a.id,"polar",NOW-DAY,NOW+DAY)).map((row)=>[row.external_id,Number(row.calories),row.sport])
@@ -149,7 +151,8 @@ test("device storage behaves identically on SQLite and Turso",async()=>{
     assert.deepEqual({...result.states.consumed},{provider:"polar",redirect_uri:"https://strata.test/api/devices/polar/callback"});
     assert.equal(result.states.reused,null);assert.equal(result.states.expired,null);assert.equal(result.states.discarded,NOW+5);
     assert.deepEqual(result.connection,{revision:1,status:"active",syncedThrough:null,nextSyncAt:NOW+600000,settings:{recoverySuggestions:true},duplicate:"unique",byProvider:true,ghost:null});
-    assert.deepEqual(result.wellness.nights,[["2026-09-27",5,61,81,NOW+1],["2026-09-28",4,61,81,NOW]],"a later partial read keeps values it does not include");
+    assert.deepEqual(result.token,{updated:true,stranger:false,value:["sealed-rotated",NOW+DAY]});
+    assert.deepEqual(result.wellness.nights,[["2026-09-27",5,1.5,61,81,NOW+1],["2026-09-28",4,13.4,61,81,NOW]],"a later partial read keeps values it does not include");
     assert.equal(result.wellness.windowed,1);assert.deepEqual(result.wellness.days,[["2026-09-28",50,48]]);assert.deepEqual(result.wellness.workouts,[["w1",320,"Running"]]);
     assert.deepEqual(result.sync,{recorded:true,strangerRecorded:false,dueBefore:0,marked:true,markedLater:false,due:[[true,NOW+60000,"2026-09-28",NOW]],limited:0});
     assert.deepEqual(result.settings,{revision:2,settings:{recoverySuggestions:false},stale:null});
@@ -159,7 +162,7 @@ test("device storage behaves identically on SQLite and Turso",async()=>{
     assert.deepEqual(result.disconnect,{removed:{providerUserId:"111",token:"sealed-new"},again:null,connection:null,nights:0,days:0,workouts:0});
     assert.equal(result.replaced,null);
     assert.equal(result.accountDeletion.status,"deleted");
-    assert.deepEqual(result.accountDeletion.queued,[["polar","333","sealed-333",0,true,true]]);
+    assert.deepEqual(result.accountDeletion.queued,[]);
     assert.equal(result.accountDeletion.connection,null);assert.equal(result.accountDeletion.nights,0);assert.equal(result.accountDeletion.state,null);
     assert.deepEqual(result.cleanup,{nights:["2026-09-20"],days:[["2026-08-01",true],["2026-09-20",false]],workouts:["new"],revocations:0,recentState:true,laterState:null},"connect states are kept for an hour after they expire");
   }finally{await close();}

@@ -10,7 +10,7 @@ const isoDate=(time)=>new Date(time).toISOString().slice(0,10);
 /** @param {import("./domain-types").WellnessOwner} owner */
 const ownerArgs=(owner)=>[owner.userId,owner.provider,owner.providerUserId];
 /** @param {import("./domain-types").WellnessNightRecord} night */
-const nightArgs=(night)=>[night.nightDate,night.recoveryStatus,night.ansCharge,night.ansChargeStatus,night.sleepCharge,night.heartRateAvg,night.hrvAvg,night.breathingRateAvg,night.sleepScore,night.sleepStart,night.sleepEnd,night.asleepSeconds,night.lightSeconds,night.deepSeconds,night.remSeconds,night.interruptionSeconds,night.updatedAt];
+const nightArgs=(night)=>[night.nightDate,night.recoveryStatus,null,night.ansCharge,night.ansChargeStatus,night.sleepCharge,night.heartRateAvg,night.hrvAvg,night.breathingRateAvg,night.sleepScore,night.sleepStart,night.sleepEnd,night.asleepSeconds,night.lightSeconds,night.deepSeconds,night.remSeconds,night.interruptionSeconds,night.updatedAt];
 /** @param {import("./domain-types").WellnessDayRecord} day */
 const dayArgs=(day)=>[day.dayDate,day.restingHr,day.minHr,day.avgHr,day.maxHr,day.samples,day.bucketsJson,day.updatedAt];
 /** @param {import("./domain-types").WellnessWorkoutRecord} workout */
@@ -49,6 +49,7 @@ function createLocalDeviceMethods({db,statements,plainRow}){
     async consumeDeviceConnectState(stateHash,userId,sessionHash,now){return one("consumeDeviceConnectState",[now,stateHash,userId,sessionHash,now]);},
     async discardDeviceConnectState(stateHash,now){statement("discardDeviceConnectState").run(now,stateHash);},
     async upsertDeviceConnection(record){return one("upsertDeviceConnection",connectionArgs(record));},
+    async updateDeviceToken(record){return Boolean(one("updateDeviceToken",[record.tokenSealed,record.tokenExpiresAt,record.updatedAt,...ownerArgs(record)]));},
     async recordDeviceSync(record){return Boolean(one("recordDeviceSync",syncArgs(record)));},
     async markDeviceConnectionDue(provider,providerUserId,dueAt,now){return one("markDeviceConnectionDue",[dueAt,now,provider,providerUserId]);},
     async dueDeviceConnections(now,limit){return many("dueDeviceConnections",[now,limit]);},
@@ -88,6 +89,7 @@ function createTursoDeviceMethods({client,first,all,run,plainRow}){
     consumeDeviceConnectState:(stateHash,userId,sessionHash,now)=>first(DEVICE_SQL.consumeDeviceConnectState,[now,stateHash,userId,sessionHash,now]),
     async discardDeviceConnectState(stateHash,now){await run(DEVICE_SQL.discardDeviceConnectState,[now,stateHash]);},
     upsertDeviceConnection:(record)=>first(DEVICE_SQL.upsertDeviceConnection,connectionArgs(record)),
+    async updateDeviceToken(record){return Boolean(await first(DEVICE_SQL.updateDeviceToken,[record.tokenSealed,record.tokenExpiresAt,record.updatedAt,...ownerArgs(record)]));},
     async recordDeviceSync(record){return Boolean(await first(DEVICE_SQL.recordDeviceSync,syncArgs(record)));},
     markDeviceConnectionDue:(provider,providerUserId,dueAt,now)=>first(DEVICE_SQL.markDeviceConnectionDue,[dueAt,now,provider,providerUserId]),
     dueDeviceConnections:(now,limit)=>all(DEVICE_SQL.dueDeviceConnections,[now,limit]),

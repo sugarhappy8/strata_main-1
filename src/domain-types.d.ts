@@ -850,6 +850,7 @@ export interface WellnessNightRecord {nightDate:string;recoveryStatus:number|nul
 export interface WellnessDayRecord {dayDate:string;restingHr:number|null;minHr:number|null;avgHr:number|null;maxHr:number|null;samples:number;bucketsJson:string|null;updatedAt:number;}
 export interface WellnessWorkoutRecord {externalId:string;startedAt:number;localDate:string;durationSeconds:number;sport:string;calories:number|null;hrAvg:number|null;hrMax:number|null;cardioLoad:number|null;updatedAt:number;}
 export interface DeviceConnectionRecord {userId:string;provider:string;providerUserId:string;memberRef:string;tokenSealed:string;tokenExpiresAt:number|null;settingsJson:string;consentVersion:string;connectedAt:number;nextSyncAt:number;updatedAt:number;}
+export interface DeviceTokenRecord extends WellnessOwner {tokenSealed:string;tokenExpiresAt:number;updatedAt:number;}
 export interface DeviceSyncRecord {userId:string;provider:string;providerUserId:string;status:string;syncedThrough:string|null;lastSyncAt:number|null;lastError:string|null;nextSyncAt:number;failures:number;updatedAt:number;}
 export interface DeviceConnectStateRecord {stateHash:string;userId:string;provider:string;sessionHash:string;redirectUri:string;createdAt:number;expiresAt:number;}
 export interface DeviceRevocationRecord {id:string;provider:string;providerUserId:string;tokenSealed:string;createdAt:number;nextAttemptAt:number;}
@@ -861,6 +862,7 @@ export interface DeviceStore {
   consumeDeviceConnectState(stateHash:string,userId:string,sessionHash:string,now:number):Promise<any>;
   discardDeviceConnectState(stateHash:string,now:number):Promise<void>;
   upsertDeviceConnection(record:DeviceConnectionRecord):Promise<any>;
+  updateDeviceToken(record:DeviceTokenRecord):Promise<boolean>;
   recordDeviceSync(record:DeviceSyncRecord):Promise<boolean>;
   markDeviceConnectionDue(provider:string,providerUserId:string,dueAt:number,now:number):Promise<any>;
   dueDeviceConnections(now:number,limit:number):Promise<any[]>;

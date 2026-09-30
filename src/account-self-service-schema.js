@@ -25,7 +25,7 @@ const ACCOUNT_EXPORT_QUERIES=Object.freeze({
   supportTickets:"SELECT id,reference,name,email,category,subject,reference_id,message,status,last_response_at,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY created_at,id",
   // Connected devices export what STRATA stored about the member, never the sealed token or Polar identifiers.
   deviceConnections:"SELECT provider,status,settings_json,consent_version,connected_at,synced_through,last_sync_at FROM device_connections WHERE user_id=? ORDER BY provider",
-  wellnessNights:"SELECT provider,night_date,recovery_status,ans_charge,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at FROM wellness_nights WHERE user_id=? ORDER BY night_date,provider",
+  wellnessNights:"SELECT provider,night_date,recovery_status,COALESCE(ans_charge_v4,ans_charge) AS ans_charge,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at FROM wellness_nights WHERE user_id=? ORDER BY night_date,provider",
   wellnessDays:"SELECT provider,day_date,resting_hr,min_hr,avg_hr,max_hr,samples,buckets_json,updated_at FROM wellness_days WHERE user_id=? ORDER BY day_date,provider",
   wellnessWorkouts:"SELECT provider,external_id,started_at,local_date,duration_seconds,sport,calories,hr_avg,hr_max,cardio_load,updated_at FROM wellness_workouts WHERE user_id=? ORDER BY started_at,external_id"
 });

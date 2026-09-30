@@ -428,7 +428,6 @@ function handleLiveness(req,res) {
 
 async function handleApi(req,res,url) {
   if (url.pathname==="/api/paddle/webhook") { await billing.handleWebhook(req,res); return; }
-  if (url.pathname==="/api/devices/polar/webhook") { await devices.handleWebhook(req,res); return; }
   if (["POST","PUT","PATCH","DELETE"].includes(req.method) && !sameOrigin(req)) { json(res,403,{error:"Cross-origin request rejected."}); return; }
   if (await productSignals.handleApi(req,res,url)) return;
   if (await support.handleApi(req,res,url)) return;

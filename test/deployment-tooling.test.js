@@ -38,14 +38,12 @@ test("preflight checks Polar connected devices only once they are configured",()
   const off=validateDeploymentEnvironment(productionEnvironment(),{requireEmail:true,requirePayments:true});
   assert.equal(off.checks.some(({name})=>name==="devices.polar"),false);assert.ok(off.warnings.some((warning)=>/Polar connected devices are off/.test(warning)));
   const key=Buffer.alloc(32,7).toString("base64"),polar={POLAR_CLIENT_ID:"polar-client-id",POLAR_CLIENT_SECRET:"polar-client-secret-value",DEVICE_TOKEN_KEY:key};
-  const ready=validateDeploymentEnvironment(productionEnvironment({...polar,POLAR_WEBHOOK_SECRET:"polar-webhook-signing-secret"}),{requireEmail:true,requirePayments:true});
+  const ready=validateDeploymentEnvironment(productionEnvironment(polar),{requireEmail:true,requirePayments:true});
   assert.equal(ready.ok,true);assert.equal(ready.checks.find(({name})=>name==="devices.polar").passed,true);
-  const noHook=validateDeploymentEnvironment(productionEnvironment(polar),{requireEmail:true,requirePayments:true});
-  assert.equal(noHook.ok,true);assert.ok(noHook.warnings.some((warning)=>/POLAR_WEBHOOK_SECRET is not set/.test(warning)));
+  const oldHook=validateDeploymentEnvironment(productionEnvironment({...polar,POLAR_WEBHOOK_SECRET:"unused-v3-secret"}),{requireEmail:true,requirePayments:true});
+  assert.equal(oldHook.ok,true);assert.ok(oldHook.warnings.some((warning)=>/ignored by AccessLink V4/.test(warning)));
   const broken=validateDeploymentEnvironment(productionEnvironment({...polar,DEVICE_TOKEN_KEY:"short",POLAR_API_URL:"http://polar.example"}),{requireEmail:true,requirePayments:true});
   assert.equal(broken.ok,false);assert.match(broken.failures.find(({name})=>name==="devices.polar").detail,/DEVICE_TOKEN_KEY[\s\S]*https/);
-  const reused=validateDeploymentEnvironment(productionEnvironment({...polar,POLAR_WEBHOOK_SECRET:"pdl_ntfset_signingsecret1234567890"}),{requireEmail:true,requirePayments:true});
-  assert.ok(reused.failures.some(({name})=>name==="secrets.separated"));
   assert.doesNotMatch(JSON.stringify(broken),/polar-client-secret-value/);
 });
 

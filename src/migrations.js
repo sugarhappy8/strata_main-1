@@ -12,7 +12,9 @@ const MIGRATIONS=Object.freeze([
   {id:"002-reviewed-index-set",description:"Remove unused legacy indexes and preserve the verification lookup index."},
   {id:"003-one-active-workout",description:"Reconcile duplicate active workouts before enforcing the partial unique index."},
   {id:"004-monthly-subscriptions",description:"Add the lean Paddle subscription cache while preserving legacy lifetime purchases."},
-  {id:"005-coaching-calibration",description:"Add optional morning-weight and intake-completeness observations to coaching logs."}
+  {id:"005-coaching-calibration",description:"Add optional morning-weight and intake-completeness observations to coaching logs."},
+  {id:"006-polar-v4-ans-status",description:"Store Polar V4 ANS status across its documented range."},
+  {id:"007-polar-v4-revocations",description:"Discard queued V3 deregistration credentials that V4 cannot use."}
 ]);
 const LATEST_MIGRATION_ID=MIGRATIONS.at(-1).id;
 
@@ -74,6 +76,10 @@ function migrateLocalSchema(database,{activeWorkoutIndex,reconcileActiveWorkouts
     addLocalColumn(database,"coaching_daily_logs","morning_weight_kg","REAL CHECK(morning_weight_kg BETWEEN 35 AND 300)");
     addLocalColumn(database,"coaching_daily_logs","intake_complete","INTEGER CHECK(intake_complete IN (0,1))");
   },now())) applied.push(MIGRATIONS[4].id);
+  if (runLocalMigration(database,MIGRATIONS[5].id,()=>{
+    addLocalColumn(database,"wellness_nights","ans_charge_v4","REAL CHECK(ans_charge_v4 BETWEEN -15.7068 AND 15.7068)");
+  },now())) applied.push(MIGRATIONS[5].id);
+  if (runLocalMigration(database,MIGRATIONS[6].id,()=>database.exec("DELETE FROM device_revocations"),now())) applied.push(MIGRATIONS[6].id);
   return {latest:LATEST_MIGRATION_ID,applied};
 }
 
@@ -136,6 +142,14 @@ async function migrateTursoSchema(client,{activeWorkoutIndex,reconcileActiveWork
     await addTursoColumn(client,"coaching_daily_logs","morning_weight_kg","REAL CHECK(morning_weight_kg BETWEEN 35 AND 300)");
     await addTursoColumn(client,"coaching_daily_logs","intake_complete","INTEGER CHECK(intake_complete IN (0,1))");
     await recordTursoMigration(client,MIGRATIONS[4].id,now());applied.push(MIGRATIONS[4].id);
+  }
+  if (!completed.has(MIGRATIONS[5].id)) {
+    await addTursoColumn(client,"wellness_nights","ans_charge_v4","REAL CHECK(ans_charge_v4 BETWEEN -15.7068 AND 15.7068)");
+    await recordTursoMigration(client,MIGRATIONS[5].id,now());applied.push(MIGRATIONS[5].id);
+  }
+  if (!completed.has(MIGRATIONS[6].id)) {
+    await client.execute("DELETE FROM device_revocations");
+    await recordTursoMigration(client,MIGRATIONS[6].id,now());applied.push(MIGRATIONS[6].id);
   }
   return {latest:LATEST_MIGRATION_ID,applied};
 }

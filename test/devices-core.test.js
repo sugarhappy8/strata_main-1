@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const {randomBytes}=require("node:crypto");
 const {POLAR_DEFAULTS,devicesSettings,keyId,tokenKey}=require("../src/devices-config");
 const {open,randomId,sameSecret,seal,sha256}=require("../src/devices-crypto");
-const {dateKey,dayFromHeartRate,isoDurationSeconds,nightsFromPolar,numberIn,sportLabel,workoutFromExercise,workoutsFromExercises}=require("../src/polar-mapping");
+const {dateKey,dayFromHeartRate,daysFromHeartRate,isoDurationSeconds,nightsFromPolar,numberIn,sportLabel,workoutFromExercise,workoutsFromExercises}=require("../src/polar-mapping");
 const {LEARNING_NIGHTS,addDays,chargeLabel,daysBetween,lighterSessionAdvice,recoveryLabel,stressSignals,todaySummary,trendSummary,usualRange}=require("../src/wellness-core");
 
 const KEY=randomBytes(32).toString("base64"),OLD_KEY=randomBytes(32).toString("base64url");
@@ -17,9 +17,9 @@ test("connected devices stay off until Polar credentials and a 32-byte token key
   assert.equal(empty.polar.authorizeUrl,POLAR_DEFAULTS.authorizeUrl);assert.equal(empty.polar.tokenUrl,POLAR_DEFAULTS.tokenUrl);assert.equal(empty.polar.apiBase,POLAR_DEFAULTS.apiBase);
   assert.equal(empty.polar.redirectUri,"");assert.equal(empty.secureCookies,false);assert.equal(empty.syncIntervalMs,60000);
 
-  const ready=devicesSettings({...configured,APP_BASE_URL:"https://strata.example/",POLAR_WEBHOOK_SECRET:" hook "});
+  const ready=devicesSettings({...configured,APP_BASE_URL:"https://strata.example/"});
   assert.equal(ready.configured,true);assert.deepEqual(ready.problems,[]);assert.equal(ready.keys.length,1);assert.equal(ready.keys[0].id,keyId(tokenKey(KEY)));
-  assert.equal(ready.polar.redirectUri,"https://strata.example/api/devices/polar/callback");assert.equal(ready.polar.webhookSecret,"hook");
+  assert.equal(ready.polar.redirectUri,"https://strata.example/api/devices/polar/callback");assert.equal("webhookSecret" in ready.polar,false);
 
   const rotated=devicesSettings({...configured,DEVICE_TOKEN_KEY_PREVIOUS:OLD_KEY,POLAR_REDIRECT_URI:"https://strata.example/custom"});
   assert.equal(rotated.keys.length,2);assert.notEqual(rotated.keys[0].id,rotated.keys[1].id);assert.equal(rotated.polar.redirectUri,"https://strata.example/custom");
@@ -78,6 +78,23 @@ test("Polar sleep and Nightly Recharge merge into one night per date with every 
   assert.equal(dateKey("2026-09-31"),null);assert.equal(dateKey("2026-09-30"),"2026-09-30");assert.equal(numberIn("",0,1),null);assert.equal(numberIn(1.26,0,2),1.3);
 });
 
+test("Polar V4 sleep and Nightly Recharge fields map to STRATA night metrics",()=>{
+  const nights=nightsFromPolar({nightSleeps:[{
+    sleepDate:"2026-09-28",
+    sleepResult:{hypnogram:{sleepStart:"2026-09-27T23:10:00+03:00",sleepEnd:"2026-09-28T06:40:00+03:00"}},
+    sleepScore:{sleepScore:82.34,scoreRate:4},
+    sleepEvaluation:{asleepDuration:"24000.4s",interruptions:{totalDuration:"1200s"},phaseDurations:{light:"14400s",deep:"3600s",rem:"5400s",unknown:"600s"}}
+  }]},{nightlyRechargeResults:{nightlyRechargeResults:[{
+    sleepResultDate:"2026-09-28",recoveryIndicator:5,ansStatus:13.44,ansRate:4,
+    meanNightlyRecoveryRri:1154,meanNightlyRecoveryRmssd:61,meanNightlyRecoveryRespirationInterval:4286
+  }]}},1234);
+  assert.deepEqual(nights,[{nightDate:"2026-09-28",recoveryStatus:5,ansCharge:13.4,ansChargeStatus:4,sleepCharge:4,heartRateAvg:52,hrvAvg:61,breathingRateAvg:14,sleepScore:82.3,
+    sleepStart:"2026-09-27T23:10:00+03:00",sleepEnd:"2026-09-28T06:40:00+03:00",asleepSeconds:24000,lightSeconds:14400,deepSeconds:3600,remSeconds:5400,interruptionSeconds:1200,updatedAt:1234}]);
+  const invalid=nightsFromPolar({nightSleeps:[{sleepDate:"2026-09-29",sleepEvaluation:{asleepDuration:"one hour",phaseDurations:{light:"86401s"}}}]},
+    {nightlyRechargeResults:{nightlyRechargeResults:[{sleepResultDate:"2026-09-29",meanNightlyRecoveryRri:0,meanNightlyRecoveryRespirationInterval:-1}]}},1)[0];
+  assert.equal(invalid.asleepSeconds,null);assert.equal(invalid.lightSeconds,null);assert.equal(invalid.heartRateAvg,null);assert.equal(invalid.breathingRateAvg,null);
+});
+
 test("24/7 heart rate becomes a daily range, half-hour averages, and a settled resting estimate",()=>{
   const day=dayFromHeartRate("2026-09-28",{heart_rate_samples:[
     {heart_rate:50,sample_time:"03:00:00"},{heart_rate:52,sample_time:"03:10:00"},{heart_rate:54,sample_time:"03:20"},
@@ -90,6 +107,21 @@ test("24/7 heart rate becomes a daily range, half-hour averages, and a settled r
   assert.equal(dayFromHeartRate("2026-09-28",null,1),null);
 });
 
+test("Polar V4 continuous samples become sorted daily summaries from one range response",()=>{
+  const payload={continuousSamples:{heartRateSamplesPerDay:[
+    {date:"2026-09-29",samples:[{heartRate:60,offsetMillis:43200000}]},
+    {date:"2026-09-28",samples:[{heartRate:50,offsetMillis:10800000},{heartRate:52,offsetMillis:11400000},{heartRate:54,offsetMillis:12000000},{heartRate:120,offsetMillis:43200000},{heartRate:300,offsetMillis:46800000},{heartRate:80,offsetMillis:86400000}]},
+    {date:"not-a-date",samples:[{heartRate:70,offsetMillis:0}]}
+  ]}};
+  const days=daysFromHeartRate(payload,99);
+  assert.deepEqual(days.map((day)=>day.dayDate),["2026-09-28","2026-09-29"]);
+  assert.deepEqual({restingHr:days[0].restingHr,minHr:days[0].minHr,avgHr:days[0].avgHr,maxHr:days[0].maxHr,samples:days[0].samples,updatedAt:days[0].updatedAt},
+    {restingHr:52,minHr:50,avgHr:69,maxHr:120,samples:4,updatedAt:99});
+  assert.equal(JSON.parse(days[0].bucketsJson)[6],52);assert.equal(JSON.parse(days[0].bucketsJson)[24],120);
+  assert.equal(days[1].restingHr,null);assert.equal(days[1].avgHr,60);
+  assert.deepEqual(daysFromHeartRate({continuousSamples:{heartRateSamplesPerDay:[]}},1),[]);
+});
+
 test("Polar exercises become device workouts with UTC start times, durations, and readable sports",()=>{
   const local=workoutFromExercise({id:"abc123",start_time:"2026-09-28T07:30:00",start_time_utc_offset:180,duration:"PT45M",detailed_sport_info:"RUNNING",calories:420,heart_rate:{average:140,maximum:171},training_load:88.44},5);
   assert.deepEqual({...local},{externalId:"abc123",startedAt:Date.parse("2026-09-28T04:30:00Z"),localDate:"2026-09-28",durationSeconds:2700,sport:"Running",calories:420,hrAvg:140,hrMax:171,cardioLoad:88.4,updatedAt:5});
@@ -100,6 +132,18 @@ test("Polar exercises become device workouts with UTC start times, durations, an
   assert.equal(workoutsFromExercises([{id:"a",start_time:"2026-09-28T07:30:00Z",duration:"PT10S"},{id:"bad"}],1).length,1);assert.deepEqual(workoutsFromExercises({},1),[]);
   assert.equal(isoDurationSeconds("PT"),null);assert.equal(isoDurationSeconds("PT50H"),null);assert.equal(isoDurationSeconds("PT30S"),30);
   assert.equal(sportLabel(""),"Workout");assert.equal(sportLabel("STRENGTH_TRAINING"),"Strength training");
+});
+
+test("Polar V4 training sessions become device workouts",()=>{
+  const sessions={trainingSessions:[
+    {identifier:{id:"ca78db47-1755-5555-5555-555555555555"},startTime:"2026-09-28T07:30:00",timezoneOffsetMinutes:180,durationMillis:2700500,name:"Morning Run",calories:420,hrAvg:140,hrMax:171,trainingLoad:88},
+    {identifier:{id:"z1"},startTime:"2026-09-28T07:30:00+03:00",durationMillis:3723500,sport:{id:"22353647432"}},
+    {identifier:{id:"bad"},startTime:"yesterday",durationMillis:1000},
+    {identifier:{id:"too-long"},startTime:"2026-09-28T07:30:00Z",durationMillis:172800001}
+  ]};
+  const workouts=workoutsFromExercises(sessions,5);
+  assert.deepEqual(workouts[0],{externalId:"ca78db47-1755-5555-5555-555555555555",startedAt:Date.parse("2026-09-28T04:30:00Z"),localDate:"2026-09-28",durationSeconds:2701,sport:"Morning run",calories:420,hrAvg:140,hrMax:171,cardioLoad:88,updatedAt:5});
+  assert.equal(workouts[1].startedAt,Date.parse("2026-09-28T04:30:00Z"));assert.equal(workouts[1].durationSeconds,3724);assert.equal(workouts[1].sport,"Workout");assert.equal(workouts.length,2);
 });
 
 /** A night row as the store returns it. */

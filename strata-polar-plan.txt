@@ -1,21 +1,35 @@
-STRATA POLAR LOOP — plan notes (Build 8.8.6)
+STRATA POLAR LOOP — implementation record (Build 8.8.6 and V4 supersession)
 
-Status: built in STRATA Build 8.8.6 for Strata+ members only (see docs/release-8.8.6.md).
-Step 0 of BUILD ORDER is still open: polar.com could not be reached while this was built, so the
-first real Polar Loop connection must confirm the field names, webhook event names, and timing.
+CURRENT STATUS — POLAR ACCESSLINK V4 SUPERSEDES THE ORIGINAL 8.8.6 PLAN
+- The maintained client authorizes at auth.polar.com and reads https://www.polaraccesslink.com/
+  v4/data. It requests exactly sleep:read, nightly_recharge:read, continuous_samples:read, and
+  training_sessions:read.
+- DEVICE_TOKEN_KEY encrypts a versioned credential envelope containing the short-lived access
+  token, rotating refresh token, expiry, and granted scopes. STRATA persists a rotated envelope
+  before any data read. A stored V3 single-token credential is rejected and must reconnect.
+- Sync is polling-only: the initial history import, Sync now, and the scheduled daily pull.
+  There is no compatible V4 webhook, webhook secret, event handler, or setup command in STRATA.
+- V4 does not expose a documented stable Polar account identity through this flow. STRATA keeps
+  a random local connection identifier and can allow one active Polar connection per STRATA
+  account, but cannot recognize or deduplicate the same Polar account across STRATA accounts.
+- Disconnecting or deleting a STRATA account deletes the local credential envelope and imported
+  Polar data. It does not revoke consent at Polar; the member removes that separately at
+  https://account.polar.com/ when wanted.
+- The maintained tests use synthetic local V4 fixtures. A redacted live, authorized fixture is
+  still required to validate provider field semantics, especially whether
+  meanNightlyRecoveryRri and meanNightlyRecoveryRespirationInterval use the interval units that
+  STRATA converts to per-minute rates with 60000 / interval.
+- The product remains Strata+ only. Recovery trends live on the Recovery destination; Nutrition
+  evidence, the Strata AI opt-in, and admin connection counts are not part of Build 8.8.6.
 
-What shipped differs from this plan in these ways:
-- Strata+ only: free members see what the feature does and a Strata+ link.
-- The webhook address is /api/devices/polar/webhook, and a signed event only makes that
-  member's connection sync sooner; there are no separate sync-job or webhook-event tables.
-- Recovery trends live on the Recovery destination; Progress is unchanged.
-- Nutrition evidence and the Strata AI opt-in are left for 8.8.7; 8.8.6 ships only the
-  lighter-session switch.
-- Polar tokens are long-lived, so there is no token refresh; a rejected token asks the member
-  to reconnect.
-- Admin connection counts are not built yet.
+ARCHIVED ORIGINAL 8.8.6 PLAN — HISTORICAL ONLY; DO NOT USE FOR CURRENT OPERATIONS
 
-Earlier plan notes follow. This replaced the WHOOP plan:
+Everything below this line is retained to explain the original design and release decisions.
+Its V3 registration, stable Polar user id, webhook, long-lived token, remote deregistration,
+scope, endpoint, and provider-validation statements are superseded by the V4 status above and
+the current deployment documentation.
+
+This replaced the WHOOP plan:
 WHOOP (and Oura) allow only 10 members until they approve an app, while Polar's API is
 self-serve with no approval step and no member cap. The Polar facts below come from public
 sources and Polar's example code; polar.com could not be reached while this was written, so

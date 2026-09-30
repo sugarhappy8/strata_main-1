@@ -1,8 +1,17 @@
 # Changelog
 
+## 8.8.7 — Polar AccessLink V4
+
+- Move Polar authorization to `auth.polar.com`, request only sleep, Nightly Recharge, continuous-sample, and training-session read scopes, and read data from the V4 range endpoints.
+- Seal a versioned access/refresh credential bundle, refresh near-expiry grants, and persist each rotated refresh token before using the new access token. Existing V3 connections fail closed into reconnect.
+- Replace V3 user registration, deregistration, and signed webhooks with documented V4 polling. Disconnect and account deletion now erase credentials and imported data locally; members can separately manage Polar authorization at `account.polar.com`.
+- Map V4 nested sleep, Nightly Recharge, continuous-heart-rate, and training-session payloads, including the wider ANS-status range, and exercise the flow with V4 unit, storage-parity, HTTP integration, and browser stand-ins.
+
+See the [8.8.7 release guide](docs/release-8.8.7.md).
+
 ## 8.8.6 — Polar connected devices for Strata+
 
-- Let each Strata+ member connect their own Polar account from a new Connected devices card on Account, after a consent step. The OAuth return is completed by the session that started it, one Polar account links to one STRATA account, and tokens are sealed with AES-256-GCM and never leave the server.
+- Let each Strata+ member connect their own Polar account from a new Connected devices card on Account, after a consent step. The OAuth return is completed by the session that started it, and tokens are sealed with AES-256-GCM and never leave the server.
 - Import Polar's last 28 days on connect, then sync at least daily and sooner after signed Polar webhooks, within Polar's reported rate limits. Syncing pauses while Strata+ is inactive, and members are asked to reconnect when Polar rejects their token.
 - Add the Recovery destination: Polar's Nightly Recharge, overnight stress signals compared only with the member's usual nights, sleep with stages, overnight and 24/7 heart rate, and 4-, 8-, and 12-week trends next to STRATA workouts and Polar cardio load. The Overview gains a recovery card, and all seven destinations stay visible on phones.
 - After a poor night, or two nights with more stress signals than usual, Train can offer a lighter session: the same exercises with one set fewer each, for that day only, without changing the Plan. History marks lighter sessions and shows the Polar workout recorded during each STRATA session.

@@ -2,14 +2,14 @@
 "use strict";
 
 // Connected-device settings. Polar AccessLink needs the client id and secret from admin.polaraccesslink.com,
-// and DEVICE_TOKEN_KEY encrypts each member's Polar token at rest. Until all three are set the feature stays off.
+// and DEVICE_TOKEN_KEY encrypts each member's V4 credential envelope at rest. Until all three are set the feature stays off.
 
 const {createHash}=require("node:crypto");
 
 const POLAR_DEFAULTS=Object.freeze({
-  authorizeUrl:"https://flow.polar.com/oauth2/authorization",
-  tokenUrl:"https://polarremote.com/v2/oauth2/token",
-  apiBase:"https://www.polaraccesslink.com"
+  authorizeUrl:"https://auth.polar.com/oauth/authorize",
+  tokenUrl:"https://auth.polar.com/oauth/token",
+  apiBase:"https://www.polaraccesslink.com/v4/data"
 });
 const LOCAL_HTTP=/^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?(?:\/|$)/i;
 
@@ -54,7 +54,7 @@ function devicesSettings(env){
   if(production&&!/^https:\/\/[^\s]+$/i.test(redirectUri))problems.push("POLAR_REDIRECT_URI or APP_BASE_URL must be an https address in production.");
   return {
     configured:problems.length===0,problems,keys,
-    polar:{clientId,clientSecret,authorizeUrl,tokenUrl,apiBase,redirectUri,webhookSecret:clean(env.POLAR_WEBHOOK_SECRET)},
+    polar:{clientId,clientSecret,authorizeUrl,tokenUrl,apiBase,redirectUri},
     secureCookies:production||env.SECURE_COOKIES==="true",
     // How often the sync loop looks for due connections. Tests shorten it; the default suits production.
     syncIntervalMs:Math.min(3600000,Math.max(200,Math.floor(Number(env.DEVICE_SYNC_INTERVAL_MS)||60000)))

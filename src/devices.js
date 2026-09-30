@@ -9,14 +9,14 @@
 // therefore only parks the one-time code in a short-lived cookie scoped to /api/devices/polar/complete, and the
 // Account page finishes the connection with a same-site request that carries the session which started it.
 
-const {open,randomId,seal,sha256}=require("./devices-crypto");
+const {randomId,seal,sha256}=require("./devices-crypto");
 const {devicesSettings}=require("./devices-config");
 const {createDeviceSync}=require("./devices-sync");
-const {createPolarClient,validWebhookSignature}=require("./polar-client");
+const {createPolarClient,serializePolarCredentials}=require("./polar-client");
 const {addDays,daysBetween,todaySummary,trendSummary}=require("./wellness-core");
 
 const PROVIDER="polar";
-const CONSENT_VERSION="2026-10-polar-1";
+const CONSENT_VERSION="2026-10-polar-v4";
 const RETURN_COOKIE="strata_device_return";
 const STATE_TTL_MS=10*60*1000;
 const SYNC_COOLDOWN_MS=5*60*1000;
@@ -44,13 +44,13 @@ function publicConnection(row){
 
 /**
  * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,
- *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean,http:{json:Function,bodyJson:Function,bodyBuffer:Function,redirect:Function},
+ *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean,http:{json:Function,bodyJson:Function,redirect:Function},
  *   settings:ReturnType<typeof devicesSettings>,hasAccess:(userId:string)=>Promise<boolean>,logger?:{info?:Function,warn?:Function,error?:Function}|null,
  *   now?:()=>number,polar?:any,sync?:any,fetchImpl?:typeof fetch,isUniqueViolation?:(error:unknown)=>boolean}} dependencies
  */
 function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,settings,hasAccess,logger=null,now=Date.now,polar=null,sync=null,fetchImpl,isUniqueViolation}){
   if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http||!settings||typeof hasAccess!=="function")throw new TypeError("Connected devices require storage, access guards, rate limiting, HTTP helpers, settings, and access checks.");
-  const {json,bodyJson,bodyBuffer,redirect}=http;
+  const {json,bodyJson,redirect}=http;
   const client=polar||createPolarClient({settings,now,...(fetchImpl?{fetchImpl}:{})});
   const worker=sync||createDeviceSync({store,polar:client,keys:settings.keys,hasAccess,logger,now,intervalMs:settings.syncIntervalMs});
   const uniqueViolation=isUniqueViolation||((/** @type {any} */ error)=>/UNIQUE constraint failed/i.test(String(error?.message||"")));
@@ -94,15 +94,10 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
     const requested=String(url.searchParams.get("date")||""),utc=isoDate(now());
     return /^\d{4}-\d{2}-\d{2}$/.test(requested)&&Math.abs(daysBetween(utc,requested))<=1?requested:utc;
   }
-  /** Deletes the member's connection and data, then tells Polar; a failed Polar call is retried by the sync loop. @param {string} userId */
+  /** V4 has no remote deregistration endpoint; deleting the sealed credentials ends STRATA's access. @param {string} userId */
   async function releaseConnection(userId){
     const removed=await store.deleteDeviceData(userId,PROVIDER);
     if(!removed)return false;
-    try{await client.deregisterUser(open(settings.keys,String(removed.token_sealed)),String(removed.provider_user_id));}
-    catch(error){
-      const code=/** @type {any} */(error)?.code;
-      if(code!=="DEVICE_KEY_MISSING"&&code!=="DEVICE_TOKEN_UNREADABLE")await store.insertDeviceRevocation({id:randomId(16),provider:PROVIDER,providerUserId:String(removed.provider_user_id),tokenSealed:String(removed.token_sealed),createdAt:now(),nextAttemptAt:now()+60*1000});
-    }
     logger?.info?.("device.disconnected",{provider:PROVIDER});
     return true;
   }
@@ -149,26 +144,18 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
       const failure=/** @type {any} */(error);if(!String(failure?.code||"").startsWith("POLAR_"))throw error;
       if(failure.code==="POLAR_CODE_REJECTED")fail(400,failure.code,failure.message);else fail(503,failure.code,"Polar could not be reached. Try connecting again.");
     };
-    let token;
-    try{token=await client.exchangeCode(code,String(pending.redirect_uri));}catch(error){polarFailed(error);return;}
-    const taken="This Polar account is already connected to another STRATA account. Disconnect it there first.";
-    const linked=await store.deviceConnectionByProviderUser(PROVIDER,token.providerUserId);
-    if(linked&&String(linked.user_id)!==userId){fail(409,"DEVICES_ALREADY_LINKED",taken);return;}
-    // A disconnect or account deletion that has not reached Polar yet must not undo this new link.
-    await store.cancelDeviceRevocations(PROVIDER,token.providerUserId);
-    const memberRef=randomId(16);
-    // Polar answers 409 when it already lists this account for STRATA (a reconnect, or an old link that never
-    // reached Polar). STRATA's own records say no other member holds it, so the link simply continues.
-    try{await client.registerUser(token.accessToken,memberRef);}catch(error){polarFailed(error);return;}
+    let credentials;
+    try{credentials=await client.exchangeCode(code,String(pending.redirect_uri));}catch(error){polarFailed(error);return;}
     const current=await store.deviceConnection(userId,PROVIDER);
-    // A different Polar account replaces the old one entirely, so two accounts' data never mix.
-    if(current&&String(current.provider_user_id)!==token.providerUserId)await releaseConnection(userId);
-    const time=now();
+    // V4 exposes no stable account identifier. Every completed authorization gets a local connection id, and an
+    // earlier connection's imported rows are cleared so data from two Polar accounts can never mix.
+    if(current)await store.deleteDeviceData(userId,PROVIDER);
+    const time=now(),providerUserId=randomId(16),memberRef=randomId(16);
     let row;
     try{
-      row=await store.upsertDeviceConnection({userId,provider:PROVIDER,providerUserId:token.providerUserId,memberRef,tokenSealed:seal(settings.keys,token.accessToken),tokenExpiresAt:token.expiresAt,
-        settingsJson:current&&String(current.provider_user_id)===token.providerUserId?String(current.settings_json):JSON.stringify({recoverySuggestions:true}),consentVersion:CONSENT_VERSION,connectedAt:time,nextSyncAt:time+10*60*1000,updatedAt:time});
-    }catch(error){if(!uniqueViolation(error))throw error;fail(409,"DEVICES_ALREADY_LINKED",taken);return;}
+      row=await store.upsertDeviceConnection({userId,provider:PROVIDER,providerUserId,memberRef,tokenSealed:seal(settings.keys,serializePolarCredentials(credentials)),tokenExpiresAt:credentials.expiresAt,
+        settingsJson:JSON.stringify(settingsOf(current)),consentVersion:CONSENT_VERSION,connectedAt:time,nextSyncAt:time+10*60*1000,updatedAt:time});
+    }catch(error){if(!uniqueViolation(error))throw error;fail(409,"DEVICES_CONNECT_CONFLICT","The connection changed while Polar was linking. Start again.");return;}
     if(!row){fail(409,"DEVICES_ACCOUNT_CHANGED","Your account changed. Reload before connecting Polar.");return;}
     logger?.info?.("device.connected",{provider:PROVIDER});
     startImport(row);
@@ -255,23 +242,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
     return true;
   }
 
-  /** Signed Polar events only make that member's connection due sooner; the data itself is always read from Polar. @param {any} req @param {any} res */
-  async function handleWebhook(req,res){
-    if(req.method!=="POST"){json(res,405,{error:"Method not allowed."},{Allow:"POST"});return;}
-    if(!rateAllowed(req,"devices:webhook",1200,60*1000)){json(res,429,{error:"Too many webhook deliveries."},{"Retry-After":"60"});return;}
-    const raw=await bodyBuffer(req,64*1024);
-    let event;
-    try{event=JSON.parse(raw.toString("utf8"));}catch{json(res,400,{error:"Invalid webhook body."});return;}
-    // Polar pings a new webhook before its signing secret exists; a ping changes nothing.
-    if(event?.event==="PING"){json(res,200,{ok:true});return;}
-    const secret=settings.polar.webhookSecret;
-    if(!secret||!validWebhookSignature(raw,req.headers["polar-webhook-signature"],secret)){logger?.warn?.("device.webhook_rejected",{configured:Boolean(secret)});json(res,401,{error:"Invalid webhook signature."});return;}
-    const providerUserId=String(event?.user_id??"");
-    if(/^\d{1,20}$/.test(providerUserId))await worker.markWebhook(providerUserId);
-    json(res,200,{ok:true});
-  }
-
-  return {handleApi,handleWebhook,start(){if(settings.configured)worker.start();},stop(){worker.stop();}};
+  return {handleApi,start(){if(settings.configured)worker.start();},stop(){worker.stop();}};
 }
 
 module.exports={CONSENT_VERSION,createDevicesService,devicesSettings,publicConnection};
