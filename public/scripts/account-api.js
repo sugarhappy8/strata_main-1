@@ -60,7 +60,9 @@
       requestPasswordReset:()=>mutation("/api/account/password-reset/request"),
       requestDeletion:()=>mutation("/api/account/delete/request"),
       cancelDeletion:()=>mutation("/api/account/delete/cancel"),
-      exportAccount
+      exportAccount,
+      devices:()=>requestJson("/api/devices",{cache:"no-store"}),
+      deviceRequest:(path,method="POST",body={})=>requestJson(path,{method,headers:{"Content-Type":"application/json","X-CSRF-Token":getCsrfToken()},body:JSON.stringify(body)})
     };
   }
 

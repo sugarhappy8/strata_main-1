@@ -1,4 +1,4 @@
-/* global StrataAccountApi, StrataAccountEvents, StrataAccountLogic, StrataAccountRender, StrataAccountState */
+/* global StrataAccountApi, StrataAccountDevices, StrataAccountEvents, StrataAccountLogic, StrataAccountRender, StrataAccountState, StrataDevicesCore */
 "use strict";
 
 const logic=StrataAccountLogic;
@@ -12,6 +12,7 @@ const api=StrataAccountApi.createClient({fetchImpl:(...args)=>{
   if(typeof globalThis.fetch!=="function")throw new TypeError("Fetch is unavailable.");
   return globalThis.fetch(...args);
 },getCsrfToken:state.getCsrfToken});
+const devices=StrataAccountDevices.createController({element:el,api,core:StrataDevicesCore,onAccountChanged:()=>showChangedAccount()});
 const authForms={signup:el("signupForm"),login:el("loginForm")};
 const authButtons={signup:el("signupSubmit"),login:el("loginSubmit")};
 const preferredPanel=el(mode==="login"?"loginPanel":"signupPanel");
@@ -35,14 +36,14 @@ function rememberVerification(value,purpose="signup"){
   }catch{/* Verification still works without optional session storage. */}
 }
 
-function clearPrivateView(){state.invalidatePrivateRequests();renderer.clearPrivateData();}
+function clearPrivateView(){state.invalidatePrivateRequests();renderer.clearPrivateData();devices.reset();}
 
 function showAccess(sessionError=""){
   state.invalidatePrivateRequests();
   renderer.showAccess({message:state.takePendingError()||sessionError,mode,requestedMode,preferredPanel});
 }
 
-function showChangedAccount(){state.invalidatePrivateRequests();renderer.showChangedAccount();}
+function showChangedAccount(){state.invalidatePrivateRequests();devices.reset();renderer.showChangedAccount();}
 function handlePageShow(event){if(event.persisted){clearPrivateView();renderer.showInitialLoading();location.reload();}}
 
 async function handleForeground(){
@@ -121,7 +122,7 @@ async function loadAccountDashboard(user){
 
 function showSignedIn(user,csrfToken=""){
   state.setPrivateUser(user?.id);state.setCsrfToken(csrfToken);renderer.showSignedIn(user);
-  void loadAccountDashboard(user);void loadAccountSessions(user);
+  void loadAccountDashboard(user);void loadAccountSessions(user);void devices.load(user);
 }
 
 async function updateStorageStatus(){

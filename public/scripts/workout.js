@@ -9,7 +9,7 @@
   const E=globalThis.StrataWorkoutEvents;
   const C=globalThis.StrataWorkoutCalendar;
   const H=globalThis.StrataWorkoutHistory;
-  const Q=globalThis.StrataWorkoutGuidance,P=globalThis.StrataWorkoutProgression;
+  const Q=globalThis.StrataWorkoutGuidance,P=globalThis.StrataWorkoutProgression,V=globalThis.StrataWorkoutRecovery;
   const $=(id)=>document.getElementById(id);
   const signal=name=>globalThis.StrataSignals?.record?.(name);
   const state=S.create(W,location);
@@ -141,7 +141,7 @@
     }catch(error){toast(saveError(error));}
     finally{buttons.forEach((button)=>button.disabled=false);}
   }
-  function renderPlan(){contextView.render();updateWeeklyCalendar();}
+  function renderPlan(){contextView.render();updateWeeklyCalendar();recoveryView.render();}
   function updateWeeklyCalendar(){
     const alarm=Number($("calendarWeeklyAlarm").value)||0,schedule=C.weeklySchedule(state.plan,W.DAYS,{time:$("calendarWeeklyTime").value||"18:00",alarmMinutes:alarm});$("calendarWeekly").hidden=!schedule;if(!schedule)return;
     const time=new Date(`2026-01-05T${$("calendarWeeklyTime").value||"18:00"}:00`).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}),days=new Intl.ListFormat(undefined,{type:"conjunction"}).format(schedule.days);
@@ -171,7 +171,7 @@
   }
   function renderSession(){
     const workout=state.workout;if(!workout)return;state.memoryReady=memoryReadyFor(workout);
-    $("sessionTitle").textContent=workout.title;$("sessionDate").textContent=`${W.displayDate(workout.date)} · ${workout.planDay||"Training"}${workout.status==="completed"?" · awaiting save":""}`;
+    $("sessionTitle").textContent=workout.title;$("sessionDate").textContent=`${W.displayDate(workout.date)} · ${workout.planDay||"Training"}${workout.adjustment==="recovery"?" · Lighter session":""}${workout.status==="completed"?" · awaiting save":""}`;
     $("sessionEntries").innerHTML=workout.entries.map(view.renderEntry).join("");
     updateSessionMeta();tick();if(workout.status==="active"){if(state.memoryReady)void progression.load(workout.id);else if(!state.memoryBusy&&!state.memoryError)void loadWorkoutMemory(workout.id);}
   }
@@ -370,6 +370,7 @@
   const guidance=Q.create({$,state,accountRead,api,assertIdentity,saveError,exercise,esc,number});
   const historyView=H.create({$,state,workout:W,view,esc,number,exercise,formatLabel,accountRead,saveError,blockSession,renderPlan,mergeMemory,memoryReadyFor,renderSession,loadWorkoutMemory,fetchWorkout,selectWorkout,toast,recover,resetProgression:progression.reset,locationLike:location,historyLike:history});
   const contextView=T.create({$,state,workout:W,view,esc,openDetail:historyView.openDetail,recover});
+  const recoveryView=V.create({$,state,request:(path)=>client.request(path),core:globalThis.StrataDevicesCore,esc,renderHistory:()=>historyView.render()});
   async function initialize(){
     if(state.loading)return;
     if(state.blocked){location.reload();return;}
@@ -388,7 +389,7 @@
       if(!state.plan?.days)throw new Error("Your account plan could not be loaded. Retry to continue.");
       document.body.classList.add("has-workout-access");
       $("modeNotice").innerHTML=`<strong>${esc(state.user.name||"Your account")} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Account</a>`;
-      $("trainingRoom").hidden=false;$("historySection").hidden=false;scanDrafts();await historyView.load();
+      $("trainingRoom").hidden=false;$("historySection").hidden=false;scanDrafts();await historyView.load();void recoveryView.load();
       const resumed=!state.blocked&&await historyView.openRequested();
       if(!resumed&&location.hash==="#historySection"&&!state.blocked){$("historySection").scrollIntoView({block:"start"});$("historyTitle").focus();}
     }catch(error){
@@ -396,7 +397,7 @@
       $("modeNotice").textContent="The workout room could not load. Your saved sessions and device drafts have been kept.";
     }finally{state.loading=false;}
   }
-  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,updateWeeklyCalendar,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save}});
+  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,updateWeeklyCalendar,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save,prepareWorkout:recoveryView.prepare}});
   setInterval(tick,1000);
   void initialize();
 })();

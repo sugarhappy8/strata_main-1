@@ -46,6 +46,7 @@
             <a class="destination-link" href="#planWorkspace" data-feature-target="plan" aria-controls="planWorkspace" aria-expanded="false"><span>Plan</span><small>Build your week</small></a>
             <a class="destination-link" href="/workout.html"><span>Train</span><small>Start or resume</small></a>
             <a class="destination-link" href="#nutritionWorkspace" data-feature-target="nutrition" aria-controls="nutritionWorkspace" aria-expanded="false"><span>Nutrition</span><small>Calories & food</small></a>
+            <a class="destination-link" href="#recoveryWorkspace" data-feature-target="recovery" aria-controls="recoveryWorkspace" aria-expanded="false"><span>Recovery</span><small>Sleep & stress</small></a>
             <a class="destination-link" href="#progressWorkspace" data-feature-target="progress" aria-controls="progressWorkspace" aria-expanded="false"><span>Progress</span><small>Review your results</small></a>
             <a class="destination-link" href="#exploreWorkspace" data-feature-target="explore" aria-controls="exploreWorkspace" aria-expanded="false"><span>Exercises</span><small>Find & compare</small></a>
           </nav>
@@ -77,6 +78,7 @@
           </aside>
         </div>
         <div class="studio-container today-support-grid">
+          <aside class="today-context-card today-recovery-card" id="todayRecovery" aria-labelledby="todayRecoveryTitle" hidden><p class="kicker">Recovery · Polar</p><h2 id="todayRecoveryTitle">Last night</h2><p id="todayRecoveryDetail" role="status" aria-live="polite"></p><dl class="today-recovery-metrics" id="todayRecoveryMetrics"></dl><a class="small-button" id="todayRecoveryAction" href="#recoveryWorkspace" data-feature-target="recovery">Open Recovery <span aria-hidden="true">→</span></a><a class="small-button" id="todayRecoveryConnect" href="/account.html#connectedDevices" hidden>Connect Polar <span aria-hidden="true">→</span></a></aside>
 
           <aside class="today-context-card" id="todayAlternativeWorkout" aria-labelledby="todayContextTitle" hidden><p class="kicker">Alternative session</p><h2 id="todayContextTitle">Need a different workout?</h2><p>Build an alternative when time or equipment changes. Nothing is saved until you review and approve it.</p><a class="small-button" id="todayAlternativeAction" href="#sessionBuilder" data-feature-target="session">Create a different workout <span aria-hidden="true">→</span></a></aside>
         </div>
@@ -396,6 +398,19 @@
           </section>
         </section>
       </div></section>
+      <section class="coaching-workspace recovery-workspace feature-panel" id="recoveryWorkspace" data-feature-panel="recovery" aria-labelledby="recoveryWorkspaceTitle"><div class="studio-container">
+        <div class="workspace-heading"><div><p class="kicker kicker-light">Recovery · from your Polar</p><h2 id="recoveryWorkspaceTitle" tabindex="-1">Recover <em>on purpose.</em></h2></div><p>Polar’s Nightly Recharge, sleep, and heart rate, compared with your own usual nights. Wellness information, not medical advice.</p></div>
+        <div class="workspace-empty" id="recoveryState" role="status"><div><p class="kicker">Polar Loop</p><h3 id="recoveryStateTitle">Loading your recovery…</h3><p id="recoveryStateMessage">Checking your Polar connection.</p></div><a class="button button-accent" id="recoveryConnect" href="/account.html#connectedDevices" hidden>Connect Polar <span aria-hidden="true">→</span></a><button class="small-button" id="recoveryRetry" type="button" hidden>Try again <span aria-hidden="true">↻</span></button></div>
+        <div class="recovery-results" id="recoveryResults" hidden>
+          <section class="recovery-today" id="recoveryToday" aria-label="Last night"></section>
+          <section class="recovery-trends" aria-labelledby="recoveryTrendsTitle">
+            <div class="recovery-trends-head"><div><p class="kicker kicker-light">Trends</p><h3 id="recoveryTrendsTitle">Your recent nights</h3></div><div class="recovery-range" id="recoveryRange" role="group" aria-label="Trend range"><button type="button" data-recovery-weeks="4" aria-pressed="true">4 weeks</button><button type="button" data-recovery-weeks="8" aria-pressed="false">8 weeks</button><button type="button" data-recovery-weeks="12" aria-pressed="false">12 weeks</button></div></div>
+            <div class="recovery-charts" id="recoveryCharts"></div>
+            <div class="recovery-weekly" id="recoveryWeekly" tabindex="0" role="region" aria-label="Weekly averages and training"></div>
+          </section>
+          <p class="recovery-footnote">Nightly Recharge, ANS charge, and sleep charge are Polar’s own results. STRATA adds overnight stress signals by comparing each night with your usual range from up to 28 earlier nights, and never labels them as a diagnosis. <a href="/account.html#connectedDevices">Manage Polar in Account</a></p>
+        </div>
+      </div></section>
 
 
       <aside class="score-guide" id="scoreGuide" aria-label="STRATA score guide" hidden>
@@ -643,6 +658,7 @@
     <script src="discovery-core.js?v=8.8.5"></script>
     <script src="monthly-plan-core.js?v=8.8.5"></script>
     <script src="training-block-core.js?v=8.8.5"></script>
+    <script src="devices-core.js?v=8.8.5"></script>
     <script src="personal-training-energy-ui-core.js?v=8.8.5"></script>
     <script src="personal-training-ui-core.js?v=8.8.5"></script>
     <script src="personal-training-diary-ui.js?v=8.8.5"></script>
@@ -663,6 +679,7 @@
     <script src="discover-coaching-meals.js?v=8.8.5"></script>
     <script src="discover-coaching.js?v=8.8.5"></script>
     <script src="discover-program.js?v=8.8.5"></script>
+    <script src="discover-recovery.js?v=8.8.5"></script>
     <script src="discover.js?v=8.8.5"></script>
   </body>
 </html>

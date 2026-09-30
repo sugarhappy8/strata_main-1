@@ -8,6 +8,7 @@
   "use strict";
   function bind({$,state,workout:W,number,signal,actions,windowLike=globalThis.window,documentLike=globalThis.document,locationLike=globalThis.location,historyLike=globalThis.history,confirmImpl=globalThis.confirm}){
     const {initialize,renderPlan,resumeWorkout,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory,openDetail,loadHistory,renderMetricOptions,renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError}=actions;
+    const prepareWorkout=actions.prepareWorkout||((created)=>created);
     $("retryLoad").addEventListener("click",()=>void initialize());
     $("resumeWorkout").addEventListener("click",()=>void resumeWorkout());
     $("retryWorkoutHistory").addEventListener("click",()=>void loadHistory());
@@ -33,7 +34,7 @@
         else{$("historySection").scrollIntoView({block:"start"});[...$("historyList").querySelectorAll("[data-history]")].find((button)=>button.dataset.history===active.id)?.focus();}
         return;
       }
-      try{selectWorkout(W.createWorkout(state.plan,state.day,state.catalog),{dirty:true});markDirty();signal("workout_started");$("sessionPanel").scrollIntoView({block:"start"});}
+      try{selectWorkout(prepareWorkout(W.createWorkout(state.plan,state.day,state.catalog)),{dirty:true});markDirty();signal("workout_started");$("sessionPanel").scrollIntoView({block:"start"});}
       catch(error){toast(error.message);}
     });
     $("sessionEntries").addEventListener("input",(event)=>{

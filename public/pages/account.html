@@ -91,6 +91,32 @@
           </div>
           <p class="account-billing-status" id="accountBillingStatus" role="status" aria-live="polite" tabindex="-1"></p>
         </section>
+        <section class="account-devices" id="connectedDevices" aria-labelledby="devicesTitle" tabindex="-1" hidden>
+          <div class="account-devices-head"><div><p class="account-section-label">Connected devices</p><h3 id="devicesTitle">Polar Loop</h3></div><strong id="devicesBadge">Checking</strong></div>
+          <p id="devicesDetail">Checking your Polar connection.</p>
+          <p class="account-devices-warning" id="devicesWarning" hidden></p>
+          <dl class="account-devices-facts" id="devicesFacts" hidden><div><dt>Connected</dt><dd id="devicesConnectedAt">—</dd></div><div><dt>Last sync</dt><dd id="devicesLastSync">—</dd></div><div><dt>Data through</dt><dd id="devicesSyncedThrough">—</dd></div></dl>
+          <label class="account-devices-switch" id="devicesSuggestionsField" hidden><input type="checkbox" id="devicesSuggestions" /><span><strong>Offer a lighter session after a poor night</strong><small>Train shows the offer on that day only. Your weekly plan never changes.</small></span></label>
+          <div class="account-devices-consent" id="devicesConsent" hidden>
+            <h4 id="devicesConsentTitle" tabindex="-1">Before you connect Polar</h4>
+            <ul>
+              <li>STRATA reads your Nightly Recharge, sleep, 24/7 heart rate, and Polar workouts.</li>
+              <li>STRATA keeps its own copy while you stay connected, so each night can be compared with your usual. Disconnecting deletes it.</li>
+              <li>You sign in on Polar’s site. STRATA never sees your Polar password.</li>
+              <li>This is wellness information from your device, not medical advice.</li>
+            </ul>
+            <label class="account-devices-check"><input type="checkbox" id="devicesConsentCheck" /><span>I agree to share my Polar data with STRATA as described in the <a href="/privacy#connected-devices">Privacy Policy</a>.</span></label>
+            <div class="account-devices-actions"><button id="devicesContinue" type="button" disabled><span class="button-idle">Continue to Polar</span><span class="button-busy">Opening Polar…</span><span aria-hidden="true">↗</span></button><button id="devicesConsentCancel" type="button">Not now</button></div>
+          </div>
+          <div class="account-devices-actions">
+            <button id="devicesConnect" type="button" hidden><span>Connect Polar</span><span aria-hidden="true">→</span></button>
+            <a id="devicesUpgrade" href="/pricing" hidden>Unlock with Strata+ <span aria-hidden="true">→</span></a>
+            <a id="devicesRecovery" href="/discover.html#recoveryWorkspace" hidden>Open Recovery <span aria-hidden="true">→</span></a>
+            <button id="devicesSync" type="button" hidden><span class="button-idle">Sync now</span><span class="button-busy">Syncing…</span><span aria-hidden="true">↻</span></button>
+            <button class="danger-action" id="devicesDisconnect" type="button" hidden><span class="button-idle">Disconnect Polar</span><span class="button-busy">Disconnecting…</span></button>
+          </div>
+          <p class="account-devices-status" id="devicesStatus" role="status" aria-live="polite" tabindex="-1"></p>
+        </section>
         <section class="account-self-service" aria-labelledby="accountSelfServiceTitle">
           <div class="account-self-service-head"><p class="account-section-label">Privacy &amp; access</p><h3 id="accountSelfServiceTitle">Your account data</h3></div>
           <div class="account-self-service-grid">
@@ -170,15 +196,18 @@
         </div>
       </section>
     </main>
+    <dialog class="account-devices-dialog" id="devicesDisconnectDialog" aria-labelledby="devicesDisconnectTitle" aria-describedby="devicesDisconnectDetail"><form method="dialog"><h2 id="devicesDisconnectTitle">Disconnect Polar?</h2><p id="devicesDisconnectDetail">STRATA deletes the recovery, sleep, heart-rate, and workout data it imported from Polar, and tells Polar to stop sharing. Your STRATA workouts and plans stay.</p><div class="account-devices-dialog-actions"><button value="cancel" autofocus>Keep Polar connected</button><button class="danger-action" value="disconnect">Disconnect and delete Polar data</button></div></form></dialog>
     <footer class="build-footer">STRATA · Build 8.8.5 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
     <script src="/pwa.js?v=8.8.5"></script>
     <script src="/activation-core.js?v=8.8.5"></script>
     <script src="/activation-handoff.js?v=8.8.5"></script>
+    <script src="devices-core.js?v=8.8.5"></script>
     <script src="account-logic.js?v=8.8.5"></script>
     <script src="account-state.js?v=8.8.5"></script>
     <script src="account-api.js?v=8.8.5"></script>
     <script src="account-render.js?v=8.8.5"></script>
     <script src="account-events.js?v=8.8.5"></script>
+    <script src="account-devices.js?v=8.8.5"></script>
     <script src="account.js?v=8.8.5"></script>
   </body>
 </html>

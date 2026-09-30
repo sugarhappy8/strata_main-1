@@ -7,7 +7,7 @@ const vm=require("node:vm");
 
 const accountHtml=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
 const accountScript=fs.readFileSync(require.resolve("../public/scripts/account.js"),"utf8");
-const accountModules=["account-logic","account-state","account-api","account-render","account-events"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
+const accountModules=["devices-core","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
 const verifyHtml=fs.readFileSync(require.resolve("../public/pages/verify-email.html"),"utf8");
 const verifyScript=fs.readFileSync(require.resolve("../public/scripts/verify-email.js"),"utf8");
 
@@ -15,6 +15,7 @@ class ClassList{
   constructor(){this.values=new Set();}
   add(...values){values.forEach((value)=>this.values.add(value));}
   remove(...values){values.forEach((value)=>this.values.delete(value));}
+  toggle(value,force=!this.values.has(value)){if(force)this.values.add(value);else this.values.delete(value);return force;}
 }
 
 class Element{
