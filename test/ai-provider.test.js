@@ -97,3 +97,16 @@ test("a rejected prompt is reported as too large without turning JSON mode off",
   assert.ok(calls[3].body.response_format.schema,"all fallbacks failed, so the server's schema support was not disproved");
   assert.equal(cut.truncated,true);assert.equal(cut.data,null);
 });
+
+test("responses STRATA discards while falling back are cancelled so their connections are released",async()=>{
+  const cancelled=[];let call=0;
+  const fetchImpl=async()=>{
+    call+=1;const index=call;
+    if(index<3)return new Response(new ReadableStream({pull(controller){controller.enqueue(new TextEncoder().encode("{}"));},cancel(){cancelled.push(index);}}),{status:400,headers:{"Content-Type":"application/json"}});
+    return new Response(JSON.stringify({choices:[{message:{content:'{"reply":"plain"}'}}]}),{status:200,headers:{"Content-Type":"application/json"}});
+  };
+  const provider=createAiProvider({baseUrl:"http://localhost:1337/v1",model:"m",fetchImpl});
+  assert.equal((await provider.complete({messages:[{role:"user",content:"hi"}]})).data.reply,"plain");
+  await new Promise((resolve)=>setImmediate(resolve));
+  assert.deepEqual(cancelled,[1,2]);
+});

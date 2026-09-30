@@ -11,6 +11,7 @@ const TIMEOUT_STATUSES=new Set([408,504,522,524]);
 
 /** @param {string} code @param {string} message @param {number} [status] */
 function providerError(code,message,status=503){return Object.assign(new Error(message),{code,status});}
+/** Releases the connection of a response STRATA will not read, such as a rejected JSON mode. @param {Response} response */ function discard(response){void response.body?.cancel().catch(()=>{});}
 
 /** Removes reasoning blocks some models emit before their answer. @param {unknown} value */
 function stripReasoning(value){return String(value??"").replace(REASONING,"").replace(/^[\s\S]*?<\/think>/i,"").trim();}
@@ -45,7 +46,7 @@ function createAiProvider({baseUrl="",apiKey="",model="",timeoutMs=120000,extraH
   }
   /** @param {Response} response */
   function assertOk(response){
-    if(response.status===401||response.status===403)throw providerError("AI_AUTH","Strata AI refused this server's key. The owner needs to check the AI settings.");
+    if(!response.ok)discard(response);if(response.status===401||response.status===403)throw providerError("AI_AUTH","Strata AI refused this server's key. The owner needs to check the AI settings.");
     if(TIMEOUT_STATUSES.has(response.status))throw providerError("AI_TIMEOUT","Strata AI took too long to answer. Try a shorter request.");
     if(response.status===400||response.status===413)throw providerError("AI_TOO_LARGE","Strata AI could not take a request that large. Start a new conversation or ask something shorter.",502);
     if(!response.ok)throw providerError("AI_UNAVAILABLE","Strata AI is unavailable right now. Try again soon.");
@@ -60,8 +61,8 @@ function createAiProvider({baseUrl="",apiKey="",model="",timeoutMs=120000,extraH
     const body={model:name,messages,temperature,max_tokens:maxTokens,stream:false};
     const request=(/** @type {"schema"|"object"|"plain"} */ mode)=>send("/chat/completions",{method:"POST",body:JSON.stringify(mode==="plain"?body:{...body,response_format:mode==="schema"?responseFormat:{type:"json_object"},chat_template_kwargs:{enable_thinking:false}})},timeoutMs);
     let response=await request(/** @type {any} */(structured));
-    if(response.status===400&&structured==="schema"){const object=await request("object");if(object.ok){structured="object";response=object;}else if(object.status===400){const plain=await request("plain");if(plain.ok)structured="plain";response=plain;}else response=object;}
-    else if(response.status===400&&structured==="object"){const plain=await request("plain");if(plain.ok)structured="plain";response=plain;}
+    if(response.status===400&&structured==="schema"){discard(response);const object=await request("object");if(object.ok){structured="object";response=object;}else if(object.status===400){discard(object);const plain=await request("plain");if(plain.ok)structured="plain";response=plain;}else response=object;}
+    else if(response.status===400&&structured==="object"){discard(response);const plain=await request("plain");if(plain.ok)structured="plain";response=plain;}
     assertOk(response);
     const payload=await response.json().catch(()=>null),choice=payload?.choices?.[0],content=choice?.message?.content;
     if(typeof content!=="string"||!stripReasoning(content))throw providerError("AI_EMPTY","Strata AI returned an empty answer. Try again.",502);

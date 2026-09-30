@@ -220,7 +220,6 @@ dialog::backdrop { background: #080b08a8; backdrop-filter: blur(5px); }
 .plan-comparison thead { background:#171c15; color:#fff; }
 .plan-comparison thead th:last-child { color:var(--accent); }
 .plan-comparison p { max-width:880px; font-size:.875rem; line-height:1.7; color:var(--muted); }
-.completion-next-note { max-width:560px; margin:24px auto 18px; line-height:1.7; }
 @media (max-width:600px) {
   .home-page .hero { min-height:0; }
   .home-page .hero-grid { padding-top:calc(var(--site-header-height,70px) + 48px + env(safe-area-inset-top)); }

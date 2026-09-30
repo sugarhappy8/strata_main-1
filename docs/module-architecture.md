@@ -111,10 +111,10 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/admin-user-actions.js` | Audited administrator account and payment actions | 87 | 86 | 9.2 KiB | 160 | `src/access-controls.js`, `src/plans.js` |
 | `src/admin.js` | Administrative authorization and actions | 209 | 195 | 12.4 KiB | 280 | `src/access-controls.js`, `src/admin-user-actions.js`, `src/plans.js` |
 | `src/ai-catalog.js` | Strata AI library search and per-request exercise shortlists | 126 | 114 | 10.6 KiB | 130 | `src/plans.js` |
-| `src/ai-core.js` | Strata AI prompt rules and proposal validation | 260 | 243 | 22.7 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
+| `src/ai-core.js` | Strata AI prompt rules and proposal validation | 260 | 243 | 22.8 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
 | `src/ai-plan-edits.js` | Strata AI structured draft and plan-edit contracts | 135 | 125 | 14.8 KiB | 140 | `src/ai-catalog.js`, `src/plans.js` |
 | `src/ai-plan-fallback.js` | Deterministic verified plan-edit fallback proposals | 41 | 37 | 3.3 KiB | 80 | `src/plans.js` |
-| `src/ai-provider.js` | OpenAI-compatible model client and Strata AI settings | 89 | 81 | 6.6 KiB | 90 | `src/ai-response-schema.js` |
+| `src/ai-provider.js` | OpenAI-compatible model client and Strata AI settings | 90 | 82 | 6.9 KiB | 90 | `src/ai-response-schema.js` |
 | `src/ai-response-schema.js` | Bounded grammar schema for Strata AI responses | 35 | 32 | 3.0 KiB | 80 | — |
 | `src/ai.js` | Strata AI request queue and review-only proposal API | 204 | 192 | 18.0 KiB | 215 | `src/ai-catalog.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
 | `src/auth.js` | Authentication and account lifecycle | 815 | 772 | 53.6 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |

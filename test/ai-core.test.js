@@ -175,3 +175,8 @@ test("nutrition previews use STRATA's calculator and follow the planned training
   const unchanged=core.previewNutrition({profile,changes,plan:plan({}),evidence:null,timestamp:Date.UTC(2026,8,23,12)});
   assert.equal(unchanged.alignment,null,"an empty plan keeps the setup's own schedule");assert.deepEqual(unchanged.profile.workoutDays,["Monday","Wednesday","Friday"]);
 });
+
+test("a missing or blank set count uses STRATA's default of three sets instead of one",()=>{
+  const {week}=interpret({reply:"Defaults.",week:{title:"Defaults",days:[{day:"Monday",name:"Upper",exercises:[{code:code("flat-dumbbell-press"),sets:null,reps:"8-12"},{code:code("neutral-pulldown"),sets:"",reps:"8-12"},[code("chest-supported-row")],{code:code("incline-smith-press"),sets:0,reps:"10-12"}]}]}});
+  assert.deepEqual(week.days[0].exercises.map((entry)=>entry.sets),[3,3,3,1]);
+});

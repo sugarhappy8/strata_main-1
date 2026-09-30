@@ -202,7 +202,7 @@
       const prior=memory?.sets?.[Math.min(index,memory.sets.length-1)]||{};
       return{reps:entry.measurement==="reps"?(Number.isInteger(prior.reps)?prior.reps:fallback):null,seconds:entry.measurement==="timed"?(Number.isInteger(prior.seconds)?prior.seconds:fallback):null,weight:entry.loadType!=="bodyweight"&&typeof prior.weight==="number"?prior.weight:null,effort:null};
     });
-    return{source,sets,explanation:source==="previous"?`Repeat the last comparable set values from ${memory.date}; progress only when the work feels controlled.`:"Start with the low end of the written prescription. STRATA will not guess a load."};
+    return{source,sets,explanation:source==="previous"?`Repeat the last comparable set values from ${displayDate(memory.date)}; progress only when the work feels controlled.`:"Start with the low end of the written prescription. STRATA will not guess a load."};
   }
   function hasSetValues(entry){return entry.sets.some((set)=>set.completed||set.reps!==null||set.weight!==null||set.seconds!==null||set.effort!==null&&set.effort!==undefined);}
   function applyTargets(entry,values){
