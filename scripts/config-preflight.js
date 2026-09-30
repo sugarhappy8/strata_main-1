@@ -1,5 +1,6 @@
 "use strict";
 
+const {devicesSettings}=require("../src/devices-config");
 const {mailboxAddress,validEmailVerificationSecret,validResendApiKey}=require("../src/email");
 const {validPaddleApiKey,validPaddleClientToken,validPaddleEnvironment,validPaddleLegacyRecurringPriceIds,validPaddlePriceId,validPaddleProductId,validPaddleWebhookSecret}=require("../src/payments");
 
@@ -64,9 +65,18 @@ function validateDeploymentEnvironment(environment=process.env,{requireEmail=fal
     addCheck(checks,"payments.webhook-secret",validPaddleWebhookSecret(environment.PADDLE_WEBHOOK_SECRET),"PADDLE_WEBHOOK_SECRET must be a non-placeholder signing secret.");
   } else warnings.push("Paddle checkout is disabled; purchase creation and signed webhook reconciliation cannot be exercised.");
 
+  // Polar connected devices are optional; once any Polar value is set, the whole set must be valid.
+  const polarRequested=["POLAR_CLIENT_ID","POLAR_CLIENT_SECRET","DEVICE_TOKEN_KEY"].some((key)=>configured(environment[key]));
+  if (polarRequested) {
+    const devices=devicesSettings(environment);
+    addCheck(checks,"devices.polar",devices.configured,devices.problems.join(" ")||"Polar connected devices are configured.");
+    if (!configured(environment.POLAR_WEBHOOK_SECRET)) warnings.push("POLAR_WEBHOOK_SECRET is not set; Polar webhooks are rejected and connections sync once a day. Run npm run polar:webhook -- create to get it.");
+  } else warnings.push("Polar connected devices are off; set POLAR_CLIENT_ID, POLAR_CLIENT_SECRET, and DEVICE_TOKEN_KEY to offer them.");
+
   const secrets=[
     clean(environment.TURSO_AUTH_TOKEN),clean(environment.RESEND_API_KEY),clean(environment.EMAIL_VERIFICATION_SECRET),
-    clean(environment.PADDLE_CLIENT_TOKEN),clean(environment.PADDLE_API_KEY),clean(environment.PADDLE_WEBHOOK_SECRET)
+    clean(environment.PADDLE_CLIENT_TOKEN),clean(environment.PADDLE_API_KEY),clean(environment.PADDLE_WEBHOOK_SECRET),
+    clean(environment.POLAR_CLIENT_SECRET),clean(environment.POLAR_WEBHOOK_SECRET),clean(environment.DEVICE_TOKEN_KEY),clean(environment.DEVICE_TOKEN_KEY_PREVIOUS)
   ].filter(Boolean);
   addCheck(checks,"secrets.separated",new Set(secrets).size===secrets.length,"Provider tokens and application secrets must not reuse the same value.");
   if (!enabled(environment.TRUST_PROXY)) warnings.push("TRUST_PROXY is false. This is correct only when Node receives traffic directly rather than through a trusted reverse proxy.");

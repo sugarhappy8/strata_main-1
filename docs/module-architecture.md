@@ -135,7 +135,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/devices-schema.js` | Connected-device, revocation, and wellness tables | 162 | 157 | 11.9 KiB | 170 | — |
 | `src/devices-store.js` | Connected-device and wellness storage for SQLite and Turso | 118 | 112 | 10.0 KiB | 130 | `src/devices-schema.js` |
 | `src/devices-sync.js` | Polar import, daily re-check, and access revocation loop | 113 | 102 | 6.6 KiB | 140 | `src/devices-crypto.js`, `src/polar-mapping.js` |
-| `src/devices.js` | Strata+ connected devices: Polar connect flow, settings, disconnect, webhook, and wellness reads | 276 | 259 | 20.9 KiB | 280 | `src/devices-config.js`, `src/devices-crypto.js`, `src/devices-sync.js`, `src/polar-client.js`, `src/wellness-core.js` |
+| `src/devices.js` | Strata+ connected devices: Polar connect flow, settings, disconnect, webhook, and wellness reads | 277 | 260 | 21.1 KiB | 280 | `src/devices-config.js`, `src/devices-crypto.js`, `src/devices-sync.js`, `src/polar-client.js`, `src/wellness-core.js` |
 | `src/email.js` | Resend integration and email security | 387 | 354 | 20.0 KiB | 400 | — |
 | `src/energy-activity-core.js` | Profile-v4 non-workout and generated-session activity energy budget | 51 | 48 | 3.7 KiB | 100 | — |
 | `src/energy-calibration-core.js` | Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation | 158 | 153 | 22.8 KiB | 220 | — |
