@@ -74,7 +74,7 @@ const featureNavigation=NavigationCore.createFeatureNavigation({
 });
 function featureName(value){return featureNavigation.featureName(value);}
 function activateFeature(value,options={}){return featureNavigation.activate(value,options);}
-function initializeFeatureNavigation(){return featureNavigation.initialize();}
+function initializeFeatureNavigation(){return featureNavigation.initialize({scroll:false});} // init() places a deep link once the workspace is revealed
 const round=Core.round;
 function aggregateFor(id){return state.aggregate.get(id)||null;}
 const setupLabel=Core.setupLabel;
@@ -674,7 +674,7 @@ async function revalidateMemberWorkspaceWhenVisible(){
   }catch(error){if(!redirectedOrChangedAccount(error)&&!error?.stale){if(main)main.hidden=true;el("discoveryLoadErrorMessage").textContent=`${initialLoadMessage(error)} Unsaved changes stay in this tab until STRATA confirms your account.`;el("discoveryLoadError").hidden=false;}}finally{workspaceRevalidating=false;}
 }
 
-let discoveryLoading=false;
+let discoveryLoading=false,deepLinkPlaced=false;
 function initialLoadMessage(error){
   if(error?.code==="NETWORK_ERROR")return error.message;
   if(Number(error?.status)>=500)return "Strata+ is temporarily unavailable. Please try again in a moment.";
@@ -710,7 +710,7 @@ async function init(){
     state.csrfToken=String(data.csrfToken||"");state.aggregate=new Map((data.ratings.aggregates||[]).map((item)=>[item.exercise_id,item]));state.userRatings=new Map((data.ratings.user||[]).map((item)=>[item.exercise_id,item]));state.ratingsRefreshedAt=Date.now();
     el("userName").textContent=data.user.name;el("catalogTotal").textContent=state.exercises.length;
     renderProfile();renderMovementBoard();populateFilters();renderRecommendations();resetExplorerWindow();renderExplorer();renderCompareTray();populateMonthlyBuilder(state.monthlyPlan);initializeSessionBuilder();renderTrainingBlock();renderProgress();renderProgression();revealPrivateWorkspace();void loadMemberDashboard(generation);
-    activateFeature(state.activeFeature||FEATURE_DEFAULT);
+    activateFeature(state.activeFeature||FEATURE_DEFAULT,{scroll:!deepLinkPlaced&&Boolean(featureNavigation.featureFromLocation())});deepLinkPlaced=true;
   }catch(error){if(!error?.redirecting&&!error?.stale)showInitialLoadError(error);}
   finally{discoveryLoading=false;el("discoveryRetry").disabled=false;}
 }

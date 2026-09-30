@@ -190,7 +190,9 @@ test("Strata+ feature navigation owns visibility, URL state, focus, and reduced 
   assert.match(script,/const FEATURE_DEFAULT="today"/);
   assert.match(script,/candidatePanel\.hidden=candidate!==name/);
   assert.match(script,/historyMode:"push"/);
-  assert.match(script,/function initialize\(\)\{\s*const requested=featureFromLocation\(\);\s*activate\(requested\|\|defaultFeature,\{scroll:Boolean\(requested\),historyMode:"none"\}\);\s*\}/);
+  assert.match(script,/function initialize\(\{scroll=true\}=\{\}\)\{\s*const requested=featureFromLocation\(\);\s*activate\(requested\|\|defaultFeature,\{scroll:scroll&&Boolean\(requested\),historyMode:"none"\}\);\s*\}/);
+  assert.match(script,/featureNavigation\.initialize\(\{scroll:false\}\)/,"a deep link must not scroll the loading layout");
+  assert.match(script,/revealPrivateWorkspace\(\);[^\n]*\n\s*activateFeature\(state\.activeFeature\|\|FEATURE_DEFAULT,\{scroll:!deepLinkPlaced&&Boolean\(featureNavigation\.featureFromLocation\(\)\)\}\);deepLinkPlaced=true;/,"a deep link is placed once, after the workspace is revealed");
   assert.match(script,/"popstate",restore/);
   assert.match(script,/"hashchange",restore/);
   assert.match(script,/if\(rawHash&&!requested\)return/);
@@ -314,7 +316,7 @@ test("Strata+ copy and visual polish remain resilient across content and breakpo
   assert.match(css,/\.plus-studio \.profile-card,[^\n]*\.plus-studio \.recommend-card,[^\n]*\.plus-studio \.session-builder/);
   assert.doesNotMatch(css,/\.recommendation-card|\.session-brief|\.choice span/);
   assert.match(css,/@media\(max-width:800px\)[\s\S]*?\.plus-studio \.studio-header\s*\{[^}]*grid-template-columns:auto minmax\(0,1fr\);[^}]*grid-template-rows:auto auto/);
-  assert.match(css,/\.section-heading h2,\.studio-hero h1,\.weekly-pulse h2\{[^}]*overflow-wrap:normal;word-break:normal/);
+  assert.match(css,/\.section-heading h2,\.studio-hero \.studio-hero-title,\.weekly-pulse h2\{[^}]*overflow-wrap:normal;word-break:normal/);
 });
 
 test("Strata+ initial loading offers a normalized, retryable error without replacing auth redirects",()=>{

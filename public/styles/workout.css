@@ -265,7 +265,8 @@
 .calendar-next p{grid-column:1/-1;margin:0;padding-top:13px;border-top:1px solid var(--line);font-size:.72rem!important}.calendar-next .button{white-space:nowrap}
 
 @media(max-width:760px){
-  .workout-page.has-workout-access .hero{display:none}
+  /* Visually hidden, not removed: the page keeps its h1 and the skip link keeps a target. */
+  .workout-page.has-workout-access .hero{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
   .workout-page.has-workout-access .shell{padding-top:6px}
   .workout-page.has-workout-access .mode-notice{padding:4px 0 8px;font-size:.72rem;line-height:1.45}
   .workout-page.has-workout-access .mode-notice a{min-height:36px;margin-left:4px}

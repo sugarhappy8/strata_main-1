@@ -89,9 +89,9 @@
       }
       return true;
     }
-    function initialize(){
+    function initialize({scroll=true}={}){
       const requested=featureFromLocation();
-      activate(requested||defaultFeature,{scroll:Boolean(requested),historyMode:"none"});
+      activate(requested||defaultFeature,{scroll:scroll&&Boolean(requested),historyMode:"none"});
     }
     function restore(){
       if(historyQueued)return;
