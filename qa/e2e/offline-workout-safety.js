@@ -5,7 +5,7 @@ const {spawn}=require("node:child_process");
 const {mkdtempSync,readFileSync,rmSync}=require("node:fs");
 const http=require("node:http");
 const {tmpdir}=require("node:os");
-const {join}=require("node:path");
+const {join,resolve:resolvePath}=require("node:path");
 const test=require("node:test");
 const {chromium}=require("playwright");
 const W=require("../../public/scripts/workout-core.js");
@@ -83,7 +83,8 @@ test("offline logging keeps the last valid device copy readable and reports save
     for(const stream of [app.stdout,app.stderr])stream.on("data",(chunk)=>{logOutput=(logOutput+chunk.toString()).slice(-16_384);});
     await waitForApp(app,baseUrl,()=>logOutput);
 
-    browser=await chromium.launch({headless:true});
+    const launchOptions={headless:true};if(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)launchOptions.executablePath=resolvePath(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
+    browser=await chromium.launch(launchOptions);
     const context=await browser.newContext({baseURL:baseUrl,serviceWorkers:"block",viewport:{width:390,height:844},reducedMotion:"reduce"});
     context.setDefaultTimeout(WAIT_MS);
     await context.route(/^https:\/\//,(route)=>route.abort());

@@ -5,7 +5,6 @@ const assert=require("node:assert/strict");
 const {readFileSync}=require("node:fs");
 const {join}=require("node:path");
 const {
-  adminMfaChallenge,
   directSignupAllowed,
   escapeHtml,
   generateVerificationCode,
@@ -13,14 +12,12 @@ const {
   maskEmail,
   safeDigestEqual,
   sendAccountActionEmail,
-  sendAdminMfaEmail,
   sendSupportAcknowledgment,
   sendSupportNotification,
   sendSupportResponse,
   sendVerificationEmail,
   verificationCodeDigest,
-  verificationEmailHash,
-  verifyAdminMfaChallenge
+  verificationEmailHash
 }=require("../src/email");
 
 function validEnv(overrides={}) {
@@ -113,18 +110,6 @@ test("six-digit codes and keyed digests preserve leading zeroes and bind every f
   assert.notEqual(verificationEmailHash(config,"person@example.com"),verificationEmailHash(config,"other@example.com"));
 });
 
-test("administrator MFA challenges bind the email code to one session and expiry",()=>{
-  const config=getEmailVerificationConfig(validEnv());
-  const input={sessionTokenHash:"a".repeat(64),challengeId:"admin-challenge-123456",expiresAt:1_900_000_000_000};
-  const challenge=adminMfaChallenge(config,input);
-  assert.match(challenge.code,/^[0-9]{6}$/);
-  assert.match(challenge.signature,/^[a-f0-9]{64}$/);
-  assert.equal(verifyAdminMfaChallenge(config,{...input,signature:challenge.signature,code:challenge.code}),true);
-  assert.equal(verifyAdminMfaChallenge(config,{...input,sessionTokenHash:"b".repeat(64),signature:challenge.signature,code:challenge.code}),false);
-  assert.equal(verifyAdminMfaChallenge(config,{...input,expiresAt:input.expiresAt+1,signature:challenge.signature,code:challenge.code}),false);
-  assert.equal(verifyAdminMfaChallenge(config,{...input,signature:challenge.signature,code:challenge.code==="000000"?"000001":"000000"}),false);
-});
-
 test("masking and HTML escaping do not expose unsafe markup",()=>{
   assert.equal(maskEmail("saeed@example.com"),"s***d@example.com");
   assert.equal(maskEmail("a@example.com"),"*@example.com");
@@ -208,24 +193,6 @@ test("account-action emails use one-time fragment links and purpose-bound idempo
     ()=>sendAccountActionEmail(config,{to:"person@example.com",token:"too-short",requestId:"request-2",purpose:"password_reset"},fetchImpl),
     TypeError
   );
-});
-
-test("administrator MFA email contains only the short-lived code and uses a challenge idempotency key",async()=>{
-  const config=getEmailVerificationConfig(validEnv({NODE_ENV:"test",RESEND_API_BASE:"http://127.0.0.1:9999"}));
-  const calls=[];
-  const result=await sendAdminMfaEmail(config,{
-    to:"Owner@Example.com",name:"Owner <One>",code:"004209",challengeId:"admin-challenge-123456",expiresInMinutes:10
-  },async(url,options)=>{calls.push({url,options});return {ok:true,json:async()=>({id:"admin-message-1"})};});
-  assert.deepEqual(result,{messageId:"admin-message-1"});
-  assert.equal(calls.length,1);
-  assert.match(calls[0].options.headers["Idempotency-Key"],/^strata-admin-[a-f0-9]{64}$/);
-  const body=JSON.parse(calls[0].options.body);
-  assert.deepEqual(body.to,["owner@example.com"]);
-  assert.match(body.subject,/Admin security code/);
-  assert.match(body.text,/004209/);
-  assert.match(body.text,/browser session/i);
-  assert.match(body.html,/Owner &lt;One&gt;/);
-  assert.doesNotMatch(body.text,/https?:\/\//,"MFA email should not contain a reusable bearer link");
 });
 
 test("support mail keeps ticket bodies in Admin and keys each distinct response safely",async()=>{

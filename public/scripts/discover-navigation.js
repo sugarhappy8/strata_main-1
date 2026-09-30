@@ -21,7 +21,10 @@
     return{hide,show};
   }
 
-  function createFeatureNavigation({config,defaultFeature,state,document,window,onActivate=()=>{},onDestinationChange=()=>{}}){
+  // scrollAnchorId names the element brought into view when a destination
+  // opens. Anchoring on the destination switcher keeps the tabs visible above
+  // the new panel instead of tucking them under the sticky site header.
+  function createFeatureNavigation({config,defaultFeature,state,document,window,scrollAnchorId="",onActivate=()=>{},onDestinationChange=()=>{}}){
     let historyQueued=false;
     const element=(id)=>document.getElementById(id);
     function featureName(value){
@@ -79,16 +82,16 @@
       if(scroll||focus){
         const move=()=>{
           const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-          if(scroll)panel.scrollIntoView?.({behavior:smooth&&!reduceMotion?"smooth":"instant",block:"start"});
+          if(scroll)(element(scrollAnchorId)||panel).scrollIntoView?.({behavior:smooth&&!reduceMotion?"smooth":"instant",block:"start"});
           if(focus)element(item.headingId)?.focus?.({preventScroll:true});
         };
         if(typeof globalThis.requestAnimationFrame==="function")globalThis.requestAnimationFrame(move);else setTimeout(move,0);
       }
       return true;
     }
-    function initialize(){
+    function initialize({scroll=true}={}){
       const requested=featureFromLocation();
-      activate(requested||defaultFeature,{scroll:Boolean(requested),historyMode:"none"});
+      activate(requested||defaultFeature,{scroll:scroll&&Boolean(requested),historyMode:"none"});
     }
     function restore(){
       if(historyQueued)return;

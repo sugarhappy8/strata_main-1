@@ -38,3 +38,15 @@ test("switching to a historical diary date clears stale current-week food result
   let resolveResponse;const pending=new Promise(resolve=>{resolveResponse=resolve;}),{controller,element}=fixture(()=>pending),loading=controller.refresh();controller.sync({profile:{mealPreferences:preferences},week:{nutrition:{dailyTargets:[{date:"2026-09-14",calories:1800}]}},logs:[],date:"2026-09-07"});resolveResponse(response());await loading;
   for(const prefix of ["coachingFood"]){assert.equal(element(`${prefix}Options`).innerHTML,"");assert.equal(element(`${prefix}Refresh`).disabled,true);assert.match(element(`${prefix}Status`).textContent,/Historical intake/);assert.ok(element(`${prefix}Remaining`).children.every((node)=>node.textContent==="—"));}
 });
+
+test("without saved food preferences, Nutrition offers Personal setup instead of a refresh that cannot help",async()=>{
+  let requests=0;const {controller,element}=fixture(async()=>{requests+=1;return response();});
+  controller.sync({profile:{mealPreferences:null},week:{nutrition:{dailyTargets:[{date:"2026-09-14",calories:1800}]}},logs:[],date:"2026-09-14",refreshOptions:false});
+  await controller.refresh();
+  assert.equal(requests,0);
+  assert.match(element("coachingFoodStatus").textContent,/Add food preferences in Personal setup/);
+  assert.equal(element("coachingFoodRefresh").disabled,true);assert.equal(element("coachingFoodRefresh").hidden,true);assert.equal(element("coachingFoodSetup").hidden,false);
+  controller.sync({profile:{mealPreferences:preferences},week:{nutrition:{dailyTargets:[{date:"2026-09-14",calories:1800}]}},logs:[],date:"2026-09-14",refreshOptions:false});
+  await controller.refresh();
+  assert.equal(requests,1);assert.equal(element("coachingFoodRefresh").hidden,false);assert.equal(element("coachingFoodSetup").hidden,true);
+});

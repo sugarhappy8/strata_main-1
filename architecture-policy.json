@@ -109,11 +109,6 @@
         "src/plans.js"
       ]
     },
-    "src/admin-mfa.js": {
-      "role": "Session-bound administrator email MFA challenge and delivery",
-      "maxLines": 100,
-      "allowedDependencies": []
-    },
     "src/support.js": {
       "role": "Public and administrative support workflow",
       "maxLines": 160,
@@ -217,9 +212,7 @@
     "src/email.js": {
       "role": "Resend integration and email security",
       "maxLines": 400,
-      "allowedDependencies": [
-        "src/admin-mfa.js"
-      ]
+      "allowedDependencies": []
     },
     "src/billing.js": {
       "role": "Commercial entitlement, checkout, trial, webhook, and reconciliation service",

@@ -178,7 +178,7 @@ function interpretWeek(value,byCode,limitations){
       const candidate=resolveExercise(raw,byCode,limitations);
       if(!candidate){notes.add("Exercises STRATA does not list, or that your movement limits exclude, were left out.");continue;}
       if(seen.has(candidate.id))continue;seen.add(candidate.id);
-      const requested=Math.round(Number(raw?.sets)),sets=Number.isFinite(requested)?Math.min(LIMITS.maxSets,Math.max(1,requested)):3;
+      const requested=raw?.sets==null||raw.sets===""?Number.NaN:Math.round(Number(raw.sets)),sets=Number.isFinite(requested)?Math.min(LIMITS.maxSets,Math.max(1,requested)):3;
       exercises.push({exerciseId:candidate.id,name:candidate.name,group:candidate.group,sets,reps:repsText(raw?.reps,candidate.reps)});
       if(exercises.length>=LIMITS.maxExercises)break;
     }

@@ -163,6 +163,27 @@ test("fixed mobile navigation reserves scroll space for keyboard focus",()=>{
   assert.match(css,/@media \(max-width: 800px\)\s*\{\s*html \{ scroll-padding-bottom: calc\(76px \+ env\(safe-area-inset-bottom\)\); \}\s*\}/);
 });
 
+test("Strata AI keeps its starters and keyboard focus clear of the sticky composer",()=>{
+  const css=read("public/styles/ai.css");
+  assert.match(read("public/pages/ai.html"),/<body class="[^"]*\bai-page\b/);
+  assert.match(css,/\.ai-composer \{ position:sticky;[^}]*background:#151713;/,"The conversation must not show through the sticky composer");
+  assert.match(css,/\.ai-chat:has\(> \.ai-empty:not\(\[hidden\]\)\) \.ai-composer \{ position:static; \}/,"Before the first message the composer follows the starters");
+  assert.match(css,/html:has\(> body\.ai-page\) \{ scroll-padding-bottom:190px; \}/);
+  assert.match(css,/@media \(max-width:760px\) \{[^@]*html:has\(> body\.ai-page\) \{ scroll-padding-bottom:calc\(272px \+ env\(safe-area-inset-bottom\)\); \}/);
+  assert.match(css,/@media \(max-width:620px\) \{[^@]*html:has\(> body\.ai-page\) \{ scroll-padding-bottom:calc\(220px \+ env\(safe-area-inset-bottom\)\); \}/);
+});
+
+test("every page keeps a top-level heading in each state",()=>{
+  for(const name of fs.readdirSync(path.join(PROJECT_ROOT,"public","pages")).filter((file)=>file.endsWith(".html"))){
+    assert.match(read(`public/pages/${name}`),/<h1[\s>]/,`${name} needs a top-level heading`);
+  }
+  assert.match(read("public/pages/account.html"),/<section class="signed-in-card" id="signedInCard"[^>]*>\s*<h1 class="sr-only">Your STRATA account<\/h1>/,"Signing in hides the account intro, so the signed-in view needs its own heading");
+  assert.match(read("public/pages/discover.html"),/<h1 class="sr-only" id="featureHubTitle">Strata\+ workspace<\/h1>/);
+  const workoutCss=read("public/styles/workout.css");
+  assert.doesNotMatch(workoutCss,/\.workout-page\.has-workout-access \.hero\{display:none\}/,"The phone workout hero holds the page heading and the skip-link target");
+  assert.match(workoutCss,/\.workout-page\.has-workout-access \.hero\{position:absolute;width:1px;height:1px;[^}]*clip-path:inset\(50%\)/);
+});
+
 test("global motion progress tracks scroll and stays hidden for reduced motion and print",()=>{
   const motion=read("public/scripts/motion.js"),listeners={},frames=new Map();
   const rootClasses=new Set(),preference={matches:false,listener:null,addEventListener(type,handler){if(type==="change")this.listener=handler;}};

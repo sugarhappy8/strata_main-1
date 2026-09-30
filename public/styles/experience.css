@@ -66,7 +66,7 @@ button[aria-busy="true"] { cursor: progress; }
 .score-badge::after { content: ""; position: absolute; height: 3px; left: 0; bottom: -7px; width: var(--score,0%); background: #567019; border-radius: 4px; }
 .score-badge.top { box-shadow: 0 0 0 1px rgba(212,245,120,.2); }
 :where(.filter-chip,.action-icon) { border-radius: 5px; }
-:where(.detail-dialog,.compare-dialog,.account-card,.weekly-pulse) { border-radius: 12px; }
+:where(.detail-dialog,.compare-dialog,.weekly-pulse) { border-radius: 12px; }
 dialog { max-width: calc(100vw - 24px); }
 dialog::backdrop { background: #080b08a8; backdrop-filter: blur(5px); }
 .ticker-track { animation-iteration-count: 1; animation-duration: 4s; }
@@ -84,7 +84,7 @@ dialog::backdrop { background: #080b08a8; backdrop-filter: blur(5px); }
 @media (prefers-reduced-motion: no-preference) {
   .motion-ready :where(
     [data-reveal],.home-page .section-heading,.method-intro,.score-model,.editorial-grid,
-    .source-grid,.week-toolbar,.plus-studio .feature-hub-heading,.plus-studio .feature-grid,
+    .source-grid,.week-toolbar,.plus-studio .feature-grid,
     .account-intro,.account-access,.info-hero-grid,.pricing-grid,.contact-grid,
     .policy-card-grid,.policy-founder,.device-grid,.help-grid,.offline-shell,
     .workout-page .start-panel,.workout-page .history-section,.admin-hero,.admin-section
@@ -220,7 +220,6 @@ dialog::backdrop { background: #080b08a8; backdrop-filter: blur(5px); }
 .plan-comparison thead { background:#171c15; color:#fff; }
 .plan-comparison thead th:last-child { color:var(--accent); }
 .plan-comparison p { max-width:880px; font-size:.875rem; line-height:1.7; color:var(--muted); }
-.completion-next-note { max-width:560px; margin:24px auto 18px; line-height:1.7; }
 @media (max-width:600px) {
   .home-page .hero { min-height:0; }
   .home-page .hero-grid { padding-top:calc(var(--site-header-height,70px) + 48px + env(safe-area-inset-top)); }

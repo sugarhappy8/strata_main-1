@@ -114,7 +114,7 @@
       });
       for(const [id,entry] of rendered)if(!seen.has(id)){entry.node.remove();rendered.delete(id);}
       for(const control of list.querySelectorAll("button[data-action^='apply']"))control.disabled=Boolean(state.applying);
-      for(const control of list.querySelectorAll("button[data-followup]"))control.disabled=Boolean(state.pending||state.busy);
+      for(const control of list.querySelectorAll("button[data-followup],button[data-action='retry']"))control.disabled=Boolean(state.pending||state.busy);
       let pending=list.querySelector(".ai-turn-pending");
       if(state.pending){
         if(!pending)pending=el("li",{className:"ai-turn ai-turn-pending",attrs:{"aria-busy":"true"}},[el("span",{className:"ai-avatar",text:"AI",attrs:{"aria-hidden":"true"}}),el("div",{className:"ai-thinking"},[el("span",{className:"ai-dots",attrs:{"aria-hidden":"true"}},[el("i"),el("i"),el("i")]),el("p",{})])]);

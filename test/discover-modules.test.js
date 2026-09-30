@@ -57,6 +57,21 @@ test("Discover navigation reveals an active destination inside the mobile rail",
   assert.equal(navigation.activate("coaching",{smooth:true}),true);assert.equal(nav.scrollLeft,420);assert.equal(nav.behavior,"auto");
 });
 
+test("Discover navigation scrolls the destination switcher, not the panel, so the tabs stay visible",()=>{
+  const scrolled=[],track=(node)=>{node.scrollIntoView=(options)=>scrolled.push([node.id,options.block]);return node;};
+  const panels=new Map(Object.values(State.FEATURE_CONFIG).map(({panelId})=>[panelId,track(element(panelId))])),hub=track(element("featureHub")),state=State.createState();
+  const document={body:element("body"),getElementById:id=>id==="featureHub"?hub:panels.get(id)||null,querySelectorAll:()=>[]};
+  const previousFrame=globalThis.requestAnimationFrame;globalThis.requestAnimationFrame=callback=>callback();
+  try{
+    const anchored=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state,document,window:{matchMedia:()=>({matches:true})},scrollAnchorId:"featureHub"});
+    assert.equal(anchored.activate("plan",{scroll:true}),true);
+    assert.deepEqual(scrolled,[["featureHub","start"]]);
+    const unanchored=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state,document,window:{matchMedia:()=>({matches:true})}});
+    assert.equal(unanchored.activate("progress",{scroll:true}),true);
+    assert.deepEqual(scrolled.at(-1),["progressWorkspace","start"]);
+  }finally{globalThis.requestAnimationFrame=previousFrame;}
+});
+
 test("Discover toast can be cleared immediately when a destination changes",()=>{
   const toast=element("toast");toast.textContent="";let queued;
   const controller=Navigation.createToastController(toast,{setTimer:callback=>{queued=callback;return 1;},clearTimer:()=>{}});

@@ -4,7 +4,7 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const {spawn}=require("node:child_process");
 const {mkdirSync,mkdtempSync,rmSync}=require("node:fs");
-const {join}=require("node:path");
+const {join,resolve:resolvePath}=require("node:path");
 const {chromium,firefox,webkit}=require("playwright");
 const AxeBuilder=require("@axe-core/playwright").default;
 
@@ -41,7 +41,8 @@ test(`${Object.keys(ENGINES).join(", ")} pass focused accessibility, keyboard, a
     server=await startServer(runtimeDir);
     for(const [engineName,engine] of Object.entries(ENGINES)){
       debug(`${engineName}: launch`);
-      const browser=await engine.launch({headless:true,timeout:20_000});
+      const launchOptions={headless:true,timeout:20_000};if(engineName==="chromium"&&process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)launchOptions.executablePath=resolvePath(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
+      const browser=await engine.launch(launchOptions);
       try{
         const context=await browser.newContext({viewport:{width:1280,height:900},reducedMotion:"reduce"}),page=await context.newPage();
         context.setDefaultTimeout(15_000);page.setDefaultNavigationTimeout(20_000);

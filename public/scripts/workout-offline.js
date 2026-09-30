@@ -27,7 +27,7 @@
   function input(entry,set,field,label,locked){return `<label>${esc(label)}<input type="number" ${LIMITS[field]||`min="${entry.effortType==="rpe"?1:0}" max="10" step="0.5" inputmode="decimal"`} data-value="${field}" value="${esc(set[field]??"")}"${locked?" disabled":""} /></label>`;}
   function render(){
     const workout=state.record.workout,counts=W.progress(workout),active=workout.status==="active";
-    $("offlineSessionTitle").textContent=workout.title;$("offlineSessionMeta").textContent=`${workout.date} · ${counts.completed}/${counts.total} sets · authorized on this device`;
+    $("offlineSessionTitle").textContent=workout.title;$("offlineSessionMeta").textContent=`${W.displayDate(workout.date)} · ${counts.completed}/${counts.total} sets · authorized on this device`;
     $("offlineEntries").innerHTML=workout.entries.map((entry)=>{
       const movement=exercise(entry.exerciseId),timed=entry.measurement==="timed",weighted=entry.loadType!=="bodyweight",effort=["rir","rpe"].includes(entry.effortType);
       // Completed sets and finished workouts are read-only; uncheck a set to reopen it for editing.
@@ -85,7 +85,7 @@
   async function initialize(){
     const restored=readContext();if(!restored){unavailable("Reconnect, sign in to the original account, and open an active workout once before continuing it offline.");return;}
     state.context=restored.context;state.record=restored.record;
-    try{const response=await fetch("/exercises.json?v=8.8.4");if(response.ok){const catalog=await response.json();state.catalog=new Map(catalog.map((item)=>[item.id,item]));}}catch{/* Exercise IDs remain usable if the public catalog is unavailable. */}
+    try{const response=await fetch("/exercises.json?v=8.8.5");if(response.ok){const catalog=await response.json();state.catalog=new Map(catalog.map((item)=>[item.id,item]));}}catch{/* Exercise IDs remain usable if the public catalog is unavailable. */}
     const workout=state.record.workout,notices=restored.repairs.length?[repairNotice(restored.repairs)]:[];
     if(workout.status==="completed"&&!W.progress(workout).completed){workout.status="active";workout.completedAt=null;notices.push("This workout was finished on this device without a completed set, so it has been reopened. Complete at least one set before finishing it.");}
     $("offlineUnavailable").hidden=true;$("offlineSession").hidden=false;render();error(notices.join(" "));$("offlineSessionTitle").focus();

@@ -1,7 +1,6 @@
 "use strict";
 
 const { createHmac,randomInt,timingSafeEqual } = require("node:crypto");
-const {createAdminMfa}=require("./admin-mfa");
 
 const RESEND_API_BASE = "https://api.resend.com";
 const secretsByConfig = new WeakMap();
@@ -156,11 +155,14 @@ function escapeHtml(value) {
   return String(value??"").replace(/[&<>"']/g,(character)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));
 }
 
-const{adminMfaChallenge,maskEmail,sendAdminMfaEmail,verifyAdminMfaChallenge}=createAdminMfa({
-  clean,normalizedEmail,mailboxAddress,escapeHtml,safeDigestEqual,timeoutSignal,
-  digest:(config,purpose,parts)=>digestParts(requireVerificationSecret(config),purpose,parts),
-  secretsFor:(config)=>secretsByConfig.get(config)
-});
+// Shows enough of an address for a member to recognize it without exposing it in full.
+function maskEmail(value) {
+  const email=normalizedEmail(value),separator=email.lastIndexOf("@");
+  if (separator<1) return "your email address";
+  const local=email.slice(0,separator),domain=email.slice(separator+1);
+  const masked=local.length===1?"*":local.length===2?`${local[0]}*`:`${local[0]}${"*".repeat(Math.min(6,local.length-2))}${local.at(-1)}`;
+  return `${masked}@${domain}`;
+}
 
 async function sendVerificationEmail(config,message,fetchImpl=globalThis.fetch) {
   const secrets=secretsByConfig.get(config);
@@ -365,7 +367,6 @@ async function sendSupportResponse(config,ticket,response,fetchImpl=globalThis.f
 }
 
 module.exports = {
-  adminMfaChallenge,
   directSignupAllowed,
   escapeHtml,
   generateVerificationCode,
@@ -374,14 +375,12 @@ module.exports = {
   maskEmail,
   safeDigestEqual,
   sendAccountActionEmail,
-  sendAdminMfaEmail,
   sendSupportAcknowledgment,
   sendSupportNotification,
   sendSupportResponse,
   sendVerificationEmail,
   verificationCodeDigest,
   verificationEmailHash,
-  verifyAdminMfaChallenge,
   validAppBaseUrl,
   validEmailVerificationSecret,
   validResendApiKey

@@ -103,7 +103,7 @@
     $("recoveryPanel").hidden=!state.recoveries.length||!!state.workout||state.blocked;
     $("recoveryList").innerHTML=state.recoveries.map((record,index)=>{
       const counts=W.progress(record.workout);
-      return `<div class="recovery-item"><div><strong>${esc(record.workout.title)}</strong><small>${esc(record.workout.date)} · ${counts.completed}/${counts.total} sets · ${record.dirty?"Unsaved device changes":"Previously saved session"}</small></div><div class="actions"><button class="button secondary compact" data-recover="${index}" type="button">Review &amp; recover</button><button class="button quiet compact" data-discard="${index}" type="button">Remove device draft</button></div></div>`;
+      return `<div class="recovery-item"><div><strong>${esc(record.workout.title)}</strong><small>${esc(W.displayDate(record.workout.date))} · ${counts.completed}/${counts.total} sets · ${record.dirty?"Unsaved device changes":"Previously saved session"}</small></div><div class="actions"><button class="button secondary compact" data-recover="${index}" type="button">Review &amp; recover</button><button class="button quiet compact" data-discard="${index}" type="button">Remove device draft</button></div></div>`;
     }).join("");
   }
   function selectWorkout(workout,{dirty=false,pausedSeconds=null}={}){
@@ -171,7 +171,7 @@
   }
   function renderSession(){
     const workout=state.workout;if(!workout)return;state.memoryReady=memoryReadyFor(workout);
-    $("sessionTitle").textContent=workout.title;$("sessionDate").textContent=`${workout.date} · ${workout.planDay||"Training"}${workout.status==="completed"?" · awaiting save":""}`;
+    $("sessionTitle").textContent=workout.title;$("sessionDate").textContent=`${W.displayDate(workout.date)} · ${workout.planDay||"Training"}${workout.status==="completed"?" · awaiting save":""}`;
     $("sessionEntries").innerHTML=workout.entries.map(view.renderEntry).join("");
     updateSessionMeta();tick();if(workout.status==="active"){if(state.memoryReady)void progression.load(workout.id);else if(!state.memoryBusy&&!state.memoryError)void loadWorkoutMemory(workout.id);}
   }
@@ -343,7 +343,7 @@
     $("calendarNext").hidden=!event;
     if(!event)return;
     $("calendarNextTitle").textContent=`Schedule ${event.day}’s workout.`;
-    $("calendarNextSummary").textContent=`${event.date} · ${event.movements} movement${event.movements===1?"":"s"} · ${event.workingSets} working set${event.workingSets===1?"":"s"}`;
+    $("calendarNextSummary").textContent=`${W.displayDate(event.date)} · ${event.movements} movement${event.movements===1?"":"s"} · ${event.workingSets} working set${event.workingSets===1?"":"s"}`;
     $("calendarLink").href=event.href;$("calendarLink").download=event.filename;
   }
   function returnToPlan(){

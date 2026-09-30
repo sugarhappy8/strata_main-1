@@ -99,7 +99,7 @@ function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllow
         json(res,200,{ok:true,profile:output,...await diaryResponse(session.id,output,week,timestamp),csrfToken:session.csrf_token});return true;
       }
       const profile=await readProfile(session.id);
-      if(!profile)throw coachingError("Complete your coaching profile before opening a personalized week.",409,"COACHING_PROFILE_REQUIRED");
+      if(!profile)throw coachingError("Complete your personal setup before opening a personalized week.",409,"COACHING_PROFILE_REQUIRED");
       const timestamp=now(),week=await ensureWeek(session.id,profile,timestamp);
       if(url.pathname==="/api/coaching/week"){json(res,200,{...await diaryResponse(session.id,profile,week,timestamp),csrfToken:session.csrf_token});return true;}
       if(!logMatch&&!foodMatch)throw coachingError("Coaching route not found.",404,"COACHING_ROUTE_NOT_FOUND");

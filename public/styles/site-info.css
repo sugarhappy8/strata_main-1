@@ -100,6 +100,7 @@ a { color:inherit; }
 .policy-support-band { display:grid; grid-template-columns:minmax(220px,.7fr) minmax(0,1.3fr); gap:40px; padding:clamp(28px,4vw,46px); border-radius:16px; color:#f7f9f3; background:linear-gradient(135deg,#1a1e17,#0e100d); }
 .policy-support-band h2 { color:#fff; }
 .policy-support-band p:not(.card-kicker) { color:rgba(255,255,255,.68); }
+.policy-support-band .card-kicker { color:var(--accent); }
 .policy-support-band a:not(.button) { color:var(--accent); }
 .policy-support-band .button { margin-top:8px; }
 .policy-support-band a.button-dark { color:var(--ink); background:var(--accent); }
@@ -113,6 +114,7 @@ a { color:inherit; }
 .policy-founder-copy { align-self:center; }
 .policy-founder-copy h2 { margin:0; font:650 clamp(46px,5.8vw,74px)/1.04 var(--display); letter-spacing:-.05em; text-wrap:balance; }
 .policy-founder-copy h2 em { color:var(--orange-text); font-style:normal; }
+.policy-founder-copy > .section-label { color:var(--orange-text); }
 .policy-founder-copy > p:not(.section-label) { max-width:720px; margin:18px 0 0; color:#3d423a; font-size:15px; line-height:1.76; }
 .policy-founder-copy > .policy-founder-lede { margin-top:30px; color:var(--ink); font-size:17px; }
 .founder-principle { padding:18px 20px; border-left:3px solid var(--accent); border-radius:0 10px 10px 0; background:#fff!important; box-shadow:var(--shadow-soft); }
@@ -214,8 +216,6 @@ a { color:inherit; }
 .support-form-card { border-color:#9ba095; box-shadow:inset 0 4px var(--accent),var(--shadow); }
 .contact-details-card { position:sticky; top:104px; background:rgba(232,234,225,.9); box-shadow:none; }
 .contact-email { display:inline-block; max-width:100%; margin:14px 0 6px; font:650 clamp(15px,1.5vw,18px)/1.35 var(--display); overflow-wrap:normal; word-break:normal; }
-.contact-list { margin:24px 0 0; padding:0; list-style:none; }
-.contact-list li { padding:13px 0; border-top:1px solid var(--line); color:#383a36; font-size:14px; line-height:1.6; }
 .contact-subheading { margin:38px 0 10px; padding-top:28px; border-top:1px solid var(--line); font:650 24px/1 var(--display); letter-spacing:-.025em; }
 .safety-note { margin-top:28px; padding:20px; border-left:4px solid var(--danger); border-radius:0 10px 10px 0; color:#383a36; background:#fff5f0; font-size:13px; line-height:1.65; }
 .support-form { position:relative; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:23px 18px; margin-top:33px; }
@@ -388,7 +388,7 @@ a { color:inherit; }
   .policy-method-list dt,.policy-method-list dd,.policy-founder-copy,
   .policy-founder-facts dd,.price-subtitle,.access-path,.feature-list,
   .tier-boundary,.purchase-status,.checkout-note,.decision-strip,
-  .support-path,.contact-email,.contact-list,.safety-note,
+  .support-path,.contact-email,.safety-note,
   .field-help,.support-response-time,.support-status,.footer-tagline,.footer-meta
 ) { overflow-wrap:anywhere; }
 

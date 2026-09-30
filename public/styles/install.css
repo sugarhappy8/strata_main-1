@@ -38,7 +38,7 @@ button { font:inherit; cursor:pointer; touch-action:manipulation; }
 .hero-grid { min-height:660px; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:80px; align-items:center; padding-top:80px; padding-bottom:90px; }
 .kicker { display:flex; align-items:center; gap:10px; margin:0 0 18px; color:var(--muted); font:600 12.5px/1.4 var(--body,"Manrope",Arial,sans-serif); letter-spacing:0; }
 .kicker span { width:28px; height:2px; background:var(--accent); }
-.install-hero .kicker { color:rgba(255,255,255,.58); }
+.install-hero .kicker,.offline-shell .kicker { color:rgba(255,255,255,.58); }
 .install-hero h1,.section-heading h2,.help-grid h2,.offline-shell h1 { margin:0; font:600 clamp(60px,8vw,112px)/1.04 var(--display); letter-spacing:-.045em; overflow-wrap:anywhere; }
 .install-hero h1 em,.help-grid h2 em,.offline-shell h1 em { color:var(--accent); font-style:normal; }
 .hero-copy { max-width:680px; margin:28px 0 0; color:rgba(255,255,255,.7); font-size:16px; line-height:1.7; }
