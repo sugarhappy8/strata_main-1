@@ -11,7 +11,6 @@
     ".editorial-grid",
     ".source-grid",
     ".week-toolbar",
-    ".plus-studio .feature-hub-heading",
     ".plus-studio .feature-grid",
     ".account-intro",
     ".account-access",

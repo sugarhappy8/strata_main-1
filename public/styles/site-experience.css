@@ -5,9 +5,9 @@ html { scroll-padding-top:100px; }
 body { line-height:1.5; }
 [hidden] { display:none!important; }
 :where(a,button,input,select,textarea,summary):focus-visible { outline:3px solid #6f8e27; outline-offset:4px; }
-:where(.site-header,.studio-header,.planner-header,.workout-header) { border-bottom:1px solid #ffffff24; }
-:where(.desktop-nav,.studio-nav,.planner-nav,.mobile-public-nav) a { text-decoration:none; }
-:where(.desktop-nav,.studio-nav,.planner-nav) a[aria-current] { color:#d4f578; }
+:where(.site-header,.studio-header,.planner-header) { border-bottom:1px solid #ffffff24; }
+:where(.desktop-nav,.studio-nav,.mobile-public-nav) a { text-decoration:none; }
+:where(.desktop-nav,.studio-nav) a[aria-current] { color:#d4f578; }
 :where(.button,.small-button,.account-button,.dark-button,.outline-button) { border-radius:9px; min-height:44px; }
 :where(.section-heading,.workspace-heading,.coaching-heading) h2 { font-size:clamp(2rem,4.3vw,3.75rem); line-height:1.12; letter-spacing:-.045em; }
 :where(.section-heading,.workspace-heading,.coaching-heading)>p { max-width:48ch; line-height:1.65; }
@@ -36,8 +36,8 @@ body { line-height:1.5; }
 .workout-page .hero-visual { display:none; }
 .workout-page .panel { border-radius:16px; }
 .workout-page .start-panel { scroll-margin-top:100px; }
-:where(.info-page,.account-page) h1 { font-size:clamp(2.5rem,5vw,4.5rem); line-height:1.08; }
-:where(.info-page,.account-page) :where(.info-hero,.account-hero) { padding-block:48px; }
+:where(.account-page) h1 { font-size:clamp(2.5rem,5vw,4.5rem); line-height:1.08; }
+:where(.account-page) :where(.info-hero) { padding-block:48px; }
 @media (max-width:1000px) {
   .start-directory nav { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
