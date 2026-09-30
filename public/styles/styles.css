@@ -128,7 +128,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .proof-heading { position:relative; z-index:1; border-bottom:1px solid rgba(255,255,255,.18); }
 .proof-section .proof-heading h2 { color:var(--white); }
 .proof-section .proof-heading h2 em { color:var(--accent); }
-.proof-heading > p,.proof-heading .kicker { color:rgba(255,255,255,.62); }
+.proof-section .proof-heading > p,.proof-heading .kicker { color:rgba(255,255,255,.62); }
 .proof-workspace { position:relative; z-index:1; display:grid; grid-template-columns:minmax(280px,.68fr) minmax(0,1.32fr); overflow:hidden; border:1px solid rgba(255,255,255,.22); border-radius:16px; box-shadow:0 32px 90px rgba(0,0,0,.3); }
 .preview-form { padding:clamp(24px,3.5vw,46px); background:rgba(11,13,10,.9); }
 .preview-form-heading { display:grid; gap:9px; margin-bottom:30px; }

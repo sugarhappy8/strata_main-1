@@ -27,7 +27,7 @@
   function input(entry,set,field,label,locked){return `<label>${esc(label)}<input type="number" ${LIMITS[field]||`min="${entry.effortType==="rpe"?1:0}" max="10" step="0.5" inputmode="decimal"`} data-value="${field}" value="${esc(set[field]??"")}"${locked?" disabled":""} /></label>`;}
   function render(){
     const workout=state.record.workout,counts=W.progress(workout),active=workout.status==="active";
-    $("offlineSessionTitle").textContent=workout.title;$("offlineSessionMeta").textContent=`${workout.date} · ${counts.completed}/${counts.total} sets · authorized on this device`;
+    $("offlineSessionTitle").textContent=workout.title;$("offlineSessionMeta").textContent=`${W.displayDate(workout.date)} · ${counts.completed}/${counts.total} sets · authorized on this device`;
     $("offlineEntries").innerHTML=workout.entries.map((entry)=>{
       const movement=exercise(entry.exerciseId),timed=entry.measurement==="timed",weighted=entry.loadType!=="bodyweight",effort=["rir","rpe"].includes(entry.effortType);
       // Completed sets and finished workouts are read-only; uncheck a set to reopen it for editing.

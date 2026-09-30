@@ -63,7 +63,7 @@ function hideToast(){toastController.hide();}
 const coachingMeals=CoachingMealsCore.createController({document,element:el,api,state,ui:CoachingMealsUi,assertAccountResponse:ApiCore.assertAccountResponse,onAccountError:redirectedOrChangedAccount});
 const coaching=CoachingCore.createController({document,element:el,api,state,ui:CoachingUi,diaryUi:CoachingDiaryUi,meals:coachingMeals,assertAccountResponse:ApiCore.assertAccountResponse,renderFactory:CoachingRender.createRenderer,saveRetryMessage,showToast,onAccountError:redirectedOrChangedAccount,navigate:(name,options)=>activateFeature(name,options)});
 const featureNavigation=NavigationCore.createFeatureNavigation({
-  config:FEATURE_CONFIG,defaultFeature:FEATURE_DEFAULT,state,document,window,
+  config:FEATURE_CONFIG,defaultFeature:FEATURE_DEFAULT,state,document,window,scrollAnchorId:"featureHub",
   onDestinationChange:(name,previous)=>{hideToast();if(name==="coaching")coaching.setReturnFeature(previous);},
   onActivate:(name)=>{
     const scoreGuide=el("scoreGuide"),showScoreGuide=["explore","recommendations","library","battle"].includes(name);if(scoreGuide)scoreGuide.hidden=!showScoreGuide;if(!showScoreGuide&&el("scoreGuideDetails"))el("scoreGuideDetails").open=false;

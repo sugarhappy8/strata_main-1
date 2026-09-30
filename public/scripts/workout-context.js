@@ -17,7 +17,7 @@
       const currentIndex=Math.max(0,W.DAYS.indexOf(state.day)),scheduledDay=[...W.DAYS.slice(currentIndex+1),...W.DAYS.slice(0,currentIndex)].find((day)=>(state.plan?.days?.[day]||[]).length);
       const start=$("startWorkout"),resume=$("resumeWorkout"),choose=$("chooseScheduledDay"),build=$("openPlannerFromEmpty"),edit=$("editWorkoutWeek"),brief=$("planBrief"),preview=$("planPreviewDetails"),waiting=state.historyBusy||!state.historyLoaded;
       $("planDay").innerHTML=W.DAYS.map((day)=>`<option value="${day}"${day===state.day?" selected":""}>${day}${day===W.today()?" · today":""}</option>`).join("");
-      $("todayLabel").textContent=active?"Workout in progress":state.day===W.today()?`Today · ${W.localDate()}`:"Selected plan day";
+      $("todayLabel").textContent=active?"Workout in progress":state.day===W.today()?`Today · ${W.displayDate(W.localDate())}`:"Selected plan day";
       $("planDayField").hidden=!hasWeek||!!active;edit.hidden=!hasWeek||!!active;
       start.hidden=true;resume.hidden=!active;choose.hidden=true;build.hidden=true;$("differentWorkout").hidden=true;
       start.disabled=state.blocked||waiting||!!state.historyLoadError;resume.disabled=state.blocked||state.detailBusy||state.historyBusy;
@@ -26,7 +26,7 @@
 
       if(active){
         const counts=Array.isArray(active.entries)?W.progress(active):{completed:Number(active.completedSets)||0,total:Number(active.totalSets)||0};
-        $("startTitle").textContent=active.title;$("planStatus").textContent=`${active.date} · ${counts.completed} of ${counts.total} sets logged.`;
+        $("startTitle").textContent=active.title;$("planStatus").textContent=`${W.displayDate(active.date)} · ${counts.completed} of ${counts.total} sets logged.`;
         $("startHint").textContent=state.recoveries.some((record)=>record.dirty&&record.workout.id===active.id)?"Resume to review your device changes and the latest saved workout.":"Continue your existing workout before starting another.";
         return;
       }

@@ -10,6 +10,8 @@
   function localDate(now=new Date()){
     return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;
   }
+  // Stored YYYY-MM-DD dates read like the rest of STRATA ("Wed, Sep 30"); the year shows only when it is not the current one.
+  function displayDate(value,{weekday=true,now=new Date()}={}){const match=/^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value||""));if(!match)return String(value||"");const date=new Date(Number(match[1]),Number(match[2])-1,Number(match[3]),12);return new Intl.DateTimeFormat(undefined,{...(weekday?{weekday:"short"}:{}),month:"short",day:"numeric",...(date.getFullYear()!==now.getFullYear()?{year:"numeric"}:{})}).format(date);}
   function today(now=new Date()){return DAYS[(now.getDay()+6)%7];}
   function dayFromSearch(search,now=new Date()){
     const requested=new URLSearchParams(search).get("day");
@@ -293,5 +295,5 @@
   function readDraft(raw,ownerId){return parseDraft(raw,ownerId,null);}
   // Opens a draft whose only problems are invalid set values, listing each value it cleared.
   function repairDraft(raw,ownerId){const repairs=[],record=parseDraft(raw,ownerId,repairs);return record?{record,repairs}:null;}
-  return{DAYS,copy,localDate,today,dayFromSearch,id,inferFormat,blankSet,normalizeWorkout,createWorkout,effortError,actualError,inputError,cleanNote,progress,planDaySummary,nextIncompleteSet,remainingSeconds,offlineAccessUntil,duration,formatKey,summary,metrics,series,bestInWindow,previousComparable,suggestedTargets,hasSetValues,applyTargets,addSet,duplicateSet,removeSet,warmupSets,plateInventory,plateBreakdown,swapComparison,planSwapProposal,payload,matches,draftPrefix,readDraft,repairDraft};
+  return{DAYS,copy,localDate,displayDate,today,dayFromSearch,id,inferFormat,blankSet,normalizeWorkout,createWorkout,effortError,actualError,inputError,cleanNote,progress,planDaySummary,nextIncompleteSet,remainingSeconds,offlineAccessUntil,duration,formatKey,summary,metrics,series,bestInWindow,previousComparable,suggestedTargets,hasSetValues,applyTargets,addSet,duplicateSet,removeSet,warmupSets,plateInventory,plateBreakdown,swapComparison,planSwapProposal,payload,matches,draftPrefix,readDraft,repairDraft};
 });

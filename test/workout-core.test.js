@@ -294,3 +294,13 @@ test("memory uses the latest earlier exposure even when it has no completed sets
   assert.equal(latest.workoutId,"latest");assert.deepEqual(latest.sets,[]);
   assert.equal(W.previousComparable([future],entry,current.id,3000),null);
 });
+
+test("workout dates display like the rest of STRATA and keep the year only when it differs",()=>{
+  const now=new Date(2026,8,30,9);
+  const expected=(options,date)=>new Intl.DateTimeFormat(undefined,options).format(date);
+  assert.equal(W.displayDate("2026-09-30",{now}),expected({weekday:"short",month:"short",day:"numeric"},new Date(2026,8,30,12)));
+  assert.equal(W.displayDate("2025-12-31",{now}),expected({weekday:"short",month:"short",day:"numeric",year:"numeric"},new Date(2025,11,31,12)));
+  assert.equal(W.displayDate("2026-09-01",{weekday:false,now}),expected({month:"short",day:"numeric"},new Date(2026,8,1,12)));
+  assert.equal(W.displayDate("not-a-date",{now}),"not-a-date");
+  assert.equal(W.displayDate(null,{now}),"");
+});

@@ -1265,6 +1265,8 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
   .progress-record { grid-template-columns:minmax(0,1fr); padding:14px; }
   .progress-weeks-card { padding:20px; }
   .progress-week:not(.is-current):nth-child(odd) small { visibility:hidden; }
+  /* Every other label is hidden here, so a visible label may use its neighbours' room instead of clipping. */
+  .progress-week small { max-width:none; overflow:visible; }
   .progress-footnote { align-items:stretch; flex-direction:column; gap:16px; }
   .progress-footnote a { width:100%; text-align:center; }
   .plus-studio .explore-workspace .explore-tool-grid { grid-template-columns:minmax(0,1fr); }
@@ -1686,7 +1688,9 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
 :where(.plus-studio :is(.workspace-empty,.program-results,.coaching-profile-actions)) .small-button { color:var(--accent); border-color:#5a654b; }
 :where(.plus-studio :is(.workspace-empty,.program-results,.coaching-profile-actions)) .small-button:is(:hover,:focus-visible) { color:var(--ink); background:var(--accent); border-color:var(--accent); }
 /* Nutrition: one inner gutter, today's diary first, then the week, meal ideas, and the supporting evidence. */
-.nutrition-workspace .coaching-dashboard { --nutrition-gutter:clamp(20px,4.4vw,48px); }
+.nutrition-workspace .coaching-dashboard { --nutrition-gutter:clamp(20px,4.4vw,48px); background:radial-gradient(circle at 90% 0,rgba(212,245,120,.1),transparent 420px),#141612; }
+/* One continuous surface: a separate header band left a seam just above the target cards. */
+.nutrition-workspace .coaching-dashboard-head { background:transparent; }
 .nutrition-workspace .coaching-dashboard-head { padding:var(--nutrition-gutter) var(--nutrition-gutter) 18px; }
 .nutrition-workspace .coaching-dashboard-head h3 { margin:6px 0 0; font:700 clamp(1.45rem,2.8vw,2.1rem)/1.15 var(--body); letter-spacing:-.035em; }
 .nutrition-workspace .coaching-dashboard > .coaching-method-note { margin:0 var(--nutrition-gutter) 16px; }

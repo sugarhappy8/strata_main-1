@@ -5,7 +5,7 @@ const {spawn}=require("node:child_process");
 const {mkdtempSync,readFileSync,rmSync}=require("node:fs");
 const http=require("node:http");
 const {tmpdir}=require("node:os");
-const {join}=require("node:path");
+const {join,resolve}=require("node:path");
 const test=require("node:test");
 const {chromium}=require("playwright");
 
@@ -36,8 +36,10 @@ function fixtureWeek(instanceId="account-entry",exerciseIndex=0){
 async function seedAccount(context,user,plan){const current=await accountPlan(context);const response=await context.request.put("/api/plan",{headers:{Origin:baseUrl,"X-CSRF-Token":current.csrfToken,"X-Strata-User":user.id},data:{plan,expectedPlanUpdatedAt:current.planUpdatedAt,expectedUserId:user.id}});assert.equal(response.status(),200,await response.text());return response.json();}
 
 test("activation continuity uses explicit, revision-safe account choices",{timeout:90_000},async t=>{
-  await startApp();browser=await chromium.launch({headless:true});
   try{
+    await startApp();
+    const launchOptions={headless:true};if(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)launchOptions.executablePath=resolve(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
+    browser=await chromium.launch(launchOptions);
     await t.test("a homepage week survives account and verification pages, then is claimed explicitly",async()=>{
       const context=await newContext({viewport:{width:390,height:844},reducedMotion:"reduce"}),page=await context.newPage();
       await page.goto("/",{waitUntil:"domcontentloaded"});await page.locator("#quickPreviewEquipment").waitFor({state:"visible"});await page.waitForFunction(()=>!globalThis.document.querySelector("#quickPreviewEquipment").disabled);

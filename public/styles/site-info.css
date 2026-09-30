@@ -100,6 +100,7 @@ a { color:inherit; }
 .policy-support-band { display:grid; grid-template-columns:minmax(220px,.7fr) minmax(0,1.3fr); gap:40px; padding:clamp(28px,4vw,46px); border-radius:16px; color:#f7f9f3; background:linear-gradient(135deg,#1a1e17,#0e100d); }
 .policy-support-band h2 { color:#fff; }
 .policy-support-band p:not(.card-kicker) { color:rgba(255,255,255,.68); }
+.policy-support-band .card-kicker { color:var(--accent); }
 .policy-support-band a:not(.button) { color:var(--accent); }
 .policy-support-band .button { margin-top:8px; }
 .policy-support-band a.button-dark { color:var(--ink); background:var(--accent); }
@@ -113,6 +114,7 @@ a { color:inherit; }
 .policy-founder-copy { align-self:center; }
 .policy-founder-copy h2 { margin:0; font:650 clamp(46px,5.8vw,74px)/1.04 var(--display); letter-spacing:-.05em; text-wrap:balance; }
 .policy-founder-copy h2 em { color:var(--orange-text); font-style:normal; }
+.policy-founder-copy > .section-label { color:var(--orange-text); }
 .policy-founder-copy > p:not(.section-label) { max-width:720px; margin:18px 0 0; color:#3d423a; font-size:15px; line-height:1.76; }
 .policy-founder-copy > .policy-founder-lede { margin-top:30px; color:var(--ink); font-size:17px; }
 .founder-principle { padding:18px 20px; border-left:3px solid var(--accent); border-radius:0 10px 10px 0; background:#fff!important; box-shadow:var(--shadow-soft); }
