@@ -1,5 +1,22 @@
 # Changelog
 
+## 8.8.4 — Strata AI responses that apply correctly
+
+- Send Atomic Chat the llama.cpp schema dialect it enforces (`json_object` with the bounded schema in `response_format.schema`), so a proposed week can no longer hide inside `reply`. Providers that reject the schema fall back once to plain JSON mode and then to a plain request.
+- Make "only two rest days" mean exactly five training days on a balanced schedule, and "make sessions longer" keep the same days while moving every session to the next 15-minute tier. Explicit targets and deltas such as "increase sessions to 75 minutes" or "add 15 minutes to each session" are read separately.
+- Send correction instructions as the final member turn, and when a local model still misses a pure day-count or duration requirement, build the change from the validated draft and run it through the same catalog, plan, and contract checks.
+- Check equipment-only requests against the exercise catalog, keep questions about the week on screen reply-only, and force pain, injury, pregnancy, medication, eating-disorder, and diagnosis wording onto the reply-only safety path.
+
+See the [8.8.4 release guide](docs/release-8.8.4.md).
+
+## 8.8.3 — Reliable Strata AI plan edits
+
+- Send the latest unapplied proposal to the server as a bounded, validated structured plan, so follow-up edits act on the week the member is viewing instead of a 1,200-character prose recap.
+- Convert measurable schedule wording into a server-owned edit contract: exact rest and training-day counts, added or removed days, explicit session lengths, and "longer" or "shorter" sessions. A proposal that contradicts it gets one precise correction, and a second mismatch fails clearly.
+- Keep questions such as "Should I make sessions longer?" informational, give a valid proposal with a missing reply a short server fallback, allow the documented 90-minute working-set ceiling, and apply a proposal only against the plan revision it was generated from.
+
+See the [8.8.3 release guide](docs/release-8.8.3.md).
+
 ## 8.8.2 — Conversational Strata AI
 
 - Answer ordinary questions about training, exercises, recovery, and general nutrition directly instead of forcing every message into a plan or settings proposal.
