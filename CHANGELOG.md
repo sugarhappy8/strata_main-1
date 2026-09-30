@@ -1,5 +1,17 @@
 # Changelog
 
+## 8.8.5 — Polish, accessibility, and cleanup
+
+- Keep the Strata+ destination tabs on screen when a destination opens or a link opens one directly, instead of sliding them under the sticky header.
+- Restore readable contrast on the homepage preview introduction, the Policies support kicker and founder label, and the offline page kicker, and size the Pricing page's inline links like body text.
+- Give every page one top-level heading, including the Strata+ studio, the signed-in Account page, and the phone workout page, whose "Skip to workout" link has a target again.
+- Show workout-room dates as "Wed, Sep 30", label the target card "Today's target", and move the unstyled post-workout note into the progression card.
+- Offer "Add food preferences" when Nutrition has no saved preferences, number recovery days in the suggested week, remove the seam above the Nutrition targets, and stop clipping phone chart labels.
+- On Strata AI, show the starter prompts before the message box until the first message, keep keyboard focus above the pinned message box, keep a failed question's Try again until it can be sent, and treat a missing set count as three sets. Discarded provider responses are cancelled so their connections close promptly.
+- Remove the unused administrator email-code module and its `ADMIN_EMAIL_MFA_REQUIRED` setting, stylesheet rules for 25 retired classes, and a no-op email-verification option. Add the missing 8.8.3 and 8.8.4 changelog entries, refresh the architecture notes and `SHA256SUMS`, and update `brace-expansion` to clear an audit advisory.
+
+See the [8.8.5 release guide](docs/release-8.8.5.md).
+
 ## 8.8.4 — Strata AI responses that apply correctly
 
 - Send Atomic Chat the llama.cpp schema dialect it enforces (`json_object` with the bounded schema in `response_format.schema`), so a proposed week can no longer hide inside `reply`. Providers that reject the schema fall back once to plain JSON mode and then to a plain request.
