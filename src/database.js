@@ -2,7 +2,7 @@
 
 const { mkdirSync } = require("node:fs");
 const { join } = require("node:path");
-const { SCHEMA,SQL,WORKOUT_ACTIVE_INDEX,RECONCILE_DUPLICATE_ACTIVE_WORKOUTS } = require("./schema");
+const { SCHEMA,SQL,WORKOUT_ACTIVE_INDEX,RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,PRODUCT_SIGNAL_TABLE } = require("./schema");
 const { defineStore } = require("./store-contract");
 const {createLocalTrainingMethods,createTursoTrainingMethods,deleteLocalTrainingData,trainingDeletionBatch}=require("./training-loop-store");
 const {createLocalAccountSelfServiceMethods,createTursoAccountSelfServiceMethods}=require("./account-self-service-store");
@@ -159,7 +159,7 @@ function localStore(root) {
   const db = new DatabaseSync(join(dataDir,"strata.sqlite"),{timeout:5000,enableForeignKeyConstraints:true});
   db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
   for (const statement of SCHEMA) if (statement!==WORKOUT_ACTIVE_INDEX) db.exec(statement);
-  migrateLocalSchema(db,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS});
+  migrateLocalSchema(db,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE});
 
   const statements = Object.fromEntries(Object.entries(SQL).map(([name,sql]) => [name,db.prepare(sql)]));
   const trainingMethods=createLocalTrainingMethods({db,statements,plainRow});
@@ -538,43 +538,6 @@ function localStore(root) {
         throw error;
       }
     },
-    async createAdminElevation(sessionTokenHash,expiresAt,createdAt) {
-      return plainRow(statements.upsertAdminElevation.get(expiresAt,createdAt,sessionTokenHash,createdAt));
-    },
-    async rotateAdminSessionForElevation(oldSessionTokenHash,newSession,expiresAt,audit,now) {
-      let transactionOpen=false;
-      try {
-        db.exec("BEGIN IMMEDIATE");
-        transactionOpen=true;
-        const inserted=plainRow(statements.insertRotatedAdminSession.get(
-          newSession.tokenHash,newSession.csrfToken,newSession.expiresAt,newSession.createdAt,
-          oldSessionTokenHash,now,newSession.userId
-        ));
-        if (!inserted) {
-          db.exec("ROLLBACK");
-          transactionOpen=false;
-          return null;
-        }
-        const elevation=plainRow(statements.upsertAdminElevation.get(expiresAt,now,newSession.tokenHash,now));
-        if (!elevation) throw new Error("Admin elevation could not be attached to the rotated session.");
-        if (!plainRow(statements.insertAdminAuditIfSession.get(...adminAuditArgs(audit),newSession.tokenHash))) {
-          throw new Error("Admin elevation audit could not be recorded atomically.");
-        }
-        if (!plainRow(statements.deleteRotatedAdminSession.get(oldSessionTokenHash,newSession.tokenHash))) {
-          throw new Error("The previous admin session could not be invalidated atomically.");
-        }
-        db.exec("COMMIT");
-        transactionOpen=false;
-        return inserted;
-      } catch(error) {
-        if (transactionOpen) {
-          try { db.exec("ROLLBACK"); } catch { /* Preserve the original transaction error. */ }
-        }
-        throw error;
-      }
-    },
-    async adminElevation(sessionTokenHash,now) { return plainRow(statements.adminElevation.get(sessionTokenHash,now)); },
-    async deleteExpiredAdminElevations(now) { return affectedRows(statements.deleteExpiredAdminElevations.run(now)); },
     async adminOverview(now) { return plainRow(statements.adminOverview.get(now,now,now)); },
     async adminUserById(userId,now) { return plainRow(statements.adminUserById.get(now,now,now,now,userId)); },
     async adminUsers(query,limit,offset,now) {
@@ -753,7 +716,7 @@ async function tursoStore(url,authToken,tursoClientFactory) {
     throw new Error("Turso foreign key enforcement could not be enabled.");
   }
   for (const statement of SCHEMA) if (statement!==WORKOUT_ACTIVE_INDEX) await client.execute(statement);
-  await migrateTursoSchema(client,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS});
+  await migrateTursoSchema(client,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE});
 
   async function first(sql,args=[]) {
     const result = await client.execute({sql,args});
@@ -1055,26 +1018,6 @@ async function tursoStore(url,authToken,tursoClientFactory) {
       const inserted=plainRow(results[0]?.rows?.[0],results[0]?.columns);
       return {principal:inserted||await first(SQL.adminPrincipal),boundNow:Boolean(inserted)};
     },
-    async createAdminElevation(sessionTokenHash,expiresAt,createdAt) {
-      const result=await run(SQL.upsertAdminElevation,[expiresAt,createdAt,sessionTokenHash,createdAt]);
-      return plainRow(result.rows?.[0],result.columns);
-    },
-    async rotateAdminSessionForElevation(oldSessionTokenHash,newSession,expiresAt,audit,now) {
-      const results=await client.batch([
-        {sql:SQL.insertRotatedAdminSession,args:[newSession.tokenHash,newSession.csrfToken,newSession.expiresAt,newSession.createdAt,oldSessionTokenHash,now,newSession.userId]},
-        {sql:SQL.upsertAdminElevation,args:[expiresAt,now,newSession.tokenHash,now]},
-        {sql:SQL.insertAdminAuditIfSession,args:[...adminAuditArgs(audit),newSession.tokenHash]},
-        {sql:SQL.deleteRotatedAdminSession,args:[oldSessionTokenHash,newSession.tokenHash]}
-      ],"write");
-      const inserted=plainRow(results[0]?.rows?.[0],results[0]?.columns);
-      if (!inserted) return null;
-      if (!plainRow(results[1]?.rows?.[0],results[1]?.columns)||!plainRow(results[2]?.rows?.[0],results[2]?.columns)||!plainRow(results[3]?.rows?.[0],results[3]?.columns)) {
-        throw new Error("Admin session rotation could not be completed atomically.");
-      }
-      return inserted;
-    },
-    adminElevation:(sessionTokenHash,now) => first(SQL.adminElevation,[sessionTokenHash,now]),
-    async deleteExpiredAdminElevations(now) { return affectedRows(await run(SQL.deleteExpiredAdminElevations,[now])); },
     adminOverview:(now) => first(SQL.adminOverview,[now,now,now]),
     adminUserById:(userId,now) => first(SQL.adminUserById,[now,now,now,now,userId]),
     async adminUsers(query,limit,offset,now) {

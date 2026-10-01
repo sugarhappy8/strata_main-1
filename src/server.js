@@ -20,14 +20,13 @@ const { createSetupService } = require("./setup");
 const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
 const {adminGrantState}=require("./access-controls");
-const { createBillingService,discoveryTrialState } = require("./billing");
+const { createBillingService } = require("./billing");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
 const { createLogger,observeRequest } = require("./observability");
 const {
   EXERCISES,
   EXERCISE_IDS,DAYS,
-  cleanText,
   defaultPlan,
   defaultPreferences,
   planStats,
@@ -219,6 +218,7 @@ const STATIC_FILES = new Map([
 ]);
 const PAGE_ALIASES = new Map([
   ["/install","install.html"],
+  ["/planner","planner.html"],
   ["/pricing","pricing.html"],
   ["/contact","contact.html"],
   ["/policies","policies.html"],
@@ -296,25 +296,22 @@ async function hasCurrentDiscoveryAccess(userId,now=Date.now()) {
 
 async function userPayload(session) {
   const now=Date.now();
-  const [plan,paidDiscovery,trial,subscription,deletion,adminState,controls]=await Promise.all([
+  const [plan,paidDiscovery,subscription,deletion,adminState,controls]=await Promise.all([
     planFor(session.id),
     billing.accessSummaryForUser(session.id),
-    store.discoveryTrial(session.id),
     billing.subscriptionForUser(session.id),
     store.activeAccountDeletion(session.id,now),
     admin.adminIdentity(session),
     store.adminControls(session.id)
   ]);
-  const trialState=discoveryTrialState(trial,now),adminGrant=adminGrantState(controls,now);
+  const adminGrant=adminGrantState(controls,now);
   const discovery={
     ...paidDiscovery,
-    active:paidDiscovery.active||trialState.active||adminGrant.active,
-    // Preserve the established durable-access marker for existing clients.
-    // The nullable subscription snapshot distinguishes monthly from legacy
-    // lifetime access without ever making a grandfathered buyer appear free.
-    accessType:paidDiscovery.active?"paid":adminGrant.active?"grant":trialState.active?"trial":null,
+    active:paidDiscovery.active||adminGrant.active,
+    // "paid" covers a subscription or a legacy lifetime purchase; the
+    // nullable subscription snapshot tells the two apart for the client.
+    accessType:paidDiscovery.active?"paid":adminGrant.active?"grant":null,
     adminGrant,checkoutBlocked:Boolean(controls?.checkout_blocked_at),
-    trial:trialState,
     subscription
   };
   return {
@@ -669,16 +666,9 @@ async function serveStatic(req,res,url) {
     }
   }
   if (PROTECTED_HTML.has(requested) && !activeSession) {
-    const params=new URLSearchParams({mode:"login"});
-    if (requested==="planner.html") {
-      params.set("next","planner");
-      const add=cleanText(url.searchParams.get("add"),80);
-      if (/^[a-z0-9-]{2,80}$/.test(add)&&EXERCISE_IDS.has(add)) params.set("add",add);
-    } else {
-      params.set("next",requested.replace(".html",""));
-      const day=url.searchParams.get("day");
-      if (requested==="workout.html"&&DAYS.includes(day)) params.set("next",`/workout.html?day=${day}`);
-    }
+    const params=new URLSearchParams({mode:"login",next:requested.replace(".html","")});
+    const day=url.searchParams.get("day");
+    if (requested==="workout.html"&&DAYS.includes(day)) params.set("next",`/workout.html?day=${day}`);
     res.writeHead(302,{...securityHeaders(),Location:`/account.html?${params}`,"Cache-Control":"no-store"});
     res.end();
     return;
@@ -777,7 +767,6 @@ async function start() {
   });
   await admin.bootstrap();
   await store.deleteExpired(Date.now());
-  await admin.cleanup();
   await auth.cleanup();
   await support.cleanup();
   await productSignals.cleanup();
@@ -785,7 +774,6 @@ async function start() {
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
     void auth.cleanup().catch((error)=>LOGGER.error("cleanup.auth_failed",{error}));
-    void admin.cleanup().catch((error)=>LOGGER.error("cleanup.admin_failed",{error}));
     void support.cleanup().catch((error)=>LOGGER.error("cleanup.support_failed",{error}));
     void productSignals.cleanup().catch((error)=>LOGGER.error("cleanup.product_signals_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);

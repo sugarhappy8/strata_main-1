@@ -6,7 +6,6 @@ const {createHmac}=require("node:crypto");
 const {
   DEFAULT_PRODUCT_ID,
   DEFAULT_PRICE_ID,
-  STRATA_PLUS_TRIAL_MS,
   getPaymentConfig,
   verifyPaddleSignature,
   createPaddleTransaction,
@@ -181,7 +180,6 @@ test("live configuration is fail-closed and serializes browser-safe fields only"
   assert.equal(configured.priceId,RECURRING_PRICE_ID);
   assert.deepEqual(configured.legacyRecurringPriceIds,[]);
   assert.deepEqual(configured.price,{amount:"2.99",currency:"USD",interval:"month",frequency:1});
-  assert.equal(STRATA_PLUS_TRIAL_MS,7*24*60*60*1000);
   assert.ok(Object.isFrozen(configured));
 
   const serialized=JSON.stringify(configured);

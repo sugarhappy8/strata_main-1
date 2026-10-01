@@ -59,7 +59,7 @@ test("planner state keeps destination choices scoped and rejects a stored rest d
 
 test("planner guidance requires a fresh entitlement and schedules boundaries, periodic checks, and retries",()=>{
   const now=1_800_000_000_000,state=PlannerState.createState(),trialExpiry=now+10*60*1000;
-  state.user={id:"member-1",discovery:{active:true,accessType:"trial",trial:{active:true,expiresAt:trialExpiry}}};
+  state.user={id:"member-1",discovery:{active:true,accessType:"grant",adminGrant:{active:true,expiresAt:trialExpiry}}};
   state.entitlementStatus="checking";
   assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),false,"a foreground recheck must hide Plus guidance immediately");
   state.entitlementStatus="ready";
@@ -67,7 +67,7 @@ test("planner guidance requires a fresh entitlement and schedules boundaries, pe
   assert.equal(PlannerState.hasConfirmedPlusAccess(state,trialExpiry),false,"the client must fail closed at the known expiry even before a delayed timer runs");
   assert.equal(PlannerState.entitlementBoundary(state.user),trialExpiry);
   assert.equal(PlannerState.entitlementRefreshDelay(state.user,now),10*60*1000+50);
-  state.user.discovery.trial.expiresAt=null;
+  state.user.discovery.adminGrant.expiresAt=undefined;
   assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),false,"malformed timed access must fail closed instead of becoming lifetime access");
 
   state.user={id:"member-1",discovery:{active:true,accessType:"paid",subscription:{active:true,currentPeriodEndsAt:now+90_000,scheduledChange:{action:"cancel",effectiveAt:now+60_000}}}};

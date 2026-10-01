@@ -87,9 +87,8 @@
     if(state.busy||state.awaitingAccess)return;
     if(!state.user?.id){location.assign("/account.html?mode=signup&next=pricing");return;}
     const checkoutUserId=String(state.user.id),checkoutEmail=String(state.user.email||"");
-    // A trial started before the trial was retired may still subscribe early.
-    const subscription=logic.subscriptionFor(state.user),legacyTrial=state.user?.discovery?.accessType==="trial";
-    if((logic.discoveryIsActive(state.user)&&!legacyTrial)||subscription?.status==="paused"){renderPurchaseState();return;}
+    const subscription=logic.subscriptionFor(state.user);
+    if(logic.discoveryIsActive(state.user)||subscription?.status==="paused"){renderPurchaseState();return;}
     if(!state.csrfToken){setStatus("Your session needs to be refreshed before checkout. Reload this page and try again.","error",{focus:true});return;}
     try{
       state.actionError="";state.checkoutOpen=false;state.busy=true;renderPurchaseState();

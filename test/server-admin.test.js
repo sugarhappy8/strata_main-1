@@ -458,7 +458,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.equal(users.data.users[0].id,member.user.id);
   assert.equal(users.data.users[0].name,"<img src=x onerror=alert(1)>");
   assert.deepEqual(users.data.users[0].discovery,{
-    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},trialExpiresAt:null,activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
+    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
     latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed"
   },"account search must expose the selected account's complete entitlement state");
   assertPrivateJson(users.response);
@@ -469,7 +469,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.equal(detail.data.user.email,"member@example.test");
   assert.ok(detail.data.user.activeSessions>=2);
   assert.deepEqual(detail.data.user.discovery,{
-    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},trialExpiresAt:null,activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
+    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
     latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed"
   });
   assertPrivateJson(detail.response);
@@ -847,7 +847,6 @@ test("admin grants timed or indefinite free Strata+, revokes it, and controls ne
   assert.equal((await request("/api/discovery",{headers:{Cookie:target.cookie}})).response.status,200);
   assert.equal((await jsonRequest("/api/discovery/trial",{},{cookie:target.cookie,csrf:target.csrf})).response.status,410,"the retired trial cannot start alongside a grant");
   const db=openDatabase();
-  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM discovery_trials WHERE user_id=?").get(target.user.id).n,0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM paddle_purchases WHERE user_id=?").get(target.user.id).n,0);
   db.prepare("UPDATE admin_account_controls SET grant_starts_at=?,grant_expires_at=? WHERE user_id=?").run(Date.now()-2000,Date.now()-1000,target.user.id);db.close();
   assert.equal((await request("/api/discovery",{headers:{Cookie:target.cookie}})).response.status,402);

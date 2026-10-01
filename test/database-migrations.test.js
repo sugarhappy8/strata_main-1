@@ -4,7 +4,7 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const {DatabaseSync}=require("node:sqlite");
 const {MIGRATIONS,migrateLocalSchema,migrateTursoSchema}=require("../src/migrations");
-const {SCHEMA,WORKOUT_ACTIVE_INDEX,RECONCILE_DUPLICATE_ACTIVE_WORKOUTS}=require("../src/schema");
+const {SCHEMA,WORKOUT_ACTIVE_INDEX,RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,PRODUCT_SIGNAL_TABLE}=require("../src/schema");
 
 function legacyDatabase() {
   const database=new DatabaseSync(":memory:",{enableForeignKeyConstraints:true});
@@ -25,25 +25,50 @@ function legacyDatabase() {
   )`);
   database.prepare("INSERT INTO users(id,name,email,password_hash,password_salt,created_at) VALUES(?,?,?,?,?,?)").run("legacy-coach","Legacy Coach","legacy-coach@example.test","hash","salt",1000);
   database.prepare("INSERT INTO coaching_daily_logs(user_id,log_date,calories,protein_g,carbs_g,fat_g,revision,updated_at) VALUES(?,?,?,?,?,?,?,?)").run("legacy-coach","2030-03-04",2100,null,null,null,1,1001);
+  database.exec("CREATE TABLE device_revocations (id TEXT PRIMARY KEY,provider TEXT NOT NULL,provider_user_id TEXT NOT NULL,token_sealed TEXT NOT NULL,created_at INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,next_attempt_at INTEGER NOT NULL DEFAULT 0)");
   database.prepare("INSERT INTO device_revocations(id,provider,provider_user_id,token_sealed,created_at,next_attempt_at) VALUES(?,?,?,?,?,?)").run("legacy-polar","polar","123","sealed-v3-token",1000,2000);
+  database.exec("CREATE TABLE discovery_trials (user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,started_at INTEGER NOT NULL,expires_at INTEGER NOT NULL,CHECK(expires_at > started_at))");
+  database.prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)").run("legacy-coach",1000,2000);
   database.exec("CREATE INDEX IF NOT EXISTS discovery_trials_expires_at ON discovery_trials(expires_at)");
+  database.exec("CREATE TABLE admin_elevations (session_token_hash TEXT PRIMARY KEY,expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL)");
+  database.exec("CREATE INDEX IF NOT EXISTS admin_elevations_expiry ON admin_elevations(expires_at)");
+  database.exec("DROP TABLE product_signal_counts");
+  database.exec(`CREATE TABLE product_signal_counts (
+    event_day TEXT NOT NULL,
+    event_name TEXT NOT NULL CHECK(event_name IN ('plan_saved','trial_started','upgrade_viewed')),
+    event_count INTEGER NOT NULL,
+    PRIMARY KEY(event_day,event_name)
+  )`);
+  database.prepare("INSERT INTO product_signal_counts(event_day,event_name,event_count) VALUES(?,?,?),(?,?,?)").run("2030-03-04","trial_started",3,"2030-03-04","plan_saved",2);
   database.exec("CREATE INDEX IF NOT EXISTS support_tickets_email ON support_tickets(email)");
   return database;
+}
+
+function assertRetiredTables(database) {
+  const tables=new Set(database.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map(({name})=>name));
+  assert.equal(tables.has("device_revocations"),false,"V3 revocation credentials are dropped");
+  assert.equal(tables.has("admin_elevations"),false,"the unused elevation table is dropped");
+  assert.equal(tables.has("discovery_trials"),false,"legacy trials no longer grant access");
+  assert.deepEqual(database.prepare("SELECT user_id,started_at,expires_at FROM archive_discovery_trials").all().map((row)=>({...row})),[{user_id:"legacy-coach",started_at:1000,expires_at:2000}],"legacy trial rows are archived, not deleted");
+  assert.deepEqual(database.prepare("SELECT event_name,event_count FROM product_signal_counts ORDER BY event_name").all().map((row)=>({...row})),[{event_name:"plan_saved",event_count:2}],"the retired trial signal is dropped from the counts");
+  assert.throws(()=>database.prepare("INSERT INTO product_signal_counts(event_day,event_name,event_count) VALUES(?,?,?)").run("2030-03-05","trial_started",1),/CHECK constraint failed/);
+  database.prepare("INSERT INTO product_signal_counts(event_day,event_name,event_count) VALUES(?,?,?)").run("2030-03-05","workout_started",1);
 }
 
 test("SQLite records each idempotent migration once",()=>{
   const database=legacyDatabase();
   try {
-    const first=migrateLocalSchema(database,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,now:()=>1234});
+    const first=migrateLocalSchema(database,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE,now:()=>1234});
     assert.deepEqual(first.applied,MIGRATIONS.map(({id})=>id));
     assert.equal(first.latest,MIGRATIONS.at(-1).id);
     assert.deepEqual(database.prepare("SELECT migration_id,applied_at FROM schema_migrations ORDER BY migration_id").all().map((row)=>({...row})),MIGRATIONS.map(({id})=>({migration_id:id,applied_at:1234})));
-    const second=migrateLocalSchema(database,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,now:()=>9999});
+    const second=migrateLocalSchema(database,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE,now:()=>9999});
     assert.deepEqual(second.applied,[]);
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM schema_migrations").get().count,MIGRATIONS.length);
-    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM device_revocations").get().count,0);
+    assertRetiredTables(database);
     const indexes=new Set(database.prepare("SELECT name FROM sqlite_master WHERE type='index'").all().map(({name})=>name));
     assert.equal(indexes.has("discovery_trials_expires_at"),false);
+    assert.equal(indexes.has("admin_elevations_expiry"),false);
     assert.equal(indexes.has("support_tickets_email"),false);
     assert.equal(indexes.has("workouts_one_active_per_user"),true);
     assert.equal(database.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='index' AND tbl_name='coaching_daily_logs' AND sql IS NOT NULL").get().count,0,"the composite primary key already covers coaching log date lookups");
@@ -67,15 +92,15 @@ test("Turso migration runner records the same ordered ledger",async()=>{
   }
   const client={execute,async batch(statements){database.exec("BEGIN IMMEDIATE");try{const results=[];for(const statement of statements)results.push(await execute(statement));database.exec("COMMIT");return results;}catch(error){database.exec("ROLLBACK");throw error;}}};
   try {
-    const first=await migrateTursoSchema(client,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,now:()=>5678});
+    const first=await migrateTursoSchema(client,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE,now:()=>5678});
     assert.deepEqual(first.applied,MIGRATIONS.map(({id})=>id));
     const stored=database.prepare("SELECT migration_id,applied_at FROM schema_migrations ORDER BY migration_id").all().map((row)=>({...row}));
     assert.deepEqual(stored,MIGRATIONS.map(({id})=>({migration_id:id,applied_at:5678})));
-    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM device_revocations").get().count,0);
+    assertRetiredTables(database);
     assert.deepEqual({...database.prepare("SELECT calories,morning_weight_kg,intake_complete,revision,updated_at FROM coaching_daily_logs WHERE user_id=?").get("legacy-coach")},{calories:2100,morning_weight_kg:null,intake_complete:null,revision:1,updated_at:1001});
     database.prepare("UPDATE coaching_daily_logs SET morning_weight_kg=?,intake_complete=? WHERE user_id=?").run(35,0,"legacy-coach");
     assert.deepEqual({...database.prepare("SELECT morning_weight_kg,intake_complete FROM coaching_daily_logs WHERE user_id=?").get("legacy-coach")},{morning_weight_kg:35,intake_complete:0});
-    const second=await migrateTursoSchema(client,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,now:()=>9999});
+    const second=await migrateTursoSchema(client,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE,now:()=>9999});
     assert.deepEqual(second.applied,[]);
   } finally { database.close(); }
 });

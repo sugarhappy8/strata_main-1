@@ -19,13 +19,4 @@ function grantStrataPlus(dataDir,userId,{startsAt=Date.now()-1000,expiresAt=null
   }finally{database.close();}
 }
 
-// A trial started before the trial was retired keeps its recorded window.
-function insertLegacyTrial(dataDir,userId,{startedAt=Date.now()-1000,expiresAt=startedAt+7*24*60*60*1000}={}){
-  const database=openDatabase(dataDir);
-  try{
-    const result=database.prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)").run(userId,startedAt,expiresAt);
-    if(Number(result.changes)!==1)throw new Error(`Could not record a legacy trial for ${userId}.`);
-  }finally{database.close();}
-}
-
-module.exports={grantStrataPlus,insertLegacyTrial};
+module.exports={grantStrataPlus};

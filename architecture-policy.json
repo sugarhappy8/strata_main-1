@@ -164,7 +164,7 @@
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 160,
+      "maxLines": 190,
       "allowedDependencies": [
         "src/billing-schema.js"
       ]
@@ -218,7 +218,7 @@
       "allowedDependencies": []
     },
     "src/billing.js": {
-      "role": "Commercial entitlement, checkout, trial, webhook, and reconciliation service",
+      "role": "Commercial entitlement, checkout, webhook, and reconciliation service",
       "maxLines": 720,
       "allowedDependencies": [
         "src/access-controls.js",

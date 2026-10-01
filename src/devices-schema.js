@@ -38,16 +38,6 @@ const DEVICE_SCHEMA=Object.freeze([
     expires_at INTEGER NOT NULL,
     used_at INTEGER
   )`,
-  // Retained only so an upgraded deployment can discard queued V3 deregistrations safely.
-  `CREATE TABLE IF NOT EXISTS device_revocations (
-    id TEXT PRIMARY KEY,
-    provider TEXT NOT NULL,
-    provider_user_id TEXT NOT NULL,
-    token_sealed TEXT NOT NULL,
-    created_at INTEGER NOT NULL,
-    attempts INTEGER NOT NULL DEFAULT 0,
-    next_attempt_at INTEGER NOT NULL DEFAULT 0
-  )`,
   `CREATE TABLE IF NOT EXISTS wellness_nights (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     provider TEXT NOT NULL,
@@ -100,7 +90,7 @@ const DEVICE_SCHEMA=Object.freeze([
     PRIMARY KEY(user_id,provider,external_id)
   )`,
   "CREATE INDEX IF NOT EXISTS wellness_workouts_started ON wellness_workouts(user_id,provider,started_at)",
-  // Recreate this trigger on startup so databases from the V3 client stop retaining revocation credentials.
+  // Recreate this trigger on startup so older databases pick up the current cascade.
   "DROP TRIGGER IF EXISTS device_data_on_user_delete",
   `CREATE TRIGGER device_data_on_user_delete
     BEFORE DELETE ON users
@@ -139,11 +129,6 @@ const DEVICE_SQL=Object.freeze({
   deleteWellnessNights:"DELETE FROM wellness_nights WHERE user_id=? AND provider=?",
   deleteWellnessDays:"DELETE FROM wellness_days WHERE user_id=? AND provider=?",
   deleteWellnessWorkouts:"DELETE FROM wellness_workouts WHERE user_id=? AND provider=?",
-  insertDeviceRevocation:"INSERT INTO device_revocations(id,provider,provider_user_id,token_sealed,created_at,attempts,next_attempt_at) VALUES(?,?,?,?,?,0,?)",
-  dueDeviceRevocations:"SELECT id,provider,provider_user_id,token_sealed,created_at,attempts FROM device_revocations WHERE next_attempt_at<=? ORDER BY next_attempt_at,id LIMIT ?",
-  rescheduleDeviceRevocation:"UPDATE device_revocations SET attempts=?,next_attempt_at=? WHERE id=?",
-  deleteDeviceRevocation:"DELETE FROM device_revocations WHERE id=?",
-  cancelDeviceRevocations:"DELETE FROM device_revocations WHERE provider=? AND provider_user_id=?",
   upsertWellnessNight:`INSERT INTO wellness_nights(user_id,provider,${NIGHT_COLUMNS}) SELECT c.user_id,c.provider,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? ${OWNED} ON CONFLICT(user_id,provider,night_date) DO UPDATE SET ${keep(NIGHT_COLUMNS.replace("night_date,","").replace(",updated_at",""))},updated_at=excluded.updated_at`,
   upsertWellnessDay:`INSERT INTO wellness_days(user_id,provider,${DAY}) SELECT c.user_id,c.provider,?,?,?,?,?,?,?,? ${OWNED} ON CONFLICT(user_id,provider,day_date) DO UPDATE SET resting_hr=excluded.resting_hr,min_hr=excluded.min_hr,avg_hr=excluded.avg_hr,max_hr=excluded.max_hr,samples=excluded.samples,buckets_json=excluded.buckets_json,updated_at=excluded.updated_at`,
   upsertWellnessWorkout:`INSERT INTO wellness_workouts(user_id,provider,${WORKOUT}) SELECT c.user_id,c.provider,?,?,?,?,?,?,?,?,?,? ${OWNED} ON CONFLICT(user_id,provider,external_id) DO UPDATE SET started_at=excluded.started_at,local_date=excluded.local_date,duration_seconds=excluded.duration_seconds,sport=excluded.sport,calories=excluded.calories,hr_avg=excluded.hr_avg,hr_max=excluded.hr_max,cardio_load=excluded.cardio_load,updated_at=excluded.updated_at`,
@@ -151,7 +136,6 @@ const DEVICE_SQL=Object.freeze({
   wellnessDays:`SELECT ${DAY} FROM wellness_days WHERE user_id=? AND provider=? AND day_date>=? AND day_date<=? ORDER BY day_date`,
   wellnessWorkouts:`SELECT ${WORKOUT} FROM wellness_workouts WHERE user_id=? AND provider=? AND started_at>=? AND started_at<=? ORDER BY started_at`,
   deleteExpiredDeviceStates:"DELETE FROM device_connect_states WHERE expires_at<?",
-  deleteStaleDeviceRevocations:"DELETE FROM device_revocations WHERE created_at<?",
   deleteOldWellnessNights:"DELETE FROM wellness_nights WHERE night_date<?",
   deleteOldWellnessDays:"DELETE FROM wellness_days WHERE day_date<?",
   deleteOldWellnessWorkouts:"DELETE FROM wellness_workouts WHERE started_at<?",

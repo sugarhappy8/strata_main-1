@@ -120,8 +120,8 @@ test("connect state stays session-bound; V4's missing stable subject is handled 
   assert.equal((await complete(taker,(await authorize(taker,"code-zeta")).returnCookie)).status,200);
   assert.equal((await request("/api/devices/polar",owner,"DELETE",{})).data.disconnected,true);
   const database=new DatabaseSync(join(directory,"strata.sqlite"));try{
-    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM device_revocations").get().count,0);
-    assert.equal((await complete(owner,(await authorize(owner,"code-delta2")).returnCookie)).status,200);assert.equal(database.prepare("SELECT COUNT(*) AS count FROM device_revocations").get().count,0);
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='table' AND name='device_revocations'").get().count,0,"V4 keeps no deregistration queue");
+    assert.equal((await complete(owner,(await authorize(owner,"code-delta2")).returnCookie)).status,200);
   }finally{database.close();}
 });
 

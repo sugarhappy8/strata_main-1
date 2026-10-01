@@ -48,7 +48,6 @@ test("schema indexes match the exercised authentication, entitlement, community,
     const allIndexes=database.prepare("SELECT name FROM sqlite_schema WHERE type='index'").all().map((row)=>row.name);
     for (const unused of [
       "paddle_purchases_customer_id",
-      "discovery_trials_expires_at",
       "support_tickets_email"
     ]) assert.equal(allIndexes.includes(unused),false,`${unused} has no matching production query`);
   } finally {
@@ -64,7 +63,6 @@ test("the additive SQLite migration removes superseded write-only indexes",{conc
   for (const statement of SCHEMA) database.exec(statement);
   database.exec(`
     CREATE INDEX paddle_purchases_customer_id ON paddle_purchases(customer_id);
-    CREATE INDEX discovery_trials_expires_at ON discovery_trials(expires_at);
     CREATE INDEX support_tickets_email ON support_tickets(email,created_at DESC);
   `);
   database.close();
@@ -90,7 +88,6 @@ test("the additive SQLite migration removes superseded write-only indexes",{conc
     migrated.close();
     for (const removed of [
       "paddle_purchases_customer_id",
-      "discovery_trials_expires_at",
       "support_tickets_email"
     ]) assert.equal(indexes.includes(removed),false,removed);
   } finally {

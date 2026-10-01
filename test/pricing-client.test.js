@@ -9,14 +9,13 @@ const source=["pricing-logic.js","pricing-state.js","pricing-api.js","pricing-re
 const flush=async()=>{for(let i=0;i<5;i++)await new Promise(setImmediate);};
 const response=(status,data)=>({ok:status<400,status,json:async()=>data});
 function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{resolve=yes;reject=no;});return{promise,resolve,reject};}
-// legacyTrial: a member whose trial started before the free trial was retired.
-function runtime({legacyTrial=false,checkoutFailure=false,configFailure=false,userOverride=null,meResponse=null,checkoutResponse=null,search=""}={}){
+function runtime({checkoutFailure=false,configFailure=false,userOverride=null,meResponse=null,checkoutResponse=null,search=""}={}){
   const nodes=new Map(),listeners={},documentListeners={},checkout={};
   const node=id=>{
     if(!nodes.has(id))nodes.set(id,{hidden:false,disabled:false,textContent:"",innerHTML:"",attrs:{},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v;},focus(){},addEventListener(type,fn){this[type]=fn;}});
     return nodes.get(id);
   };
-  let accountUser=userOverride||{id:"member",discovery:{active:legacyTrial,accessType:legacyTrial?"trial":"none",trial:{eligible:false,active:legacyTrial,expiresAt:legacyTrial?Date.now()+3*86400000:null}}};
+  let accountUser=userOverride||{id:"member",discovery:{active:false,accessType:null,subscription:null}};
   let accountResponder=meResponse;
   const config={enabled:true,environment:"live",clientToken:"live_fixture",productId:`pro_${"a".repeat(26)}`,priceId:`pri_${"b".repeat(26)}`,price:{amount:"2.99",currency:"USD",interval:"month",frequency:1}};
   const document={visibilityState:"visible",getElementById:node,addEventListener(type,fn){documentListeners[type]=fn;}};
@@ -40,16 +39,14 @@ function runtime({legacyTrial=false,checkoutFailure=false,configFailure=false,us
     setAccountUser(user){accountResponder=null;accountUser=user;}
   };
 }
-for(const legacyTrial of [false,true]){
-  test(`checkout failures remain visible after render for ${legacyTrial?"members on an earlier trial":"members without Strata+"}`,async()=>{
-    const r=runtime({legacyTrial,checkoutFailure:true});await flush();
-    r.node("buyDiscovery").click();await flush();
-    assert.match(r.node("purchaseStatus").textContent,/Payment provider unavailable/);
-    assert.equal(r.node("purchaseStatus").attrs.role,"alert");
-    r.listeners.online();
-    assert.match(r.node("purchaseStatus").textContent,/Payment provider unavailable/);
-  });
-}
+test("checkout failures remain visible after render for members without Strata+",async()=>{
+  const r=runtime({checkoutFailure:true});await flush();
+  r.node("buyDiscovery").click();await flush();
+  assert.match(r.node("purchaseStatus").textContent,/Payment provider unavailable/);
+  assert.equal(r.node("purchaseStatus").attrs.role,"alert");
+  r.listeners.online();
+  assert.match(r.node("purchaseStatus").textContent,/Payment provider unavailable/);
+});
 test("an open checkout disables a second checkout and provider errors are announced",async()=>{
   const r=runtime();await flush();r.node("buyDiscovery").click();await flush();
   assert.equal(r.checkout.open,true);
@@ -61,7 +58,7 @@ test("an open checkout disables a second checkout and provider errors are announ
 });
 test("checkout completion cannot confirm access from a different signed-in account",async()=>{
   const r=runtime();await flush();r.node("buyDiscovery").click();await flush();
-  r.setAccountUser({id:"other-member",discovery:{active:true,accessType:"subscription",subscription:{id:"sub_other",active:true,status:"active"},trial:{eligible:false,active:false}}});
+  r.setAccountUser({id:"other-member",discovery:{active:true,accessType:"paid",subscription:{id:"sub_other",active:true,status:"active"}}});
   r.emitWindow("focus");await flush();
   r.checkout.event({name:"checkout.completed",data:{transaction_id:`txn_${"c".repeat(26)}`}});await flush();
   assert.match(r.node("purchaseStatus").textContent,/no longer signed in to that account/i);
@@ -71,7 +68,7 @@ test("checkout completion cannot confirm access from a different signed-in accou
 
 test("an open Paddle overlay closes when foreground identity changes",async()=>{
   const r=runtime();await flush();r.node("buyDiscovery").click();await flush();assert.equal(r.checkout.open,true);
-  r.setAccountUser({id:"other-member",discovery:{active:false,accessType:"none",trial:{eligible:false,active:false}}});
+  r.setAccountUser({id:"other-member",discovery:{active:false,accessType:null}});
   r.emitWindow("focus");await flush();
   assert.equal(r.checkout.open,false);assert.equal(r.checkout.closeCalls,1);
   assert.match(r.node("purchaseStatus").textContent,/checkout belongs to another signed-in session/i);
@@ -91,7 +88,7 @@ test("pricing never offers or requests the retired free trial",async()=>{
 test("a delayed checkout response stays pending for its initiator and cannot open for a switched account",async()=>{
   const delayed=deferred(),r=runtime({checkoutResponse:()=>delayed.promise});await flush();
   r.node("buyDiscovery").click();
-  r.setAccountUser({id:"other-member",discovery:{active:false,accessType:"none",trial:{eligible:false,active:false}}});
+  r.setAccountUser({id:"other-member",discovery:{active:false,accessType:null}});
   r.emitWindow("focus");await flush();
   delayed.resolve(response(200,{transactionId:`txn_${"c".repeat(26)}`}));await flush();
   assert.equal(r.checkout.open,undefined);
@@ -99,8 +96,8 @@ test("a delayed checkout response stays pending for its initiator and cannot ope
   assert.equal(r.node("checkAccess").hidden,false,"the A-owned checkout remains pending instead of becoming B's checkout");
 });
 
-test("pricing focus clears account UI and restores the same earlier-trial account with one paired recheck",async()=>{
-  const same=deferred(),member={id:"member",email:"member@example.test",discovery:{active:true,accessType:"trial",trial:{eligible:false,active:true,expiresAt:Date.now()+86400000}}};
+test("pricing focus clears account UI and restores the same canceling account with one paired recheck",async()=>{
+  const same=deferred(),member={id:"member",email:"member@example.test",discovery:{active:true,accessType:"paid",subscription:{id:"sub_cancel",active:true,status:"active",scheduledChange:{action:"cancel",effectiveAt:Date.now()+86400000},currentPeriodEndsAt:Date.now()+86400000}}};
   let calls=0;const responses=[response(200,{user:member,csrfToken:"csrf"}),same.promise];
   const r=runtime({meResponse:()=>{calls+=1;return responses.shift();}});await flush();
   assert.equal(r.node("openDiscovery").hidden,false);
@@ -112,8 +109,8 @@ test("pricing focus clears account UI and restores the same earlier-trial accoun
   same.resolve(response(200,{user:member,csrfToken:"csrf-next"}));await flush();
   assert.equal(r.node("purchaseSignup").hidden,true);
   assert.equal(r.node("openDiscovery").hidden,false);
-  assert.match(r.node("purchaseStatus").textContent,/trial ends[\s\S]*Subscribe any time to keep Strata\+/i);
-  assert.equal(r.node("buyDiscovery").hidden,false,"an earlier trial may subscribe before it ends");
+  assert.match(r.node("purchaseStatus").textContent,/remains active until[\s\S]*cancellation takes effect/i);
+  assert.equal(r.node("buyDiscovery").hidden,true,"an active subscription cannot buy a second one");
 });
 
 test("pricing persisted pageshow revalidates logout but ordinary pageshow does not",async()=>{
@@ -128,7 +125,7 @@ test("pricing ignores a stale initial identity after a newer focus account switc
   const stale=deferred(),fresh=deferred(),responses=[stale.promise,fresh.promise];
   const r=runtime({meResponse:()=>responses.shift()});await flush();
   r.emitWindow("focus");
-  fresh.resolve(response(200,{user:{id:"fresh",discovery:{active:false,accessType:"none",trial:{eligible:false,active:false}}},csrfToken:"fresh-csrf"}));await flush();
+  fresh.resolve(response(200,{user:{id:"fresh",discovery:{active:false,accessType:null}},csrfToken:"fresh-csrf"}));await flush();
   stale.resolve(response(200,{user:{id:"stale",discovery:{active:true,accessType:"paid"}},csrfToken:"stale-csrf"}));await flush();
   assert.equal(r.node("buyDiscovery").hidden,false);
   assert.equal(r.node("openDiscovery").hidden,true);
@@ -147,27 +144,23 @@ test("an unavailable checkout explains the problem without offering a trial",asy
   assert.equal(r.node("buyDiscovery").disabled,true);
   assert.match(r.node("purchaseStatus").textContent,/Checkout temporarily unavailable/);
   assert.doesNotMatch(r.node("purchaseStatus").textContent,/trial/i);
-  const earlierTrial=runtime({configFailure:true,legacyTrial:true});await flush();
-  assert.equal(earlierTrial.node("buyDiscovery").disabled,true);
-  assert.equal(earlierTrial.node("openDiscovery").hidden,false);
-  assert.match(earlierTrial.node("purchaseStatus").textContent,/trial ends[\s\S]*Checkout temporarily unavailable/);
 });
 test("paid members can see a concurrent complimentary grant and continued billing disclosure",async()=>{
   const expiresAt=Date.now()+7*86400000;
-  const user={id:"member",discovery:{active:true,accessType:"paid",adminGrant:{active:true,startedAt:Date.now(),expiresAt,revokedAt:null},trial:{eligible:false,active:false,expiresAt:null},subscription:{id:"sub_active",status:"active",active:true,currentPeriodEndsAt:Date.now()+30*86400000}}};
+  const user={id:"member",discovery:{active:true,accessType:"paid",adminGrant:{active:true,startedAt:Date.now(),expiresAt,revokedAt:null},subscription:{id:"sub_active",status:"active",active:true,currentPeriodEndsAt:Date.now()+30*86400000}}};
   const r=runtime({userOverride:user});await flush();
   assert.match(r.node("purchaseStatus").textContent,/complimentary Strata\+[\s\S]*monthly subscription remains separate/i);
   assert.equal(r.node("manageSubscription").hidden,false);
 });
 test("grant-only members are not told to manage nonexistent billing",async()=>{
-  const user={id:"member",discovery:{active:true,accessType:"grant",adminGrant:{active:true,startedAt:Date.now(),expiresAt:null,revokedAt:null},trial:{eligible:false,active:false,expiresAt:null},subscription:null}};
+  const user={id:"member",discovery:{active:true,accessType:"grant",adminGrant:{active:true,startedAt:Date.now(),expiresAt:null,revokedAt:null},subscription:null}};
   const r=runtime({userOverride:user});await flush();
   assert.match(r.node("purchaseStatus").textContent,/did not create a paid subscription/i);
   assert.doesNotMatch(r.node("purchaseStatus").textContent,/manage it from Account/i);
   assert.equal(r.node("manageSubscription").hidden,true);
 });
 test("lifetime members can see a concurrent complimentary grant",async()=>{
-  const user={id:"member",discovery:{active:true,accessType:"paid",adminGrant:{active:true,startedAt:Date.now(),expiresAt:Date.now()+7*86400000,revokedAt:null},trial:{eligible:false,active:false,expiresAt:null},subscription:null}};
+  const user={id:"member",discovery:{active:true,accessType:"paid",adminGrant:{active:true,startedAt:Date.now(),expiresAt:Date.now()+7*86400000,revokedAt:null},subscription:null}};
   const r=runtime({userOverride:user});await flush();
   assert.match(r.node("purchaseStatus").textContent,/grandfathered lifetime access remains separate/i);
   assert.equal(r.node("manageSubscription").hidden,true);

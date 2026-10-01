@@ -15,7 +15,6 @@ const EVENTS=Object.freeze([
   "workout_started",
   "workout_completed",
   "upgrade_viewed",
-  "trial_started",
   "checkout_opened",
   "upgrade_activated",
   "recommendation_feedback_useful",

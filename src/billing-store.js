@@ -69,8 +69,6 @@ function createLocalBillingMethods({db,statements,plainRow}){
   const checkoutRow=(row)=>/** @type {import("./domain-types").CheckoutClaimRow|null} */(plainRow(row));
   /** @param {unknown} row @returns {import("./domain-types").SubscriptionRow|null} */
   const subscriptionRow=(row)=>/** @type {import("./domain-types").SubscriptionRow|null} */(plainRow(row));
-  /** @param {unknown} row @returns {import("./domain-types").DiscoveryTrialRow|null} */
-  const trialRow=(row)=>/** @type {import("./domain-types").DiscoveryTrialRow|null} */(plainRow(row));
   /** @type {import("./domain-types").BillingAdapterMethods} */
   const methods={
     async pendingPurchasesForUser(userId){return Number(plainRow(statements.pendingPurchasesForUser.get(userId))?.pending_count||0);},
@@ -133,8 +131,7 @@ function createLocalBillingMethods({db,statements,plainRow}){
     async hasPaidDiscoveryAccess(userId,priceId=null,now=Date.now()){return Boolean(statements.hasDiscoveryAccess.get(now,userId,priceId,priceId));},
     async hasCurrentPaidDiscoveryAccess(userId,priceId,productId,now=Date.now()){return Boolean(statements.hasCurrentDiscoveryAccess.get(now,userId,priceId,productId));},
     async hasEntitledPaidDiscoveryAccess(userId,priceIds,productId,now=Date.now()){return Boolean(statements.hasEntitledDiscoveryAccess.get(now,userId,serializedPriceIds(priceIds),productId));},
-    async hasDiscoveryAccess(userId,priceId=null,now=Date.now()){return Boolean(statements.hasDiscoveryAccess.get(now,userId,priceId,priceId)||statements.activeDiscoveryTrial.get(userId,now)||statements.activeAdminGrant.get(userId,now,now));},
-    async discoveryTrial(userId){return trialRow(statements.discoveryTrial.get(userId));},
+    async hasDiscoveryAccess(userId,priceId=null,now=Date.now()){return Boolean(statements.hasDiscoveryAccess.get(now,userId,priceId,priceId)||statements.activeAdminGrant.get(userId,now,now));},
     async discoveryAccessSummary(userId,priceId=null,now=Date.now()){return accessSummary(plainRow(statements.discoveryAccessSummary.get(now,userId,priceId,priceId)));},
     async currentDiscoveryAccessSummary(userId,priceId,productId,now=Date.now()){return accessSummary(plainRow(statements.currentDiscoveryAccessSummary.get(now,priceId,productId,priceId,productId,userId)));},
     async entitledDiscoveryAccessSummary(userId,priceIds,productId,now=Date.now()){const prices=serializedPriceIds(priceIds);return accessSummary(plainRow(statements.entitledDiscoveryAccessSummary.get(now,prices,productId,prices,productId,userId)));},
@@ -164,8 +161,6 @@ function createTursoBillingMethods({client,first,run,all,plainRow}){
   const firstCheckout=(sql,args)=>/** @type {Promise<import("./domain-types").CheckoutClaimRow|null>} */(first(sql,args));
   /** @param {string} sql @param {unknown[]} args @returns {Promise<import("./domain-types").SubscriptionRow|null>} */
   const firstSubscription=(sql,args)=>/** @type {Promise<import("./domain-types").SubscriptionRow|null>} */(first(sql,args));
-  /** @param {string} sql @param {unknown[]} args @returns {Promise<import("./domain-types").DiscoveryTrialRow|null>} */
-  const firstTrial=(sql,args)=>/** @type {Promise<import("./domain-types").DiscoveryTrialRow|null>} */(first(sql,args));
   /** @param {import("./domain-types").JsonObject|null} row @returns {import("./domain-types").PurchaseRow|null} */
   const purchaseRow=(row)=>/** @type {import("./domain-types").PurchaseRow|null} */(row);
   /** @param {string} sql @param {unknown[]} args @returns {Promise<import("./domain-types").PurchaseRow[]>} */
@@ -221,10 +216,9 @@ function createTursoBillingMethods({client,first,run,all,plainRow}){
     async hasCurrentPaidDiscoveryAccess(userId,priceId,productId,now=Date.now()){return Boolean(await first(BILLING_SQL.hasCurrentDiscoveryAccess,[now,userId,priceId,productId]));},
     async hasEntitledPaidDiscoveryAccess(userId,priceIds,productId,now=Date.now()){return Boolean(await first(BILLING_SQL.hasEntitledDiscoveryAccess,[now,userId,serializedPriceIds(priceIds),productId]));},
     async hasDiscoveryAccess(userId,priceId=null,now=Date.now()){
-      const [paid,trial,grant]=await Promise.all([first(BILLING_SQL.hasDiscoveryAccess,[now,userId,priceId,priceId]),first(BILLING_SQL.activeDiscoveryTrial,[userId,now]),first(ACCESS_CONTROLS_SQL.activeAdminGrant,[userId,now,now])]);
-      return Boolean(paid||trial||grant);
+      const [paid,grant]=await Promise.all([first(BILLING_SQL.hasDiscoveryAccess,[now,userId,priceId,priceId]),first(ACCESS_CONTROLS_SQL.activeAdminGrant,[userId,now,now])]);
+      return Boolean(paid||grant);
     },
-    discoveryTrial:(userId)=>firstTrial(BILLING_SQL.discoveryTrial,[userId]),
     async discoveryAccessSummary(userId,priceId=null,now=Date.now()){return accessSummary(await first(BILLING_SQL.discoveryAccessSummary,[now,userId,priceId,priceId]));},
     async currentDiscoveryAccessSummary(userId,priceId,productId,now=Date.now()){return accessSummary(await first(BILLING_SQL.currentDiscoveryAccessSummary,[now,priceId,productId,priceId,productId,userId]));},
     async entitledDiscoveryAccessSummary(userId,priceIds,productId,now=Date.now()){const prices=serializedPriceIds(priceIds);return accessSummary(await first(BILLING_SQL.entitledDiscoveryAccessSummary,[now,prices,productId,prices,productId,userId]));},

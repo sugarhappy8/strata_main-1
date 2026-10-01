@@ -12,7 +12,7 @@ const RAW=tokenKey(randomBytes(32).toString("base64")),KEYS=[{id:keyId(RAW),key:
 const NOW=Date.parse("2026-09-28T09:00:00Z"),HOUR=60*60*1000,DAY=24*HOUR;
 const credentials=(overrides={})=>({version:4,accessToken:"member-access",refreshToken:"member-refresh",expiresAt:NOW+HOUR,scopes:[...POLAR_SCOPES],...overrides});
 
-function fakeStore({due=[],revocations=[]}={}){
+function fakeStore({due=[]}={}){
   const calls=[];
   const store={calls,nights:[],days:[],workouts:[],synced:[],tokens:[],
     async upsertWellnessNight(owner,night){store.nights.push({owner,night});},
@@ -21,8 +21,6 @@ function fakeStore({due=[],revocations=[]}={}){
     async updateDeviceToken(record){store.tokens.push(record);return true;},
     async recordDeviceSync(record){store.synced.push(record);return true;},
     async dueDeviceConnections(now,limit){calls.push(["due",now,limit]);return due.splice(0);},
-    async dueDeviceRevocations(now,limit){calls.push(["revocations",now,limit]);return revocations.splice(0);},
-    async deleteDeviceRevocation(id){calls.push(["deleteRevocation",id]);},
     async deleteExpiredDeviceData(now){calls.push(["cleanup",now]);}
   };
   return store;
@@ -96,15 +94,9 @@ test("one connection never syncs twice at the same time",async()=>{
   const first=sync.syncConnection(connection());assert.deepEqual(await sync.syncConnection(connection()),{status:"busy"});release();assert.deepEqual(await first,{status:"synced"});assert.deepEqual(await sync.syncConnection(connection()),{status:"synced"});
 });
 
-test("legacy V3 revocation rows are discarded because V4 has no deregistration endpoint",async()=>{
-  const revocations=[{id:"old-1",provider:"polar"},{id:"old-2",provider:"polar"}],store=fakeStore({revocations}),events=[];
-  await worker({store,logger:{info:(name)=>events.push(name)}}).processRevocations();
-  assert.deepEqual(store.calls.filter((call)=>call[0]!=="revocations"),[["deleteRevocation","old-1"],["deleteRevocation","old-2"]]);assert.deepEqual(events,["device.legacy_revocation_discarded","device.legacy_revocation_discarded"]);
-});
-
-test("a tick discards legacy revocations, syncs due connections, and cleans up hourly",async()=>{
+test("a tick syncs due connections and cleans up hourly",async()=>{
   let time=NOW;const store=fakeStore({due:[connection()]}),sync=worker({store,now:()=>time});await Promise.all([sync.tick(),sync.tick()]);
-  assert.deepEqual(store.calls.map((call)=>call[0]),["revocations","due","cleanup"]);assert.equal(store.synced.length,1);await sync.tick();assert.equal(store.calls.filter((call)=>call[0]==="cleanup").length,1);
+  assert.deepEqual(store.calls.map((call)=>call[0]),["due","cleanup"]);assert.equal(store.synced.length,1);await sync.tick();assert.equal(store.calls.filter((call)=>call[0]==="cleanup").length,1);
   time+=HOUR;await sync.tick();assert.equal(store.calls.filter((call)=>call[0]==="cleanup").length,2);
 });
 
@@ -112,6 +104,6 @@ test("the sync loop starts once, runs soon after start, and stops cleanly",async
   const store=fakeStore(),errors=[],sync=createDeviceSync({store,polar:fakePolar(),keys:KEYS,hasAccess:async()=>true,intervalMs:20,logger:{error:(name)=>errors.push(name)}});
   sync.start();sync.start();await new Promise((resolve)=>setTimeout(resolve,120));sync.stop();sync.stop();const runs=store.calls.filter((call)=>call[0]==="due").length;assert.ok(runs>=2);
   await new Promise((resolve)=>setTimeout(resolve,60));assert.equal(store.calls.filter((call)=>call[0]==="due").length,runs);
-  const failing=createDeviceSync({store:{...fakeStore(),dueDeviceRevocations:async()=>{throw new Error("database offline");}},polar:fakePolar(),keys:KEYS,hasAccess:async()=>true,intervalMs:20,logger:{error:(name)=>errors.push(name)}});
+  const failing=createDeviceSync({store:{...fakeStore(),dueDeviceConnections:async()=>{throw new Error("database offline");}},polar:fakePolar(),keys:KEYS,hasAccess:async()=>true,intervalMs:20,logger:{error:(name)=>errors.push(name)}});
   failing.start();await new Promise((resolve)=>setTimeout(resolve,60));failing.stop();assert.ok(errors.includes("device.sync_loop_failed"));
 });

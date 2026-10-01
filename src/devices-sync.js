@@ -74,25 +74,17 @@ function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,i
     }finally{running.delete(key);}
   }
 
-  /** V4 has no remote deregistration API; discard any pending V3 revocations left by an older deployment. */
-  async function processRevocations(){
-    for(const row of await store.dueDeviceRevocations(now(),batchSize)){
-      await store.deleteDeviceRevocation(String(row.id));logger?.info?.("device.legacy_revocation_discarded",{provider:String(row.provider)});
-    }
-  }
-
   async function tick(){
     if(ticking)return;
     ticking=true;
     try{
-      await processRevocations();
       for(const row of await store.dueDeviceConnections(now(),batchSize))await syncConnection(row);
       if(now()-lastCleanup>=60*60*1000){lastCleanup=now();await store.deleteExpiredDeviceData(now());}
     }finally{ticking=false;}
   }
 
   return {
-    syncConnection,tick,processRevocations,
+    syncConnection,tick,
     start(){
       if(timer)return;
       const run=()=>void tick().catch((error)=>logger?.error?.("device.sync_loop_failed",{error}));

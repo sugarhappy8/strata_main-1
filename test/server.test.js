@@ -11,8 +11,7 @@ const PROJECT_ROOT=join(__dirname,"..");
 const RELEASE=require(join(PROJECT_ROOT,"package.json"));
 const BUILD=RELEASE.strataBuild||RELEASE.version;
 const BUILD_LABEL=new RegExp(`Build ${BUILD.replace(/\./g,"\\.")}`);
-const {STRATA_PLUS_TRIAL_MS}=require("../src/payments");
-const {grantStrataPlus,insertLegacyTrial}=require("./support/strata-plus-access");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 
 let server;
 let runtimeDir;
@@ -193,7 +192,7 @@ test("creates an account with a private default plan",async()=>{
   assert.ok(csrfToken);
 
   const me=await request("/api/me",{headers:{Cookie:signup.cookie}});
-  assert.equal(me.data.user.discovery.trial.eligible,false,"no account can start the retired free trial");
+  assert.equal("trial" in me.data.user.discovery,false,"the account payload no longer carries trial state");
   const retiredTrial=await request("/api/discovery/trial",{method:"POST",headers:{Cookie:signup.cookie,Origin:BASE,"Content-Type":"application/json","X-CSRF-Token":me.data.csrfToken},body:"{}"});
   assert.equal(retiredTrial.response.status,410);
   assert.equal(retiredTrial.data.code,"TRIAL_RETIRED");
@@ -301,39 +300,6 @@ test("creates an account with a private default plan",async()=>{
   assert.equal(restored.data.plan.days.Monday.length,1);
   assert.equal(restored.data.plan.days.Tuesday.length,1);
   assert.equal(restored.data.plan.days.Monday[0].sets,3);
-});
-
-test("a trial started before the trial was retired keeps its bounded window and cannot restart",async()=>{
-  const signup=await request("/api/signup",{method:"POST",headers:{Origin:BASE,"Content-Type":"application/json"},body:JSON.stringify({name:"Trial Boundary",email:"trial-boundary@example.test",password:"trial-boundary-password-123"})});
-  assert.equal(signup.response.status,201);
-  const me=await request("/api/me",{headers:{Cookie:signup.cookie}});
-  const headers={Cookie:signup.cookie,Origin:BASE,"Content-Type":"application/json","X-CSRF-Token":me.data.csrfToken};
-  const startedAt=Date.now()-60_000;
-  insertLegacyTrial(runtimeDir,signup.data.user.id,{startedAt,expiresAt:startedAt+10*24*60*60*1000});
-  const legacyAccount=await request("/api/me",{headers:{Cookie:signup.cookie}});
-  assert.equal(legacyAccount.data.user.discovery.active,true);
-  assert.equal(legacyAccount.data.user.discovery.accessType,"trial");
-  assert.equal(legacyAccount.data.user.discovery.trial.eligible,false);
-  assert.equal(legacyAccount.data.user.discovery.trial.expiresAt,startedAt+STRATA_PLUS_TRIAL_MS,"legacy longer rows are bounded by the old seven-day maximum");
-  assert.equal((await request("/api/discovery",{headers:{Cookie:signup.cookie}})).response.status,200);
-
-  const expiredAt=Date.now()-1_000,expiredStart=expiredAt-STRATA_PLUS_TRIAL_MS;
-  const database=new DatabaseSync(join(runtimeDir,"strata.sqlite"));
-  try{database.prepare("UPDATE discovery_trials SET started_at=?,expires_at=? WHERE user_id=?").run(expiredStart,expiredAt,signup.data.user.id);}finally{database.close();}
-  const expiredAccount=await request("/api/me",{headers:{Cookie:signup.cookie}});
-  assert.equal(expiredAccount.data.user.discovery.active,false);
-  assert.equal(expiredAccount.data.user.discovery.trial.active,false);
-  const denied=await request("/api/discovery",{headers:{Cookie:signup.cookie}});
-  assert.equal(denied.response.status,402,"server access closes as soon as the stored expiry passes");
-  const replay=await request("/api/discovery/trial",{method:"POST",headers,body:"{}"});
-  assert.equal(replay.response.status,410);
-  assert.equal(replay.data.code,"TRIAL_RETIRED");
-  const afterReplay=new DatabaseSync(join(runtimeDir,"strata.sqlite"),{readOnly:true});
-  try{
-    const stored=afterReplay.prepare("SELECT started_at,expires_at FROM discovery_trials WHERE user_id=?").get(signup.data.user.id);
-    assert.equal(stored.started_at,expiredStart,"a replay cannot move the original start");
-    assert.equal(stored.expires_at,expiredAt,"a replay cannot extend access");
-  }finally{afterReplay.close();}
 });
 
 test("rejects incorrect passwords and cross-origin writes",async()=>{

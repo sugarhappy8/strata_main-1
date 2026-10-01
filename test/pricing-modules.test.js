@@ -16,8 +16,8 @@ test("pricing pure logic validates only the configured recurring catalog boundar
     {priceId:Logic.RETIRED_ONE_TIME_PRICE_ID},{price:{...valid.price,amount:"9.99"}}
   ])assert.throws(()=>Logic.validateConfig({...valid,...patch}));
   assert.equal(Logic.checkoutTransactionId({transaction_id:"txn_fixture"}),"txn_fixture");
-  assert.equal(Logic.paidAccessReady({discovery:{accessType:"trial",subscription:null}}),false);
-  assert.equal(Logic.paidAccessReady({discovery:{accessType:"subscription",subscription:null}}),true);
+  assert.equal(Logic.paidAccessReady({discovery:{accessType:"grant",subscription:null}}),false);
+  assert.equal(Logic.paidAccessReady({discovery:{accessType:"paid",subscription:null}}),true);
 });
 
 test("pricing API normalizes transport failures and rejects malformed success bodies",async()=>{
@@ -34,7 +34,7 @@ test("pricing rendering gives a member without Strata+ a single subscribe action
   const nodes={panel:makeNode(),statusNode:makeNode(),signupLink:makeNode(),loginLink:makeNode(),buyButton:makeNode(),openLink:makeNode(),manageLink:makeNode(),checkButton:makeNode()};
   const state=State.createState();
   state.busy=false;state.paddleReady=true;state.config={environment:"live"};
-  state.user={id:"member",discovery:{active:false,accessType:"none",trial:{eligible:false,active:false},subscription:null}};
+  state.user={id:"member",discovery:{active:false,accessType:null,subscription:null}};
   const renderer=Render.createRenderer({state,nodes,logic:Logic,navigatorImpl:{onLine:true},locationImpl:{search:""},frame:callback=>callback()});
   renderer.renderPurchaseState();
   assert.equal(nodes.buyButton.hidden,false);

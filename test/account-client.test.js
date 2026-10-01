@@ -378,13 +378,8 @@ test("signed-in dashboard distinguishes access and plan states with a useful nex
     },
     {
       name:"grandfathered lifetime account",planCount:0,workoutDays:0,
-      discovery:{active:true,accessType:"lifetime",pendingPurchaseCount:0,subscription:null},
+      discovery:{active:true,accessType:"paid",pendingPurchaseCount:0,subscription:null},
       access:"Lifetime",detail:/grandfathered · no renewal/i,primary:"Build your week",href:/^\/onboarding\.html$/,discoveryAction:"Open Strata+ studio →",billing:/prior lifetime purchase remains active/i,badge:"Grandfathered",manage:false
-    },
-    {
-      name:"trial account without a week",planCount:0,workoutDays:0,
-      discovery:{active:true,accessType:"trial",pendingPurchaseCount:0,trial:{expiresAt:Date.now()+25*60000}},
-      access:"Trial",detail:/25 min remaining/i,primary:"Build your week",href:/^\/onboarding\.html$/,discoveryAction:"Open Strata+ studio →",billing:null
     },
     {
       name:"scheduled cancellation",planCount:0,workoutDays:0,

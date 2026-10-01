@@ -19,7 +19,6 @@ const {
   currentPublicPrice,exactCurrentCheckoutPrice,subscriptionCatalogTransition
 }=require("./paddle-catalog");
 
-const STRATA_PLUS_TRIAL_MS=7*24*60*60*1000;
 const LIVE_API_BASE="https://api.paddle.com";
 const SANDBOX_API_BASE="https://sandbox-api.paddle.com";
 const TRANSACTION_STATUSES=new Set(["draft","ready","billed","paid","completed","canceled","past_due"]);
@@ -384,7 +383,6 @@ function fullRevocationFromAdjustment(data) {
 module.exports={
   DEFAULT_PRODUCT_ID,
   DEFAULT_PRICE_ID,
-  STRATA_PLUS_TRIAL_MS,
   LIVE_API_BASE,
   SANDBOX_API_BASE,
   getPaymentConfig,

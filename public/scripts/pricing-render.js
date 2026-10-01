@@ -28,13 +28,11 @@
       const signedIn=Boolean(state.user?.id);
       const active=logic.discoveryIsActive(state.user);
       const subscription=logic.subscriptionFor(state.user),subscriptionStatus=String(subscription?.status||"");
-      // The free trial is retired; a trial started before then still runs to its recorded end and may subscribe early.
-      const legacyTrial=active&&state.user?.discovery?.accessType==="trial"?state.user.discovery.trial:null;
-      const grandfathered=active&&!subscription&&["lifetime","paid"].includes(String(state.user?.discovery?.accessType||""));
+      const grandfathered=active&&!subscription&&state.user?.discovery?.accessType==="paid";
       const online=navigatorImpl.onLine!==false;
       const checkoutReady=Boolean(state.config&&!state.configError&&state.paddleReady&&online);
       const paused=subscriptionStatus==="paused",canceled=subscriptionStatus==="canceled";
-      const canSubscribe=signedIn&&(!active||Boolean(legacyTrial))&&!paused;
+      const canSubscribe=signedIn&&!active&&!paused;
       const checkoutBlocked=state.user?.discovery?.checkoutBlocked===true;
       const checkoutAccountChanged=Boolean(state.currentCheckoutUserId)&&String(state.user?.id||"")!==state.currentCheckoutUserId;
 
@@ -68,10 +66,7 @@
               :"It did not create a paid subscription.";
           setStatus(`You have complimentary Strata+ ${grant?.expiresAt==null?"until an administrator revokes it":`until ${new Date(grant.expiresAt).toLocaleString([], {dateStyle:"medium",timeStyle:"short"})}`}. This grant never charges you. ${coexistence}`,"good");return;
         }
-        if(legacyTrial&&!subscription){
-          const expiry=new Date(legacyTrial.expiresAt).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
-          setStatus(`Your Strata+ trial ends ${expiry} and never charges you. Subscribe any time to keep Strata+ after it ends.${state.configError?` ${state.configError}`:""}`,state.configError?"warn":"good");
-        }else if(grandfathered)setStatus("Your prior lifetime Strata+ purchase is grandfathered. It stays active with no monthly renewal or recurring charge.","good");
+        if(grandfathered)setStatus("Your prior lifetime Strata+ purchase is grandfathered. It stays active with no monthly renewal or recurring charge.","good");
         else if(subscription?.scheduledChange?.action==="cancel")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its cancellation takes effect. It will not renew after that date.`,"warn");
         else if(subscription?.scheduledChange?.action==="pause")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its scheduled pause takes effect and paid access stops.`,"warn");
         else if(subscription?.pastDue||subscriptionStatus==="past_due")setStatus("Your monthly subscription is past due. Strata+ remains available for now; update your payment method from Account to avoid interruption.","warn");

@@ -72,7 +72,7 @@
         suspendedUsersStat:[accounts,["suspended","suspendedUsers","suspended_users"]],activeSessionsStat:[accounts,["activeSessions","active_sessions"]],
         pendingPaymentsStat:[discovery,["pendingPayments","pending_payments"]],pendingDeletionsStat:[support,["pendingDeletions","pending_deletions"]],
         firstWorkoutAccountsStat:[activation,["firstWorkoutAccounts","first_workout_users"]],secondWorkoutAccountsStat:[activation,["secondWorkoutAccounts","second_workout_users"]],
-        dayEightReturnAccountsStat:[activation,["dayEightReturnAccounts","day_eight_return_users"]],trialAccountsStat:[activation,["trialAccounts","trial_users"]],
+        dayEightReturnAccountsStat:[activation,["dayEightReturnAccounts","day_eight_return_users"]],
         paidAccountsStat:[activation,["paidAccounts","paid_users"]],renewedSubscriptionsStat:[activation,["renewedSubscriptions","renewed_subscriptions"]]
       };
       for(const [id,[source,keys]] of Object.entries(values))el(id).textContent=overviewNumber(source,keys);

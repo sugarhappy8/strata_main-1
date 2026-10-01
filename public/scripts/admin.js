@@ -24,7 +24,7 @@
     syncDialogLock();clearPrivateData();
     el("grantFields").hidden=true;updateGrantFields();
     for(const id of ["refreshOverview","userSearchButton","refreshSupport","refreshAudit","submitAction","saveSupportUpdate"])el(id).disabled=false;
-    for(const id of ["totalUsersStat","verifiedUsersStat","discoveryUsersStat","openSupportStat","suspendedUsersStat","activeSessionsStat","pendingPaymentsStat","pendingDeletionsStat","firstWorkoutAccountsStat","secondWorkoutAccountsStat","dayEightReturnAccountsStat","trialAccountsStat","paidAccountsStat","renewedSubscriptionsStat"])el(id).textContent="—";
+    for(const id of ["totalUsersStat","verifiedUsersStat","discoveryUsersStat","openSupportStat","suspendedUsersStat","activeSessionsStat","pendingPaymentsStat","pendingDeletionsStat","firstWorkoutAccountsStat","secondWorkoutAccountsStat","dayEightReturnAccountsStat","paidAccountsStat","renewedSubscriptionsStat"])el(id).textContent="—";
   }
 
   function lockPrivateView(message){

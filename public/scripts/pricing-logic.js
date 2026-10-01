@@ -14,7 +14,7 @@
     const subscription=user?.discovery?.subscription;
     return subscription&&typeof subscription==="object"&&subscription.id?subscription:null;
   }
-  function paidAccessType(user){return ["subscription","lifetime","paid"].includes(String(user?.discovery?.accessType||""));}
+  function paidAccessType(user){return user?.discovery?.accessType==="paid";}
   function paidAccessReady(user){return subscriptionFor(user)?.active===true||paidAccessType(user);}
   function billingDate(value){
     const timestamp=Number(value),date=new Date(timestamp);

@@ -24,7 +24,6 @@
   function timestamp(value){const numeric=Number(value);return Number.isFinite(numeric)&&numeric>0?numeric:0;}
   function entitlementBoundary(user){
     const discovery=user?.discovery;if(discovery?.active!==true)return 0;
-    if(discovery.accessType==="trial")return timestamp(discovery.trial?.expiresAt)||-1;
     if(discovery.accessType==="grant")return discovery.adminGrant?.expiresAt===null?0:timestamp(discovery.adminGrant?.expiresAt)||-1;
     const subscription=discovery.subscription;if(!subscription)return 0;
     if(subscription.active===false)return 0;

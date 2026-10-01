@@ -68,7 +68,7 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/http.js` | Security headers, JSON/redirect helpers, body limits and parsing, compression negotiation, and response semantics. |
 | `src/observability.js` | Structured JSON request logs, validated or generated request IDs, bounded fields, and defensive redaction. |
 | `src/email.js` | Browser-safe email configuration plus privately retained Resend credentials, HMAC digests, address masking, and transactional message delivery. |
-| `src/billing.js` | Checkout, entitlement, subscription, portal, webhook, and reconciliation-service composition, plus the retired trial route and legacy trial windows. |
+| `src/billing.js` | Checkout, entitlement, subscription, portal, webhook, and reconciliation-service composition, plus the retired trial route. |
 | `src/checkout-reconciliation.js` | Validated unfinished-checkout closure, settlement recovery, and deletion-safety reconciliation. |
 | `src/payments.js` | Browser-safe Paddle configuration, privately retained server credentials, and provider transaction orchestration. |
 | `src/paddle-catalog.js` | Deployment catalog and credential validation, bounded legacy recurring-price parsing, exact current checkout-price identity, and allowed subscription catalog direction. |
@@ -232,7 +232,7 @@ Add an index only for a demonstrated high-frequency lookup, join, ordering, or c
 7. Duplicate webhook event IDs return an idempotent replay outcome, and stale subscription events cannot regress newer state.
 8. Later ordered transaction events update pending state without overriding a terminal completion. Applicable adjustment events are upserted and may revoke the corresponding purchase.
 
-STRATA no longer offers a free trial. `POST /api/discovery/trial` answers `410 TRIAL_RETIRED`, the store has no way to create a trial row, and `/api/me` reports `trial.eligible:false` for every account. A trial started before Build 8.9.0 still grants access until its recorded expiry, bounded by the old seven-day maximum, and never converts into a subscription. A previously completed, unrevoked one-time lifetime purchase remains valid without requiring or fabricating a monthly subscription row.
+STRATA has no free trial. `POST /api/discovery/trial` answers `410 TRIAL_RETIRED` for installed apps from earlier builds, the store has no trial table, and `/api/me` carries no trial state. Build 9 archived the last legacy trial rows under `archive_discovery_trials` (migration `008-build9-retired-tables`); they grant nothing. A previously completed, unrevoked one-time lifetime purchase remains valid without requiring or fabricating a monthly subscription row.
 
 Checkout recovery is bounded and validates every provider response, pagination link, and durable account reference. Account deletion reconciles or blocks unsettled checkout work so a late webhook cannot recreate access for a deleted user.
 

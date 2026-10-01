@@ -14,7 +14,6 @@
     "workout_started",
     "workout_completed",
     "upgrade_viewed",
-    "trial_started",
     "checkout_opened",
     "upgrade_activated"
   ]);
@@ -38,7 +37,6 @@
     workout_started:"Workout started",
     workout_completed:"Workout completed",
     upgrade_viewed:"Strata+ access viewed",
-    trial_started:"Strata+ trial started",
     checkout_opened:"Secure checkout opened",
     upgrade_activated:"Paid Strata+ access activated"
   });

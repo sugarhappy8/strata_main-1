@@ -116,7 +116,7 @@
 
   function grandfatheredAccess(user){
     const discovery=user?.discovery||{},accessType=String(discovery.accessType||"");
-    return discovery.active===true&&!subscriptionFor(user)&&["lifetime","paid"].includes(accessType);
+    return discovery.active===true&&!subscriptionFor(user)&&accessType==="paid";
   }
 
   function billingDate(value){
@@ -124,19 +124,12 @@
     return Number.isFinite(timestamp)&&timestamp>0&&!Number.isNaN(date.getTime())?new Intl.DateTimeFormat(undefined,{dateStyle:"medium"}).format(date):"the date Paddle shows";
   }
 
-  function accountAccessSummary(user,pending=false,now=Date.now()){
+  function accountAccessSummary(user,pending=false){
     const discovery=user?.discovery||{},subscription=subscriptionFor(user),status=String(subscription?.status||"");
-    // The free trial is retired; only a trial started before then can still be running.
-    const trialActive=discovery.active===true&&discovery.accessType==="trial";
     if(discovery.adminGrant?.active===true){
       const grant=discovery.adminGrant;
       const coexistence=subscription?"Your existing monthly subscription remains separate and is not canceled by this grant; review its billing state below.":grandfatheredAccess(user)?"Your grandfathered lifetime access remains separate and does not renew.":"It did not create a paid subscription.";
       return{state:"Complimentary",detail:grant.expiresAt==null?"Until revoked":`Until ${billingDate(grant.expiresAt)}`,message:`An administrator granted you free Strata+ access. This grant never renews or charges you. ${coexistence}`};
-    }
-    if(trialActive){
-      const expiresAt=Number(discovery.trial?.expiresAt),remaining=Math.max(0,expiresAt-now);
-      const detail=remaining>=86400000?`${Math.floor(remaining/86400000)}d ${Math.floor(remaining%86400000/3600000)}h remaining`:remaining>=3600000?`${Math.floor(remaining/3600000)}h ${Math.floor(remaining%3600000/60000)}m remaining`:remaining>=60000?`${Math.ceil(remaining/60000)} min remaining`:`${Math.ceil(remaining/1000)} sec remaining`;
-      return{state:"Trial",detail,message:"Your trial ends automatically and never charges you. Subscribe from Pricing to keep Strata+ after it ends."};
     }
     if(subscription){
       if(status==="paused")return{state:"Paused",detail:"Paid access inactive",message:"Your monthly subscription is paused and Strata+ paid access is inactive. Manage it in Paddle to review the available next steps."};
