@@ -26,7 +26,7 @@
     if(!state.recheckAccountId)clearComparison(state);
   }
   function setAccount(state,user,{verifiedAt=Date.now()}={}){
-    const next=user||null,nextId=accountId(next),preserve=Boolean(state.recheckAccountId)&&state.recheckAccountId===nextId&&next?.discovery?.active===true;
+    const next=user||null,nextId=accountId(next),preserve=Boolean(state.recheckAccountId)&&state.recheckAccountId===nextId&&logic.hasPlus(next);
     state.user=next;state.accountStatus=next?"authenticated":"anonymous";state.accountVerifiedAt=next?Number(verifiedAt)||Date.now():0;state.recheckAccountId=null;
     if(!preserve)clearComparison(state);
   }

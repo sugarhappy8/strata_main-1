@@ -1,9 +1,10 @@
-/* global module */
+/* global module, require */
 (function(root,factory){
-  const api=factory();
+  const entitlements=typeof module==="object"&&module.exports?require("./entitlements"):root.StrataEntitlements;
+  const api=factory(entitlements);
   if(typeof module==="object"&&module.exports)module.exports=api;
   root.StrataHomeLogic=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+})(typeof globalThis!=="undefined"?globalThis:this,function(entitlements){
   "use strict";
 
   const GROUPS={
@@ -96,7 +97,8 @@
     return current;
   }
 
-  function canCompareExercises(state){return state?.accountStatus==="authenticated"&&state?.user?.discovery?.active===true;}
+  function hasPlus(user){return entitlements.can(user,"plus.studio");}
+  function canCompareExercises(state){return state?.accountStatus==="authenticated"&&entitlements.can(state?.user,"plus.compare");}
   function comparisonAccessIsFresh(state,now=Date.now()){
     const verifiedAt=Number(state?.accountVerifiedAt),age=Number(now)-verifiedAt;
     return canCompareExercises(state)&&Number.isFinite(verifiedAt)&&verifiedAt>0&&Number.isFinite(age)&&age>=0&&age<=COMPARISON_ACCESS_MAX_AGE_MS;
@@ -112,6 +114,6 @@
 
   return{
     GROUPS,GROUP_ORDER,METRIC_WEIGHTS,METRIC_LABELS,PLAN_DAYS,GUEST_PLAN_KEY,PREVIEW_STARTERS,COMPARISON_ACCESS_MAX_AGE_MS,
-    adjustmentLabel,canCompareExercises,comparisonAccessIsFresh,equipmentOptions,escapeHtml,filterExercises,guestPlanCount,nextGroupForKey,normalizeCatalog,normalizeExercise,plannerUrl,previewProfile,previewStarter,toggleComparison,validPreviewGroup
+    adjustmentLabel,canCompareExercises,comparisonAccessIsFresh,equipmentOptions,escapeHtml,filterExercises,guestPlanCount,hasPlus,nextGroupForKey,normalizeCatalog,normalizeExercise,plannerUrl,previewProfile,previewStarter,toggleComparison,validPreviewGroup
   };
 });

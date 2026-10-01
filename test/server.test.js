@@ -193,11 +193,15 @@ test("creates an account with a private default plan",async()=>{
 
   const me=await request("/api/me",{headers:{Cookie:signup.cookie}});
   assert.equal("trial" in me.data.user.discovery,false,"the account payload no longer carries trial state");
+  assert.equal(me.data.user.capabilities["plan.week"],true,"the free planner is a capability every account has");
+  assert.equal(me.data.user.capabilities["plus.studio"],false,"Strata+ capabilities are off without access");
   const retiredTrial=await request("/api/discovery/trial",{method:"POST",headers:{Cookie:signup.cookie,Origin:BASE,"Content-Type":"application/json","X-CSRF-Token":me.data.csrfToken},body:"{}"});
   assert.equal(retiredTrial.response.status,410);
   assert.equal(retiredTrial.data.code,"TRIAL_RETIRED");
   assert.equal((await request("/api/me",{headers:{Cookie:signup.cookie}})).data.user.discovery.active,false,"the retired trial grants nothing");
   grantStrataPlus(runtimeDir,signup.data.user.id);
+  const grantedMe=await request("/api/me",{headers:{Cookie:signup.cookie}});
+  assert.deepEqual(Object.entries(grantedMe.data.user.capabilities).filter(([,allowed])=>!allowed),[],"a grant switches on every Strata+ capability");
   const grantedDiscovery=await request("/api/discovery",{headers:{Cookie:signup.cookie}});
   assert.equal(grantedDiscovery.response.status,200);
 

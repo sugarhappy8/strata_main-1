@@ -332,7 +332,7 @@ test("Strata+ clears private state before focus and visibility account revalidat
   assert.match(script,/identity\.user\?\.discovery\?\.active!==true/);
   assert.match(script,/async function revalidateMemberWorkspaceWhenVisible\(\)\{[\s\S]*?clearPrivateWorkspace\(\);[\s\S]*?await init\(\)/);
   assert.match(script,/main\.inert=true;main\.style\.visibility="hidden"/,"the private view is hidden, not cleared, while the session is re-checked");
-  assert.match(script,/String\(identity\.csrfToken\|\|""\)===state\.csrfToken&&identity\.user\?\.discovery\?\.active===true\)\{[^}]*revealPrivateWorkspace\(\)/,"only the same session with active access gets its view back");
+  assert.match(script,/String\(identity\.csrfToken\|\|""\)===state\.csrfToken&&globalThis\.StrataEntitlements\.can\(identity\.user,"plus\.studio"\)\)\{[^}]*revealPrivateWorkspace\(\)/,"only the same session with active access gets its view back");
   assert.match(script,/loadMemberDashboard\(generation,\{keepForms:true\}\)/);
   assert.match(script,/if\(training&&!keepForms\)/,"a background refresh never rewrites the training-block form");
   assert.match(script,/Unsaved changes stay in this tab until STRATA confirms your account\./);

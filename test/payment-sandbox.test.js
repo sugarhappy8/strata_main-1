@@ -85,7 +85,7 @@ async function runPricing(config,{environmentApi=true,user={id:"u-1",email:"memb
   const context={document:{getElementById:node},navigator:{onLine:true},location:{search:""},window:{addEventListener(){}},
     URLSearchParams,requestAnimationFrame:fn=>fn(),Paddle:paddle,
     fetch:async path=>({ok:true,json:async()=>path==="/api/billing/config"?config:{user,csrfToken:"csrf"}})};
-  const source=["pricing-logic.js","pricing-state.js","pricing-api.js","pricing-render.js","pricing-events.js","pricing.js"]
+  const source=["entitlements.js","pricing-logic.js","pricing-state.js","pricing-api.js","pricing-render.js","pricing-events.js","pricing.js"]
     .map(name=>readFileSync(join(__dirname,"..","public","scripts",name),"utf8")).join("\n");
   vm.runInNewContext(source,context);
   await new Promise(setImmediate);

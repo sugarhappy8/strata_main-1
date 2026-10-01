@@ -86,7 +86,7 @@
     function guestCount(){return typeof guestPlanCount==="function"?guestPlanCount():0;}
     function updateAccountUI(){
       if(state.accountStatus==="loading"||state.accountStatus==="unavailable")return;
-      const button=el("accountButton"),signup=el("signupButton"),discoveryButton=el("discoverButton"),discoveryActive=state.user?.discovery?.active===true;
+      const button=el("accountButton"),signup=el("signupButton"),discoveryButton=el("discoverButton"),discoveryActive=logic.hasPlus(state.user);
       button.textContent=state.user?`${state.user.name.split(/\s+/)[0]} profile`:"Log in";button.href=state.user?"/account.html":"/account.html?mode=login";button.classList.toggle("signed-in",Boolean(state.user));signup.hidden=Boolean(state.user);
       discoveryButton.hidden=!state.user;discoveryButton.href=discoveryActive?"/discover.html":"/pricing";discoveryButton.textContent=discoveryActive?"Strata+":"Unlock Strata+";
       const previewLogin=el("quickPreviewLogin"),previewContinue=el("quickPreviewContinue");previewLogin.hidden=Boolean(state.user);previewContinue.href=state.user?"/planner.html":"/account.html?mode=signup&next=planner";

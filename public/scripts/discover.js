@@ -670,7 +670,7 @@ document.addEventListener("submit",async(event)=>{
 async function revalidateMemberWorkspaceWhenVisible(){
   if(document.visibilityState&&document.visibilityState!=="visible"||!workspaceReady||workspaceRevalidating||discoveryLoading)return;workspaceRevalidating=true;const main=document.querySelector("main"),generation=workspaceGeneration,focused=document.activeElement;if(main){main.inert=true;main.style.visibility="hidden";main.setAttribute("aria-busy","true");}
   try{const identity=await api("/api/me");if(generation!==workspaceGeneration)return;
-    if(String(identity.user?.id||"")===String(state.user?.id||"")&&String(identity.csrfToken||"")===state.csrfToken&&identity.user?.discovery?.active===true){el("discoveryLoadError").hidden=true;revealPrivateWorkspace();if(main?.contains(focused))focused.focus({preventScroll:true});void loadMemberDashboard(generation,{keepForms:true});return;}clearPrivateWorkspace();await init();
+    if(String(identity.user?.id||"")===String(state.user?.id||"")&&String(identity.csrfToken||"")===state.csrfToken&&globalThis.StrataEntitlements.can(identity.user,"plus.studio")){el("discoveryLoadError").hidden=true;revealPrivateWorkspace();if(main?.contains(focused))focused.focus({preventScroll:true});void loadMemberDashboard(generation,{keepForms:true});return;}clearPrivateWorkspace();await init();
   }catch(error){if(!redirectedOrChangedAccount(error)&&!error?.stale){if(main)main.hidden=true;el("discoveryLoadErrorMessage").textContent=`${initialLoadMessage(error)} Unsaved changes stay in this tab until STRATA confirms your account.`;el("discoveryLoadError").hidden=false;}}finally{workspaceRevalidating=false;}
 }
 

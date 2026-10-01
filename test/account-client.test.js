@@ -7,7 +7,7 @@ const vm=require("node:vm");
 
 const html=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
 const script=fs.readFileSync(require.resolve("../public/scripts/account.js"),"utf8");
-const moduleScripts=["devices-core","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
+const moduleScripts=["devices-core","entitlements","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
 
 class ClassList{
   constructor(){this.values=new Set();}

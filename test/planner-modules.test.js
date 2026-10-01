@@ -115,7 +115,7 @@ test("planner API applies identity-bound mutation headers and reports typed fail
 });
 
 test("planner entrypoint composes bounded modules in dependency order",()=>{
-  const modules=["planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-sharing.js","planner-activation.js","planner-events.js"];
+  const modules=["entitlements.js","planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-sharing.js","planner-activation.js","planner-events.js"];
   const sources=Object.fromEntries(modules.map(file=>[file,readFileSync(join(ROOT,"public","scripts",file),"utf8")]));
   for(const [file,source] of Object.entries(sources))assert.ok(source.split("\n").length<=180,`${file} should stay a focused browser module`);
   assert.match(sources["planner-state.js"],/require\("\.\/planner-logic"\)/,"state may depend on pure planner logic");

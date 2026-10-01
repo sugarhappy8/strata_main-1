@@ -83,7 +83,7 @@ const context={
 context.globalThis=context;
 context.StrataDiscovery=Discovery;
 vm.createContext(context);
-for(const script of ["activation-core.js","planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-sharing.js","planner-activation.js","planner-events.js"]){
+for(const script of ["activation-core.js","entitlements.js","planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-sharing.js","planner-activation.js","planner-events.js"]){
   vm.runInContext(readPublic("scripts",script),context,{filename:script});
 }
 vm.runInContext(readPublic("scripts","planner.js"),context,{filename:"planner.js"});

@@ -68,6 +68,7 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/http.js` | Security headers, JSON/redirect helpers, body limits and parsing, compression negotiation, and response semantics. |
 | `src/observability.js` | Structured JSON request logs, validated or generated request IDs, bounded fields, and defensive redaction. |
 | `src/email.js` | Browser-safe email configuration plus privately retained Resend credentials, HMAC digests, address masking, and transactional message delivery. |
+| `src/entitlements.js` | Feature tiers and the `can(user, feature)` capability map that `/api/me` carries and every route guard reads. |
 | `src/billing.js` | Checkout, entitlement, subscription, portal, webhook, and reconciliation-service composition, plus the retired trial route. |
 | `src/checkout-reconciliation.js` | Validated unfinished-checkout closure, settlement recovery, and deletion-safety reconciliation. |
 | `src/payments.js` | Browser-safe Paddle configuration, privately retained server credentials, and provider transaction orchestration. |
@@ -102,6 +103,10 @@ Every request field is untrusted, including JSON, form values, headers, URL para
 Session tokens are random and stored only as hashes in the database. Cookies are HttpOnly, SameSite=Strict, scoped to `/`, and Secure in production. A session lookup also checks expiry, credential version, suspension, and required verification state. Password reset increments the credential version and revokes all sessions.
 
 State-changing authenticated routes require the session's CSRF value and a trusted same-origin request. Public recovery endpoints use origin checks, generic responses where account enumeration is a concern, durable or in-memory quotas as appropriate, expiry, attempt caps, and one-time tokens.
+
+### Entitlement boundary
+
+`src/entitlements.js` is the only place that says which tier a feature belongs to. Free covers `rankings`, `plan.week`, `profile.basic`, and `account`; Strata+ covers `plus.studio`, `plus.train`, `plus.nutrition`, `plus.recovery`, `plus.progress`, `plus.library`, `plus.compare`, and `plus.ai`. The composition root guards every member route with `requireFeature("<name>")`, which answers `402 DISCOVERY_ACCESS_REQUIRED` when Strata+ is needed and `403 FEATURE_UNAVAILABLE` when the owner has switched a feature off (`STRATA_AI_TIER=off` hides Strata AI for everyone). `/api/me` carries the resulting `capabilities` map, and the browser asks `StrataEntitlements.can(user,"<name>")` instead of reading billing state, so moving a feature between tiers is a one-line change on the server.
 
 ### Activation and device-state boundary
 

@@ -1,15 +1,16 @@
-/* global module */
+/* global module, require */
 (function(root,factory){
-  const api=factory();
+  const entitlements=typeof module==="object"&&module.exports?require("./entitlements"):root.StrataEntitlements;
+  const api=factory(entitlements);
   if(typeof module==="object"&&module.exports)module.exports=api;
   root.StrataPricingLogic=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+})(typeof globalThis!=="undefined"?globalThis:this,function(entitlements){
   "use strict";
 
   const RETIRED_PRODUCT_ID="pro_01m1ky8j916ybyacs836dxbz8x";
   const RETIRED_ONE_TIME_PRICE_ID="pri_01m1kyc2zd313d7a3ssmg02424";
 
-  function discoveryIsActive(user){return user?.discovery?.active===true;}
+  function discoveryIsActive(user){return entitlements.can(user,"plus.studio");}
   function subscriptionFor(user){
     const subscription=user?.discovery?.subscription;
     return subscription&&typeof subscription==="object"&&subscription.id?subscription:null;

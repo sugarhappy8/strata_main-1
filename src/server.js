@@ -20,6 +20,7 @@ const { createSetupService } = require("./setup");
 const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
 const {adminGrantState}=require("./access-controls");
+const {entitlementSettings,tierFor,capabilitiesFor}=require("./entitlements");
 const { createBillingService } = require("./billing");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
@@ -62,6 +63,7 @@ const EMAIL_CONFIG = getEmailVerificationConfig(process.env);
 const ADMIN_EMAIL = configuredAdminEmail(process.env.ADMIN_EMAIL);
 const ENFORCE_PADDLE_IPS=String(process.env.PADDLE_ENFORCE_IP_ALLOWLIST||"").toLowerCase()==="true";
 const AI_SETTINGS=aiSettings(process.env);
+const ENTITLEMENTS=entitlementSettings(process.env);
 const LOGGER=createLogger();
 // Browser URLs deliberately remain stable even though files are grouped by
 // purpose on disk. Only entries in this map can ever be served publicly.
@@ -159,6 +161,7 @@ const STATIC_FILES = new Map([
   ["planner-events.js","scripts/planner-events.js"],
   ["planner.js","scripts/planner.js"],
   ["session-selection-core.js","scripts/session-selection-core.js"],
+  ["entitlements.js","scripts/entitlements.js"],
   ["discovery-core.js","scripts/discovery-core.js"],
   ["preview-core.js","scripts/preview-core.js"],
   ["monthly-plan-core.js","scripts/monthly-plan-core.js"],
@@ -321,6 +324,7 @@ async function userPayload(session) {
     createdAt:session.created_at,
     ...planStats(plan),
     discovery,
+    capabilities:capabilitiesFor({plusActive:discovery.active},ENTITLEMENTS),
     isAdmin:adminState.active,
     accountDeletion:{pending:Boolean(deletion),expiresAt:deletion?Number(deletion.expires_at):null}
   };
@@ -355,15 +359,22 @@ function requireCommunityMutation(req,res,session,{jsonBody=false}={}) {
   return true;
 }
 
-async function requireDiscoveryAccess(req,res) {
-  const session=await auth.requireSession(req,res);
-  if (!session) return null;
-  if (!await hasCurrentDiscoveryAccess(session.id)) {
-    json(res,402,{error:"Strata+ purchase required.",code:"DISCOVERY_ACCESS_REQUIRED"});
-    return null;
-  }
-  return session;
+/** Every member route guards itself with one feature name from src/entitlements.js. */
+function requireFeature(feature) {
+  const tier=tierFor(feature,ENTITLEMENTS);
+  if (tier===null) throw new TypeError(`Unknown feature ${feature}.`);
+  return async function requireAccess(req,res) {
+    const session=await auth.requireSession(req,res);
+    if (!session) return null;
+    if (tier==="off") { json(res,403,{error:"This feature is switched off.",code:"FEATURE_UNAVAILABLE",feature}); return null; }
+    if (tier==="plus"&&!await hasCurrentDiscoveryAccess(session.id)) {
+      json(res,402,{error:"Strata+ purchase required.",code:"DISCOVERY_ACCESS_REQUIRED",feature});
+      return null;
+    }
+    return session;
+  };
 }
+const requireDiscoveryAccess=requireFeature("plus.studio");
 
 function sameOrigin(req) {
   const fetchSite=String(req.headers["sec-fetch-site"]||"").toLowerCase();
@@ -754,12 +765,12 @@ async function start() {
     createAuthService,createAdminService,createSupportService
   }));
   productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
-  workouts=createWorkoutService({store,auth,requireAccess:requireDiscoveryAccess,rateAllowed,http:{json,bodyJson}});
-  training=createTrainingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  coaching=createCoachingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  devices=createDevicesService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
+  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson}});
+  training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
-  ai=createAiService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
+  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
   setup=createSetupService({
     store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,
     getPlanSnapshot:planSnapshotFor,getPreferencesSnapshot:preferencesSnapshotFor,getUserPayload:userPayload,

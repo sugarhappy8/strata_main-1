@@ -1,10 +1,13 @@
-/* global module */
+/* global module, require */
 (function(root,factory){
-  const api=factory();
+  const entitlements=typeof module==="object"&&module.exports?require("./entitlements"):root.StrataEntitlements;
+  const api=factory(entitlements);
   if(typeof module==="object"&&module.exports)module.exports=api;
   root.StrataAccountLogic=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+})(typeof globalThis!=="undefined"?globalThis:this,function(entitlements){
   "use strict";
+
+  function hasPlus(user){return entitlements.can(user,"plus.studio");}
 
   const WEEKDAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const KNOWN_AUTH_ERRORS=new Set([
@@ -186,7 +189,7 @@
     return error?.message||"Subscription management is temporarily unavailable. Please try again.";
   }
 
-  return{
+  return{hasPlus,
     WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,weekContext,
     readableDate,validPlan,planSummary,completedThisWeek,nextPlannedDay,
     subscriptionFor,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError

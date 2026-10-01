@@ -84,6 +84,7 @@ const PRECACHE_URLS=[
   "/discover.css?v=8.9.0",
   "/discover-coaching-meals.css?v=8.9.0",
   "/session-selection-core.js?v=8.9.0",
+  "/entitlements.js?v=8.9.0",
   "/discovery-core.js?v=8.9.0",
   "/preview-core.js?v=8.9.0",
   "/monthly-plan-core.js?v=8.9.0",

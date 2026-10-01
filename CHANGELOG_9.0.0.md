@@ -54,6 +54,21 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   `GET /api/billing/subscription`): API-first means a mobile client can use them.
 - Community-plan and monthly-plan endpoints are removed wholesale in Phase 2d, not here.
 
+## Phase 2b — one entitlements module
+
+- **`src/entitlements.js`** holds the tier table (Free: rankings, weekly plan, basic profile,
+  account; Strata+: studio, train, nutrition, recovery, progress, library, compare, AI) and
+  builds the `capabilities` map that `/api/me` now carries.
+- **`requireFeature("<name>")`** guards every member route in the composition root; workouts
+  and training use `plus.train`, coaching `plus.nutrition`, devices `plus.recovery`, Strata AI
+  `plus.ai`, the rest of the studio `plus.studio`. Errors name the feature. A feature the owner
+  switched off answers `403 FEATURE_UNAVAILABLE`.
+- **`STRATA_AI_TIER`** is the AI switch the audit asked for: `plus` (default) or `off`. Making
+  AI an add-on later is a new tier value here, not a route change.
+- **`public/scripts/entitlements.js`** (`StrataEntitlements.can`) replaces every
+  `discovery.active===true` read on the home, pricing, planner, account, and studio pages. A
+  payload cached by an older build falls back to the Strata+ flag.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).

@@ -141,6 +141,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/energy-calibration-core.js` | Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation | 158 | 153 | 22.8 KiB | 220 | — |
 | `src/energy-planning-core.js` | Versioned energy estimation, bounded trend calibration, and nutrition planning | 139 | 130 | 23.3 KiB | 190 | `src/energy-activity-core.js`, `src/energy-calibration-core.js`, `src/energy-scenarios-core.js`, `src/plans.js` |
 | `src/energy-scenarios-core.js` | Explicit dynamic sensitivity scenarios with propagated maintenance uncertainty | 27 | 25 | 2.9 KiB | 100 | — |
+| `src/entitlements.js` | Feature tiers and the can(user, feature) capability map | 70 | 63 | 2.3 KiB | 80 | — |
 | `src/http.js` | HTTP transport helpers | 170 | 155 | 5.9 KiB | 180 | — |
 | `src/legacy-checkout.js` | Strict retired-checkout migration and completion policy | 71 | 66 | 7.4 KiB | 75 | `src/payments.js` |
 | `src/meal-planning-core.js` | Validated dietary preferences and deterministic remaining-day food options | 168 | 157 | 25.6 KiB | 300 | — |
@@ -158,7 +159,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 136 | 123 | 5.7 KiB | 140 | — |
 | `src/progression.js` | Pure per-set performance progression and comparison rules | 177 | 175 | 13.2 KiB | 300 | `src/plans.js` |
 | `src/schema.js` | Shared storage schema and statements | 355 | 349 | 42.2 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/devices-schema.js`, `src/product-signals-schema.js`, `src/training-loop-schema.js` |
-| `src/server.js` | HTTP composition root | 814 | 789 | 43.4 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
+| `src/server.js` | HTTP composition root | 825 | 800 | 44.2 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/entitlements.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
 | `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.9 KiB | 60 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 84 | 77 | 4.9 KiB | 105 | `src/plans.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |

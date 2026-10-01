@@ -4,7 +4,7 @@ const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
 const vm=require("node:vm");
-const source=["pricing-logic.js","pricing-state.js","pricing-api.js","pricing-render.js","pricing-events.js","pricing.js"]
+const source=["entitlements.js","pricing-logic.js","pricing-state.js","pricing-api.js","pricing-render.js","pricing-events.js","pricing.js"]
   .map(name=>fs.readFileSync(path.join(__dirname,"../public/scripts",name),"utf8")).join("\n");
 const flush=async()=>{for(let i=0;i<5;i++)await new Promise(setImmediate);};
 const response=(status,data)=>({ok:status<400,status,json:async()=>data});

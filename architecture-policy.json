@@ -21,6 +21,7 @@
         "src/database.js",
         "src/devices.js",
         "src/email.js",
+        "src/entitlements.js",
         "src/http.js",
         "src/observability.js",
         "src/payments.js",
@@ -502,6 +503,11 @@
     "src/wellness-core.js": {
       "role": "Usual ranges, overnight stress signals, recovery labels, and trends",
       "maxLines": 150,
+      "allowedDependencies": []
+    },
+    "src/entitlements.js": {
+      "role": "Feature tiers and the can(user, feature) capability map",
+      "maxLines": 80,
       "allowedDependencies": []
     }
   }

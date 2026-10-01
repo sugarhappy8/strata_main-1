@@ -200,7 +200,7 @@ test("public copy describes recurring checkout, cancellation, and grandfathered 
   assert.match(text("privacy.html"),/Paddle handles checkout, recurring payment/i);
   assert.match(text("privacy.html"),/current billing-period end/i);
   assert.match(text("refunds.html"),/Refunding the charge may end the paid Strata\+ access/i);
-  const pricingClient=["pricing-logic.js","pricing-render.js","pricing.js"].map(name=>fs.readFileSync(path.join(PUBLIC_ROOT,"scripts",name),"utf8")).join("\n");
+  const pricingClient=["entitlements.js","pricing-logic.js","pricing-render.js","pricing.js"].map(name=>fs.readFileSync(path.join(PUBLIC_ROOT,"scripts",name),"utf8")).join("\n");
   assert.doesNotMatch(pricingClient,/permanently unlocked/i);
   assert.doesNotMatch(pricingClient,/\/api\/discovery\/trial|startTrial|trialDiscovery/,"pricing never starts the retired trial");
   assert.match(pricingClient,/buyButton\.hidden=!canSubscribe;/);

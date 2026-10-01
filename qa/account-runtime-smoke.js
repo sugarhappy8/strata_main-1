@@ -13,7 +13,7 @@ const readPublic=(...parts)=>fs.readFileSync(join(PROJECT_ROOT,"public",...parts
 const html=readPublic("pages","index.html");
 const catalog=JSON.parse(readPublic("data","exercises.json"));
 const appSource=readPublic("scripts","app.js");
-const homeModuleNames=["home-logic.js","home-state.js","home-api.js","home-render.js","home-events.js"];
+const homeModuleNames=["entitlements.js","home-logic.js","home-state.js","home-api.js","home-render.js","home-events.js"];
 const homeModuleSources=homeModuleNames.map((name)=>readPublic("scripts",name));
 const Discovery=require(join(PROJECT_ROOT,"public","scripts","discovery-core"));
 const Preview=require(join(PROJECT_ROOT,"public","scripts","preview-core"));

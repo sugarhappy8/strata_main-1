@@ -1,9 +1,10 @@
 /* global module, require */
 (function(root,factory){
-  const api=factory(typeof module==="object"&&module.exports?require("./planner-logic"):root.StrataPlannerLogic);
-  if(typeof module==="object"&&module.exports)module.exports=api;
+  const node=typeof module==="object"&&module.exports;
+  const api=factory(node?require("./planner-logic"):root.StrataPlannerLogic,node?require("./entitlements"):root.StrataEntitlements);
+  if(node)module.exports=api;
   root.StrataPlannerState=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(logic){
+})(typeof globalThis!=="undefined"?globalThis:this,function(logic,entitlements){
   "use strict";
 
   const SELECTED_DAY_PREFIX="strata_planner_selected_day_v1:";
@@ -33,7 +34,7 @@
     return Math.min(...boundaries);
   }
   function hasConfirmedPlusAccess(state,now=Date.now()){
-    if(state?.entitlementStatus!=="ready"||state.user?.discovery?.active!==true)return false;
+    if(state?.entitlementStatus!=="ready"||!entitlements.can(state.user,"plus.studio"))return false;
     const boundary=entitlementBoundary(state.user);return boundary===0||boundary>now;
   }
   function entitlementRefreshDelay(user,now=Date.now()){
