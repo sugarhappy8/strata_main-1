@@ -153,6 +153,16 @@ test("offline authorization ends at the earliest verified grant, period, cancel,
   assert.equal(W.offlineAccessUntil({active:true,accessType:"paid",subscription:{currentPeriodEndsAt:now}},now),0,"an ended or missing billing period cannot authorize offline use");
 });
 
+test("offline authorization for App Store members ends at the verified expiry, within the same device window",()=>{
+  const now=Date.UTC(2026,8,8,12),hour=60*60*1000,apple=(value)=>({active:true,accessType:"apple",subscription:null,apple:{active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt:now+2*hour,autoRenew:true,inGracePeriod:false,environment:"Production",revoked:false,...value}});
+  assert.equal(W.offlineAccessUntil(apple({}),now),now+2*hour,"a period ending sooner than the device window ends offline use with it");
+  assert.equal(W.offlineAccessUntil(apple({expiresAt:now+30*24*hour}),now),now+24*hour,"a long App Store period keeps the bounded device window");
+  assert.equal(W.offlineAccessUntil(apple({autoRenew:false,expiresAt:now+3*hour}),now),now+3*hour,"a cancelled subscription still runs to its expiry");
+  assert.equal(W.offlineAccessUntil(apple({inGracePeriod:true,expiresAt:now-hour}),now),now+24*hour,"Apple's billing grace period keeps access within the device window");
+  for(const [label,value] of [["expired",{expiresAt:now}],["revoked",{revoked:true}],["inactive",{active:false}],["no expiry",{expiresAt:null}],["malformed expiry",{expiresAt:"soon"}]])assert.equal(W.offlineAccessUntil(apple(value),now),0,label);
+  assert.equal(W.offlineAccessUntil({active:true,accessType:"apple",apple:null,subscription:{currentPeriodEndsAt:now+48*hour}},now),0,"a missing App Store summary never falls back to another billing record");
+});
+
 test("complete sets require actual positive reps or seconds and an explicit external or assisted load",()=>{
   const [external,bodyweight,timed,assisted]=makeWorkout().entries;
   assert.match(W.actualError(external,{reps:null,weight:null}),/repetitions/);

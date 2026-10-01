@@ -62,7 +62,7 @@ function storage(seed={}){
   };
 }
 
-function createPage(page,route,{hash="",search="",sessionSeed={}}={}){
+function createPage(page,route,{hash="",search="",sessionSeed={},app=null}={}){
   const html=htmlByPage[page];
   const elements=elementsFrom(html),requests=[],historyReplacements=[];
   const pathname=`/${page}`;
@@ -70,8 +70,10 @@ function createPage(page,route,{hash="",search="",sessionSeed={}}={}){
   const sessionStorage=storage(sessionSeed);
   if(elements.has("resetState"))elements.get("resetState").statusText=new Element("resetStateText");
   if(elements.has("deleteState"))elements.get("deleteState").statusText=new Element("deleteStateText");
+  const navigations=[];location.assign=(url)=>navigations.push(url);
   const context={
-    console,URLSearchParams,location,sessionStorage,
+    console,URL,URLSearchParams,location,sessionStorage,
+    ...(app?{StrataApp:Object.freeze({platform:"ios",shellVersion:1}),StrataAppMode:{plugin:()=>app.plugin||null}}:{}),
     document:{body:{dataset:{accountPage:page}},getElementById:(id)=>elements.get(id)||null},
     history:{replaceState:(...args)=>historyReplacements.push(args)},
     requestAnimationFrame:(callback)=>callback(),
@@ -83,7 +85,7 @@ function createPage(page,route,{hash="",search="",sessionSeed={}}={}){
   context.globalThis=context;
   vm.createContext(context);
   vm.runInContext(script,context,{filename:"account-recovery.js"});
-  return {elements,requests,historyReplacements,sessionStorage};
+  return {elements,requests,historyReplacements,sessionStorage,navigations};
 }
 
 async function settle(){for(let index=0;index<5;index+=1)await new Promise(setImmediate);}
@@ -255,6 +257,56 @@ test("opening a deletion link only checks status and cannot delete the account",
   assert.deepEqual(JSON.parse(page.requests[0].options.body),{token:validToken});
   assert.equal(page.elements.get("deleteAccountForm").hidden,false);
   assert.match(page.elements.get("deleteState").statusText.textContent,/awaiting confirmation/i);
+});
+
+const APPLE_BILLING={message:"Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions.",manageUrl:"https://apps.apple.com/account/subscriptions"};
+
+test("an App Store subscriber is told before and after deletion that Apple keeps billing, with Apple's link",async()=>{
+  assert.match(htmlByPage["delete-account"],/<p class="apple-billing-notice" id="deleteAppleBilling" role="status" hidden><span id="deleteAppleBillingMessage"><\/span> <a id="deleteAppleBillingLink" href="https:\/\/apps\.apple\.com\/account\/subscriptions" target="_blank" rel="noopener noreferrer">/);
+  const page=createPage("delete-account",async(path)=>{
+    if(path==="/api/account/delete/status")return jsonResponse(200,{active:true,maskedEmail:"p***@example.test",appleBilling:APPLE_BILLING});
+    if(path==="/api/account/delete/complete")return jsonResponse(200,{ok:true,message:`Your STRATA account was permanently deleted. ${APPLE_BILLING.message}`,appleBilling:APPLE_BILLING});
+    throw new Error(`Unexpected path ${path}`);
+  },{hash:`#token=${validToken}`});
+  await settle();
+  const notice=page.elements.get("deleteAppleBilling");
+  assert.equal(notice.hidden,false);assert.equal(page.elements.get("deleteAppleBillingMessage").textContent,APPLE_BILLING.message);
+  assert.equal(page.elements.get("deleteAppleBillingLink").href,"https://apps.apple.com/account/subscriptions");
+  page.elements.get("deleteConfirmation").value="DELETE";
+  await page.elements.get("deleteAccountForm").emit("submit",{preventDefault(){}});
+  assert.equal(page.elements.get("deleteSuccess").hidden,false);assert.equal(notice.hidden,false,"the notice stays after the account is gone");
+  let prevented=false;await page.elements.get("deleteAppleBillingLink").emit("click",{preventDefault:()=>{prevented=true;}});
+  assert.equal(prevented,false,"the website follows Apple's link itself");
+
+  // A notice that only arrives with the completed deletion is shown then; a link to anywhere else becomes Apple's own.
+  const late=createPage("delete-account",async(path)=>{
+    if(path==="/api/account/delete/status")return jsonResponse(200,{active:true});
+    if(path==="/api/account/delete/complete")return jsonResponse(200,{ok:true,appleBilling:{...APPLE_BILLING,manageUrl:"javascript:alert(1)"}});
+    throw new Error(`Unexpected path ${path}`);
+  },{hash:`#token=${validToken}`});
+  await settle();
+  assert.equal(late.elements.get("deleteAppleBilling").hidden,true);
+  late.elements.get("deleteConfirmation").value="DELETE";
+  await late.elements.get("deleteAccountForm").emit("submit",{preventDefault(){}});
+  assert.equal(late.elements.get("deleteAppleBilling").hidden,false);assert.equal(late.elements.get("deleteAppleBillingLink").href,"https://apps.apple.com/account/subscriptions");
+
+  // Inside the iOS app the link opens Apple's own subscriptions sheet.
+  const calls=[],inApp=createPage("delete-account",async(path)=>{
+    if(path==="/api/account/delete/status")return jsonResponse(200,{active:true,appleBilling:APPLE_BILLING});
+    throw new Error(`Unexpected path ${path}`);
+  },{hash:`#token=${validToken}`,app:{plugin:{manageSubscriptions:async()=>{calls.push("manage");return {};}}}});
+  await settle();prevented=false;
+  await inApp.elements.get("deleteAppleBillingLink").emit("click",{preventDefault:()=>{prevented=true;}});
+  assert.equal(prevented,true);assert.deepEqual(calls,["manage"]);assert.deepEqual(inApp.navigations,[]);
+});
+
+test("a member without an App Store subscription sees no Apple notice",async()=>{
+  const page=createPage("delete-account",async(path)=>{
+    if(path==="/api/account/delete/status")return jsonResponse(200,{active:true,appleBilling:{message:""}});
+    throw new Error(`Unexpected path ${path}`);
+  },{hash:`#token=${validToken}`});
+  await settle();
+  assert.equal(page.elements.get("deleteAppleBilling").hidden,true);assert.equal(page.elements.get("deleteAccountForm").hidden,false);
 });
 
 test("deletion requires typed DELETE, submits once, and clears client state on success",async()=>{

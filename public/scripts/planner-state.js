@@ -8,8 +8,7 @@
   "use strict";
 
   const SELECTED_DAY_PREFIX="strata_planner_selected_day_v1:";
-  const ENTITLEMENT_RECHECK_MAX_DELAY=15*60*1000;
-  const ENTITLEMENT_RETRY_DELAYS=[15_000,60_000,5*60_000,15*60_000];
+  const ENTITLEMENT_RECHECK_MAX_DELAY=15*60*1000,ENTITLEMENT_RETRY_DELAYS=[15_000,60_000,5*60_000,15*60_000];
 
   function createState({desktopPageSize=32}={}){
     return{
@@ -26,8 +25,9 @@
   function entitlementBoundary(user){
     const discovery=user?.discovery;if(discovery?.active!==true)return 0;
     if(discovery.accessType==="grant")return discovery.adminGrant?.expiresAt===null?0:timestamp(discovery.adminGrant?.expiresAt)||-1;
-    const subscription=discovery.subscription;if(!subscription)return 0;
-    if(subscription.active===false)return 0;
+    // App Store access ends at its verified expiry; during Apple's billing grace period no end is known here, so rechecks decide.
+    if(discovery.accessType==="apple"){const apple=discovery.apple;return apple?.active!==true||apple.revoked===true?-1:apple.inGracePeriod===true?0:timestamp(apple.expiresAt)||-1;}
+    const subscription=discovery.subscription;if(!subscription||subscription.active===false)return 0;
     const periodEnd=timestamp(subscription.currentPeriodEndsAt);if(!periodEnd)return-1;
     const boundaries=[periodEnd],change=subscription.scheduledChange;
     if(["cancel","pause"].includes(String(change?.action||""))){const effectiveAt=timestamp(change?.effectiveAt);if(!effectiveAt)return-1;boundaries.push(effectiveAt);}

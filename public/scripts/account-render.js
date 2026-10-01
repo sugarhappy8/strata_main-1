@@ -41,8 +41,8 @@
       const textIds=["accountGreeting","signedInIdentity","accountPlanCount","accountWorkoutDays","accountAccessState","accountAccessDetail","accountMemberSince","accountDiscoveryStatus","accountBillingTitle","accountBillingBadge","accountBillingDetail","accountBillingStatus","accountSessionStatus","accountExportStatus","signedInMessage","accountDiscoveryAction","accountSecurityStatus"];
       for(const id of textIds)el(id).textContent="";
       el("accountSessionList").innerHTML="";
-      for(const id of ["signedInCard","accountBilling","signedInMessage","accountAdminAction","accountDeleteCancel","accountRevokeOtherSessions","accountManageSubscription","accountUpdatePayment","accountCancelSubscription","accountManageApple","accountBillingWebNote"])el(id).hidden=true;
-      for(const id of ["accountRevokeOtherSessions","accountManageSubscription","accountUpdatePayment","accountCancelSubscription","accountManageApple","accountExportData","accountPasswordReset","accountDeleteRequest","accountDeleteCancel","accountLogout"]){const node=el(id);node.disabled=false;setButtonBusy(node,false);}
+      for(const id of ["signedInCard","accountBilling","signedInMessage","accountAdminAction","accountDeleteCancel","accountRevokeOtherSessions","accountManageSubscription","accountUpdatePayment","accountCancelSubscription","accountManageApple","accountBillingWebNote","accountSecurityAppleLink"])el(id).hidden=true;
+      for(const id of ["accountRevokeOtherSessions","accountManageSubscription","accountUpdatePayment","accountCancelSubscription","accountExportData","accountPasswordReset","accountDeleteRequest","accountDeleteCancel","accountLogout"]){const node=el(id);node.disabled=false;setButtonBusy(node,false);}
       el("accountRevokeOtherSessions").disabled=true;el("accountSessionList").setAttribute("aria-busy","false");el("signedInCard").setAttribute("aria-busy","false");
       for(const id of ["accountBillingStatus","accountSessionStatus","accountExportStatus","accountSecurityStatus"])el(id).classList.remove("bad");
       el("accountDiscoveryAction").href="/pricing";documentImpl.body?.classList.remove("account-signed-in");
@@ -55,16 +55,16 @@
     }
 
     // An App Store subscription (bought in the iOS app) is managed by Apple: the app opens Apple's own sheet, and the
-    // website points to the iPhone's Settings. Inside the app, a Paddle subscription is read-only and named as billed
-    // on the website, with no link out.
+    // website links to Apple's subscriptions page and points to the iPhone's Settings. It never offers Paddle's portal.
+    // Inside the app, a Paddle subscription is read-only and named as billed on the website, with no link out.
     function renderAppleBilling(apple){
       const date=Number(apple.expiresAt)>0?logic.billingDate(apple.expiresAt):"";
-      el("accountBillingTitle").textContent="App Store subscription";
+      el("accountBillingTitle").textContent="Strata+ through the App Store";
       el("accountBillingBadge").textContent=apple.active!==true?(apple.revoked===true?"Revoked":"Ended"):apple.inGracePeriod===true?"Billing issue":apple.autoRenew===false?"Canceling":"Active";
       el("accountBillingDetail").textContent=apple.active!==true
         ?"This App Store subscription no longer provides Strata+. You can subscribe again in the STRATA app."
         :`Billed to your Apple Account through the App Store. ${apple.inGracePeriod===true?"Apple could not collect the latest payment; update your payment method to keep Strata+.":apple.autoRenew===false?(date?`It ends ${date} and will not renew.`:"It will not renew."):date?`It renews ${date} unless cancelled at least 24 hours before.`:"It renews monthly until cancelled."}${app?"":" Manage it in Settings › Apple Account › Subscriptions on your iPhone."}`;
-      el("accountManageApple").hidden=!app;
+      el("accountManageApple").hidden=false;
     }
 
     function renderAccountBilling(user){
@@ -86,7 +86,11 @@
       update.hidden=status!=="past_due";cancel.hidden=status==="canceled"||scheduled?.action==="cancel";
     }
 
-    function showSecurityStatus(message,{error=false}={}){const status=el("accountSecurityStatus");status.textContent=message;status.classList.remove("bad");if(error)status.classList.add("bad");}
+    // A deletion notice from the server (an App Store subscription keeps billing) carries Apple's subscriptions link.
+    function showSecurityStatus(message,{error=false,appleLink=""}={}){
+      const status=el("accountSecurityStatus"),link=el("accountSecurityAppleLink");status.textContent=message;status.classList.remove("bad");if(error)status.classList.add("bad");
+      link.hidden=!appleLink;if(appleLink)link.href=appleLink;
+    }
 
     function showSignedIn(user){
       documentImpl.body?.classList.add("account-signed-in");el("accountLoading").hidden=true;el("accountAccess").hidden=true;el("signedInCard").hidden=false;el("signedInCard").setAttribute("aria-busy","false");el("signedInIdentity").textContent=`${user.name} · ${user.email}`;

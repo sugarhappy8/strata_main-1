@@ -41,6 +41,10 @@ test("account pure logic explains every grant, subscription, and legacy access s
 test("account pure logic explains App Store subscriptions and keeps Paddle read-only inside the app",()=>{
   const expiresAt=Date.parse("2026-11-01T12:00:00Z"),apple=(value,extra={})=>({discovery:{active:value.active===true,accessType:value.active?"apple":null,apple:{productId:"online.stratafitness.app.plus.monthly",expiresAt,autoRenew:true,inGracePeriod:false,revoked:false,environment:"Production",...value},...extra}});
   assert.equal(logic.appleSubscriptionFor({discovery:{apple:null}}),null);
+  assert.equal(logic.safeAppleManageUrl("https://apps.apple.com/account/subscriptions"),"https://apps.apple.com/account/subscriptions");
+  for(const unsafe of ["javascript:alert(1)","http://apps.apple.com/account/subscriptions","https://apps.apple.com.evil.test/","https://user:pass@apps.apple.com/","",null])assert.equal(logic.safeAppleManageUrl(unsafe),logic.APPLE_MANAGE_URL,String(unsafe));
+  assert.deepEqual(logic.appleDeletionNotice({appleBilling:{message:" Apple keeps billing. ",manageUrl:"javascript:alert(1)"}}),{message:"Apple keeps billing.",manageUrl:"https://apps.apple.com/account/subscriptions"});
+  for(const result of [{},{appleBilling:null},{appleBilling:{message:""}},{appleBilling:{message:42}},null])assert.equal(logic.appleDeletionNotice(result),null);
   assert.deepEqual(logic.accountAccessSummary(apple({active:true})),{state:"Active",detail:"App Store · renews Nov 1, 2026",message:"Your Strata+ subscription is billed to your Apple Account and renews on Nov 1, 2026. Manage or cancel it in Settings › Apple Account › Subscriptions on your iPhone."});
   assert.doesNotMatch(logic.accountAccessSummary(apple({active:true}),false,{app:true}).message,/on your iPhone/);
   assert.equal(logic.accountAccessSummary(apple({active:true,inGracePeriod:true})).state,"Billing issue");

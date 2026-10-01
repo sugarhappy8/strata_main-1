@@ -23,6 +23,16 @@
   }
   function checkoutTransactionId(data){return String(data?.transactionId||data?.transaction_id||data?.id||"");}
 
+  // Strata+ bought in the iOS app is billed and managed by Apple; the website names it and links to Apple's page.
+  const APPLE_MANAGE_URL="https://apps.apple.com/account/subscriptions";
+  function appleAccess(user){const apple=user?.discovery?.apple;return user?.discovery?.accessType==="apple"&&apple&&typeof apple==="object"?apple:null;}
+  function appleStatus(apple){
+    const date=Number(apple?.expiresAt)>0?billingDate(apple.expiresAt):"";
+    if(apple?.inGracePeriod===true)return{tone:"warn",message:"Your Strata+ is through the App Store. Apple could not collect the latest payment; update your Apple Account’s payment method to keep it."};
+    if(apple?.autoRenew===false)return{tone:"warn",message:`Your Strata+ is through the App Store and ends${date?` on ${date}`:""}. It will not renew unless you resubscribe with Apple.`};
+    return{tone:"good",message:`Your Strata+ is through the App Store${date?` and renews on ${date}`:""}. Apple bills it, so manage or cancel it with your App Store subscriptions.`};
+  }
+
   function normalizedConfig(data){
     const config=data?.billing&&typeof data.billing==="object"?data.billing:data;
     return{
@@ -53,5 +63,5 @@
     return config;
   }
 
-  return{RETIRED_PRODUCT_ID,RETIRED_ONE_TIME_PRICE_ID,billingDate,checkoutTransactionId,discoveryIsActive,normalizedConfig,paidAccessReady,paidAccessType,subscriptionFor,validateConfig};
+  return{RETIRED_PRODUCT_ID,RETIRED_ONE_TIME_PRICE_ID,APPLE_MANAGE_URL,appleAccess,appleStatus,billingDate,checkoutTransactionId,discoveryIsActive,normalizedConfig,paidAccessReady,paidAccessType,subscriptionFor,validateConfig};
 });

@@ -102,7 +102,17 @@
   }
 
   // Inside the iOS app, Paddle billing is read-only: it is named as billed on the website, never linked or managed.
-  const APPLE_SETTINGS="Settings › Apple Account › Subscriptions";
+  const APPLE_SETTINGS="Settings › Apple Account › Subscriptions",APPLE_MANAGE_URL="https://apps.apple.com/account/subscriptions";
+  // Apple's subscription page from a server notice, or Apple's standard one; never another site or scheme.
+  function safeAppleManageUrl(value){
+    try{const url=new URL(String(value||""));return url.protocol==="https:"&&url.hostname==="apps.apple.com"&&!url.username&&!url.password?url.href:APPLE_MANAGE_URL;}
+    catch{return APPLE_MANAGE_URL;}
+  }
+  // The account-deletion notice the server sends while an App Store subscription is live or set to renew.
+  function appleDeletionNotice(result){
+    const notice=result?.appleBilling,message=typeof notice?.message==="string"?notice.message.trim():"";
+    return message?{message,manageUrl:safeAppleManageUrl(notice.manageUrl)}:null;
+  }
   function appleAccessSummary(apple,app){
     const date=billingDate(apple.expiresAt),known=Number(apple.expiresAt)>0;
     if(apple.active!==true)return apple.revoked===true
@@ -183,6 +193,6 @@
 
   return{hasPlus,
     WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,
-    subscriptionFor,appleSubscriptionFor,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError
+    subscriptionFor,appleSubscriptionFor,APPLE_MANAGE_URL,safeAppleManageUrl,appleDeletionNotice,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError
   };
 });

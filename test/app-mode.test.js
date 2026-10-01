@@ -226,6 +226,86 @@ test("printing in the app uses the native print sheet, and a missing plugin says
   assert.match(read("public/scripts/workout-events.js"),/signal\("workout_completed"\);globalThis\.StrataAppMode\?\.haptic\("success"\)/);
 });
 
+test("native extras forward to the app when its build has them and stay neutral when it does not",async()=>{
+  const calls=[],record=(name,result)=>async(options)=>{calls.push([name,options]);if(result instanceof Error)throw result;return result;};
+  const plugin={keepAwake:record("keepAwake",{}),scheduleRestAlert:record("scheduleRestAlert",{scheduled:true,permission:"authorized"}),cancelRestAlert:record("cancelRestAlert",undefined),addWeeklyToCalendar:record("addWeeklyToCalendar",{added:true}),info:record("info",{appVersion:"1.2",build:"34",iosVersion:"18.0",canMakePayments:true})};
+  const app=realm({plugin}).window.StrataAppMode;
+  assert.equal(app.has("keepAwake"),true);assert.equal(app.has("print"),false);assert.equal(app.has("toString"),false);
+  assert.equal(await app.keepAwake(true),true);assert.equal(await app.keepAwake("yes"),true);
+  assert.deepEqual(JSON.parse(JSON.stringify(await app.scheduleRestAlert({endsAt:"1800000090000",title:"Rest is over",body:"Time for your next set."}))),{scheduled:true,permission:"authorized"});
+  assert.equal(await app.cancelRestAlert(),true,"a method that resolves with nothing still counts as done");
+  const options={title:"STRATA workout",notes:"Planned days: Monday",weekdays:[2],hour:18,minute:0,durationMinutes:60,alarmMinutesBefore:null};
+  assert.equal((await app.addWeeklyToCalendar(options)).added,true);
+  assert.equal((await app.info()).appVersion,"1.2");
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)),[["keepAwake",{enabled:true}],["keepAwake",{enabled:false}],["scheduleRestAlert",{endsAt:1800000090000,title:"Rest is over",body:"Time for your next set."}],["cancelRestAlert",{}],["addWeeklyToCalendar",options],["info",{}]]);
+
+  // A native refusal: the niceties shrug it off, the calendar sheet reports it so the page can fall back to .ics.
+  const refused=new Error("permission_denied"),failing=realm({plugin:{keepAwake:record("keepAwake",refused),scheduleRestAlert:record("scheduleRestAlert",refused),cancelRestAlert:()=>{throw refused;},info:record("info",refused),addWeeklyToCalendar:record("addWeeklyToCalendar",refused)}}).window.StrataAppMode;
+  assert.equal(await failing.keepAwake(true),false);assert.equal(await failing.scheduleRestAlert({endsAt:1}),null);assert.equal(await failing.cancelRestAlert(),false);assert.equal(await failing.info(),null);
+  await assert.rejects(failing.addWeeklyToCalendar(options),/permission_denied/);
+
+  // An older app build (no such methods) and a page with no plugin at all resolve to neutral results.
+  for(const older of [realm({plugin:{haptic:async()=>({})}}).window.StrataAppMode,realm().window.StrataAppMode]){
+    assert.equal(older.has("addWeeklyToCalendar"),false);
+    assert.equal(await older.keepAwake(true),false);assert.equal(await older.scheduleRestAlert({endsAt:Date.now()+60_000}),null);assert.equal(await older.cancelRestAlert(),false);
+    assert.equal(await older.addWeeklyToCalendar(options),null);assert.equal(await older.info(),null);
+  }
+});
+
+test("the workout bridge calls the app only when the wanted screen and rest-alert state changes",async()=>{
+  const calls=[],plugin=Object.fromEntries(["keepAwake","scheduleRestAlert","cancelRestAlert"].map((name)=>[name,async(options)=>{calls.push([name,options]);return {};}]));
+  const bridge=realm({plugin}).window.StrataAppMode.createWorkoutBridge({title:"Rest is over",body:"Time for your next set."});
+  const now=1_800_000_000_000,step=(state)=>{bridge.sync({now,...state});return JSON.parse(JSON.stringify(calls.splice(0)));};
+  assert.deepEqual(step({}),[],"nothing is asked for before a workout opens");
+  assert.deepEqual(step({keepAwake:true}),[["keepAwake",{enabled:true}]]);
+  assert.deepEqual(step({keepAwake:true}),[],"repeated reports change nothing");
+  assert.deepEqual(step({keepAwake:true,restEndsAt:now+90_000}),[["scheduleRestAlert",{endsAt:now+90_000,title:"Rest is over",body:"Time for your next set."}]]);
+  assert.deepEqual(step({keepAwake:true,restEndsAt:now+90_000}),[]);
+  assert.deepEqual(step({keepAwake:true,restEndsAt:now+60_000}),[["scheduleRestAlert",{endsAt:now+60_000,title:"Rest is over",body:"Time for your next set."}]],"a new rest replaces the alert");
+  assert.deepEqual(step({keepAwake:true,restEndsAt:null}),[["cancelRestAlert",{}]],"pausing or resetting cancels it");
+  assert.deepEqual(step({keepAwake:true,restEndsAt:null}),[]);
+  step({keepAwake:true,restEndsAt:now+1000});
+  assert.deepEqual(step({keepAwake:true,restEndsAt:now}),[["cancelRestAlert",{}]],"a rest that ran out clears its alert once");
+  assert.deepEqual(step({keepAwake:true,restEndsAt:now-5000}),[]);
+  step({keepAwake:true,restEndsAt:now+30_000});
+  assert.deepEqual(step({keepAwake:false,restEndsAt:now+30_000}),[["keepAwake",{enabled:false}]],"a hidden page lets the screen sleep but keeps the alert for the background");
+  assert.deepEqual(step({keepAwake:false,restEndsAt:0}),[["cancelRestAlert",{}]],"a finished workout cancels the alert");
+  // The app lets the screen sleep in the background; the first report after the page was suspended asks again.
+  bridge.sync({now,keepAwake:true});calls.splice(0);
+  bridge.sync({now:now+1000,keepAwake:true});assert.deepEqual(calls.splice(0),[],"steady reports stay quiet");
+  bridge.sync({now:now+61_000,keepAwake:true});assert.deepEqual(JSON.parse(JSON.stringify(calls.splice(0))),[["keepAwake",{enabled:true}]]);
+  bridge.sync({now:now+200_000,keepAwake:false});bridge.sync({now:now+400_000,keepAwake:false});
+  assert.deepEqual(JSON.parse(JSON.stringify(calls.splice(0))),[["keepAwake",{enabled:false}]],"a sleeping screen is never re-asked");
+  assert.doesNotThrow(()=>realm().window.StrataAppMode.createWorkoutBridge().sync({keepAwake:true,restEndsAt:Date.now()+60_000}),"an app build without the plugin ignores the bridge");
+});
+
+test("Profile names the app build when the app can say",async()=>{
+  const page=realm({pathname:"/account.html",plugin:{info:async()=>({appVersion:"1.2",build:"34",iosVersion:"18.0",canMakePayments:true})}});page.insertBody();
+  const accountPage=fakeNode("accountPage"),line={textContent:"About STRATA · Build 9.1.0"};
+  page.document.getElementById=(id)=>id==="accountPage"?accountPage:null;
+  page.document.querySelector=(selector)=>selector==="body > footer > span"?{textContent:"About STRATA · Build 9.1.0"}:selector===".app-more-build"?line:null;
+  page.ready();for(let index=0;index<5;index+=1)await new Promise(setImmediate);
+  assert.equal(line.textContent,"About STRATA · Build 9.1.0 · App 1.2 (34)");
+});
+
+test("downloads keep their file for a minute, so the app's share sheet can still read it, and the app says where it goes",()=>{
+  const files=["account.js","workout.js","workout-offline.js","discover.js","planner.js","onboarding.js"].map((file)=>[file,read(`public/scripts/${file}`)]);
+  for(const [file,source] of files){
+    const revokes=[...source.matchAll(/revokeObjectURL\(([^)]*)\)/g)];
+    assert.ok(revokes.length>0,`${file} creates a download`);
+    for(const match of revokes){
+      const at=source.lastIndexOf("setTimeout(",match.index),delay=/^setTimeout\(\(\)=>URL\.revokeObjectURL\([^)]*\),(\d[\d_]*)\)/.exec(source.slice(at));
+      assert.ok(delay&&Number(delay[1].replaceAll("_",""))>=60_000,`${file} revokes a download URL after at least a minute: ${source.slice(at,match.index+40)}`);
+    }
+  }
+  const copy=Object.fromEntries(files);
+  assert.match(copy["account.js"],/globalThis\.StrataApp\?"Your JSON export is ready\. Choose where to save it\.":"Your JSON export was downloaded\."/);
+  assert.match(copy["planner.js"],/globalThis\.StrataApp\?"Weekly plan ready\. Choose where to save it\. Import it from Week templates or in Strata\+\.":"Weekly plan downloaded\./);
+  assert.match(copy["discover.js"],/globalThis\.StrataApp\?"Plan file ready\. Choose where to save it\.":"Share file downloaded\."/);
+  assert.match(copy["discover.js"],/globalThis\.StrataApp\?"Sharing was unavailable, so your plan is ready as a file\. Choose where to save it\.":"Sharing was unavailable, so a plan file was downloaded\."/);
+  for(const [file,source] of files)for(const line of source.split("\n").filter((text)=>/was downloaded|[^"]downloaded\./.test(text)))assert.match(line,/globalThis\.StrataApp\?/,`${file}: "downloaded" copy has an app version`);
+});
+
 function billingRealm({routes,plugin={}}){
   const context={URL,URLSearchParams,Capacitor:{Plugins:{StrataNative:plugin}}};
   context.globalThis=context;vm.createContext(context);vm.runInContext(SOURCE,context,{filename:"app-mode.js"});

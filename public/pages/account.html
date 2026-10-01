@@ -55,7 +55,7 @@
             <button id="accountManageSubscription" type="button">Manage in Paddle <span aria-hidden="true">↗</span></button>
             <button id="accountUpdatePayment" type="button" hidden>Update payment method <span aria-hidden="true">↗</span></button>
             <button id="accountCancelSubscription" type="button" hidden>Cancel subscription <span aria-hidden="true">↗</span></button>
-            <button id="accountManageApple" type="button" hidden>Manage subscription</button>
+            <a id="accountManageApple" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage subscription <span aria-hidden="true">↗</span></a>
           </div>
           <p class="account-billing-web" id="accountBillingWebNote" hidden>Billed on stratafitness.online.</p>
           <p class="account-billing-status" id="accountBillingStatus" role="status" aria-live="polite" tabindex="-1"></p>
@@ -116,6 +116,7 @@
             <button class="verification-secondary" id="accountDeleteCancel" type="button" hidden><span class="button-idle">Cancel deletion request</span><span class="button-busy">Canceling request…</span><span aria-hidden="true">×</span></button>
           </div>
           <p class="security-status" id="accountSecurityStatus" role="status" aria-live="polite"></p>
+          <a class="security-apple-link" id="accountSecurityAppleLink" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage your App Store subscription <span aria-hidden="true">↗</span></a>
         </section>
       </section>
 
