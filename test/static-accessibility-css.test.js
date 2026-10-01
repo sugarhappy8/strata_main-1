@@ -14,7 +14,7 @@ const workoutClient=()=>["workout-state.js","workout-api.js","workout-calendar.j
 
 test("homepage styles keep live comparison UI and omit retired modal families",()=>{
   const css=read("public/styles/styles.css");
-  for(const selector of [".compare-dock",".compare-dialog",".dialog-header","#compareContent",".compare-table-wrap",".compare-table"]){
+  for(const selector of [".dialog-header"]){
     assert.ok(css.includes(selector),`${selector} must remain styled`);
   }
   assert.doesNotMatch(css,/\.(?:plan-(?:dialog|content|layout|sidebar|sidebar-label|editor|title-fields|field|list-head|item|video|empty|summary)|workout-tabs?|remove-item|auth-[a-z-]+|account-(?:card|avatar|stats|actions))\b/);
@@ -23,15 +23,6 @@ test("homepage styles keep live comparison UI and omit retired modal families",(
 test("homepage navigation and exercise controls expose 44px touch targets",()=>{
   const css=read("public/styles/styles.css");
   assert.match(css,/\.brand\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/);
-  assert.match(css,/\.action-icon\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
-  assert.doesNotMatch(css,/\.exercise-row \.action-icon\s*\{[^}]*\b(?:width|height):\s*(?:3\d|4[0-3])px/);
-});
-
-test("the focusable horizontal comparison region has a visible focus treatment",()=>{
-  const css=read("public/styles/styles.css");
-  const app=homeClient();
-  assert.match(app,/class="compare-table-wrap" role="region"[^>]*tabindex="0"/);
-  assert.match(css,/\.compare-table-wrap:focus-visible\s*\{[^}]*outline:\s*3px solid var\(--focus-ring,#6f8e27\);[^}]*box-shadow:/);
 });
 
 test("compact mobile navigation keeps account actions and every muscle group easy to reach",()=>{

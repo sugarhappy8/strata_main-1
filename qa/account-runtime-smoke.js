@@ -76,11 +76,6 @@ vm.runInContext(appSource,context,{filename:"app.js"});
   const persistentResetVisible=elements.get("resetActiveFilters").hidden===false;
   context.resetFilters();
   const resetRestoresDefaults=searchInput.value===""&&equipmentFilter.value==="all"&&elements.get("levelFilter").value==="all"&&elements.get("resetActiveFilters").hidden===true&&elements.get("activeTarget").textContent==="Shoulders · All targets"&&searchInput.focused===true;
-  const comparedExercise=catalog.find((exercise)=>exercise.group==="shoulders");
-  context.toggleCompare(comparedExercise.id);
-  const comparisonSpacingEnabled=document.body.classList.contains("compare-open")&&elements.get("compareDock").hidden===false;
-  context.toggleCompare(comparedExercise.id);
-  const comparisonSpacingCleared=!document.body.classList.contains("compare-open")&&elements.get("compareDock").hidden===true;
   const result={
     accountFetch:fetches.filter((path)=>path==="/api/me").length===1,
     catalogFetch:fetches.filter((path)=>path===CATALOG_URL).length===1,
@@ -98,7 +93,6 @@ vm.runInContext(appSource,context,{filename:"app.js"});
     activeFiltersAreLabeled:labeledFilterSummary,
     persistentFilterResetAppears:persistentResetVisible,
     filterResetRestoresDefaults:resetRestoresDefaults,
-    comparisonSpacingTracksTray:comparisonSpacingEnabled&&comparisonSpacingCleared,
     mobileMetadataRendered:/class="mobile-exercise-meta"/.test(elements.get("exerciseList").innerHTML),
     scoreHasImageSemantics:/class="score-badge[^"]*" role="img"/.test(elements.get("exerciseList").innerHTML),
     noBrowserTokenDependency:!appSource.includes("csrfToken")

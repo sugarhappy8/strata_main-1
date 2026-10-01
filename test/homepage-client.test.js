@@ -220,63 +220,35 @@ test("homepage ignores a stale initial identity response after a newer focus rec
   assert.equal(r.elements.get("planCount").textContent,2);
 });
 
-test("homepage hides and rejects exercise comparison for guests and free accounts",async()=>{
-  const responses=[jsonResponse(401,{error:"Not signed in."}),jsonResponse(200,{user:{id:"free",name:"Free Member",discovery:{active:false}}})];
-  for(const meResponse of responses){
+test("homepage rankings carry no comparison controls; Strata+ members get one link to the Library's Compare",async()=>{
+  for(const meResponse of [jsonResponse(401,{error:"Not signed in."}),jsonResponse(200,{user:{id:"free",name:"Free Member",discovery:{active:false}}})]){
     const {context,elements}=createRuntime({meResponse});await settle();
     assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/);
     vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)})`,context);
-    assert.doesNotMatch(elements.get("detailContent").innerHTML,/data-compare=/);
-    vm.runInContext(`toggleCompare(${JSON.stringify(catalog[0].id)});state.compare=[${JSON.stringify(catalog[0].id)},${JSON.stringify(catalog[1].id)}];openComparison();`,context);
-    assert.deepEqual([...vm.runInContext("state.compare",context)],[]);
-    assert.equal(elements.get("compareDock").hidden,true);assert.equal(elements.get("compareDialog").open,false);assert.equal(elements.get("compareContent").innerHTML,"");
+    assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/,"members without Strata+ see no comparison hand-off");
   }
+  const {context,elements}=createRuntime({meResponse:jsonResponse(200,{user:{id:"plus",name:"Plus Member",discovery:{active:true}}})});await settle();
+  assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/,"the homepage no longer runs its own two-exercise comparison");
+  assert.equal(elements.get("compareDock"),undefined);assert.equal(elements.get("compareDialog"),undefined);
+  vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)})`,context);
+  assert.match(elements.get("detailContent").innerHTML,/<a class="button"[^>]*href="\/discover\.html#battle">Compare in Strata\+/);
 });
 
-test("active Strata+ members retain the labeled keyboard-focusable comparison",async()=>{
-  const {context,elements}=createRuntime({meResponse:jsonResponse(200,{user:{id:"plus",name:"Plus Member",discovery:{active:true}}})});
-  await settle();
-  assert.match(elements.get("exerciseList").innerHTML,/data-compare=/);
-  vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)})`,context);assert.match(elements.get("detailContent").innerHTML,/data-compare=/);
-  vm.runInContext(`toggleCompare(${JSON.stringify(catalog[0].id)});toggleCompare(${JSON.stringify(catalog[1].id)});openComparison();`,context);
-  const comparison=elements.get("compareContent").innerHTML;
-  assert.equal(elements.get("compareDock").hidden,false);assert.equal(elements.get("compareDialog").open,true);
-  assert.match(comparison,/<div class="compare-table-wrap" role="region" aria-label="[^"]+ comparison table" tabindex="0">/);
-  assert.match(comparison,/<caption class="sr-only">Comparison of /);
-});
-
-test("homepage fail-closes an open comparison during recheck and clears it when access is revoked",async()=>{
+test("homepage hides the Strata+ hand-off during a recheck and removes it when access is revoked",async()=>{
   const refreshed=deferred(),responses=[jsonResponse(200,{user:{id:"member",name:"Member",discovery:{active:true}}}),refreshed.promise];
   const {context,elements,emitWindow}=createRuntime({meResponse:()=>responses.shift()});await settle();
-  vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)});toggleCompare(${JSON.stringify(catalog[0].id)});toggleCompare(${JSON.stringify(catalog[1].id)});openComparison();`,context);
-  assert.equal(elements.get("compareDialog").open,true);
+  vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)})`,context);
+  assert.match(elements.get("detailContent").innerHTML,/discover\.html#battle/);
   emitWindow("focus");
-  assert.equal(vm.runInContext("state.accountStatus",context),"rechecking");assert.deepEqual([...vm.runInContext("state.compare",context)],[catalog[0].id,catalog[1].id]);
-  assert.equal(elements.get("compareDialog").open,false);assert.equal(elements.get("compareDock").hidden,true);assert.equal(elements.get("compareContent").innerHTML,"");assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/);assert.doesNotMatch(elements.get("detailContent").innerHTML,/data-compare=/);
+  assert.equal(vm.runInContext("state.accountStatus",context),"rechecking");
+  assert.equal(elements.get("detailDialog").open,true,"the detail stays open; only account-bound controls disappear");
+  assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/);
   refreshed.resolve(jsonResponse(200,{user:{id:"member",name:"Member",discovery:{active:false}}}));await settle();
-  assert.equal(vm.runInContext("state.accountStatus",context),"authenticated");assert.deepEqual([...vm.runInContext("state.compare",context)],[]);assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/);
+  assert.equal(vm.runInContext("state.accountStatus",context),"authenticated");
+  assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/);
 });
 
-test("homepage preserves comparison choices for the same active account across a transient recheck",async()=>{
-  const refreshed=deferred(),member={id:"member",name:"Member",discovery:{active:true}},responses=[jsonResponse(200,{user:member}),refreshed.promise];
-  const {context,elements,emitWindow}=createRuntime({meResponse:()=>responses.shift()});await settle();
-  vm.runInContext(`toggleCompare(${JSON.stringify(catalog[0].id)})`,context);
-  emitWindow("focus");
-  assert.deepEqual([...vm.runInContext("state.compare",context)],[catalog[0].id]);assert.equal(elements.get("compareDock").hidden,true);
-  refreshed.resolve(jsonResponse(200,{user:member}));await settle();
-  assert.deepEqual([...vm.runInContext("state.compare",context)],[catalog[0].id]);assert.equal(elements.get("compareDock").hidden,false);assert.match(elements.get("exerciseList").innerHTML,/aria-pressed="true"/);
-});
-
-test("homepage revalidates stale comparison access without requiring a focus event",async()=>{
-  let requests=0;
-  const responses=[jsonResponse(200,{user:{id:"member",name:"Member",discovery:{active:true}}}),jsonResponse(200,{user:{id:"member",name:"Member",discovery:{active:false}}})];
-  const {context,elements}=createRuntime({meResponse:()=>{requests+=1;return responses.shift();}});await settle();
-  const result=vm.runInContext(`state.accountVerifiedAt=1;toggleCompare(${JSON.stringify(catalog[0].id)})`,context);
-  if(result&&typeof result.then==="function")await result;await settle();
-  assert.equal(requests,2);assert.deepEqual([...vm.runInContext("state.compare",context)],[]);assert.equal(elements.get("compareDock").hidden,true);assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/);
-});
-
-test("homepage preserves focus inside an open detail while comparison access rerenders",async()=>{
+test("homepage preserves focus inside an open detail while account access rerenders",async()=>{
   const refreshed=deferred(),member={id:"member",name:"Member",discovery:{active:true}},responses=[jsonResponse(200,{user:member}),refreshed.promise];
   const {context,elements,emitWindow}=createRuntime({meResponse:()=>responses.shift()});await settle();
   vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)})`,context);
@@ -284,9 +256,9 @@ test("homepage preserves focus inside an open detail while comparison access rer
   const replacement={focused:false,getAttribute:name=>name==="data-add-planner"?catalog[0].id:null,focus(){this.focused=true;}};
   context.document.activeElement=focused;elements.get("detailDialog").contains=control=>control===focused;elements.get("detailDialog").querySelectorAll=selector=>selector==="[data-add-planner]"?[replacement]:[];
   emitWindow("focus");
-  assert.equal(replacement.focused,true);assert.equal(elements.get("detailDialog").open,true);assert.doesNotMatch(elements.get("detailContent").innerHTML,/data-compare=/);
+  assert.equal(replacement.focused,true);assert.equal(elements.get("detailDialog").open,true);assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/);
   refreshed.resolve(jsonResponse(200,{user:member}));await settle();
-  assert.equal(elements.get("detailDialog").open,true);assert.match(elements.get("detailContent").innerHTML,/data-compare=/);
+  assert.equal(elements.get("detailDialog").open,true);assert.match(elements.get("detailContent").innerHTML,/discover\.html#battle/);
 });
 
 test("homepage exercise details expose setup, cues, common mistakes and equipment-equivalent swaps",async()=>{

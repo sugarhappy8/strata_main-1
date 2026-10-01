@@ -428,8 +428,10 @@ test("training journeys use real browser controls and isolated local fixtures",{
     assert.equal(await page.locator("[data-compare]").count(),0,"A signed-in free account must not receive homepage comparison controls");
     await goto(page,"/onboarding.html");assert.match(page.url(),/pricing/);
     await activatePlus(context);
-    await goto(page,"/");await page.locator("[data-compare]").first().waitFor({state:"visible"});
-    assert.ok(await page.locator("[data-compare]").count()>0,"A currently entitled member should retain homepage comparison controls");
+    await goto(page,"/");await page.waitForFunction(()=>globalThis.document.querySelector("#catalogTotal")?.textContent==="320");
+    assert.equal(await page.locator("[data-compare]").count(),0,"Comparison lives in the Strata+ Library, not on the homepage");
+    await page.locator("#exerciseList [data-detail]").first().click();await page.locator('#detailContent a[href="/discover.html#battle"]').waitFor({state:"visible"});
+    await page.locator('#detailContent [data-close-dialog]').click();
     await goto(page,"/workout.html");await page.locator("#trainingRoom").waitFor({state:"visible"});await page.waitForFunction(()=>globalThis.document.querySelector("#planStatus")?.textContent==="You have not built a weekly plan yet.");
     assert.equal(await page.locator("#openPlannerFromEmpty").isVisible(),true);assert.match(await page.locator("#openPlannerFromEmpty").textContent(),/Build your first week/);
     for(const selector of ["#resumeWorkout","#chooseScheduledDay","#startWorkout","#differentWorkout","#editWorkoutWeek","#calendarWeekly"])assert.equal(await page.locator(selector).isHidden(),true,`${selector} must stay hidden before a weekly plan exists`);

@@ -80,6 +80,11 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   inside the Saved collection instead of on a separate board.
 - **Share cards cut.** The PNG share-card generator (`discover-sharing.js`) and its three
   "Share card" buttons are gone. Weekly-plan sharing between members is untouched.
+- **One Compare.** The homepage's two-exercise compare tray and dialog are removed, with
+  the 30-second access-freshness timer that existed only for them. A Strata+ member's
+  exercise detail on the homepage offers one link, "Compare in Strata+", to the Library's
+  side-by-side comparison (up to four exercises). Free visitors see no comparison control,
+  as before.
 
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
