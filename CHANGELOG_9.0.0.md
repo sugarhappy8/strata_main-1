@@ -128,9 +128,30 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
 - **`/ai` is the expanded chat.** The side cards ("How it works", "What Strata AI sees") leave
   the page; the chat column is centred. The same facts stay in the privacy policy and the
   chat's own empty state.
-- The navigation rename (Rankings · My Week · Train · Recovery · Profile) and the Personal
-  setup → Profile merge are the next PR: they move Nutrition and Progress between sections and
-  depend on the Phase 3 data layer.
+
+### Five sections everywhere (second slice)
+
+- **One navigation on every page: Rankings · My Week · Train · Recovery · Profile.** It replaces
+  Exercises · Strata+ · Plan · Train and the separate Account links. Old URLs keep working.
+- **Sections follow the member.** `/rankings`, `/my-week`, and `/recovery` are server routes:
+  - Strata+ members open the studio's Library, Overview, and Recovery.
+  - Everyone else gets the public rankings and the free planner.
+  - Recovery for non-members opens the Strata+ plan with a line saying what Recovery includes.
+  - Offline, My Week opens the planner kept on the device.
+- **The studio highlights where you are.** Recovery highlights Recovery; Progress highlights
+  Train; the Library, recommendations, and Compare highlight Rankings; Personal setup highlights
+  Profile. Inside the studio the section links switch views in place, without a reload.
+- **Profile is the account.** The header "Account" buttons on the studio, `/ai`, Train, and the
+  planner are gone; Profile reaches the same page. The planner's guest link says "Sign in".
+  Members see "Personal setup" and "Nutrition targets" on Profile.
+- **Train links to Progress.** The progress chart links to the studio's weekly consistency and
+  records.
+- Consistent names: the studio tab, footers, and the admin header say "Rankings"; the brand
+  link is "STRATA home" on every page.
+- **Kept on purpose:**
+  - The studio's own view switcher (Overview, Recovery, Progress, Rankings) stays; it switches
+    views inside Strata+ and carries the short descriptions.
+  - The homepage keeps its sign-in and Strata+ buttons, which show who is signed in.
 
 ## Phase 3 — one data layer (first slice)
 

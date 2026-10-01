@@ -69,16 +69,15 @@ test("plan-saving surfaces use consistent announced states and actionable errors
   assert.match(discover,/latest plan is loaded; review the selected day/i);
 });
 
-test("planner and workout share clear Plan and Train navigation at mobile widths",()=>{
+test("planner, workout, and the studio share the five-section navigation at mobile widths",()=>{
   const plannerHtml=read("public/pages/planner.html"),workoutHtml=read("public/pages/workout.html"),discoverHtml=read("public/pages/discover.html");
   const plannerCss=read("public/styles/planner.css"),workoutCss=read("public/styles/workout.css");
-  const destinations=/Exercises<\/a><a[^>]*>Strata\+<\/a><a[^>]*>Plan<\/a><a[^>]*>Train<\/a>/;
+  const destinations=/Rankings<\/a><a[^>]*>My Week<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Profile<\/a>/;
   assert.match(plannerHtml,destinations);assert.match(workoutHtml,destinations);assert.match(discoverHtml,destinations);
-  assert.match(plannerHtml,/href="\/planner\.html" aria-current="page">Plan<\/a>/);
+  assert.match(plannerHtml,/href="\/my-week" aria-current="page">My Week<\/a>/);
   assert.match(workoutHtml,/href="\/workout\.html" aria-current="page">Train<\/a>/);
   for(const [name,html,desktop,user,mobile] of [
     ["Planner",plannerHtml,'class="planner-primary-nav planner-primary-nav-desktop"','class="user-menu"','class="planner-primary-nav planner-primary-nav-mobile"'],
-    ["Workout",workoutHtml,'class="workout-nav workout-nav-desktop"','class="header-account"','class="workout-nav workout-nav-mobile"'],
     ["Strata+",discoverHtml,'class="studio-nav studio-nav-desktop"','class="studio-user"','class="studio-nav studio-nav-mobile"']
   ]){
     assert.ok(html.indexOf(desktop)<html.indexOf(user),`${name} desktop navigation must precede account controls in keyboard order`);
@@ -91,12 +90,12 @@ test("planner and workout share clear Plan and Train navigation at mobile widths
   const discoverCss=read("public/styles/discover.css");
   assert.match(discoverCss,/\.studio-nav-mobile \{ display:none; \}/);
   assert.match(discoverCss,/@media\(max-width:800px\)[\s\S]*?\.plus-studio \.studio-nav-desktop \{ display:none; \}[\s\S]*?\.plus-studio \.studio-nav-mobile \{ display:flex; \}/);
-  assert.match(plannerCss,/\.planner-primary-nav\{position:fixed;[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(plannerCss,/\.planner-primary-nav\{position:fixed;[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(plannerCss,/\.planner-primary-nav a\{[^}]*font-size:11px/);
   assert.match(plannerCss,/@media\(max-width:760px\)\{[\s\S]*?\.planner-header\{background:var\(--ink\);backdrop-filter:none\}/);
   assert.match(workoutCss,/@media\(max-width:760px\)\{[\s\S]*?\.site-header nav\{position:fixed/);
   assert.match(discoverCss,/@media\(max-width:760px\)\s*\{[\s\S]*?\.plus-studio \.studio-nav\s*\{[^}]*position:fixed/);
-  assert.match(workoutCss,/\.site-header nav\{position:fixed;[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
+  assert.match(workoutCss,/\.site-header nav\{position:fixed;[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(workoutCss,/@media\(max-width:760px\)\{[\s\S]*?\.workout-page \.site-header\{[^}]*background:var\(--bg\);backdrop-filter:none\}/);
 });
 

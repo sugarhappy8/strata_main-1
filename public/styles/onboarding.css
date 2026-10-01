@@ -52,9 +52,6 @@ button:disabled { cursor:not-allowed; opacity:.55; }
 .product-nav a::after { content:""; position:absolute; right:50%; bottom:2px; left:50%; height:3px; background:var(--lime); transition:right .22s var(--ease-out),left .22s var(--ease-out); }
 .product-nav a:hover { color:var(--text); }
 .product-nav a:hover::after,.product-nav a:focus-visible::after { right:0; left:0; }
-.product-nav .setup-account { padding-inline:13px; border:1px solid var(--line); border-radius:8px; }
-.product-nav .setup-account::after { display:none; }
-.product-nav .setup-account:hover { color:var(--lime); border-color:var(--lime); }
 
 main { width:min(1320px,calc(100% - 80px)); margin:auto; padding:56px 0 80px; }
 .intro { position:relative; max-width:980px; margin-bottom:38px; padding-bottom:34px; border-bottom:1px solid var(--line); }
@@ -169,7 +166,7 @@ footer a { display:inline-flex; align-items:center; min-height:44px; }
   .setup-header { grid-template-columns:1fr; min-height:64px; padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left)); background:var(--bg); backdrop-filter:none; }
   .product-nav { position:fixed; z-index:40; right:0; bottom:0; left:0; grid-column:auto; width:100%; min-height:calc(56px + env(safe-area-inset-bottom)); padding-bottom:env(safe-area-inset-bottom); background:var(--bg); border-top:1px solid var(--line); }
   .setup-header .product-nav.product-nav { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); justify-content:stretch; gap:0; }
-  .setup-header .product-nav.product-nav a,.setup-header .product-nav.product-nav .setup-account { display:grid; place-items:center; min-width:0; min-height:56px; padding:0 3px; border:0; border-radius:0; font-size:.6875rem; white-space:nowrap; }
+  .setup-header .product-nav.product-nav a { display:grid; place-items:center; min-width:0; min-height:56px; padding:0 3px; border:0; border-radius:0; font-size:.6875rem; white-space:nowrap; }
   .setup-header .product-nav.product-nav a::after { display:none; }
   main { width:calc(100% - 40px); padding-top:34px; }
   .intro { margin-bottom:24px; }

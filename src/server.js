@@ -230,6 +230,13 @@ const PAGE_ALIASES = new Map([
   ["/admin","admin.html"],
   ["/ai","ai.html"]
 ]);
+// The five top-level sections. Rankings, My Week, and Recovery open the Strata+ studio for members; everyone else
+// gets the public rankings, the free planner, and the Strata+ plan that includes Recovery.
+const SECTION_ROUTES = new Map([
+  ["/rankings",{plus:"/discover.html#exerciseExplorer",member:"/#rankings",visitor:"/#rankings"}],
+  ["/my-week",{plus:"/discover.html#todayWorkspace",member:"/planner.html",visitor:"/planner.html"}],
+  ["/recovery",{plus:"/discover.html#recoveryWorkspace",member:"/pricing?reason=recovery",visitor:"/pricing?reason=recovery"}]
+]);
 const PROTECTED_HTML = new Set(["discover.html","workout.html","onboarding.html","ai.html"]);
 const PRIVATE_HTML = new Set(["index.html","account.html","verify-email.html","forgot-password.html","reset-password.html","delete-account.html","admin.html",...PROTECTED_HTML]);
 const MIME = {
@@ -525,6 +532,13 @@ async function serveStatic(req,res,url) {
     : PAGE_ALIASES.has(aliasPath)
       ? PAGE_ALIASES.get(aliasPath)
       : normalize(url.pathname).replace(/^[/\\]+/,"");
+  const section=SECTION_ROUTES.get(aliasPath);
+  if (section) {
+    const session=await auth.sessionFor(req),plus=Boolean(session&&await hasCurrentDiscoveryAccess(session.id));
+    res.writeHead(302,{...securityHeaders(),Location:plus?section.plus:session?section.member:section.visitor,"Cache-Control":"private, no-store",Vary:"Cookie"});
+    res.end();
+    return;
+  }
   if (!STATIC_FILES.has(requested)) { json(res,404,{error:"Page not found."}); return; }
   const activeSession=(PROTECTED_HTML.has(requested)||requested==="index.html"||requested==="admin.html")?await auth.sessionFor(req):null;
   if (requested==="admin.html") {

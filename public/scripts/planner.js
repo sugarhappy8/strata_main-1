@@ -647,10 +647,6 @@ async function init({guestOnly=false}={}){
     const storedAccountPlan=copyPlan(state.plan);
     const repairedRest=repairLegacyRestDay();
     state.selectedDay=STATE.readSelectedDay(localStorage,plannerSelectionContext(),state.plan);
-    el("userName").textContent="Account";
-    if(!state.guest&&result.user.name)el("userName").setAttribute("aria-label",`${result.user.name} account`);
-    else el("userName").removeAttribute("aria-label");
-    el("userName").hidden=state.guest;
     el("logoutButton").hidden=state.guest;
     el("plannerSignIn").hidden=!state.guest;
     renderPlannerModeNotice();

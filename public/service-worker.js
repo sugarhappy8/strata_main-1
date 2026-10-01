@@ -143,7 +143,8 @@ const PUBLIC_HTML_FALLBACKS=new Map([
   ["/terms","/terms.html"],
   ["/privacy","/privacy.html"],
   ["/refunds","/refunds.html"],
-  ["/planner","/planner.html"]
+  ["/planner","/planner.html"],
+  ["/my-week","/planner.html"]
 ]);
 
 function bypassNetwork(pathname) {

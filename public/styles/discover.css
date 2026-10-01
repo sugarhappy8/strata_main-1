@@ -581,7 +581,7 @@ dialog::backdrop { background: rgba(8,9,7,.78); backdrop-filter: blur(4px); }
 @media (max-width: 680px) {
   .studio-container { width: min(100% - 28px, 1280px); }
   .studio-header { min-height: 64px; padding: 0 14px; grid-template-columns: 1fr auto; background:var(--ink); backdrop-filter:none; }
-  .studio-nav { position: fixed; z-index: 49; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; min-height: calc(56px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: var(--ink); border-top: 1px solid rgba(255,255,255,.15); }
+  .studio-nav { position: fixed; z-index: 49; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 0; min-height: calc(56px + env(safe-area-inset-bottom)); padding-bottom: env(safe-area-inset-bottom); background: var(--ink); border-top: 1px solid rgba(255,255,255,.15); }
   .studio-nav a { display: grid; place-items: center; padding: 0; border-bottom: 0; border-top: 3px solid transparent; }
   .studio-nav a::after { display:none; }
   .studio-nav a.active { border-top-color: var(--accent); }
@@ -766,7 +766,7 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
   .plus-studio .studio-header { min-height:76px; background:rgba(16,17,15,.9); color:var(--studio-text); border-bottom:1px solid var(--studio-line); gap:20px; padding-top:calc(12px + env(safe-area-inset-top)); padding-right:max(clamp(20px,4vw,64px),env(safe-area-inset-right)); padding-bottom:12px; padding-left:max(clamp(20px,4vw,64px),env(safe-area-inset-left)); backdrop-filter:blur(18px) saturate(1.15); }
   .plus-studio .studio-header a,.plus-studio .studio-user,.plus-studio .studio-user button { color:var(--studio-muted); }
   .plus-studio .studio-header .brand,.plus-studio .studio-nav .active { color:var(--studio-text); }
-  .plus-studio .studio-nav a,.plus-studio .studio-user,.plus-studio .studio-account,.plus-studio .studio-user button { font-size:.875rem; }
+  .plus-studio .studio-nav a,.plus-studio .studio-user,.plus-studio .studio-user button { font-size:.875rem; }
   .plus-studio .studio-user > span { min-width:0; max-width:min(18vw,180px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .plus-studio .studio-nav a.active::after { background:var(--accent); }
   .plus-studio .brand-mark i { background:var(--accent); }
@@ -868,10 +868,10 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
   .plus-studio .studio-header { min-height:calc(64px + env(safe-area-inset-top)); grid-template-columns:minmax(0,1fr) auto; grid-template-rows:auto; padding-top:calc(10px + env(safe-area-inset-top)); padding-bottom:10px; background:#10110f; backdrop-filter:none; }
   .plus-studio .brand { grid-column:1; grid-row:1; }
   .plus-studio .studio-user { grid-column:2; grid-row:1; }
-  .plus-studio .studio-nav { position:fixed; z-index:49; right:0; bottom:0; left:0; grid-column:auto; grid-row:auto; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); width:100%; min-height:calc(56px + env(safe-area-inset-bottom)); padding:0 0 env(safe-area-inset-bottom); gap:0; background:var(--studio-bg); border-top:1px solid var(--studio-line); }
+  .plus-studio .studio-nav { position:fixed; z-index:49; right:0; bottom:0; left:0; grid-column:auto; grid-row:auto; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); width:100%; min-height:calc(56px + env(safe-area-inset-bottom)); padding:0 0 env(safe-area-inset-bottom); gap:0; background:var(--studio-bg); border-top:1px solid var(--studio-line); }
   .plus-studio .studio-nav-desktop { display:none; }
   .plus-studio .studio-nav-mobile { display:grid; }
-  .plus-studio .studio-nav a { display:grid; place-items:center; min-width:0; min-height:56px; padding:0 5px; border-top:3px solid transparent; }
+  .plus-studio .studio-nav a { display:grid; place-items:center; min-width:0; min-height:56px; padding:0 2px; border-top:3px solid transparent; font-size:.75rem; white-space:nowrap; }
   .plus-studio .studio-nav a.active { border-top-color:var(--accent); }
   .plus-studio .compare-tray { bottom:calc(67px + env(safe-area-inset-bottom)); }
   body.plus-studio:has(.compare-tray:not([hidden])) .toast { bottom:calc(155px + env(safe-area-inset-bottom)); }

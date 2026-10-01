@@ -12,22 +12,17 @@
 .brand{grid-column:1;grid-row:1;min-height:44px}
 .site-header nav{grid-column:2;grid-row:1;justify-self:center;flex-wrap:nowrap}
 .site-header .workout-nav-mobile{display:none}
-.header-account{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 14px;color:var(--muted);text-decoration:none;border:1px solid var(--line);border-radius:9px}
-.header-account{grid-column:3;grid-row:1}
-.header-account:hover,.header-account:focus-visible{color:var(--lime);border-color:var(--lime)}
 .mode-notice a,.text-link,footer a{display:inline-flex;align-items:center;justify-content:center;min-width:44px;min-height:44px}
 .start-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 
 @media(max-width:760px){
   body{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
   .site-header{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;padding:18px 20px}
-  .header-account{grid-column:2}
-  .site-header nav{position:fixed;z-index:35;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));width:100%;min-height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);gap:0;background:var(--bg);border-top:1px solid var(--line)}
+  .site-header nav{position:fixed;z-index:35;left:0;right:0;bottom:0;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));width:100%;min-height:calc(56px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);gap:0;background:var(--bg);border-top:1px solid var(--line)}
   .site-header .workout-nav-desktop{display:none}
   .site-header .workout-nav-mobile{display:grid}
   .site-header nav a{display:grid;place-items:center;min-width:0;min-height:56px;padding:0 5px;border-radius:0;font-size:.8rem;white-space:nowrap}
   .site-header nav a[aria-current="page"]{box-shadow:inset 0 3px 0 var(--lime)}
-  .header-account{padding-inline:12px}
   .start-actions{display:grid;width:100%}
   .toast{bottom:calc(72px + env(safe-area-inset-bottom))}
 }
@@ -44,7 +39,7 @@
   font-family:var(--body); font-variant-numeric:tabular-nums;
 }
 .workout-page :where(h1,h2,h3,h4,.brand,.visual-core strong,.session-clock strong,.timer-readout strong,.chart-best strong){font-family:var(--display)}
-.workout-page :where(.eyebrow,.mode-notice,.workout-nav a,.header-account,.field,.visual-core>span,.visual-label,.preview-number,.status-chip,footer){font-family:var(--body,"Manrope",Arial,sans-serif); font-variant-numeric:tabular-nums; }
+.workout-page :where(.eyebrow,.mode-notice,.workout-nav a,.field,.visual-core>span,.visual-label,.preview-number,.status-chip,footer){font-family:var(--body,"Manrope",Arial,sans-serif); font-variant-numeric:tabular-nums; }
 .workout-page .site-header{position:sticky;z-index:30;top:0;max-width:none;min-height:72px;margin:0;padding:14px max(clamp(20px,4vw,64px),env(safe-area-inset-right)) 14px max(clamp(20px,4vw,64px),env(safe-area-inset-left));background:rgba(16,17,15,.96);border-bottom:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.14);backdrop-filter:blur(14px) saturate(1.08)}
 .workout-page .brand{font-size:22px;font-weight:700;letter-spacing:.055em}
 .workout-page .brand-mark{gap:2px;width:22px;height:24px;transform:skew(-8deg)}
@@ -55,7 +50,6 @@
 .workout-page .site-header nav a::after{content:"";position:absolute;right:50%;bottom:0;left:50%;height:3px;background:var(--lime);transition:right .22s var(--ease-out),left .22s var(--ease-out)}
 .workout-page .site-header nav a:hover,.workout-page .site-header nav a[aria-current="page"]{color:var(--text);background:transparent}
 .workout-page .site-header nav a:hover::after,.workout-page .site-header nav a:focus-visible::after,.workout-page .site-header nav a[aria-current="page"]::after{right:0;left:0}
-.workout-page .header-account{border-radius:8px;font-size:.75rem;letter-spacing:.02em}
 .workout-page .shell{width:min(1320px,calc(100% - 80px));max-width:none;padding:28px 0 82px}
 .workout-page .mode-notice{min-height:44px;display:flex;align-items:center;padding:8px 0;color:var(--muted);font-size:.75rem}
 .workout-page .hero{grid-template-columns:minmax(0,1.35fr) minmax(300px,1fr);gap:48px;padding:44px 0 52px}
@@ -85,7 +79,7 @@
 .workout-page .toast{font-family:var(--body);font-size:.875rem}
 @media(hover:hover) and (pointer:fine){
   .workout-page :where(.panel:not(.error-panel):not(.conflict-panel),.exercise-card,.preview-card):hover{border-color:#56623f}
-  .workout-page :where(.button,.header-account):hover{transform:translateY(-2px)}
+  .workout-page :where(.button):hover{transform:translateY(-2px)}
   .workout-page .exercise-card:hover{box-shadow:0 12px 30px rgba(0,0,0,.18)}
 }
 @media(prefers-reduced-motion:no-preference){

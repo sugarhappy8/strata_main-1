@@ -27,9 +27,9 @@
     <a class="skip-link" id="activeWorkspaceSkip" href="#todayTitle">Skip to active Strata+ workspace</a>
     <header class="studio-header">
       <a class="brand" href="/" aria-label="STRATA home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>STRATA</span></a>
-      <nav class="studio-nav studio-nav-desktop" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a class="active" href="/discover.html" aria-current="page">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
-      <div class="studio-user"><span id="userName">Member</span><a class="studio-account" href="/account.html">Account</a><button id="logoutButton" type="button">Sign out</button></div>
-      <nav class="studio-nav studio-nav-mobile" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a class="active" href="/discover.html" aria-current="page">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html">Train</a></nav>
+      <nav class="studio-nav studio-nav-desktop" aria-label="Primary navigation"><a href="#exerciseExplorer" data-section="rankings">Rankings</a><a class="active" href="#todayWorkspace" data-section="week" aria-current="page">My Week</a><a href="/workout.html" data-section="train">Train</a><a href="#recoveryWorkspace" data-section="recovery">Recovery</a><a href="/account.html" data-section="profile">Profile</a></nav>
+      <div class="studio-user"><span id="userName">Member</span><button id="logoutButton" type="button">Sign out</button></div>
+      <nav class="studio-nav studio-nav-mobile" aria-label="Primary navigation"><a href="#exerciseExplorer" data-section="rankings">Rankings</a><a class="active" href="#todayWorkspace" data-section="week" aria-current="page">My Week</a><a href="/workout.html" data-section="train">Train</a><a href="#recoveryWorkspace" data-section="recovery">Recovery</a><a href="/account.html" data-section="profile">Profile</a></nav>
     </header>
 
     <section class="discovery-load-error" id="discoveryLoadError" role="alert" aria-labelledby="discoveryLoadErrorTitle" aria-describedby="discoveryLoadErrorMessage" hidden>
@@ -47,7 +47,7 @@
             <a class="destination-link" href="#todayWorkspace" data-feature-target="today" aria-controls="todayWorkspace" aria-expanded="false"><span>Overview</span><small>Plan, train &amp; eat</small></a>
             <a class="destination-link" href="#recoveryWorkspace" data-feature-target="recovery" aria-controls="recoveryWorkspace" aria-expanded="false"><span>Recovery</span><small>Sleep & stress</small></a>
             <a class="destination-link" href="#progressWorkspace" data-feature-target="progress" aria-controls="progressWorkspace" aria-expanded="false"><span>Progress</span><small>Review your results</small></a>
-            <a class="destination-link" href="#exerciseExplorer" data-feature-target="library" aria-controls="exerciseExplorer" aria-expanded="false"><span>Exercises</span><small>Find & compare</small></a>
+            <a class="destination-link" href="#exerciseExplorer" data-feature-target="library" aria-controls="exerciseExplorer" aria-expanded="false"><span>Rankings</span><small>Find & compare</small></a>
           </nav>
           <p class="sr-only" id="featureStatus" role="status" aria-live="polite"></p>
         </div>

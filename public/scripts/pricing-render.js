@@ -87,10 +87,10 @@
       if(!online){setStatus("You are offline. Reconnect before opening secure checkout.","warn");return;}
       if(checkoutBlocked){setStatus("New payment sessions are disabled for this account. Contact STRATA for help.","warn");return;}
       // Why the member arrived stays visible even when checkout cannot open right now.
-      const reasonNote=pageReason==="ai"?"Strata AI is included with Strata+.":pageReason==="access"||pageReason==="discovery-required"?"That page is part of Strata+.":"";
+      const reasonNote=pageReason==="ai"?"Strata AI is included with Strata+.":pageReason==="recovery"?"Recovery, with your Polar sleep and Nightly Recharge, is part of Strata+.":pageReason==="access"||pageReason==="discovery-required"?"That page is part of Strata+.":"";
       if(state.configError){setStatus(`${reasonNote?`${reasonNote} `:""}${state.configError}`,"warn");return;}
       if(pageReason==="access-revoked"){setStatus("Strata+ access is no longer active, usually because a subscription ended or a charge was refunded or reversed. You may subscribe again or contact STRATA if this is unexpected.","warn");return;}
-      if(reasonNote){setStatus(`${reasonNote} Subscribe to ${pageReason==="ai"?"use it":"continue"}.`);return;}
+      if(reasonNote){setStatus(`${reasonNote} Subscribe to ${pageReason==="ai"||pageReason==="recovery"?"use it":"continue"}.`);return;}
       setStatus("Signed in and ready for secure Paddle checkout.");
     }
 

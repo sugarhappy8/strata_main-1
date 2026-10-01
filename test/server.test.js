@@ -184,6 +184,15 @@ test("creates an account with a private default plan",async()=>{
   assert.match(discoverPage.response.headers.get("cache-control")||"",/no-store/);
   assert.equal(discoverPage.response.headers.get("location"),"/pricing?reason=discovery-required");
 
+  // The member-aware sections: free accounts and visitors get the public rankings, the free planner, and the plan that includes Recovery.
+  const section=async(path,cookie)=>{const result=await request(path,{headers:cookie?{Cookie:cookie}:{},redirect:"manual"});assert.equal(result.response.status,302,path);assert.match(result.response.headers.get("cache-control")||"",/no-store/);return result.response.headers.get("location");};
+  for(const cookie of [signup.cookie,null]){
+    assert.equal(await section("/rankings",cookie),"/#rankings");
+    assert.equal(await section("/my-week",cookie),"/planner.html");
+    assert.equal(await section("/my-week/",cookie),"/planner.html");
+    assert.equal(await section("/recovery",cookie),"/pricing?reason=recovery");
+  }
+
   const plan=await request("/api/plan",{headers:{Cookie:signup.cookie}});
   assert.equal(plan.response.status,200);
   assert.equal(plan.data.plan.restDay,"Sunday");
@@ -204,6 +213,10 @@ test("creates an account with a private default plan",async()=>{
   assert.deepEqual(Object.entries(grantedMe.data.user.capabilities).filter(([,allowed])=>!allowed),[],"a grant switches on every Strata+ capability");
   const grantedDiscovery=await request("/api/discovery",{headers:{Cookie:signup.cookie}});
   assert.equal(grantedDiscovery.response.status,200);
+  // Members open the same sections inside the Strata+ studio.
+  assert.equal(await section("/rankings",signup.cookie),"/discover.html#exerciseExplorer");
+  assert.equal(await section("/my-week",signup.cookie),"/discover.html#todayWorkspace");
+  assert.equal(await section("/recovery",signup.cookie),"/discover.html#recoveryWorkspace");
 
   const profile={version:1,goal:"strength",level:"Intermediate",days:4,equipment:["Dumbbells","Bodyweight"],preferences:["stable"],limitations:[]};
   const missingProfileCsrf=await request("/api/preferences",{method:"PUT",headers:{Cookie:signup.cookie,Origin:BASE,"Content-Type":"application/json"},body:JSON.stringify({preferences:profile})});

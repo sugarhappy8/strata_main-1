@@ -22,10 +22,9 @@
 <body class="workout-page">
   <a class="skip-link" href="#workoutTitle">Skip to workout</a>
   <header class="site-header">
-    <a class="brand" href="/" aria-label="STRATA rankings"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>STRATA</a>
-    <nav class="workout-nav workout-nav-desktop" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html" aria-current="page">Train</a></nav>
-    <a class="header-account" href="/account.html" id="accountLink">Account</a>
-    <nav class="workout-nav workout-nav-mobile" aria-label="Primary navigation"><a href="/#rankings">Exercises</a><a href="/discover.html">Strata+</a><a href="/planner.html">Plan</a><a href="/workout.html" aria-current="page">Train</a></nav>
+    <a class="brand" href="/" aria-label="STRATA home"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>STRATA</a>
+    <nav class="workout-nav workout-nav-desktop" aria-label="Primary navigation"><a href="/rankings">Rankings</a><a href="/my-week">My Week</a><a href="/workout.html" aria-current="page">Train</a><a href="/recovery">Recovery</a><a href="/account.html">Profile</a></nav>
+    <nav class="workout-nav workout-nav-mobile" aria-label="Primary navigation"><a href="/rankings">Rankings</a><a href="/my-week">My Week</a><a href="/workout.html" aria-current="page">Train</a><a href="/recovery">Recovery</a><a href="/account.html">Profile</a></nav>
   </header>
   <main class="shell">
     <div class="mode-notice" id="modeNotice" role="status">Checking your session…</div>
@@ -89,7 +88,7 @@
     </div>
     <section class="history-section" id="historySection" hidden aria-labelledby="historyTitle">
       <div class="section-heading"><div><p class="eyebrow">Your training record</p><h2 id="historyTitle" tabindex="-1">The work adds up.</h2></div><button type="button" class="button secondary compact" id="refreshHistory">Refresh history</button></div>
-      <div class="history-layout"><section class="panel history-log" aria-labelledby="historyLogTitle"><h3 id="historyLogTitle">Recent sessions</h3><div id="historyList"></div><p id="historyError" class="inline-error" role="alert" hidden></p><button type="button" class="button secondary full-width" id="loadMore" hidden>Load more sessions</button></section><section class="panel progress-panel" aria-labelledby="progressTitle"><p class="eyebrow">Progress, measured</p><h3 id="progressTitle">Build on your own best.</h3><p id="chartEmpty" class="muted">Your progress appears after your first completed workout.</p><div id="chartControls" hidden><label class="field">Exercise and logging format<select id="chartExercise"></select></label><label class="field">Measure<select id="chartMetric"></select></label></div><div id="performanceChart"></div><p class="scope-note" id="chartScope">Only completed sets in the loaded history are included. Reps and seconds are compared separately; bodyweight and assistance are never counted as external lifting volume.</p></section></div>
+      <div class="history-layout"><section class="panel history-log" aria-labelledby="historyLogTitle"><h3 id="historyLogTitle">Recent sessions</h3><div id="historyList"></div><p id="historyError" class="inline-error" role="alert" hidden></p><button type="button" class="button secondary full-width" id="loadMore" hidden>Load more sessions</button></section><section class="panel progress-panel" aria-labelledby="progressTitle"><p class="eyebrow">Progress, measured</p><h3 id="progressTitle">Build on your own best.</h3><p id="chartEmpty" class="muted">Your progress appears after your first completed workout.</p><div id="chartControls" hidden><label class="field">Exercise and logging format<select id="chartExercise"></select></label><label class="field">Measure<select id="chartMetric"></select></label></div><div id="performanceChart"></div><p class="scope-note" id="chartScope">Only completed sets in the loaded history are included. Reps and seconds are compared separately; bodyweight and assistance are never counted as external lifting volume.</p><a class="text-link progress-overview-link" href="/discover.html#progressWorkspace">Weekly consistency and records →</a></section></div>
     </section>
     <div class="signal-consent-host" data-product-signals-consent-host></div>
     <noscript><div class="panel">Enable JavaScript to log sessions and load workout history. Your week remains available in <a href="/planner.html">Plan</a>.</div></noscript>
