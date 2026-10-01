@@ -448,7 +448,7 @@ export interface ProductSignalsStore {
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -512,6 +512,9 @@ export interface AccountExportStoreRows {
   wellnessNights:JsonObject[];
   wellnessDays:JsonObject[];
   wellnessWorkouts:JsonObject[];
+  dailySnapshots:JsonObject[];
+  planChanges:JsonObject[];
+  trainingLinks:JsonObject[];
 }
 
 export interface AccountSelfServiceStore {
@@ -783,6 +786,7 @@ export interface TrainingServiceDependencies {
   trustedOrigin:(request:HttpRequest)=>boolean;
   rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
   http:JsonHttpHelpers;
+  events?:EventBus|null;
 }
 
 export interface TrainingService {
@@ -817,6 +821,21 @@ export type CoachingProfilePayload=CoachingProfile&{revision:number;updatedAt:nu
 export interface CoachingWeekRecord {userId:string;weekStart:string;planKey:string;profileRevision:number;snapshotJson:string;generatedAt:number;}
 export interface CoachingDailyLogRecord {userId:string;logDate:string;calories:number;proteinG:number|null;carbsG:number|null;fatG:number|null;morningWeightKg:number|null;complete:boolean|null;updatedAt:number;}
 export interface CoachingDailyLogRow extends JsonObject {log_date:string;calories:number;protein_g:number|null;carbs_g:number|null;fat_g:number|null;morning_weight_kg:number|null;intake_complete:0|1|null;revision:number;updated_at:number;}
+/** Shared data layer: Polar-to-workout links, Daily Snapshots, and where each saved week came from. */
+export interface DataLayerStore {
+  trainingLinks(userId:string):Promise<JsonObject[]>;
+  upsertTrainingLink(userId:string,link:{provider:string,externalId:string,workoutId:string,method:string,linkedAt:number}):Promise<void>;
+  deleteTrainingLink(userId:string,provider:string,externalId:string):Promise<void>;
+  deleteTrainingLinksForProvider(userId:string,provider:string):Promise<void>;
+  dailySnapshots(userId:string,fromDate:string,toDate:string):Promise<JsonObject[]>;
+  upsertDailySnapshot(userId:string,date:string,snapshotJson:string,updatedAt:number):Promise<void>;
+  saveDailyBrief(userId:string,date:string,briefJson:string,generatedAt:number):Promise<boolean>;
+  deleteDailyBriefs(userId:string,updatedAt:number):Promise<void>;
+  deleteOldDailySnapshots(beforeDate:string):Promise<void>;
+  deleteUserDailySnapshots(userId:string):Promise<void>;
+  insertPlanChange(userId:string,change:{planUpdatedAt:number,source:string,detail:string,createdAt:number},keep?:number):Promise<void>;
+  planChanges(userId:string,limit:number):Promise<JsonObject[]>;
+}
 export interface CoachingStore {
   coachingProfile(userId:string):Promise<JsonObject|null>;
   upsertCoachingProfile(userId:string,profileJson:string,updatedAt:number,expectedRevision:number):Promise<JsonObject|null>;

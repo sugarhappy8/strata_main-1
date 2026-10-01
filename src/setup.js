@@ -50,7 +50,7 @@ function createSetupService({store,auth,requireAccess,trustedOrigin,getPlanSnaps
       expectedPlanUpdatedAt,expectedPreferencesUpdatedAt
     );
     if(saved){
-      await events?.emit("plan.saved",{userId:session.id,plan,updatedAt:Number(saved.updated_at)});
+      await events?.emit("plan.updated",{userId:session.id,plan,updatedAt:Number(saved.updated_at),source:"system",detail:"setup"});
       await events?.emit("preferences.saved",{userId:session.id,preferences});
       json(res,200,{ok:true,plan,planUpdatedAt:Number(saved.updated_at),preferences,preferencesUpdatedAt:Number(saved.preferences_updated_at),stats});return;
     }

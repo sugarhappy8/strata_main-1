@@ -136,7 +136,7 @@ test("the page's requests carry the account and security token and report failur
   assert.deepEqual(JSON.parse(calls[0].init.body),{kind:"chat",message:"Plan",draftPlan,draftPlanUpdatedAt:17,history:[],expectedUserId:"user-9"});
   await client.ask({kind:"suggestions",message:"ignored",history:[]});assert.equal(JSON.parse(calls[1].init.body).message,undefined);
   await client.poll("abc/def");assert.equal(calls[2].url,"/api/ai/requests/abc%2Fdef");assert.equal(calls[2].init.headers["X-CSRF-Token"],undefined,"reads carry no token");
-  await client.savePlan({plan:{days:{}},expectedPlanUpdatedAt:5});assert.deepEqual(JSON.parse(calls[3].init.body),{plan:{days:{}},expectedPlanUpdatedAt:5,expectedUserId:"user-9"});assert.equal(calls[3].init.method,"PUT");
+  await client.savePlan({plan:{days:{}},expectedPlanUpdatedAt:5});assert.deepEqual(JSON.parse(calls[3].init.body),{plan:{days:{}},expectedPlanUpdatedAt:5,expectedUserId:"user-9",source:"ai"});assert.equal(calls[3].init.method,"PUT");
   await client.saveProfile({profile:{goal:"fat_loss"},expectedRevision:2});assert.equal(calls[4].url,"/api/coaching/profile");
   for(const read of ["me","status","plan"])await client[read]();
   await client.logout();assert.equal(calls.at(-1).url,"/api/logout");assert.equal(calls.at(-1).init.method,"POST");

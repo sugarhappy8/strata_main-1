@@ -4,6 +4,9 @@
 // Both database adapters must expose this complete application-facing API.
 const STORE_METHODS = Object.freeze([
   "ping",
+  "trainingLinks","upsertTrainingLink","deleteTrainingLink","deleteTrainingLinksForProvider",
+  "dailySnapshots","upsertDailySnapshot","saveDailyBrief","deleteDailyBriefs","deleteOldDailySnapshots","deleteUserDailySnapshots",
+  "insertPlanChange","planChanges",
   "coachingProfile",
   "upsertCoachingProfile",
   "coachingWeek",

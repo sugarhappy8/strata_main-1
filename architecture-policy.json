@@ -34,7 +34,8 @@
         "src/static-assets.js",
         "src/support.js",
         "src/training.js",
-        "src/workouts.js"
+        "src/workouts.js",
+        "src/data-service.js"
       ]
     },
     "src/service-composition.js": {
@@ -158,7 +159,8 @@
         "src/migrations.js",
         "src/schema.js",
         "src/store-contract.js",
-        "src/training-loop-store.js"
+        "src/training-loop-store.js",
+        "src/data-layer-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -183,7 +185,8 @@
         "src/coaching-schema.js",
         "src/devices-schema.js",
         "src/product-signals-schema.js",
-        "src/training-loop-schema.js"
+        "src/training-loop-schema.js",
+        "src/data-layer-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
@@ -523,6 +526,42 @@
       "maxLines": 150,
       "allowedDependencies": [
         "src/plans.js"
+      ]
+    },
+    "src/data-layer-schema.js": {
+      "role": "Training-link, Daily Snapshot, and plan-change storage schema",
+      "maxLines": 60,
+      "allowedDependencies": []
+    },
+    "src/data-layer-store.js": {
+      "role": "SQLite and Turso data-layer adapter parity",
+      "maxLines": 70,
+      "allowedDependencies": [
+        "src/data-layer-schema.js"
+      ]
+    },
+    "src/training-log.js": {
+      "role": "Training Log read model: logged, planned, and Polar sessions with source tags and links",
+      "maxLines": 150,
+      "allowedDependencies": [
+        "src/plans.js"
+      ]
+    },
+    "src/daily-snapshot.js": {
+      "role": "Daily Snapshot read model rebuilt from sleep, recovery, training, and nutrition events",
+      "maxLines": 110,
+      "allowedDependencies": [
+        "src/wellness-core.js",
+        "src/training-log.js"
+      ]
+    },
+    "src/data-service.js": {
+      "role": "Shared data layer front door: read models, their routes, and derived-record listeners",
+      "maxLines": 120,
+      "allowedDependencies": [
+        "src/athlete-profile.js",
+        "src/daily-snapshot.js",
+        "src/training-log.js"
       ]
     }
   }

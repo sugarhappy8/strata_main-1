@@ -41,6 +41,10 @@ async function scenario(store,suffix){
   const differentEvidence=await store.upsertCoachingWeek({userId:user.id,weekStart:"2030-03-04",planKey:"different-evidence",profileRevision:2,snapshotJson:JSON.stringify({weekStart:"2030-03-04",planKey:"different-evidence",profileRevision:2}),generatedAt:now+1000});
   assert.equal(differentEvidence,null,"the first snapshot wins even when concurrent evidence changes its key");
   assert.equal((await store.coachingWeek(user.id,"2030-03-04")).plan_key,"week-key");
+  const planChanged=await store.upsertCoachingWeek({userId:user.id,weekStart:"2030-03-04",planKey:"plan-changed",profileRevision:2,snapshotJson:JSON.stringify({weekStart:"2030-03-04",planKey:"plan-changed",profileRevision:2,training:{planFingerprint:"0123456789abcdef"}}),generatedAt:now+1001});
+  assert.equal(planChanged?.plan_key,"plan-changed","a changed weekly plan replaces the stored week for the same profile revision");
+  const samePlanAgain=await store.upsertCoachingWeek({userId:user.id,weekStart:"2030-03-04",planKey:"plan-changed-evidence",profileRevision:2,snapshotJson:JSON.stringify({weekStart:"2030-03-04",planKey:"plan-changed-evidence",profileRevision:2,training:{planFingerprint:"0123456789abcdef"}}),generatedAt:now+1002});
+  assert.equal(samePlanAgain,null,"the same plan with different evidence keeps the first stored week");
   const log1=await store.upsertCoachingDailyLog({userId:user.id,logDate:"2030-03-04",calories:2100,proteinG:null,carbsG:null,fatG:null,morningWeightKg:null,complete:null,updatedAt:now+6},0);
   const staleLog=await store.upsertCoachingDailyLog({userId:user.id,logDate:"2030-03-04",calories:9999,proteinG:null,carbsG:null,fatG:null,morningWeightKg:80,complete:false,updatedAt:now+7},0);
   const log2=await store.upsertCoachingDailyLog({userId:user.id,logDate:"2030-03-04",calories:2200,proteinG:160,carbsG:250,fatG:65,morningWeightKg:82.4,complete:true,updatedAt:now+8},1);
@@ -50,7 +54,7 @@ async function scenario(store,suffix){
   return {
     profile1:{revision:Number(profile1.revision),data:JSON.parse(profile1.profile_json)},staleProfile,
     profile2:{revision:Number(profile2.revision),data:JSON.parse(profile2.profile_json)},wrongWeek,
-    week:{weekStart:week.week_start,planKey:week.plan_key,profileRevision:Number(week.profile_revision),duplicateWeek,persistedGeneratedAt:Number(persistedWeek.generated_at)},
+    week:{weekStart:week.week_start,planKey:week.plan_key,profileRevision:Number(week.profile_revision),duplicateWeek,persistedGeneratedAt:Number(persistedWeek.generated_at)},planChangedKey:planChanged?.plan_key,
     log1:{calories:Number(log1.calories),morningWeightKg:log1.morning_weight_kg,complete:log1.intake_complete,revision:Number(log1.revision)},staleLog,
     log2:{calories:Number(log2.calories),proteinG:Number(log2.protein_g),morningWeightKg:Number(log2.morning_weight_kg),complete:Boolean(log2.intake_complete),revision:Number(log2.revision)},
     listed:(await store.coachingDailyLogs(user.id,"2030-03-01","2030-03-10")).length,

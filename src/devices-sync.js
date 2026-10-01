@@ -18,9 +18,9 @@ const isoDate=(time)=>new Date(time).toISOString().slice(0,10);
 
 /**
  * @param {{store:import("./domain-types").DeviceStore,polar:any,keys:import("./devices-crypto").DeviceKey[],hasAccess:(userId:string)=>Promise<boolean>,
- *   logger?:{info?:Function,warn?:Function,error?:Function}|null,now?:()=>number,intervalMs?:number,batchSize?:number}} dependencies
+ *   logger?:{info?:Function,warn?:Function,error?:Function}|null,now?:()=>number,intervalMs?:number,batchSize?:number,events?:import("./domain-types").EventBus|null}} dependencies
  */
-function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,intervalMs=60000,batchSize=5}){
+function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,intervalMs=60000,batchSize=5,events=null}){
   /** @type {Set<string>} */
   const running=new Set();
   /** @type {ReturnType<typeof setInterval>|null} */
@@ -63,6 +63,8 @@ function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,i
       for(const day of daysFromHeartRate(await polar.heartRate(token,from,to),time))await store.upsertWellnessDay(owner,day);
       await record({syncedThrough:today,lastSyncAt:time,nextSyncAt:nextDaily(owner.userId),failures:0});
       logger?.info?.("device.synced",{provider:owner.provider,days,nights:nights.length});
+      // The Training Log links new sessions and the Daily Snapshot rebuilds these days.
+      await events?.emit("polar.sync.finished",{userId:owner.userId,provider:owner.provider,from,to:today});
       return {status:"synced"};
     }catch(error){
       const failure=/** @type {any} */(error),code=String(failure?.code||"DEVICE_SYNC_FAILED");

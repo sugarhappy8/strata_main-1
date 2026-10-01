@@ -2,18 +2,22 @@
 "use strict";
 
 /**
- * In-process event bus. Routes announce what happened ("plan.saved",
- * "workout.saved", "preferences.saved", "coaching.profile_saved") and
+ * In-process event bus. Routes announce what happened ("plan.updated",
+ * "workout.completed", "polar.sync.finished", "snapshot.ready", ...) and
  * other modules react without the routes knowing about them. Handlers run
  * in order and are awaited, so a route's response reflects every reaction;
  * a failing handler is logged and never breaks the request that caused it.
  */
 const EVENT_NAMES=Object.freeze([
-  "plan.saved",
+  "plan.updated",
   "workout.saved",
+  "workout.completed",
   "preferences.saved",
   "coaching.profile_saved",
-  "polar.synced"
+  "coaching.log_saved",
+  "polar.sync.finished",
+  "polar.data_deleted",
+  "snapshot.ready"
 ]);
 
 /**

@@ -170,7 +170,7 @@ function planWithAdaptation(value,adaptation) {
  * @param {import("./domain-types").TrainingServiceDependencies} dependencies
  * @returns {import("./domain-types").TrainingService}
  */
-function createTrainingService({store,auth,requireAccess,trustedOrigin,rateAllowed,http}) {
+function createTrainingService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,events=null}) {
   if (!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http) throw new TypeError("Training service requires storage, access guards, rate limiting, and HTTP helpers.");
   const {json,bodyJson}=http;
   /** @param {string} userId @param {string} id */
@@ -282,6 +282,7 @@ function createTrainingService({store,auth,requireAccess,trustedOrigin,rateAllow
     catch { throw trainingError("This training proposal no longer matches your plan. Dismiss it and continue with the current plan.",409,"ADAPTATION_UNAVAILABLE"); }
     const accepted=await store.acceptTrainingAdaptation({userId:session.id,id,planJson:JSON.stringify(proposedPlan),expectedPlanUpdatedAt,expectedCheckInUpdatedAt,resolvedAt:now});
     if (!accepted) throw trainingError("Your plan or proposal changed. Refresh before applying it.",409,"ADAPTATION_CHANGED");
+    await events?.emit("plan.updated",{userId:session.id,plan:proposedPlan,updatedAt:Number(accepted.plan.updated_at),source:"system",detail:"adaptation"});
     json(res,200,{adaptation:adaptationPayload(accepted.adaptation),plan:proposedPlan,planUpdatedAt:Number(accepted.plan.updated_at)});
   }
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url */

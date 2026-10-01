@@ -124,6 +124,7 @@ function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllow
       const sanitized=sanitizeDailyLog(logInput),has=(/** @type {string} */ key)=>Object.hasOwn(logInput,key),macroKeys=["proteinG","carbsG","fatG"],preserveMacros=macroKeys.every(key=>!has(key)),needsExisting=preserveMacros||!has("morningWeightKg")||!has("complete"),existingLog=needsExisting?await store.coachingDailyLog(session.id,logDate):null;
       const log={...sanitized,morningWeightKg:has("morningWeightKg")?sanitized.morningWeightKg:existingLog?.morning_weight_kg??null,complete:has("complete")?sanitized.complete:existingLog?.intake_complete==null?null:Number(existingLog.intake_complete)===1,...(preserveMacros?{proteinG:existingLog?.protein_g??null,carbsG:existingLog?.carbs_g??null,fatG:existingLog?.fat_g??null}:{})},saved=await store.upsertCoachingDailyLog({userId:session.id,logDate,...log,updatedAt:timestamp},expectedRevision);
       if(!saved){json(res,409,{error:"This daily entry changed elsewhere. Review the latest values before saving.",code:"COACHING_LOG_CHANGED",log:logPayload(await store.coachingDailyLog(session.id,logDate),target)});return true;}
+      await events?.emit("coaching.log_saved",{userId:session.id,date:logDate});
       json(res,200,{ok:true,log:logPayload(saved,target),csrfToken:session.csrf_token});
     }catch(error){
       const failure=/** @type {Error&{status?:number,code?:string}} */(error);if(!failure.status)throw error;

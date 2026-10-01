@@ -156,7 +156,7 @@ function createWorkoutService({store,auth,requireAccess,rateAllowed,http,events=
       if (current?.create_hash===digest) { json(res,200,{workout:workoutPayload(current)});return; }
       if (current) { await existingOrConflict(res,userId,workout.id);return; }
       const saved=await store.insertWorkout(record);
-      if (saved) { await events?.emit("workout.saved",{userId,workout,created:true});json(res,201,{workout:workoutPayload(saved)});return; }
+      if (saved) { await events?.emit("workout.saved",{userId,workout,created:true});if (workout.status==="completed") await events?.emit("workout.completed",{userId,workout});json(res,201,{workout:workoutPayload(saved)});return; }
       const concurrent=await store.workout(userId,workout.id);
       if (concurrent?.create_hash===digest) { json(res,200,{workout:workoutPayload(concurrent)});return; }
       if (concurrent) { await existingOrConflict(res,userId,workout.id);return; }
@@ -171,7 +171,7 @@ function createWorkoutService({store,auth,requireAccess,rateAllowed,http,events=
     if (!current) { await existingOrConflict(res,userId,id);return; }
     if (current.startedAt!==workout.startedAt) throw workoutError("A workout's start time cannot change.");
     const saved=await store.updateWorkout(record,expectedRevision);
-    if (saved) { await events?.emit("workout.saved",{userId,workout,created:false});json(res,200,{workout:workoutPayload(saved)});return; }
+    if (saved) { await events?.emit("workout.saved",{userId,workout,created:false});if (workout.status==="completed"&&current.status!=="completed") await events?.emit("workout.completed",{userId,workout});json(res,200,{workout:workoutPayload(saved)});return; }
     const concurrent=await store.workout(userId,id);
     if (concurrent&&Number(concurrent.revision)===expectedRevision&&workout.status==="active") {
       const active=workoutPayload(await store.activeWorkout(userId));

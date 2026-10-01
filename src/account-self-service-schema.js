@@ -25,7 +25,11 @@ const ACCOUNT_EXPORT_QUERIES=Object.freeze({
   deviceConnections:"SELECT provider,status,settings_json,consent_version,connected_at,synced_through,last_sync_at FROM device_connections WHERE user_id=? ORDER BY provider",
   wellnessNights:"SELECT provider,night_date,recovery_status,COALESCE(ans_charge_v4,ans_charge) AS ans_charge,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at FROM wellness_nights WHERE user_id=? ORDER BY night_date,provider",
   wellnessDays:"SELECT provider,day_date,resting_hr,min_hr,avg_hr,max_hr,samples,buckets_json,updated_at FROM wellness_days WHERE user_id=? ORDER BY day_date,provider",
-  wellnessWorkouts:"SELECT provider,external_id,started_at,local_date,duration_seconds,sport,calories,hr_avg,hr_max,cardio_load,updated_at FROM wellness_workouts WHERE user_id=? ORDER BY started_at,external_id"
+  wellnessWorkouts:"SELECT provider,external_id,started_at,local_date,duration_seconds,sport,calories,hr_avg,hr_max,cardio_load,updated_at FROM wellness_workouts WHERE user_id=? ORDER BY started_at,external_id",
+  // Derived data-layer rows: daily snapshots (with any stored Strata AI brief), plan history, and Polar-to-workout links.
+  dailySnapshots:"SELECT snapshot_date,snapshot_json,brief_json,brief_generated_at,updated_at FROM daily_snapshots WHERE user_id=? ORDER BY snapshot_date",
+  planChanges:"SELECT plan_updated_at,source,detail,created_at FROM plan_changes WHERE user_id=? ORDER BY plan_updated_at",
+  trainingLinks:"SELECT provider,external_id,workout_id,method,linked_at FROM training_links WHERE user_id=? ORDER BY linked_at,external_id"
 });
 const ACCOUNT_EXPORT_SINGLE_ROWS=new Set(["profile","weeklyPlan","monthlyPlan","preferences","trainingBlock","coachingProfile"]);
 const ACCOUNT_EXPORT_WORKOUTS_QUERY="SELECT id,workout_json,summary_json,started_at,revision,updated_at FROM workouts WHERE user_id=? AND (started_at>? OR (started_at=? AND id>?)) ORDER BY started_at,id LIMIT ?";

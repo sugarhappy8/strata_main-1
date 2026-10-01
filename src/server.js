@@ -21,7 +21,7 @@ const { createProductSignalsService } = require("./product-signals");
 const {adminGrantState}=require("./access-controls");
 const {entitlementSettings,tierFor,capabilitiesFor}=require("./entitlements");
 const {createEventBus}=require("./events");
-const {createAthleteProfileSync}=require("./athlete-profile");
+const {createDataService}=require("./data-service");
 const {profilePayload:coachingProfilePayload}=require("./coaching");
 const { createBillingService } = require("./billing");
 const { composeServices } = require("./service-composition");
@@ -421,6 +421,7 @@ async function handleApi(req,res,url) {
   if (await auth.handleApi(req,res,url)) return;
   if (await admin.handleApi(req,res,url)) return;
   if (await ai.handleApi(req,res,url)) return;
+  if (await dataService.handleApi(req,res,url)) return;
   if (await training.handleApi(req,res,url)) return;
   if (await coaching.handleApi(req,res,url)) return;
   if (await devices.handleApi(req,res,url)) return;
@@ -441,7 +442,7 @@ async function handleApi(req,res,url) {
     const input=await bodyJson(req), expectedPlanUpdatedAt=expectedPlanRevision(input.expectedPlanUpdatedAt), plan=sanitizePlan(input.plan);
     if (input.expectedUserId!==undefined && String(input.expectedUserId)!==String(session.id)) { json(res,409,{error:"The signed-in account changed. Reload before saving.",code:"ACCOUNT_CHANGED"}); return; }
     const saved=await store.upsertPlan(session.id,JSON.stringify(plan),Date.now(),expectedPlanUpdatedAt);
-    if (saved) await events.emit("plan.saved",{userId:session.id,plan,updatedAt:Number(saved.updated_at)});
+    if (saved) await events.emit("plan.updated",{userId:session.id,plan,updatedAt:Number(saved.updated_at),source:input.source==="ai"?"ai":"manual",detail:input.source==="ai"?"ai-proposal":"plan-edit"});
     if (!saved) {
       const current=await planSnapshotFor(session.id);
       // A retry after a committed response was lost is not a conflict. The
@@ -497,12 +498,6 @@ async function handleApi(req,res,url) {
     await store.upsertPreferences(session.id,JSON.stringify(preferences),Date.now());
     await events.emit("preferences.saved",{userId:session.id,preferences});
     json(res,200,{ok:true,preferences}); return;
-  }
-  if (url.pathname === "/api/profile" && req.method === "GET") {
-    // One Athlete Profile for every client: the ranking lens for everyone, body/energy/food when a coaching profile exists.
-    const session=await auth.requireSession(req,res); if (!session) return;
-    const profile=await athleteProfile.read(session.id,coachingProfilePayload(await store.coachingProfile(session.id)));
-    json(res,200,{profile,csrfToken:session.csrf_token},{"Cache-Control":"private, no-store"}); return;
   }
   const ratingMatch=url.pathname.match(/^\/api\/ratings\/([a-z0-9-]{2,80})$/);
   if (ratingMatch && req.method === "PUT") {
@@ -615,7 +610,7 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
 
 server.setTimeout(60_000,(socket)=>socket.destroy());
 
-let cleanup,shuttingDown=false,events,athleteProfile;
+let cleanup,shuttingDown=false,events,dataService;
 async function start() {
   if (process.env.NODE_ENV==="production"&&!EMAIL_CONFIG.flagValid) {
     throw new Error("EMAIL_VERIFICATION_ENABLED must be set explicitly to true or false in production.");
@@ -623,8 +618,6 @@ async function start() {
   publicAssets=loadPublicAssets({root:PUBLIC_ROOT,files:STATIC_FILES,privateFiles:PRIVATE_HTML,mime:MIME});
   store = await createStore(PROJECT_ROOT);
   events=createEventBus({logger:LOGGER});
-  athleteProfile=createAthleteProfileSync({store,logger:LOGGER});
-  athleteProfile.subscribe(events);
   billing=createBillingService({
     store,paymentConfig:PAYMENT_CONFIG,enforcePaddleIps:ENFORCE_PADDLE_IPS,
     requestAddress,rateAllowed,isUniqueViolation,getAuth:()=>auth,getUserPayload:userPayload,
@@ -639,11 +632,12 @@ async function start() {
     reconcileUnsettledPurchases:billing.reconcileUnsettledPurchases,isUniqueViolation,
     createAuthService,createAdminService,createSupportService
   }));
+  dataService=createDataService({store,events,getPlan:planFor,coachingProfile:async(userId)=>coachingProfilePayload(await store.coachingProfile(userId)),requireSession:(req,res)=>auth.requireSession(req,res),requireFeature,http:{json},logger:LOGGER});
   productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
   workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson},events});
-  training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
   coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events,getPlan:planFor});
-  devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
+  devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation,events});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
   ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
   setup=createSetupService({
@@ -656,12 +650,14 @@ async function start() {
   await auth.cleanup();
   await support.cleanup();
   await productSignals.cleanup();
+  await dataService.cleanup();
   if (ENFORCE_PADDLE_IPS) void billing.warmProviderTrust().catch((error)=>LOGGER.error("billing.webhook_allowlist_warm_failed",{error}));
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
     void auth.cleanup().catch((error)=>LOGGER.error("cleanup.auth_failed",{error}));
     void support.cleanup().catch((error)=>LOGGER.error("cleanup.support_failed",{error}));
     void productSignals.cleanup().catch((error)=>LOGGER.error("cleanup.product_signals_failed",{error}));
+    void dataService.cleanup().catch((error)=>LOGGER.error("cleanup.data_layer_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
   },60*60*1000);
   cleanup.unref();

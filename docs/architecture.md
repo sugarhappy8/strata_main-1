@@ -68,8 +68,12 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/http.js` | Security headers, JSON/redirect helpers, body limits and parsing, compression negotiation, and response semantics. |
 | `src/observability.js` | Structured JSON request logs, validated or generated request IDs, bounded fields, and defensive redaction. |
 | `src/email.js` | Browser-safe email configuration plus privately retained Resend credentials, HMAC digests, address masking, and transactional message delivery. |
-| `src/events.js` | In-process event bus: routes announce `plan.saved`, `workout.saved`, `preferences.saved`, `coaching.profile_saved`; listeners react without the routes knowing them. |
+| `src/events.js` | In-process event bus: routes announce `plan.updated`, `workout.completed`, `polar.sync.finished`, `snapshot.ready`, and the rest of `DATA_MODEL.md`'s list; listeners react without the routes knowing them. |
 | `src/athlete-profile.js` | Athlete Profile read model (`GET /api/profile`) and the sync that keeps `preferences` and `coaching_profiles` telling one story. |
+| `src/data-service.js` | The shared data layer's front door: Athlete Profile, Training Log, Daily Snapshots, Rankings Signals, plan history, their routes, and the listeners that keep derived rows in step. |
+| `src/training-log.js` | Training Log read model: logged workouts, Polar sessions, and this week's planned days in one schema, with source tags and Polar-to-workout links. |
+| `src/daily-snapshot.js` | Daily Snapshot read model: one stored row per member per day, rebuilt from sleep, recovery, training, and diary events. |
+| `src/data-layer-schema.js`, `src/data-layer-store.js` | Storage for `training_links`, `daily_snapshots`, and `plan_changes`, with SQLite and Turso parity, export, and deletion. |
 | `src/entitlements.js` | Feature tiers and the `can(user, feature)` capability map that `/api/me` carries and every route guard reads. |
 | `src/billing.js` | Checkout, entitlement, subscription, portal, webhook, and reconciliation-service composition, plus the retired trial route. |
 | `src/checkout-reconciliation.js` | Validated unfinished-checkout closure, settlement recovery, and deletion-safety reconciliation. |

@@ -46,13 +46,13 @@ function publicConnection(row){
  * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,
  *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean,http:{json:Function,bodyJson:Function,redirect:Function},
  *   settings:ReturnType<typeof devicesSettings>,hasAccess:(userId:string)=>Promise<boolean>,logger?:{info?:Function,warn?:Function,error?:Function}|null,
- *   now?:()=>number,polar?:any,sync?:any,fetchImpl?:typeof fetch,isUniqueViolation?:(error:unknown)=>boolean}} dependencies
+ *   now?:()=>number,polar?:any,sync?:any,fetchImpl?:typeof fetch,isUniqueViolation?:(error:unknown)=>boolean,events?:import("./domain-types").EventBus|null}} dependencies
  */
-function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,settings,hasAccess,logger=null,now=Date.now,polar=null,sync=null,fetchImpl,isUniqueViolation}){
+function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,settings,hasAccess,logger=null,now=Date.now,polar=null,sync=null,fetchImpl,isUniqueViolation,events=null}){
   if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http||!settings||typeof hasAccess!=="function")throw new TypeError("Connected devices require storage, access guards, rate limiting, HTTP helpers, settings, and access checks.");
   const {json,bodyJson,redirect}=http;
   const client=polar||createPolarClient({settings,now,...(fetchImpl?{fetchImpl}:{})});
-  const worker=sync||createDeviceSync({store,polar:client,keys:settings.keys,hasAccess,logger,now,intervalMs:settings.syncIntervalMs});
+  const worker=sync||createDeviceSync({store,polar:client,keys:settings.keys,hasAccess,logger,now,intervalMs:settings.syncIntervalMs,events});
   const uniqueViolation=isUniqueViolation||((/** @type {any} */ error)=>/UNIQUE constraint failed/i.test(String(error?.message||"")));
 
   /** @param {any} req @param {any} session */
@@ -98,6 +98,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
   async function releaseConnection(userId){
     const removed=await store.deleteDeviceData(userId,PROVIDER);
     if(!removed)return false;
+    await events?.emit("polar.data_deleted",{userId,provider:PROVIDER});
     logger?.info?.("device.disconnected",{provider:PROVIDER});
     return true;
   }
@@ -149,7 +150,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
     const current=await store.deviceConnection(userId,PROVIDER);
     // V4 exposes no stable account identifier. Every completed authorization gets a local connection id, and an
     // earlier connection's imported rows are cleared so data from two Polar accounts can never mix.
-    if(current)await store.deleteDeviceData(userId,PROVIDER);
+    if(current){await store.deleteDeviceData(userId,PROVIDER);await events?.emit("polar.data_deleted",{userId,provider:PROVIDER});}
     const time=now(),providerUserId=randomId(16),memberRef=randomId(16);
     let row;
     try{

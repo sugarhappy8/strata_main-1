@@ -152,6 +152,22 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   Strata AI nutrition preview. Editing the plan refreshes the coaching week; the coaching
   profile is untouched. A member with no training days saved still gets a starter week to
   review and save as their plan.
+- **Training Log.** `GET /api/training-log` lists logged workouts, Polar sessions, and this
+  week's planned days in one shape, each tagged `manual`, `polar`, `ai`, or `system`. A Polar
+  session that matches a logged workout (by overlapping time, or the day's only gym session and
+  workout) is linked to it and shown once, and a Polar gym session on a planned day completes
+  that day. Earlier weeks never show a guessed plan.
+- **Daily Snapshot.** `GET /api/snapshots` returns one stored row per day with sleep, recovery,
+  heart rate, training done versus planned, and the diary entry. Rows rebuild when a Polar sync
+  finishes, a workout is completed, a diary entry is saved, or the plan changes, and they leave
+  with the Polar data they came from.
+- **Plan history.** Every saved week records whether it came from the member, an accepted
+  Strata AI proposal, or setup and approved adjustments, so the Training Log and the AI can tell
+  them apart.
+- **Events follow the spec's names:** `plan.updated`, `workout.completed`,
+  `polar.sync.finished`, and `snapshot.ready`, plus `coaching.log_saved` and
+  `polar.data_deleted` for the snapshot rebuilds. `DATA_MODEL.md` has the diagram, the fields,
+  and every listener.
 - **Device copies stay bounded.** Each claim or keep decision used to leave another full
   copy of both weeks in the browser's storage, forever. The device now keeps the newest three
   safety copies per account. The free device week and the homepage preview are single entries
