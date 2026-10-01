@@ -1,20 +1,20 @@
 /* Shared STRATA finish. Content remains visible when JavaScript is unavailable. */
 :root {
-  --motion-ease: cubic-bezier(.22,1,.36,1);
-  --paper: #f3f4ef;
-  --white: #ffffff;
-  --line: #d2d6cc;
-  --ink: #10110f;
-  --panel: #191b17;
-  --text: #f2f3eb;
-  --muted: #62675e;
-  --accent: #d4f578;
-  --lime: #d4f578;
-  --display: "Manrope", Arial, sans-serif;
-  --body: "Manrope", Arial, sans-serif;
-  --mono: "DM Mono", ui-monospace, monospace;
-  --surface-radius: 14px;
-  --control-radius: 8px;
+  --motion-ease:var(--strata-ease-out);
+  --paper:var(--strata-paper);
+  --white:var(--strata-surface);
+  --line:var(--strata-line);
+  --ink:var(--strata-ink);
+  --panel:var(--strata-night-panel);
+  --text:var(--strata-night-text);
+  --muted:var(--strata-muted);
+  --accent:var(--strata-accent);
+  --lime:var(--strata-accent);
+  --display:var(--strata-font);
+  --body:var(--strata-font);
+  --mono:var(--strata-mono);
+  --surface-radius:var(--strata-radius-surface);
+  --control-radius:var(--strata-radius-control);
 }
 ::selection { background: var(--accent); color: #10110f; }
 body { font-family: var(--body); font-size: 16px; text-rendering: optimizeLegibility; }

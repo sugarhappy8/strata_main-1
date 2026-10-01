@@ -1,5 +1,18 @@
 # Changelog
 
+## 9.0.0 — Cut and integrate
+
+- One navigation on every page: Rankings, My Week, Train, Recovery, and Profile. Rankings, My Week, and Recovery open the Strata+ studio for members and the public rankings, the free planner, and the Strata+ plan for everyone else.
+- Cut what was duplicated or unfinished: the legacy trial and its tables, community weekly plans, the exercise hub and decision board, the share-card generator, the homepage compare tray, Train's history stat boxes, the one-off calendar file, and build numbers in the main UI. Archived tables keep their rows for one release.
+- One entitlements module decides every page and route (`can(user, feature)`), and upgrade lines come from it.
+- One data layer: the Athlete Profile, a deduplicated Training Log, Daily Snapshots, Rankings Signals, and plan history, kept in step by events. Coaching reads the saved weekly plan.
+- Polar sessions and nights join that layer; My Week shows last night's Nightly Recharge, and a Polar gym session completes an unlogged planned day.
+- Strata AI runs on Groq behind member consent and a shared daily budget, reads its context from the data layer, and writes a Daily Brief each morning. The owner sees today's use on the admin Overview.
+- One design-token file every page loads; setup's secondary text is readable again.
+- A share card for public pages, an optional Polar step at the end of onboarding, HSTS in production, and the fixes from a first-time-visitor walk.
+
+See the [9.0.0 release guide](docs/release-9.0.0.md) and the full record in [CHANGELOG_9.0.0.md](CHANGELOG_9.0.0.md).
+
 ## 8.9.0 — Subscription-only Strata+ and a simpler studio
 
 - Retire the free Strata+ trial. Pricing, the homepage, Account, Terms, and Privacy no longer offer it; `POST /api/discovery/trial` answers `410 TRIAL_RETIRED`; a trial started earlier runs to its recorded end.

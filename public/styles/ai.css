@@ -164,3 +164,16 @@ html:has(> body.ai-page) { scroll-padding-bottom:190px; }
   .ai-dots i,.ai-status[data-tone="checking"] .ai-status-dot { animation:none; }
   .ai-starter,.ai-button { transition:none; }
 }
+
+.ai-settings { max-width:860px; margin:24px auto 0; padding:0 16px; }
+.ai-settings[hidden] { display:none; }
+.ai-settings summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-weight:700; }
+.ai-settings-body { display:grid; gap:14px; padding:12px 0 24px; }
+.ai-settings-toggle { display:flex; gap:12px; align-items:flex-start; }
+.ai-settings-toggle input { width:22px; height:22px; margin-top:2px; }
+.ai-settings-toggle span { display:grid; gap:4px; }
+.ai-settings-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.ai-consent-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin:0 0 12px; padding:12px 14px; border:1px solid var(--line,#3b4134); border-radius:12px; }
+.ai-consent-actions span { flex:1 1 220px; }
+.ai-consent-actions a { min-height:44px; display:inline-flex; align-items:center; }
+.ai-consent-allow { min-height:44px; padding:0 18px; border:0; border-radius:10px; background:var(--accent,#c8ff00); color:var(--ink,#10110f); font-weight:800; cursor:pointer; }

@@ -138,7 +138,7 @@ let browser;
 
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const publicHeaderLinks=await page.locator(".desktop-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
-    assert.deepEqual(publicHeaderLinks,[["#rankings","Exercises"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Homepage desktop navigation must match the four product destinations used everywhere else");
+    assert.deepEqual(publicHeaderLinks,[["#rankings","Rankings"],["/my-week","My Week"],["/workout.html","Train"],["/recovery","Recovery"],["/account.html","Profile"]],"Homepage desktop navigation must match the five sections used everywhere else");
     assert.doesNotMatch((await page.locator("main").textContent())||"",/trial|7 days|no card|Strata AI/i,"The homepage neither offers the retired trial nor promotes Strata AI");
     for(const [label,control] of [["homepage primary action",page.locator(".hero .button-accent").first()]]){
       const ratio=await contrastRatio(control);assert.ok(ratio>=4.5,`${label} text contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1`);
@@ -210,7 +210,7 @@ let browser;
     await page.setViewportSize({width:390,height:844});
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const mobilePublicLinks=await page.locator(".mobile-public-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
-    assert.deepEqual(mobilePublicLinks,[["#rankings","Exercises"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Mobile homepage navigation must keep the four primary product destinations");
+    assert.deepEqual(mobilePublicLinks,[["#rankings","Rankings"],["/my-week","My Week"],["/workout.html","Train"],["/recovery","Recovery"],["/account.html","Profile"]],"Mobile homepage navigation must keep the five sections");
     assert.equal(await page.locator('.footer-links a[href="/policies"]').count(),1,"Mobile homepage footer must expose one Policies destination");
     assert.equal(await page.locator('.footer-links a:is([href="/terms"],[href="/privacy"],[href="/refunds"])').count(),0,"Homepage footer must not duplicate policy-directory links");
     const smallPublicTargets=await page.locator(".mobile-public-nav a").evaluateAll((nodes)=>nodes.filter((node)=>{const rect=node.getBoundingClientRect();return rect.width<44||rect.height<44;}).map((node)=>node.textContent.trim()));
@@ -309,7 +309,7 @@ let browser;
     await page.locator("#recommendationTitle").evaluate((node)=>window.scrollTo(0,node.getBoundingClientRect().top+window.scrollY-document.querySelector(".studio-header").getBoundingClientRect().height-20));
     await page.waitForTimeout(550);
     assert.equal(await page.locator(".studio-header .brand").isVisible(),true,"The Strata+ brand must remain visible after scrolling to a tool");
-    assert.equal(await page.locator(".studio-header .studio-account").isVisible(),true,"The Strata+ account action must remain visible after scrolling to a tool");
+    assert.equal(await page.locator(".studio-header #logoutButton").isVisible(),true,"The Strata+ sign-out action must remain visible after scrolling to a tool");
     await capture(page,"strata-plus-recommendations-mobile.png",{fullPage:false});
     await page.goto(`${BASE_URL}/discover.html#profile`,{waitUntil:"networkidle"});
     await page.locator("#profile").waitFor({state:"visible"});
@@ -320,11 +320,11 @@ let browser;
       const box=(node)=>{const rect=node.getBoundingClientRect();return{top:rect.top,right:rect.right,bottom:rect.bottom,left:rect.left,width:rect.width,height:rect.height};};
       const visibleChild=(selector)=>{const node=header.querySelector(selector),rect=node.getBoundingClientRect(),hit=document.elementFromPoint(rect.left+rect.width/2,rect.top+rect.height/2);return{box:box(node),visible:getComputedStyle(node).visibility==="visible"&&Number(getComputedStyle(node).opacity)>0,uncovered:node===hit||node.contains(hit)};};
       const backgroundParts=String(getComputedStyle(header).backgroundColor).match(/[\d.]+/g)?.map(Number)||[];
-      return{header:box(header),brand:visibleChild(".brand"),account:visibleChild(".studio-account"),logout:visibleChild("#logoutButton"),backgroundAlpha:backgroundParts.length>3?backgroundParts[3]:1};
+      return{header:box(header),brand:visibleChild(".brand"),logout:visibleChild("#logoutButton"),backgroundAlpha:backgroundParts.length>3?backgroundParts[3]:1};
     });
     assert.ok(profileHeaderLayout.header.top>=-1&&profileHeaderLayout.header.bottom>=64,"The Strata+ mobile header must remain fully visible while using a tool");
     assert.equal(profileHeaderLayout.backgroundAlpha,1,"The mobile Strata+ header must be opaque so scrolled workspace labels cannot show through it");
-    for(const [name,item] of Object.entries({brand:profileHeaderLayout.brand,account:profileHeaderLayout.account,logout:profileHeaderLayout.logout})){
+    for(const [name,item] of Object.entries({brand:profileHeaderLayout.brand,logout:profileHeaderLayout.logout})){
       assert.ok(item.visible&&item.uncovered&&item.box.top>=0&&item.box.bottom<=profileHeaderLayout.header.bottom+1,`The Strata+ ${name} control must remain visible and unobscured in profile settings`);
     }
     const profileTitleContrast=await contrastRatio(page.locator("#profileTitle"));

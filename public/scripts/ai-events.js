@@ -32,6 +32,7 @@
       else if(action==="retry")void actions.retry(id);
     });
     nodes.logout?.addEventListener("click",()=>{void actions.logout();});
+    nodes.form.addEventListener("click",event=>{if(event.target.closest?.("button[data-action='consent']"))void actions.allowConsent();});
     const refresh=()=>{if(!documentImpl?.visibilityState||documentImpl.visibilityState==="visible")void actions.refreshStatus();};
     documentImpl?.addEventListener?.("visibilitychange",refresh);
     windowImpl?.addEventListener?.("online",refresh);

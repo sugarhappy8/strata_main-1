@@ -123,6 +123,7 @@
         return {kind:"swap",applied:{swaps:{...message.applied?.swaps,[suggestionId]:true}},announce:`Swapped ${suggestion.action.fromName} for ${suggestion.action.toName}.`};
       });},
       reset:()=>{if(state.pending||state.applying)return;state.messages=[];store.clear(storage,state.user?.id);view.setFormError("");render();nodes.message.focus();},
+      allowConsent:async()=>{try{await client.saveSettings({consent:true});view.setFormError("");await refreshStatus();nodes.message.focus?.();}catch(error){if(!onAccessError(error))view.setFormError(error.message);}},
       refreshStatus
     };
 

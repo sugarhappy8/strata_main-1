@@ -125,7 +125,7 @@ async function main() {
     const pageText=Buffer.from(page.body).toString("utf8");
     assert.equal(page.response.status,200,route);
     assert.equal(page.response.headers.get("cache-control"),"private, no-store",route);
-    assert.match(pageText,new RegExp(`Build ${BUILD.replace(/\./g,"\\.")}`),route);
+    assert.doesNotMatch(pageText,new RegExp(`Build ${BUILD.replace(/\./g,"\\.")}`),route);
   }
 
   for(const route of ["/account.html","/discover.html","/workout.html","/onboarding.html","/admin"]) {

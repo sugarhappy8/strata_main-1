@@ -134,7 +134,8 @@ function clickSelectDay(day){
   assert.match(plannerCss,/@media\(max-width:480px\)\{[^}]*\.library-panel\{[^}]*72svh[^}]*\}\.planner-day-chips\{grid-template-columns:repeat\(4,minmax\(44px,1fr\)\)/,"Small screens should expose four full-size day targets per row and enough room to read library results");
   assert.match(plannerCss,/\.library-list \{[^}]*grid-auto-rows:max-content/,"Library rows must grow with wrapped exercise names instead of clipping them");
   assert.match(html,/id="exportWeeklyPlan"[^>]*>Export week/,"Export should use a short, familiar label");
-  assert.match(html,/id="userName" href="\/account\.html"/,"Signed-in planners should have a direct account link");
+  assert.match(html,/<a href="\/account\.html">Profile<\/a>/,"Signed-in planners reach their account through Profile in the site navigation");
+  assert.match(html,/id="plannerSignIn"[^>]*>Sign in<\/a>/,"The guest sign-in link says what it does");
   assert.equal((html.match(/class="planner-workflow"/g)||[]).length,1,"Planner onboarding should be a single compact workflow");
   assert.match(html,/Build a weekly plan in three steps/,"Planner workflow should describe its purpose to assistive technology");
   assert.match(plannerCss,/\.day-empty::before\s*\{[^}]*content:"\+"/,"Empty days should have a visible add cue");
@@ -306,7 +307,7 @@ function clickSelectDay(day){
   await vm.runInContext("init()",context);
   assert.equal(vm.runInContext("state.entitlementTimer",context),null,"guest fallback must cancel account entitlement timers");
   assert.doesNotMatch(elements.get("weekSummary").innerHTML,/class="week-readiness/,"Free and guest planners must not receive Strata+ plan-guidance cards");
-  assert.equal(elements.get("userName").hidden,true,"Guest planners should not see a misleading account-name link");
+  assert.equal(elements.get("plannerSignIn").hidden,false,"Guest planners see a sign-in link");
   assert.match(elements.get("plannerModeNotice").innerHTML,/Free device plan[\s\S]*No account required[\s\S]*stays in this browser[\s\S]*Use a synced plan/i,"Guest copy must distinguish the browser-local free plan from optional account sync");
   assert.doesNotMatch(elements.get("plannerModeNotice").innerHTML,/Sign in for cross-device sync/i);
   guestStorageWrites.length=0;

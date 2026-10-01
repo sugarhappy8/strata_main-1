@@ -87,6 +87,21 @@ test("SQLite records each idempotent migration once",()=>{
   } finally { database.close(); }
 });
 
+test("the documented 9.0.0 rollback restores archived rows under their 8.9.0 table names",()=>{
+  const database=legacyDatabase();
+  try {
+    migrateLocalSchema(database,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE,now:()=>1234});
+    // The rollback plan in CHANGELOG_9.0.0.md: rename the archives back before redeploying 8.9.0.
+    database.exec("ALTER TABLE archive_discovery_trials RENAME TO discovery_trials");
+    database.exec("ALTER TABLE archive_community_weekly_plans RENAME TO community_weekly_plans");
+    assert.deepEqual(database.prepare("SELECT user_id,started_at,expires_at FROM discovery_trials").all().map((row)=>({...row})),[{user_id:"legacy-coach",started_at:1000,expires_at:2000}]);
+    assert.deepEqual(database.prepare("SELECT id,user_id,title,is_published FROM community_weekly_plans").all().map((row)=>({...row})),[{id:"shared-1",user_id:"legacy-coach",title:"Legacy week",is_published:1}]);
+    // The renamed tables keep their constraints, so 8.9.0 writes behave as before.
+    assert.throws(()=>database.prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)").run("legacy-coach",3000,4000),/UNIQUE constraint failed/);
+    assert.throws(()=>database.prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)").run("missing-user",3000,4000),/FOREIGN KEY constraint failed/);
+  } finally { database.close(); }
+});
+
 test("Turso migration runner records the same ordered ledger",async()=>{
   const database=legacyDatabase();
   async function execute(statement) {

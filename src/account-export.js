@@ -43,7 +43,16 @@ function exportPayload(rows,now){
       adjustments:rows.adjustments.map((row)=>({id:String(row.adjustment_id),transactionId:String(row.transaction_id),action:String(row.action),type:row.type==null?null:String(row.type),status:String(row.status),occurredAt:Number(row.occurred_at),updatedAt:Number(row.updated_at)}))
     },
     supportTickets:rows.supportTickets.map((row)=>({id:String(row.id),reference:String(row.reference),name:String(row.name),email:String(row.email),category:String(row.category),subject:String(row.subject),referenceId:row.reference_id==null?null:String(row.reference_id),message:String(row.message),status:String(row.status),lastResponseAt:optionalNumber(row.last_response_at),createdAt:Number(row.created_at),updatedAt:Number(row.updated_at)})),
-    devices:exportDevices(rows)
+    devices:exportDevices(rows),
+    dataLayer:{
+      snapshots:(rows.dailySnapshots||[]).map((row)=>({date:String(row.snapshot_date),data:storedJson(row.snapshot_json),brief:row.brief_json==null?null:storedJson(row.brief_json),briefGeneratedAt:optionalNumber(row.brief_generated_at),updatedAt:Number(row.updated_at)})),
+      planChanges:(rows.planChanges||[]).map((row)=>({planUpdatedAt:Number(row.plan_updated_at),source:String(row.source),detail:String(row.detail),createdAt:Number(row.created_at)})),
+      trainingLinks:(rows.trainingLinks||[]).map((row)=>({provider:String(row.provider),externalId:String(row.external_id),workoutId:String(row.workout_id),method:String(row.method),linkedAt:Number(row.linked_at)}))
+    },
+    strataAi:{
+      settings:rows.aiSettings?{consentedAt:optionalNumber(rows.aiSettings.consent_at),consentVersion:Number(rows.aiSettings.consent_version),dailyBrief:Number(rows.aiSettings.daily_brief)===1,updatedAt:Number(rows.aiSettings.updated_at)}:null,
+      usage:(rows.aiUsage||[]).map((row)=>({date:String(row.usage_date),kind:String(row.kind),requests:Number(row.requests),tokens:Number(row.tokens)}))
+    }
   };
 }
 

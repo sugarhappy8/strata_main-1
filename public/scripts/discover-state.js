@@ -14,14 +14,15 @@
     today:Object.freeze({panelId:"todayWorkspace",headingId:"todayTitle",label:"Overview"}),
     // Plan and Nutrition open from Overview, so Overview stays the highlighted destination.
     plan:Object.freeze({panelId:"planWorkspace",headingId:"planWorkspaceTitle",label:"Plan",parent:"today"}),
-    progress:Object.freeze({panelId:"progressWorkspace",headingId:"progressWorkspaceTitle",label:"Progress"}),
+    // section names the top-level section highlighted in the site navigation; My Week when absent.
+    progress:Object.freeze({panelId:"progressWorkspace",headingId:"progressWorkspaceTitle",label:"Progress",section:"train"}),
     nutrition:Object.freeze({panelId:"nutritionWorkspace",headingId:"nutritionWorkspaceTitle",label:"Nutrition",parent:"today"}),
-    recovery:Object.freeze({panelId:"recoveryWorkspace",headingId:"recoveryWorkspaceTitle",label:"Recovery"}),
-    coaching:Object.freeze({panelId:"coachingWorkspace",headingId:"coachingWorkspaceTitle",label:"Personal setup",parent:"nutrition"}),
-    recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you",parent:"library"}),
-    library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library"}),
-    battle:Object.freeze({panelId:"battle",headingId:"battleTitle",label:"Compare exercises",parent:"library"}),
-    profile:Object.freeze({panelId:"profile",headingId:"profileTitle",label:"Personalize recommendations",parent:"library"}),
+    recovery:Object.freeze({panelId:"recoveryWorkspace",headingId:"recoveryWorkspaceTitle",label:"Recovery",section:"recovery"}),
+    coaching:Object.freeze({panelId:"coachingWorkspace",headingId:"coachingWorkspaceTitle",label:"Personal setup",parent:"nutrition",section:"profile"}),
+    recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you",parent:"library",section:"rankings"}),
+    library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library",section:"rankings"}),
+    battle:Object.freeze({panelId:"battle",headingId:"battleTitle",label:"Compare exercises",parent:"library",section:"rankings"}),
+    profile:Object.freeze({panelId:"profile",headingId:"profileTitle",label:"Personalize recommendations",parent:"library",section:"rankings"}),
     monthly:Object.freeze({panelId:"monthlyPlan",headingId:"monthlyPlanTitle",label:"Build a 31-day plan",parent:"plan"}),
     session:Object.freeze({panelId:"sessionBuilder",headingId:"sessionBuilderTitle",label:"Build a session",parent:"plan"})
   });

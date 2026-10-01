@@ -68,6 +68,18 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/http.js` | Security headers, JSON/redirect helpers, body limits and parsing, compression negotiation, and response semantics. |
 | `src/observability.js` | Structured JSON request logs, validated or generated request IDs, bounded fields, and defensive redaction. |
 | `src/email.js` | Browser-safe email configuration plus privately retained Resend credentials, HMAC digests, address masking, and transactional message delivery. |
+| `src/events.js` | In-process event bus: routes announce `plan.updated`, `workout.completed`, `polar.sync.finished`, `snapshot.ready`, and the rest of `DATA_MODEL.md`'s list; listeners react without the routes knowing them. |
+| `src/athlete-profile.js` | Athlete Profile read model (`GET /api/profile`) and the sync that keeps `preferences` and `coaching_profiles` telling one story. |
+| `src/data-service.js` | The shared data layer's front door: Athlete Profile, Training Log, Daily Snapshots, Rankings Signals, plan history, their routes, and the listeners that keep derived rows in step. |
+| `src/training-log.js` | Training Log read model: logged workouts, Polar sessions, and this week's planned days in one schema, with source tags and Polar-to-workout links. |
+| `src/daily-snapshot.js` | Daily Snapshot read model: one stored row per member per day, rebuilt from sleep, recovery, training, and diary events. |
+| `src/data-layer-schema.js`, `src/data-layer-store.js` | Storage for `training_links`, `daily_snapshots`, and `plan_changes`, with SQLite and Turso parity, export, and deletion. |
+| `src/ai-provider.js` | Provider-neutral Strata AI client: Groq by default, strict structured outputs, primary-to-fallback model on rate limits. |
+| `src/ai-quota.js` | The organization's daily AI budget: a Daily Brief reserve, a per-minute cap, and per-member chat allowances, persisted per day. |
+| `src/ai-context.js` | Compact Strata AI context and care flags built from the shared data layer. |
+| `src/ai-daily-brief.js` | Daily Brief schema, validation, and the throttled morning job. |
+| `src/ai-settings.js` | Strata AI consent, the Daily Brief choice, deleting stored notes, and the owner's usage view. |
+| `src/ai-schema.js`, `src/ai-store.js` | Storage for `ai_settings` and `ai_usage_days`, with SQLite and Turso parity, export, and deletion. |
 | `src/entitlements.js` | Feature tiers and the `can(user, feature)` capability map that `/api/me` carries and every route guard reads. |
 | `src/billing.js` | Checkout, entitlement, subscription, portal, webhook, and reconciliation-service composition, plus the retired trial route. |
 | `src/checkout-reconciliation.js` | Validated unfinished-checkout closure, settlement recovery, and deletion-safety reconciliation. |
@@ -103,6 +115,10 @@ Every request field is untrusted, including JSON, form values, headers, URL para
 Session tokens are random and stored only as hashes in the database. Cookies are HttpOnly, SameSite=Strict, scoped to `/`, and Secure in production. A session lookup also checks expiry, credential version, suspension, and required verification state. Password reset increments the credential version and revokes all sessions.
 
 State-changing authenticated routes require the session's CSRF value and a trusted same-origin request. Public recovery endpoints use origin checks, generic responses where account enumeration is a concern, durable or in-memory quotas as appropriate, expiry, attempt caps, and one-time tokens.
+
+### Data ownership boundary
+
+`DATA_MODEL.md` names one owner per fact and one read model per route. Shared facts are mirrored by a listener on the event bus (`src/events.js`), never by one route writing another feature's table: `PUT /api/preferences` emits `preferences.saved` and the Athlete Profile sync updates the coaching profile's training fields; `PUT /api/coaching/profile` emits `coaching.profile_saved` and the sync updates the ranking lens. Mirror writes are ordinary revision bumps, so a client holding a stale revision gets a conflict rather than a silent overwrite.
 
 ### Entitlement boundary
 

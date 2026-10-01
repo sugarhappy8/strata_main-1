@@ -1,0 +1,47 @@
+/* STRATA design tokens: the one palette, type, radius, spacing, and motion scale every page builds on.
+   Loaded right after fonts.css on every page. Page stylesheets map their local names to these tokens
+   (for example --ink:var(--strata-ink)) instead of repeating raw values. Light pages render on paper;
+   the Strata+ studio, Train, onboarding, and the offline workout render at night. */
+:root {
+  /* Brand */
+  --strata-ink:#10110f;
+  --strata-accent:#d4f578;
+  --strata-green-text:#4a6a10;
+  --strata-danger:#b3261e;
+  --strata-focus:#6f8e27;
+
+  /* Paper: light pages */
+  --strata-paper:#f3f4ef;
+  --strata-surface:#ffffff;
+  --strata-muted:#62675e;
+  --strata-line:#d2d6cc;
+
+  /* Night: dark pages */
+  --strata-night:#10110f;
+  --strata-night-panel:#191b17;
+  --strata-night-text:#f2f3eb;
+
+  /* Type */
+  --strata-font:"Manrope",Arial,sans-serif;
+  --strata-mono:"DM Mono",ui-monospace,monospace;
+
+  /* Radius */
+  --strata-radius-control:8px;
+  --strata-radius-surface:14px;
+  --strata-radius-site:16px;
+  --strata-radius-card:22px;
+  --strata-radius-pill:999px;
+
+  /* Spacing */
+  --strata-space-1:4px;
+  --strata-space-2:8px;
+  --strata-space-3:12px;
+  --strata-space-4:16px;
+  --strata-space-5:24px;
+  --strata-space-6:32px;
+  --strata-space-7:48px;
+  --strata-space-8:64px;
+
+  /* Motion */
+  --strata-ease-out:cubic-bezier(.22,1,.36,1);
+}

@@ -54,11 +54,11 @@ services:
         sync: false
       - key: PADDLE_ENFORCE_IP_ALLOWLIST
         value: "false"
-      - key: AI_BASE_URL
+      - key: GROQ_API_KEY
         sync: false
-      - key: AI_API_KEY
+      - key: STRATA_AI_MODEL
         sync: false
-      - key: AI_MODEL
+      - key: STRATA_AI_FALLBACK_MODEL
         sync: false
       - key: POLAR_CLIENT_ID
         sync: false

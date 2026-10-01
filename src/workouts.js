@@ -129,7 +129,7 @@ function pagination(value,fallback,min,max) {
   return integer(Number(value),min,max,"History pagination");
 }
 
-function createWorkoutService({store,auth,requireAccess,rateAllowed,http}) {
+function createWorkoutService({store,auth,requireAccess,rateAllowed,http,events=null}) {
   if (!store||!auth||typeof requireAccess!=="function"||typeof rateAllowed!=="function"||!http) throw new TypeError("Workout service requires store, auth, request guards, and HTTP helpers.");
   const {json,bodyJson}=http;
   function activeWorkoutConflict(res,workout) {
@@ -156,7 +156,7 @@ function createWorkoutService({store,auth,requireAccess,rateAllowed,http}) {
       if (current?.create_hash===digest) { json(res,200,{workout:workoutPayload(current)});return; }
       if (current) { await existingOrConflict(res,userId,workout.id);return; }
       const saved=await store.insertWorkout(record);
-      if (saved) { json(res,201,{workout:workoutPayload(saved)});return; }
+      if (saved) { await events?.emit("workout.saved",{userId,workout,created:true});if (workout.status==="completed") await events?.emit("workout.completed",{userId,workout});json(res,201,{workout:workoutPayload(saved)});return; }
       const concurrent=await store.workout(userId,workout.id);
       if (concurrent?.create_hash===digest) { json(res,200,{workout:workoutPayload(concurrent)});return; }
       if (concurrent) { await existingOrConflict(res,userId,workout.id);return; }
@@ -171,7 +171,7 @@ function createWorkoutService({store,auth,requireAccess,rateAllowed,http}) {
     if (!current) { await existingOrConflict(res,userId,id);return; }
     if (current.startedAt!==workout.startedAt) throw workoutError("A workout's start time cannot change.");
     const saved=await store.updateWorkout(record,expectedRevision);
-    if (saved) { json(res,200,{workout:workoutPayload(saved)});return; }
+    if (saved) { await events?.emit("workout.saved",{userId,workout,created:false});if (workout.status==="completed"&&current.status!=="completed") await events?.emit("workout.completed",{userId,workout});json(res,200,{workout:workoutPayload(saved)});return; }
     const concurrent=await store.workout(userId,id);
     if (concurrent&&Number(concurrent.revision)===expectedRevision&&workout.status==="active") {
       const active=workoutPayload(await store.activeWorkout(userId));

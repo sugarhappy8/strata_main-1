@@ -64,7 +64,7 @@
     document.body.classList.remove("has-workout-access");
     clearOfflineContext();
     $("trainingRoom").hidden=true;$("historySection").hidden=true;$("recoveryPanel").hidden=true;$("conflictPanel").hidden=true;$("accessPanel").hidden=false;
-    $("modeNotice").textContent="Strata+ access ended. Saved sessions and device drafts are kept; your free Plan is unchanged.";
+    $("modeNotice").textContent="Strata+ access ended. Saved sessions and device drafts are kept; your free week in My Week is unchanged.";
     if($("detailDialog").open)$("detailDialog").close();if($("finishDialog").open)$("finishDialog").close();if($("swapDialog").open)$("swapDialog").close();
   }
   const client=A.create({state,onSessionBlocked:blockSession,onAccessBlocked:blockAccess,onIdentity:(current)=>{authorizeOffline(current.user.discovery);writeOfflineContext();}});
@@ -334,20 +334,11 @@
     const counts=W.progress(workout);
     $("celebrationMessage").textContent=`${counts.completed} completed set${counts.completed===1?"":"s"} · ${workout.entries.length} planned movements · ${W.duration(workout.elapsedSeconds)} since start. ${state.mode==="account"?"Saved to your account.":"Saved on this device only."}`;
     guidance.reset();void guidance.load(workout.id);
-    updateCalendarLink();
     toast("Workout complete. Your history is updated.");
     $("celebration").scrollIntoView({block:"center"});
   }
-  function updateCalendarLink(){
-    const event=C.event(C.nextPlannedSession(state.plan,W.DAYS,new Date()));
-    $("calendarNext").hidden=!event;
-    if(!event)return;
-    $("calendarNextTitle").textContent=`Schedule ${event.day}’s workout.`;
-    $("calendarNextSummary").textContent=`${W.displayDate(event.date)} · ${event.movements} movement${event.movements===1?"":"s"} · ${event.workingSets} working set${event.workingSets===1?"":"s"}`;
-    $("calendarLink").href=event.href;$("calendarLink").download=event.filename;
-  }
   function returnToPlan(){
-    progression.reset();state.workout=null;state.draftKey="";state.pausedSeconds=null;guidance.reset();$("calendarNext").hidden=true;$("celebration").hidden=true;$("sessionPanel").hidden=true;$("startPanel").hidden=false;scanDrafts();contextView.focusPrimary();
+    progression.reset();state.workout=null;state.draftKey="";state.pausedSeconds=null;guidance.reset();$("celebration").hidden=true;$("sessionPanel").hidden=true;$("startPanel").hidden=false;scanDrafts();contextView.focusPrimary();
   }
   function exportDraft(){
     if(!state.workout)return;
@@ -378,7 +369,7 @@
     try{
       const identity=await api("/api/me");
       if(!identity.user?.id)throw new Error("Sign in to Strata+ to open your workout room.");
-      if(identity.user.discovery?.active!==true){$("accessPanel").hidden=false;$("modeNotice").textContent="Guided workouts, set logging, and history are Strata+ features. Your free Plan is unchanged.";return;}
+      if(identity.user.discovery?.active!==true){$("accessPanel").hidden=false;$("modeNotice").textContent="Guided workouts, set logging, and history are Strata+ features. Your free week in My Week is unchanged.";return;}
       state.mode="account";state.user=identity.user;state.csrfToken=String(identity.csrfToken||"");state.ownerId=owner();authorizeOffline(identity.user.discovery);
       const catalog=await fetch("/exercises.json",{credentials:"same-origin"});
       if(!catalog.ok)throw new Error("The exercise library could not be loaded.");
@@ -388,7 +379,7 @@
       state.plan=planResult.plan;state.planUpdatedAt=Number(planResult.planUpdatedAt)||0;
       if(!state.plan?.days)throw new Error("Your account plan could not be loaded. Retry to continue.");
       document.body.classList.add("has-workout-access");
-      $("modeNotice").innerHTML=`<strong>${esc(state.user.name||"Your account")} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Account</a>`;
+      $("modeNotice").innerHTML=`<strong>${esc(state.user.name||"Your account")} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Profile</a>`;
       $("trainingRoom").hidden=false;$("historySection").hidden=false;scanDrafts();await historyView.load();void recoveryView.load();
       const resumed=!state.blocked&&await historyView.openRequested();
       if(!resumed&&location.hash==="#historySection"&&!state.blocked){$("historySection").scrollIntoView({block:"start"});$("historyTitle").focus();}

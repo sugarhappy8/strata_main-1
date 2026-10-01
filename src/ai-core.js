@@ -8,7 +8,7 @@
 const {DAYS,EXERCISES,sanitizePlan}=require("./plans");
 const {currentWeekStart,generateCoachingWeek,sanitizeCoachingProfile}=require("./coaching-core");
 const {allowedByLimits,exerciseByName}=require("./ai-catalog");
-const LIMITS=Object.freeze({messageChars:1200,historyTurns:6,replyChars:900,suggestions:3,textChars:240,minExercises:2,maxExercises:8,maxSets:6,maxDaySets:36,promptChars:10500,searchTerms:6});
+const LIMITS=Object.freeze({messageChars:1200,historyTurns:6,replyChars:900,suggestions:3,textChars:240,minExercises:2,maxExercises:8,maxSets:6,maxDaySets:36,promptChars:16000,searchTerms:6});
 const SESSION_MINUTES=Object.freeze([30,45,60,75,90]);
 const CHOICES=Object.freeze({focus:["balanced","strength","hypertrophy"],goal:["fat_loss","maintenance","muscle_gain"],pace:["gentle","moderate"],pattern:["steady","zigzag","flexible_day"],macros:["balanced","higher_protein"]});
 /** @type {Map<string,any>} */
@@ -252,7 +252,7 @@ function previewNutrition({profile,changes,plan,evidence,timestamp}){
   const schedule=planSchedule(plan),aligned=Boolean(schedule&&(schedule.workoutDays.join()!==profile.workoutDays.join()||schedule.sessionMinutes!==profile.sessionMinutes));
   if(schedule){input.workoutDays=schedule.workoutDays;input.sessionMinutes=schedule.sessionMinutes;}
   const sanitized=/** @type {Record<string,any>} */(sanitizeCoachingProfile(/** @type {any} */(input))),weekStart=currentWeekStart(timestamp,sanitized.timeZone);
-  const week=generateCoachingWeek(/** @type {any} */(sanitized),Number(profile.revision)+1,weekStart,timestamp,evidence),nutrition=week.nutrition;
+  const week=generateCoachingWeek(/** @type {any} */(sanitized),Number(profile.revision)+1,weekStart,timestamp,evidence,plan),nutrition=week.nutrition;
   const saved={...sanitized};delete saved.sessionsPerWeek;
   return {changes,alignment:aligned&&schedule?schedule:null,profile:saved,expectedRevision:Number(profile.revision),preview:{selectedGoal:nutrition.selectedGoal,maintenance:{targetKcal:nutrition.maintenance?.targetKcal??null},dailyTargets:nutrition.dailyTargets}};
 }

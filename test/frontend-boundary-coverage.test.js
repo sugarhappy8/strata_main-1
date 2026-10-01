@@ -148,14 +148,8 @@ test("workout state and calendar helpers keep recovery data safe at malformed ed
     [{code:"NETWORK_ERROR"},/Not saved/],[{message:"Specific"},/Specific/],[{},/could not be saved/]
   ])assert.match(WorkoutState.saveError(error),pattern);
 
-  assert.equal(WorkoutCalendar.event(null),null);
-  const plan={days:{Tuesday:[{sets:"2"},{sets:-3},{sets:"bad"}]}};
-  const next=WorkoutCalendar.nextPlannedSession(plan,Workout.DAYS,new Date(2026,8,7,9));
-  assert.deepEqual(next,{day:"Tuesday",date:"2026-09-08",movements:3,workingSets:2});
-  const ics=decodeURIComponent(WorkoutCalendar.event(next).href);
-  assert.match(ics,/3 planned movements · 2 working sets/);
-  const singular=decodeURIComponent(WorkoutCalendar.event({...next,movements:1,workingSets:1}).href);
-  assert.match(singular,/1 planned movement · 1 working set/);
+  assert.equal(WorkoutCalendar.weeklySchedule({days:{}},Workout.DAYS),null,"an empty week has no calendar file");
+  assert.equal(WorkoutCalendar.weeklySchedule({days:{Tuesday:[{sets:"2"}]}},Workout.DAYS,{time:"25:00"}),null,"an invalid time has no calendar file");
 });
 
 test("planner boundaries preserve explicit conflicts and guest storage fallbacks",async()=>{

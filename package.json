@@ -1,6 +1,6 @@
 {
   "name": "strata-workout-index",
-  "version": "8.9.0",
+  "version": "9.0.0",
   "private": true,
   "description": "Evidence-informed exercise rankings with Strata+ personalization, session building, community weekly plans, ratings, and 31-day planning.",
   "scripts": {
@@ -17,6 +17,7 @@
     "architecture:check": "node scripts/architecture-report.js && node scripts/frontend-architecture-report.js",
     "coverage": "node scripts/coverage-check.js",
     "performance": "node scripts/performance-check.js",
+    "benchmark:calibration": "node qa/calibration-benchmark.js",
     "preflight:production": "node --env-file-if-exists=.env scripts/config-preflight.js --require-all",
     "smoke:deploy": "node scripts/deploy-smoke.js --require-all",
     "check": "npm run release:check && npm run architecture:check && npm run typecheck && npm run lint && npm run coverage && npm run qa:runtime && npm run performance && npm run test:e2e",

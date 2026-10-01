@@ -32,7 +32,7 @@ const SEARCH_DEBOUNCE_MS=StateCore.LIMITS.searchDebounceMs;
 const RATINGS_REFRESH_MIN_INTERVAL_MS=StateCore.LIMITS.ratingsRefreshMinIntervalMs;
 const MOVEMENT_BOARD_LIMIT=StateCore.LIMITS.movementBoard;
 const state=StateCore.createState();
-let workspaceGeneration=0,workspaceReady=false,workspaceRevalidating=false;
+let workspaceGeneration=0,workspaceReady=false,workspaceRevalidating=false;let coachingPlanStamp=null;
 const el=(id)=>document.getElementById(id);
 const api=ApiCore.createClient({fetchImpl:fetch,getCsrfToken:()=>state.csrfToken,getGeneration:()=>workspaceGeneration,redirect:(path)=>window.location.replace(path)});
 const saveRetryMessage=ApiCore.saveRetryMessage;
@@ -58,14 +58,14 @@ const toastController=NavigationCore.createToastController(el("toast"));
 function showToast(message){toastController.show(message);}
 function hideToast(){toastController.hide();}
 const coachingMeals=CoachingMealsCore.createController({document,element:el,api,state,ui:CoachingMealsUi,assertAccountResponse:ApiCore.assertAccountResponse,onAccountError:redirectedOrChangedAccount});
-const coaching=CoachingCore.createController({document,element:el,api,state,ui:CoachingUi,diaryUi:CoachingDiaryUi,meals:coachingMeals,assertAccountResponse:ApiCore.assertAccountResponse,renderFactory:CoachingRender.createRenderer,saveRetryMessage,showToast,onAccountError:redirectedOrChangedAccount,navigate:(name,options)=>activateFeature(name,options)});const recovery=globalThis.StrataDiscoverRecovery.createController({element:el,api,state,core:globalThis.StrataDevicesCore,getGeneration:()=>workspaceGeneration});
+const coaching=CoachingCore.createController({document,element:el,api,state,ui:CoachingUi,diaryUi:CoachingDiaryUi,meals:coachingMeals,assertAccountResponse:ApiCore.assertAccountResponse,renderFactory:CoachingRender.createRenderer,saveRetryMessage,showToast,onAccountError:redirectedOrChangedAccount,navigate:(name,options)=>activateFeature(name,options)});const recovery=globalThis.StrataDiscoverRecovery.createController({element:el,api,state,core:globalThis.StrataDevicesCore,getGeneration:()=>workspaceGeneration});const brief=globalThis.StrataDiscoverBrief.createController({element:el,api,state,core:globalThis.StrataDevicesCore,getGeneration:()=>workspaceGeneration});
 const featureNavigation=NavigationCore.createFeatureNavigation({
   config:FEATURE_CONFIG,defaultFeature:FEATURE_DEFAULT,state,document,window,scrollAnchorId:"featureHub",
   onDestinationChange:(name,previous)=>{hideToast();if(name==="coaching")coaching.setReturnFeature(previous);},
   onActivate:(name)=>{
     const scoreGuide=el("scoreGuide"),showScoreGuide=["recommendations","library","battle"].includes(name);if(scoreGuide)scoreGuide.hidden=!showScoreGuide;if(!showScoreGuide&&el("scoreGuideDetails"))el("scoreGuideDetails").open=false;
     if(state.user&&["recommendations","library","battle"].includes(name))void refreshCommunityRatings().catch(()=>{});
-    if(state.user&&["coaching","plan","nutrition"].includes(name))void coaching.ensureLoaded();recovery.activate(name);
+    if(state.user&&["coaching","plan","nutrition"].includes(name))void coaching.ensureLoaded();recovery.activate(name);brief.activate(name);
   }
 });
 function featureName(value){return featureNavigation.featureName(value);}
@@ -193,7 +193,7 @@ function renderWeeklyPulse(){
     el("todayEquipment").textContent=equipmentSummary(summaries.map((item)=>exerciseById(item.exerciseId)?.equipment))||"See workout";renderPreviousComparable(summaries);
     start.href=`/workout.html#resume=${encodeURIComponent(active.id)}`;start.innerHTML='Resume workout <span aria-hidden="true">↗</span>';el("todayIntro").textContent="Your open workout is the only action that matters right now.";pulseRoot.dataset.sessionDay=active.planDay||"active";
   }else if(!hasWeek){
-    el("weeklyPulseEyebrow").textContent="Start with your week";el("weeklyPulseTitle").textContent="Build your first week.";el("weeklyPulseDetail").textContent="You have not built a weekly plan yet.";el("weeklyPulseMovements").textContent="0";el("todayDurationLabel").textContent="Estimated time";el("todayDuration").textContent="—";el("todayEquipment").textContent="—";el("todayPreviousLabel").textContent="Previous comparable performance";el("todayPreviousValue").textContent="";el("todayPreviousDetail").textContent="";start.href="/planner.html";start.innerHTML='Build your first week <span aria-hidden="true">→</span>';el("todayIntro").textContent="You have not built a weekly plan yet.";pulseRoot.dataset.sessionDay="empty";if(metrics)metrics.hidden=true;if(previous)previous.hidden=true;if(footer)footer.hidden=true;if(planAction)planAction.hidden=true;
+    el("weeklyPulseEyebrow").textContent="Start with your week";el("weeklyPulseTitle").textContent="Build your first week.";el("weeklyPulseDetail").textContent="You have not built a weekly plan yet.";el("weeklyPulseMovements").textContent="0";el("todayDurationLabel").textContent="Estimated time";el("todayDuration").textContent="—";el("todayEquipment").textContent="—";el("todayPreviousLabel").textContent="Previous comparable performance";el("todayPreviousValue").textContent="";el("todayPreviousDetail").textContent="";start.href="/planner.html";start.innerHTML='Build your first week <span aria-hidden="true">→</span>';el("todayIntro").textContent="Choose your days and equipment once, and your next session is always ready.";pulseRoot.dataset.sessionDay="empty";if(metrics)metrics.hidden=true;if(previous)previous.hidden=true;if(footer)footer.hidden=true;if(planAction)planAction.hidden=true;
   }else if(historyStatus==="loading"){
     el("weeklyPulseEyebrow").textContent="Checking your training week";el("weeklyPulseTitle").textContent="Finding your next action.";el("weeklyPulseDetail").textContent="Checking for an active workout before showing what comes next.";el("todayIntro").textContent="Your saved week is ready. Strata+ is checking your workout history.";start.hidden=true;if(metrics)metrics.hidden=true;if(previous)previous.hidden=true;pulseRoot.dataset.sessionDay="loading";
   }else if(historyStatus==="error"){
@@ -207,7 +207,9 @@ function renderWeeklyPulse(){
   }
 }
 const progressRenderer=RenderCore.createProgressRenderer({element:el,escapeHtml,exerciseName,readableDate,days:Monthly.DAYS});
-function renderProgress(){return progressRenderer.render({workouts:state.workouts,weeklyPlan:state.weeklyPlan,historyAvailable:state.workoutHistoryAvailable,historyStatus:state.workoutHistoryStatus,historyError:state.workoutHistoryError,hasMore:state.workoutHistoryHasMore});}
+function renderProgress(){return progressRenderer.render({workouts:state.workouts,weeklyPlan:state.weeklyPlan,historyAvailable:state.workoutHistoryAvailable,historyStatus:state.workoutHistoryStatus,historyError:state.workoutHistoryError,hasMore:state.workoutHistoryHasMore,deviceDays:state.deviceCompletedDays||[]});}
+// This calendar week in the member's own time, for the Training Log read of Polar-completed planned days.
+function currentWeekRange(){const now=new Date(),monday=new Date(now.getFullYear(),now.getMonth(),now.getDate()-(now.getDay()+6)%7),iso=(date)=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;return `from=${iso(monday)}&to=${iso(new Date(monday.getFullYear(),monday.getMonth(),monday.getDate()+6))}`;}
 function normalizeTrainingBlock(data){
   const raw=data?.trainingBlock||data?.block||null;if(!raw||typeof raw!=="object")return null;
   const weeks=Math.round(Number(raw.weeks??raw.durationWeeks));if(weeks<4||weeks>8)return null;
@@ -289,7 +291,7 @@ function renderProgression(){
   el("progressionAccept").disabled=suggestion.applied;el("progressionAccept").textContent=suggestion.applied?"Change accepted":"Accept change";el("progressionDismiss").hidden=suggestion.applied;el("progressionStatus").textContent=suggestion.applied?"Saved. Your weekly Plan was updated; this edit remains until you change Plan again.":"Nothing changes unless you accept.";
 }
 function clearPrivateWorkspace(){
-  workspaceGeneration+=1;workspaceReady=false;coaching.reset();program.reset();recovery.reset();
+  workspaceGeneration+=1;workspaceReady=false;coachingPlanStamp=null;state.deviceCompletedDays=[];coaching.reset();program.reset();recovery.reset();brief.reset();
   state.exercises=[];state.methodology=null;state.sources=[];state.limited=new Set();state.preferences=null;state.user=null;state.csrfToken="";state.aggregate=new Map();state.userRatings=new Map();state.ratingsRefreshedAt=0;state.ratingsRefreshPromise=null;state.ratingSaving=new Set();state.compare=[];state.shortlist=[];state.collection="all";state.query="";state.group="all";state.equipment="all";state.pattern="all";state.level="all";state.sort="personal";state.recommendations=[];state.activeExercise=null;state.explorerLimit=EXPLORER_DESKTOP_PAGE_SIZE;
   state.weeklyPlan=null;state.weeklyPlanUpdatedAt=0;state.workouts=[];state.workoutHistoryAvailable=false;state.workoutHistoryHasMore=false;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.trainingBlock=null;state.trainingBlockRevision=0;state.trainingBlockAction=null;state.progressionSuggestion=null;state.session=null;state.sessionSaving=false;state.sessionDayInitialized=false;state.monthlyPlan=null;state.monthlyPlanUpdatedAt=0;state.monthlySchedule=null;state.monthlySource="muscle-schedule";
   const main=document.querySelector("main");if(main){main.hidden=true;main.inert=true;main.setAttribute("aria-busy","true");}
@@ -346,7 +348,7 @@ async function loadMemberDashboard(generation=workspaceGeneration,{keepForms=fal
   if(memberDashboardLoadingGeneration===generation)return;
   memberDashboardLoadingGeneration=generation;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.workoutHistoryAvailable=false;renderWeeklyPulse();renderProgress();
   try{
-    const [historyResult,trainingResult]=await Promise.allSettled([api("/api/workouts?limit=100&offset=0"),api("/api/training")]);
+    const [historyResult,trainingResult,logResult]=await Promise.allSettled([api("/api/workouts?limit=100&offset=0"),api("/api/training"),api(`/api/training-log?${currentWeekRange()}`)]);
     if(generation!==workspaceGeneration)return;
     let identity;
     try{identity=await api("/api/me");}
@@ -357,6 +359,7 @@ async function loadMemberDashboard(generation=workspaceGeneration,{keepForms=fal
     const training=trainingResult.status==="fulfilled"?trainingResult.value:null,trainingCsrf=String(training?.csrfToken||"");
     if(!sameUser||(history&&(!historyCsrf||historyCsrf!==identityCsrf))||(training&&(!trainingCsrf||trainingCsrf!==identityCsrf))){dashboardAccountChanged();return;}
     state.csrfToken=identityCsrf||state.csrfToken;
+    state.deviceCompletedDays=logResult.status==="fulfilled"&&Array.isArray(logResult.value?.entries)?logResult.value.entries.filter((entry)=>entry.kind==="device_session"&&entry.planDay).map((entry)=>String(entry.planDay)):[];
     if(history&&Array.isArray(history.workouts)&&typeof history.hasMore==="boolean"){
       state.workouts=safeWorkoutList(history.workouts);state.workoutHistoryAvailable=true;state.workoutHistoryHasMore=history.hasMore===true;state.workoutHistoryStatus="ready";state.workoutHistoryError="";renderWeeklyPulse();renderProgress();renderTrainingBlockReview();
     }else dashboardUnavailable();
@@ -422,8 +425,10 @@ async function dismissProgression(){
 }
 const session=SessionCore.createSession({
   state,core:Core,monthly:Monthly,labels:GROUP_LABELS,element:el,window,escapeHtml,titleCase,api,saveRetryMessage,showToast,
-  renderWeeklyPulse,renderTrainingBlockReview,updateMonthlySourceButtons
+  renderWeeklyPulse,renderTrainingBlockReview,updateMonthlySourceButtons,onPlanChanged:refreshCoachingForPlan
 });
+// The coaching week reads the saved plan, so a plan edit here refreshes it; the first sighting only records the plan.
+function refreshCoachingForPlan(){const stamp=state.weeklyPlanUpdatedAt,known=coachingPlanStamp!==null;if(stamp===coachingPlanStamp)return;coachingPlanStamp=stamp;if(known&&coaching.state.week)void coaching.load({force:true});}
 const {addToWeek:addSessionToWeek,generate:generateSession,initialize:initializeSessionBuilder,resetPreview:resetSessionPreview,syncPlanViews:syncSessionPlanViews,updateAddButton:updateSessionAddButton}=session;
 function localIsoDate(){const date=new Date(),part=(value)=>String(value).padStart(2,"0");return `${date.getFullYear()}-${part(date.getMonth()+1)}-${part(date.getDate())}`;}
 function friendlyMonthlyDate(value){
@@ -542,7 +547,7 @@ profileForm.addEventListener("submit",async(event)=>{
   const formElement=event.currentTarget,form=new FormData(formElement),preferences={goal:form.get("goal"),level:form.get("level"),days:Number(form.get("days")),equipment:form.getAll("equipment"),preferences:form.getAll("preferences"),limitations:form.getAll("limitations")};
   const controls=[...formElement.elements];profileForm.dataset.saving="true";controls.forEach((control)=>{control.disabled=true;});
   el("profileStatus").textContent="Saving…";
-  try{const result=await api("/api/preferences",{method:"PUT",body:JSON.stringify({preferences})});state.preferences=result.preferences;renderProfile();renderMovementBoard();renderRecommendations();resetExplorerWindow();renderExplorer();renderWeeklyPulse();resetSessionPreview("Preferences saved. Build a new session when you're ready.");showToast("Saved. Your recommendations are updated.");}
+  try{const result=await api("/api/preferences",{method:"PUT",body:JSON.stringify({preferences})});state.preferences=result.preferences;if(coaching.state.profile)void coaching.load({force:true});renderProfile();renderMovementBoard();renderRecommendations();resetExplorerWindow();renderExplorer();renderWeeklyPulse();resetSessionPreview("Preferences saved. Build a new session when you're ready.");showToast("Saved. Your recommendations are updated.");}
   catch(error){const message=saveRetryMessage(error);el("profileStatus").textContent=message;showToast(message);}
   finally{profileForm.dataset.saving="false";controls.forEach((control)=>{control.disabled=false;});}
 });

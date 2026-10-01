@@ -12,7 +12,7 @@
   const renderer=StrataAdminRender.createRenderer({
     document,state,logic:StrataAdminLogic,productSignalLabels:PRODUCT_SIGNAL_LABELS,supportStates:SUPPORT_STATES,requestFrame:requestAnimationFrame
   });
-  const {clearPrivateData,closeDialog,el,renderAudit,renderOverview,renderProductSignals,renderSupport,renderUserDetails,renderUsers,setActionAvailability,setBusy,setLastUpdated,setSectionStatus,showGlobal,syncDialogLock,updateGrantFields,updateSupportSubmitLabel}=renderer;
+  const {clearPrivateData,closeDialog,el,renderAiUsage,renderAudit,renderOverview,renderProductSignals,renderSupport,renderUserDetails,renderUsers,setActionAvailability,setBusy,setLastUpdated,setSectionStatus,showGlobal,syncDialogLock,updateGrantFields,updateSupportSubmitLabel}=renderer;
   function clearAdminData(){
     state.invalidatePrivateOperations();
     state.loaded.clear();
@@ -64,11 +64,16 @@
     finally{if(privateOperationIsCurrent(operation)&&request===state.productSignalRequest)setBusy(rows,false);}
   }
 
+  // AI usage is a side panel: a failure shows dashes and never blocks the overview.
+  async function loadAiUsage(operation){
+    try{const result=await client.aiUsage();if(privateOperationIsCurrent(operation)&&state.authorized)renderAiUsage(result?.usage||null);}
+    catch{if(privateOperationIsCurrent(operation))renderAiUsage(null);}
+  }
   async function loadOverview(){
     if(!state.authorized)return;const operation=state.capturePrivateOperation();
     const button=el("refreshOverview");button.disabled=true;setSectionStatus("overviewStatus","Loading current account and service totals…");
     try{
-      const data=await client.overview();if(!privateOperationIsCurrent(operation)||!state.authorized)return;renderOverview(data);await loadProductSignals();if(!privateOperationIsCurrent(operation)||!state.authorized)return;
+      const data=await client.overview();if(!privateOperationIsCurrent(operation)||!state.authorized)return;renderOverview(data);await Promise.all([loadProductSignals(),loadAiUsage(operation)]);if(!privateOperationIsCurrent(operation)||!state.authorized)return;
       state.loaded.add("overview");setLastUpdated();setSectionStatus("overviewStatus","Overview is current.");
     }catch(error){if(privateOperationIsCurrent(operation)&&!handleAuthorizationFailure(error))setSectionStatus("overviewStatus",friendlyError(error),{error:true});}
     finally{if(privateOperationIsCurrent(operation))button.disabled=false;}

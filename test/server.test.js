@@ -67,7 +67,7 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages",async()=>{
-  assert.equal(BUILD,"8.9.0");
+  assert.equal(BUILD,"9.0.0");
   const home=await request("/");
   assert.equal(home.response.status,200);
   assert.equal(home.response.headers.get("cache-control"),"private, no-store");
@@ -75,12 +75,15 @@ test("serves rankings and gates private account pages",async()=>{
   assert.match(home.data,/Your next<br \/>workout/);
   assert.match(home.data,/id="signupButton"[^>]*>Sign up/);
   assert.match(home.data,/id="accountButton"[^>]*>Log in/);
-  assert.match(home.data,BUILD_LABEL);
+  assert.doesNotMatch(home.data,BUILD_LABEL,"the build number lives on Profile, not the homepage");
+  const shareImage=await fetch(`${BASE}/images/strata-og.jpg`);
+  assert.equal(shareImage.status,200,"the share image named by the public pages is served");
+  assert.equal(shareImage.headers.get("content-type"),"image/jpeg");await shareImage.arrayBuffer();
   const account=await request("/account.html");
   assert.equal(account.response.status,200);
   assert.match(account.data,/action="\/auth\/signup"/);
   assert.match(account.data,/action="\/auth\/login"/);
-  assert.match(account.data,BUILD_LABEL);
+  assert.match(account.data,BUILD_LABEL,"Profile's About line shows the build");
   const status=await request("/api/status");
   assert.equal(status.response.status,200);
   assert.equal(status.data.ok,true);
@@ -129,7 +132,7 @@ test("serves public pricing, contact, and policy pages at friendly routes",async
       assert.equal(page.response.headers.get("cache-control"),"no-cache",`${path} cache policy`);
       assert.doesNotMatch(page.response.headers.get("vary")||"",/Cookie/i,`${path} must not vary by account`);
       assert.match(page.data,marker,`${path} page marker`);
-      assert.match(page.data,BUILD_LABEL,`${path} build label`);
+      assert.doesNotMatch(page.data,BUILD_LABEL,`${path} keeps the build number out of the main UI`);
     }
   }
 });
@@ -143,7 +146,7 @@ test("serves recovery pages at friendly private routes",async()=>{
       assert.equal(page.response.headers.get("cache-control"),"private, no-store",path);
       assert.match(page.response.headers.get("vary"),/Cookie/i,path);
       assert.match(page.data,marker,path);
-      assert.match(page.data,BUILD_LABEL,path);
+      assert.doesNotMatch(page.data,BUILD_LABEL,path);
     }
   }
 });
@@ -177,12 +180,21 @@ test("creates an account with a private default plan",async()=>{
   assert.equal(plannerPage.response.status,200);
   assert.equal(plannerPage.response.headers.get("cache-control"),"no-cache");
   assert.match(plannerPage.data,/Build your/);
-  assert.match(plannerPage.data,BUILD_LABEL);
+  assert.doesNotMatch(plannerPage.data,BUILD_LABEL);
 
   const discoverPage=await request("/discover.html",{headers:{Cookie:signup.cookie},redirect:"manual"});
   assert.equal(discoverPage.response.status,302);
   assert.match(discoverPage.response.headers.get("cache-control")||"",/no-store/);
   assert.equal(discoverPage.response.headers.get("location"),"/pricing?reason=discovery-required");
+
+  // The member-aware sections: free accounts and visitors get the public rankings, the free planner, and the plan that includes Recovery.
+  const section=async(path,cookie)=>{const result=await request(path,{headers:cookie?{Cookie:cookie}:{},redirect:"manual"});assert.equal(result.response.status,302,path);assert.match(result.response.headers.get("cache-control")||"",/no-store/);return result.response.headers.get("location");};
+  for(const cookie of [signup.cookie,null]){
+    assert.equal(await section("/rankings",cookie),"/#rankings");
+    assert.equal(await section("/my-week",cookie),"/planner.html");
+    assert.equal(await section("/my-week/",cookie),"/planner.html");
+    assert.equal(await section("/recovery",cookie),"/pricing?reason=recovery");
+  }
 
   const plan=await request("/api/plan",{headers:{Cookie:signup.cookie}});
   assert.equal(plan.response.status,200);
@@ -204,6 +216,10 @@ test("creates an account with a private default plan",async()=>{
   assert.deepEqual(Object.entries(grantedMe.data.user.capabilities).filter(([,allowed])=>!allowed),[],"a grant switches on every Strata+ capability");
   const grantedDiscovery=await request("/api/discovery",{headers:{Cookie:signup.cookie}});
   assert.equal(grantedDiscovery.response.status,200);
+  // Members open the same sections inside the Strata+ studio.
+  assert.equal(await section("/rankings",signup.cookie),"/discover.html#exerciseExplorer");
+  assert.equal(await section("/my-week",signup.cookie),"/discover.html#todayWorkspace");
+  assert.equal(await section("/recovery",signup.cookie),"/discover.html#recoveryWorkspace");
 
   const profile={version:1,goal:"strength",level:"Intermediate",days:4,equipment:["Dumbbells","Bodyweight"],preferences:["stable"],limitations:[]};
   const missingProfileCsrf=await request("/api/preferences",{method:"PUT",headers:{Cookie:signup.cookie,Origin:BASE,"Content-Type":"application/json"},body:JSON.stringify({preferences:profile})});

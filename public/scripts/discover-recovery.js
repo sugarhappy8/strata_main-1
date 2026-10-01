@@ -17,16 +17,21 @@
     function stateMessage(result){
       const connection=result?.connection;
       if(!result)return {title:"Loading your recovery…",message:"Checking your Polar connection.",connect:false};
-      if(!result.connected)return result.configured?{title:"Connect your Polar Loop",message:"See Polar’s Nightly Recharge, sleep, overnight stress signals, and heart rate here. Connect Polar in Account; it takes about a minute.",connect:true}:{title:"Recovery is coming soon",message:"Polar connections aren’t switched on yet. When they are, you can connect your Polar Loop from Account.",connect:false};
-      if(connection?.status==="reconnect")return {title:"Polar needs you to reconnect",message:core.syncErrorText(connection.lastError||"POLAR_AUTH"),connect:true,label:"Reconnect in Account"};
+      if(!result.connected)return result.configured?{title:"Connect your Polar Loop",message:"See Polar’s Nightly Recharge, sleep, overnight stress signals, and heart rate here. Connect Polar in Profile; it takes about a minute.",connect:true}:{title:"Polar connections are paused",message:"Recovery reads your sleep and Nightly Recharge from Polar, and connecting isn’t available right now. Your plan, training, and nutrition work as usual.",connect:false};
+      if(connection?.status==="reconnect")return {title:"Polar needs you to reconnect",message:core.syncErrorText(connection.lastError||"POLAR_AUTH"),connect:true,label:"Reconnect in Profile"};
       if(connection?.importing)return {title:"Importing from Polar…",message:"STRATA is reading up to 28 days of your Polar history. This page updates when you come back to it.",connect:false};
       if(result.summary?.state==="no-data")return {title:"No nights from Polar yet",message:"Wear your Loop to sleep. Polar’s Nightly Recharge appears here the morning after, once Polar has synced.",connect:false};
       return null;
     }
+    // My Week's readiness badge: last night's Nightly Recharge, with Train's lighter-session offer when it applies.
+    function renderPlanBadge(){
+      const badge=element("planReadiness"),summary=today?.connected?today.summary:null;if(!badge)return;if(!summary||summary.state==="no-data"||!summary.recovery?.label){badge.hidden=true;badge.textContent="";return;}
+      const status=Number(summary.recovery.status),when=summary.state==="stale"?`Latest night ${core.dateLabel(summary.date)}`:"Last night";badge.dataset.tone=status<=2?"low":status===3?"mid":"good";
+      badge.innerHTML=`<span class="plan-readiness-dot" aria-hidden="true"></span><strong>${esc(summary.recovery.label)} recovery</strong><span>${esc(when)} · Polar Nightly Recharge</span>${summary.lighterSession?.offer?'<a href="/workout.html">Lighter session in Train <span aria-hidden="true">↗</span></a>':""}<a href="#recoveryWorkspace" data-feature-target="recovery">Recovery <span aria-hidden="true">→</span></a>`;badge.hidden=false;
+    }
     function metric(label,value,detail,tone="none"){return `<article class="recovery-metric" data-tone="${esc(tone)}"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(detail)}</small></article>`;}
     function usualText(usual,format){return usual?`Your usual ${format(usual.low)}–${format(usual.high)}`:"Your usual range appears after 7 nights";}
-    function lighterLink(summary){
-      const text=core.lighterText(summary.lighterSession);
+    function lighterLink(summary){const text=core.lighterText(summary.lighterSession);
       return text?`<p class="recovery-lighter${summary.lighterSession?.offer?"":" is-note"}">${esc(text)}${summary.lighterSession?.offer?' <a href="/workout.html">Open Train <span aria-hidden="true">↗</span></a>':""}</p>`:"";
     }
     function renderTodayCard(){
@@ -40,7 +45,7 @@
       }
       const stress=core.stressView(summary.stress);
       element("todayRecoveryTitle").textContent=summary.recovery?.label?`${summary.recovery.label} recovery`:"Nightly Recharge not ready";
-      element("todayRecoveryDetail").textContent=summary.state==="stale"?`Latest night from Polar: ${core.dateLabel(summary.date)}. Sync Polar in Account if this looks old.`:core.lighterText(summary.lighterSession)||`Overnight stress signals: ${stress.label.toLowerCase()}.`;
+      element("todayRecoveryDetail").textContent=summary.state==="stale"?`Latest night from Polar: ${core.dateLabel(summary.date)}. Sync Polar in Profile if this looks old.`:core.lighterText(summary.lighterSession)||`Overnight stress signals: ${stress.label.toLowerCase()}.`;
       element("todayRecoveryMetrics").innerHTML=[["Sleep",core.durationText(summary.sleep?.asleepSeconds)],["HRV",core.numberText(summary.heart?.hrv,0,"ms")],["Resting HR",core.numberText(summary.heart?.today?.resting??summary.heart?.overnight,0,"bpm")]]
         .map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("");
     }
@@ -89,10 +94,8 @@
       return todayLoading;
     }
     async function loadTrends(){
-      const range=weeks,generation=getGeneration();
-      if(trends.has(range)&&Date.now()-todayAt<FRESH_MS)return;
-      const result=await api(`/api/wellness/trends?weeks=${range}&date=${date()}`);
-      if(generation===getGeneration())trends.set(range,result);
+      const range=weeks,generation=getGeneration();if(trends.has(range)&&Date.now()-todayAt<FRESH_MS)return;
+      const result=await api(`/api/wellness/trends?weeks=${range}&date=${date()}`);if(generation===getGeneration())trends.set(range,result);
     }
     async function show(name,{force=false}={}){
       if(!state.user)return;
@@ -100,10 +103,10 @@
         await loadToday({force});if(active!==name)return;
         if(name==="recovery"&&today?.connected&&today.summary?.state!=="no-data")await loadTrends();
       }catch(error){if(error?.redirecting||error?.stale)return;failed=name==="recovery";}
-      if(name==="today")renderTodayCard();else if(active==="recovery"){renderTodayCard();renderPanel();}
+      if(name==="plan"){if(active==="plan")renderPlanBadge();}else if(name==="today")renderTodayCard();else if(active==="recovery"){renderTodayCard();renderPanel();}
     }
-    function activate(name){active=name;if(name==="today"||name==="recovery")void show(name);}
-    function reset(){today=null;todayAt=0;todayLoading=null;trends=new Map();failed=false;weeks=4;const card=element("todayRecovery");if(card)card.hidden=true;}
+    function activate(name){active=name;if(name==="today"||name==="recovery"||name==="plan")void show(name);}
+    function reset(){today=null;todayAt=0;todayLoading=null;trends=new Map();failed=false;weeks=4;const card=element("todayRecovery");if(card)card.hidden=true;const badge=element("planReadiness");if(badge)badge.hidden=true;}
     element("recoveryRetry")?.addEventListener("click",()=>{failed=false;void show("recovery",{force:true});});
     element("recoveryRange")?.addEventListener("click",(event)=>{
       const button=event.target.closest?.("[data-recovery-weeks]"),next=Number(button?.dataset.recoveryWeeks);

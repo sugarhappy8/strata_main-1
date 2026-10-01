@@ -29,8 +29,18 @@
       try{await client.logout();}catch{/* The account page confirms the signed-out state either way. */}
       location.assign("/account.html?mode=login");
     },
-    reload:()=>location.reload()
+    reload:()=>location.reload(),
+    allowConsent:async()=>{await conversation.actions.allowConsent();syncSettings();}
   };
+  // Settings for members who already agreed: the Daily Brief choice, deleting stored notes, and turning Strata AI off.
+  const settings={panel:el("aiSettings"),brief:el("aiDailyBrief"),status:el("aiSettingsStatus")};
+  async function changeSettings(work,done){settings.status.textContent="Saving…";try{await work();settings.status.textContent=done;await conversation.refreshStatus();syncSettings();}catch(error){if(!handleAccessError(error))settings.status.textContent=error.message;}}
+  function syncSettings(){settings.panel.hidden=!state.status?.consent;settings.brief.checked=state.status?.dailyBrief!==false;}
+  function bindSettings(){
+    settings.brief.addEventListener("change",()=>void changeSettings(()=>client.saveSettings({consent:true,dailyBrief:settings.brief.checked}),settings.brief.checked?"Daily Brief is on.":"Daily Brief is off."));
+    el("aiDeleteNotes").addEventListener("click",()=>void changeSettings(()=>client.deleteNotes(),"Your stored AI notes were deleted."));
+    el("aiWithdraw").addEventListener("click",()=>void changeSettings(()=>client.saveSettings({consent:false}),"Strata AI is off. Nothing more is sent until you allow it again."));
+  }
 
   async function start(){
     view.renderStarters();conversation.render();
@@ -43,9 +53,9 @@
       nodes.statusTitle.textContent="STRATA couldn’t load your account";nodes.statusDetail.textContent="Check your connection, then refresh this page.";nodes.status.dataset.tone="offline";return;
     }
     conversation.restore();
-    globalThis.StrataAiEvents.bind({nodes,actions});
+    globalThis.StrataAiEvents.bind({nodes,actions});bindSettings();
     conversation.render();conversation.resume();
-    await conversation.refreshStatus();
+    await conversation.refreshStatus();syncSettings();
   }
 
   void start();

@@ -83,7 +83,7 @@ test("version 4 zigzag uses actual generated session energy and preserves the we
 
 test("version 4 does not claim a zigzag when no usable generated session can receive it",()=>{
   const output=nutritionFor(structuredProfile({caloriePattern:"zigzag"}),"2026-09-07",null,training(["Monday","Friday"],60,"unavailable"));
-  assert.equal(output.requestedPattern,"zigzag");assert.equal(output.effectivePattern,"steady");assert.match(output.patternFallback,/No usable generated session/);assert.ok(output.dailyTargets.every(day=>day.kind==="standard"));assert.ok(Math.max(...output.dailyTargets.map(day=>day.calories))-Math.min(...output.dailyTargets.map(day=>day.calories))<=1);
+  assert.equal(output.requestedPattern,"zigzag");assert.equal(output.effectivePattern,"steady");assert.match(output.patternFallback,/No usable planned session/);assert.ok(output.dailyTargets.every(day=>day.kind==="standard"));assert.ok(Math.max(...output.dailyTargets.map(day=>day.calories))-Math.min(...output.dailyTargets.map(day=>day.calories))<=1);
 });
 
 test("daily redistribution cannot undo the composition floor applied to a deficit",()=>{

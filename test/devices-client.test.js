@@ -234,7 +234,7 @@ test("Train hides the recovery line without a current Polar connection",async()=
   const guest=WorkoutRecovery.create({$:element,state:{mode:"guest",history:[]},core:Core,esc:Core.escapeHtml,request:async()=>{throw new Error("should not load");}});await guest.load();
 });
 
-const DISCOVER_IDS=["todayRecovery","todayRecoveryTitle","todayRecoveryDetail","todayRecoveryMetrics","todayRecoveryAction","todayRecoveryConnect","recoveryState","recoveryStateTitle","recoveryStateMessage","recoveryConnect","recoveryRetry","recoveryResults","recoveryToday","recoveryCharts","recoveryWeekly","recoveryRange"];
+const DISCOVER_IDS=["planReadiness","todayRecovery","todayRecoveryTitle","todayRecoveryDetail","todayRecoveryMetrics","todayRecoveryAction","todayRecoveryConnect","recoveryState","recoveryStateTitle","recoveryStateMessage","recoveryConnect","recoveryRetry","recoveryResults","recoveryToday","recoveryCharts","recoveryWeekly","recoveryRange"];
 function trendsResponse(weeks=4){
   const series=Array.from({length:10},(_,index)=>({date:`2026-09-${String(19+index).padStart(2,"0")}`,recoveryStatus:index%6+1,hrv:50+index,heartRate:52-index%3,asleepSeconds:25000+index*100,sleepScore:80}));
   return {configured:true,connected:true,connection:activeConnection(),trends:{from:"2026-09-01",to:"2026-09-28",weeks,series,usual:{hrv:{low:52,high:57},heartRate:null,asleepSeconds:{low:25200,high:25800}},
@@ -268,7 +268,7 @@ test("the Overview card and Recovery destination show today's night and the chos
 test("Recovery explains every state before data exists and retries after a failure",async()=>{
   const cases=[
     [{configured:true,connected:false,connection:null},/Connect your Polar Loop/,true],
-    [{configured:false,connected:false,connection:null},/coming soon/,false],
+    [{configured:false,connected:false,connection:null},/Polar connections are paused/,false],
     [wellnessToday({connection:activeConnection({status:"reconnect",lastError:"POLAR_AUTH"})}),/needs you to reconnect/,true],
     [wellnessToday({connection:activeConnection({importing:true,lastSyncAt:null})}),/Importing from Polar/,false],
     [wellnessToday({summary:{state:"no-data",lighterSession:{offer:false}}}),/No nights from Polar yet/,false]
@@ -289,4 +289,15 @@ test("Recovery explains every state before data exists and retries after a failu
   assert.equal(elements.get("recoveryResults").hidden,false);
   const signedOut=DiscoverRecovery.createController({element,api:async()=>{throw new Error("unused");},state:{user:null},core:Core,getGeneration:()=>1});signedOut.activate("recovery");await flush();
   const redirecting=DiscoverRecovery.createController({element,api:async()=>{throw Object.assign(new Error("redirect"),{redirecting:true});},state:{user:{id:"m"}},core:Core,getGeneration:()=>1});redirecting.activate("today");await flush();
+});
+
+test("My Week shows last night's recovery as a badge, with Train's lighter session when it applies",async()=>{
+  const {element,elements}=page(DISCOVER_IDS);let answer=wellnessToday();
+  const controller=DiscoverRecovery.createController({element,api:async()=>answer,state:{user:{id:"m"}},core:Core,getGeneration:()=>1});
+  controller.activate("plan");await flush();
+  const badge=elements.get("planReadiness");
+  assert.equal(badge.hidden,false);assert.equal(badge.dataset.tone,"low");assert.match(badge.innerHTML,/Poor recovery/);assert.match(badge.innerHTML,/Lighter session in Train/);assert.match(badge.innerHTML,/data-feature-target="recovery"/);
+  controller.reset();assert.equal(badge.hidden,true,"an account switch hides the badge");
+  answer={configured:true,connected:false,connection:null};controller.activate("plan");await flush();
+  assert.equal(badge.hidden,true,"no badge without a Polar connection");
 });

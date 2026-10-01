@@ -122,7 +122,9 @@ test("Progress derives truthful summaries and lets the renderer replace zero car
   const workout={id:"w1",status:"completed",date:"2026-09-09",planDay:"Wednesday",startedAt:2,exerciseSummaries:[{exerciseId:"press",measurement:"reps",loadType:"external",unit:"kg",completedSets:3,maxWeight:20,maxReps:8,volume:480}]};
   const lastWeek={id:"w0",status:"completed",date:"2026-09-02",planDay:"Wednesday",startedAt:1,exerciseSummaries:[{exerciseId:"press",measurement:"reps",loadType:"external",unit:"kg",completedSets:3,maxWeight:17.5,maxReps:8,volume:400}]};
   const summary=Progress.snapshot({workouts:[workout,lastWeek],weeklyPlan,days,now});
-  assert.equal(summary.adherence,"1 / 1");assert.equal(summary.volume,"480 kg");assert.match(summary.volumeDetail,/\+20% vs last week/);assert.equal(summary.sessions,"2");
+  assert.equal(summary.adherence,"1 / 1");assert.equal(summary.volume,"480 kg");
+  const polar=Progress.snapshot({workouts:[lastWeek],weeklyPlan,days,now,deviceDays:["Wednesday","Saturday"]});
+  assert.equal(polar.adherence,"1 / 1","a Polar session on the planned day completes it; an unplanned day does not count");assert.match(polar.adherenceDetail,/1 counted from Polar/);assert.match(summary.volumeDetail,/\+20% vs last week/);assert.equal(summary.sessions,"2");
   assert.equal(summary.records.length,1,"one comparable exercise produces one record instead of a duplicate improvement and best");
   assert.deepEqual(summary.records[0].change,{direction:"up",text:"+2.5 kg"});assert.equal(summary.records[0].newBest,true);
   assert.deepEqual(summary.weeks.slice(-2).map(week=>[week.workouts,week.current]),[[1,false],[1,true]]);

@@ -30,7 +30,7 @@
         return `<article class="progress-record${record.newBest?" is-new-best":""}"><div class="progress-record-name"><strong>${escapeHtml(exerciseName(record.exerciseId))}</strong><small>${escapeHtml(record.latest.metric.label)} · ${escapeHtml(readableDate(record.latest.workout.date))}</small></div><dl><div><dt>Latest</dt><dd>${escapeHtml(record.latest.metric.formatted)}</dd></div><div class="progress-change is-${change.direction}"><dt>vs last time</dt><dd><span aria-hidden="true">${change.direction==="up"?"↑":change.direction==="down"?"↓":change.direction==="same"?"=":"•"}</span> ${escapeHtml(change.text)}</dd></div><div><dt>Best</dt><dd>${best}</dd></div></dl></article>`;
       }).join("");
     }
-    function render({workouts,weeklyPlan,historyAvailable,historyStatus,historyError="",hasMore,now=new Date()}){
+    function render({workouts,weeklyPlan,historyAvailable,historyStatus,historyError="",hasMore,now=new Date(),deviceDays=[]}){
       const requestedStatus=["loading","ready","error"].includes(historyStatus)?historyStatus:(historyAvailable?"ready":"error");
       const status=requestedStatus==="ready"&&!historyAvailable?"error":requestedStatus;
       setHidden("progressLoadingState",status!=="loading");setHidden("progressLoadError",status!=="error");setHidden("progressFirstWorkout",true);setHidden("progressHistoryContent",true);
@@ -45,7 +45,7 @@
       }
       if(!element("progressAdherence"))return{status};
       const scope=element("progressRecordScope");if(scope)scope.textContent=hasMore?"Within your 100 most recent sessions":"Latest comparable result per exercise";
-      const data=Progress.snapshot({workouts,weeklyPlan,days,now,hasMore});
+      const data=Progress.snapshot({workouts,weeklyPlan,days,now,hasMore,deviceDays});
       if(!data.completed.length){setHidden("progressFirstWorkout",false);clearMetrics();return{status,empty:true};}
       setHidden("progressHistoryContent",false);
       element("progressAdherence").textContent=data.adherence;element("progressAdherenceDetail").textContent=data.adherenceDetail;element("progressVolume").textContent=data.volume;element("progressVolumeDetail").textContent=data.volumeDetail;element("progressConsistency").textContent=data.consistency;element("progressConsistencyDetail").textContent=data.consistencyDetail;element("progressSessions").textContent=data.sessions;element("progressSessionsDetail").textContent=data.sessionsDetail;

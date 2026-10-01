@@ -31,8 +31,11 @@
       ask:({kind,message,history,draftPlan=null,draftPlanUpdatedAt=null})=>request("/api/ai/requests",{method:"POST",body:{kind,...(kind==="chat"?{message,...(draftPlan?{draftPlan,draftPlanUpdatedAt}:{})}:{}),history,expectedUserId:String(getUserId()||"")}}),
       poll:id=>request(`/api/ai/requests/${encodeURIComponent(id)}`),
       plan:()=>request("/api/plan"),
-      savePlan:({plan,expectedPlanUpdatedAt})=>request("/api/plan",{method:"PUT",body:{plan,expectedPlanUpdatedAt,expectedUserId:String(getUserId()||"")}}),
+      // Weeks saved from the chat are tagged so the plan history shows an accepted Strata AI proposal.
+      savePlan:({plan,expectedPlanUpdatedAt})=>request("/api/plan",{method:"PUT",body:{plan,expectedPlanUpdatedAt,expectedUserId:String(getUserId()||""),source:"ai"}}),
       saveProfile:({profile,expectedRevision})=>request("/api/coaching/profile",{method:"PUT",body:{profile,expectedRevision,expectedUserId:String(getUserId()||"")}}),
+      saveSettings:({consent,dailyBrief})=>request("/api/ai/settings",{method:"PUT",body:{consent,...(dailyBrief===undefined?{}:{dailyBrief})}}),
+      deleteNotes:()=>request("/api/ai/notes",{method:"DELETE",body:{}}),
       logout:()=>request("/api/logout",{method:"POST"})
     });
   }

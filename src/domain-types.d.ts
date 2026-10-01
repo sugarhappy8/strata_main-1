@@ -448,7 +448,7 @@ export interface ProductSignalsStore {
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -512,6 +512,11 @@ export interface AccountExportStoreRows {
   wellnessNights:JsonObject[];
   wellnessDays:JsonObject[];
   wellnessWorkouts:JsonObject[];
+  dailySnapshots:JsonObject[];
+  planChanges:JsonObject[];
+  trainingLinks:JsonObject[];
+  aiSettings:JsonObject|null;
+  aiUsage:JsonObject[];
 }
 
 export interface AccountSelfServiceStore {
@@ -642,6 +647,12 @@ export interface SetupStore {
   ):Promise<SavedTrainingSetupRow|null>;
 }
 
+export interface EventBus {
+  on(name:string,handler:(payload:Record<string,unknown>)=>unknown):()=>void;
+  emit(name:string,payload?:Record<string,unknown>):Promise<number>;
+  names:readonly string[];
+}
+
 export interface SetupServiceDependencies {
   store:SetupStore;
   auth:Pick<AuthService,"validCsrf">;
@@ -651,6 +662,7 @@ export interface SetupServiceDependencies {
   getPreferencesSnapshot:(userId:string)=>Promise<PreferencesSnapshot>;
   getUserPayload:(account:SessionRow)=>Promise<unknown>;
   http:JsonHttpHelpers;
+  events?:EventBus|null;
 }
 
 export interface SetupService {
@@ -776,6 +788,7 @@ export interface TrainingServiceDependencies {
   trustedOrigin:(request:HttpRequest)=>boolean;
   rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
   http:JsonHttpHelpers;
+  events?:EventBus|null;
 }
 
 export interface TrainingService {
@@ -810,6 +823,33 @@ export type CoachingProfilePayload=CoachingProfile&{revision:number;updatedAt:nu
 export interface CoachingWeekRecord {userId:string;weekStart:string;planKey:string;profileRevision:number;snapshotJson:string;generatedAt:number;}
 export interface CoachingDailyLogRecord {userId:string;logDate:string;calories:number;proteinG:number|null;carbsG:number|null;fatG:number|null;morningWeightKg:number|null;complete:boolean|null;updatedAt:number;}
 export interface CoachingDailyLogRow extends JsonObject {log_date:string;calories:number;protein_g:number|null;carbs_g:number|null;fat_g:number|null;morning_weight_kg:number|null;intake_complete:0|1|null;revision:number;updated_at:number;}
+/** Strata AI consent and the organization's daily provider budget. */
+export interface AiStore {
+  aiSettings(userId:string):Promise<JsonObject|null>;
+  upsertAiSettings(userId:string,settings:{consentAt:number|null,consentVersion:number,dailyBrief:boolean,updatedAt:number}):Promise<JsonObject|null>;
+  briefCandidates(limit:number,offset:number):Promise<JsonObject[]>;
+  aiUsage(date:string,scope:string):Promise<JsonObject[]>;
+  addAiUsage(date:string,scope:string,kind:"chat"|"brief",requests:number,tokens:number):Promise<void>;
+  refundAiUsage(date:string,scope:string,kind:"chat"|"brief"):Promise<void>;
+  aiUsageTotals(date:string):Promise<JsonObject[]>;
+  aiUsageTop(date:string,limit:number):Promise<JsonObject[]>;
+  deleteOldAiUsage(beforeDate:string):Promise<void>;
+}
+/** Shared data layer: Polar-to-workout links, Daily Snapshots, and where each saved week came from. */
+export interface DataLayerStore {
+  trainingLinks(userId:string):Promise<JsonObject[]>;
+  upsertTrainingLink(userId:string,link:{provider:string,externalId:string,workoutId:string,method:string,linkedAt:number}):Promise<void>;
+  deleteTrainingLink(userId:string,provider:string,externalId:string):Promise<void>;
+  deleteTrainingLinksForProvider(userId:string,provider:string):Promise<void>;
+  dailySnapshots(userId:string,fromDate:string,toDate:string):Promise<JsonObject[]>;
+  upsertDailySnapshot(userId:string,date:string,snapshotJson:string,updatedAt:number):Promise<void>;
+  saveDailyBrief(userId:string,date:string,briefJson:string,generatedAt:number):Promise<boolean>;
+  deleteDailyBriefs(userId:string,updatedAt:number):Promise<void>;
+  deleteOldDailySnapshots(beforeDate:string):Promise<void>;
+  deleteUserDailySnapshots(userId:string):Promise<void>;
+  insertPlanChange(userId:string,change:{planUpdatedAt:number,source:string,detail:string,createdAt:number},keep?:number):Promise<void>;
+  planChanges(userId:string,limit:number):Promise<JsonObject[]>;
+}
 export interface CoachingStore {
   coachingProfile(userId:string):Promise<JsonObject|null>;
   upsertCoachingProfile(userId:string,profileJson:string,updatedAt:number,expectedRevision:number):Promise<JsonObject|null>;
@@ -878,6 +918,9 @@ export interface CoachingServiceDependencies {
   rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
   http:JsonHttpHelpers;
   now?:()=>number;
+  events?:EventBus|null;
+  /** The member's saved weekly plan; the coaching week reads its training sessions from it. */
+  getPlan?:(userId:string)=>Promise<unknown>;
 }
 export interface CoachingService {handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;}
 

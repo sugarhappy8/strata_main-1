@@ -14,6 +14,8 @@ const {addDays,currentWeekStart,localDate}=require("./coaching-core");
 const {compatibleWeek,readCoachingEvidence}=require("./coaching-evidence");
 const {profilePayload}=require("./coaching");
 const {workoutPayload}=require("./workouts");
+const {buildDataContext}=require("./ai-context");
+const {settingsPayload}=require("./ai-settings");
 
 const DAY_MS=24*60*60*1000;
 // Failures that happen before the model does any work do not count against the member's daily requests.
@@ -25,30 +27,24 @@ function weekdayName(time,zone){try{return new Intl.DateTimeFormat("en-US",{week
 /**
  * @param {{store:any,auth:any,requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean,
  *   http:{json:Function,bodyJson:Function},provider:{configured:boolean,model:string,complete:Function,health:Function},getPlanSnapshot:(userId:string)=>Promise<{plan:any,updatedAt:number}>,
- *   logger?:{info:Function,warn:Function}|null,now?:()=>number,config?:{maxConcurrent?:number,maxQueue?:number,dailyLimit?:number,resultTtlMs?:number,healthTtlMs?:number}}} dependencies
+ *   quota:ReturnType<typeof import("./ai-quota").createAiQuota>,dataService?:any,logger?:{info:Function,warn:Function}|null,now?:()=>number,config?:{maxConcurrent?:number,maxQueue?:number,resultTtlMs?:number,healthTtlMs?:number}}} dependencies
  */
-function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,provider,getPlanSnapshot,logger=null,now=Date.now,config={}}){
-  if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http||!provider||typeof getPlanSnapshot!=="function")throw new TypeError("Strata AI requires storage, access guards, rate limiting, HTTP helpers, a provider, and plan reads.");
+function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,provider,getPlanSnapshot,quota,dataService=null,logger=null,now=Date.now,config={}}){
+  if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http||!provider||typeof getPlanSnapshot!=="function"||!quota)throw new TypeError("Strata AI requires storage, access guards, rate limiting, HTTP helpers, a provider, and plan reads.");
   const {json,bodyJson}=http;
-  const maxConcurrent=Math.max(1,Math.floor(config.maxConcurrent??3)),maxQueue=Math.max(1,Math.floor(config.maxQueue??20)),dailyLimit=Math.max(1,Math.floor(config.dailyLimit??30));
+  const maxConcurrent=Math.max(1,Math.floor(config.maxConcurrent??3)),maxQueue=Math.max(1,Math.floor(config.maxQueue??20));
   const resultTtlMs=config.resultTtlMs??10*60*1000,healthTtlMs=config.healthTtlMs??30*1000;
   /** @type {Map<string,any>} */
   const jobs=new Map();
   /** @type {any[]} */
   const queue=[];
-  /** @type {Map<string,number>} */
-  const usage=new Map();
   let running=0;
   /** @type {{checkedAt:number,online:boolean,code:string|null}} */
   let health={checkedAt:0,online:false,code:null};
 
-  const today=()=>new Date(now()).toISOString().slice(0,10);
-  /** @param {string} userId */
-  const usedToday=(userId)=>usage.get(`${userId}:${today()}`)||0;
   function sweep(){
-    const time=now(),day=today();
+    const time=now();
     for(const [id,job] of jobs)if(job.finishedAt&&time-job.finishedAt>resultTtlMs)jobs.delete(id);
-    for(const key of usage.keys())if(!key.endsWith(`:${day}`))usage.delete(key);
   }
   /** @param {any} job */
   function publicJob(job){
@@ -71,9 +67,17 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       const first=weights[0],last=weights.at(-1),span=first&&last?(Date.parse(`${last.date}T00:00:00Z`)-Date.parse(`${first.date}T00:00:00Z`))/DAY_MS:0;
       nutrition={averageTarget:targets.length?Math.round(targets.reduce((/** @type {number} */ sum,/** @type {number} */ value)=>sum+value,0)/targets.length):null,loggedDays:recent.length,averageIntake:recent.length?Math.round(recent.reduce((/** @type {number} */ sum,/** @type {any} */ row)=>sum+Number(row.calories),0)/recent.length):null,weeklyWeightChangeKg:first&&last&&span>=7?Math.round((last.kg-first.kg)/span*7*10)/10:null};
     }
-    return {plan:snapshot.plan,planUpdatedAt:snapshot.updatedAt,profile,workouts,nutrition,weekday:weekdayName(time,profile?.timeZone)};
+    return {plan:snapshot.plan,planUpdatedAt:snapshot.updatedAt,profile,workouts,nutrition,weekday:weekdayName(time,profile?.timeZone),dataContext:await recentDays(userId,profile,time)};
+  }
+  /** Recent days from the shared data layer (snapshots, Training Log, signals, plan history), compact and capped. @param {string} userId @param {any} profile @param {number} time */
+  async function recentDays(userId,profile,time){
+    if(!dataService)return "";
+    const date=localDate(time,profile?.timeZone||"UTC"),[snapshots,entries,signals,changes]=await Promise.all([dataService.snapshots.read(userId,{from:addDays(date,-13),to:date,today:date}).catch(()=>[]),dataService.trainingLog.read(userId,{from:addDays(date,-6),to:date,today:date}).catch(()=>[]),dataService.rankingsSignals(userId).catch(()=>null),dataService.planChanges(userId,3).catch(()=>[])]);
+    return buildDataContext({snapshots,entries,signals,planChanges:changes,brief:snapshots.at(-1)?.date===date?snapshots.at(-1).brief:null}).text;
   }
 
+  /** One provider call for a job, with its tokens counted toward the day. @param {any} job @param {any} request */
+  async function counted(job,request){const result=await provider.complete(request);job.tokens+=Number(result?.usage?.totalTokens)||0;return result;}
   /** @param {any} job */
   async function run(job){
     const started=now();
@@ -83,11 +87,11 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       const answerOnly=job.kind==="chat"&&directAnswerOnly(job.message),basePlan=draftPlan||data.plan,contract=answerOnly?null:planEditContract(job.message,basePlan);
       const pinned=[...new Set([...planItems(data.plan).map((item)=>item.exerciseId),...planExerciseIds(draftPlan)])].slice(0,48),named=readRequest(request).named;
       const shortlist=(/** @type {string[]} */ extra)=>candidateExercises({equipment:data.profile?.availableEquipment||[],limitations,experience:data.profile?.experience||"intermediate",pinned,request,extra});
-      const member=memberContext({profile:data.profile,plan:data.plan,workouts:data.workouts,nutrition:data.nutrition,today:data.weekday});
+      const member=[memberContext({profile:data.profile,plan:data.plan,workouts:data.workouts,nutrition:data.nutrition,today:data.weekday}),data.dataContext].filter(Boolean).join("\n\n");
       /** @type {string[]} */
       let extra=[],candidates=shortlist(extra);
       const context=()=>[member,job.kind==="chat"&&(draftPlan||contract)?planEditContext({basePlan,source:draftPlan?"latest proposed week":"saved weekly plan",candidates,contract}):""].filter(Boolean).join("\n\n");
-      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>provider.complete({messages:promptMessages({kind:job.kind,message:job.message,history:contract?[]:job.history,context:context(),candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:1100,temperature,responseFormat:aiResponseFormat({codes:candidates.map((item)=>item.code),requireWeek:Boolean(contract),trainingDays:contract?.trainingDays??null,trainingDayNames:contract?.targetTrainingDays??[],answerOnly})});
+      const complete=(/** @type {string} */ note,/** @type {boolean} */ compact,/** @type {number} */ temperature)=>counted(job,{messages:promptMessages({kind:job.kind,message:job.message,history:contract?[]:job.history,context:context(),candidates,keep:new Set([...pinned,...named,...extra]),note,compact}),maxTokens:1100,temperature,responseFormat:aiResponseFormat({codes:candidates.map((item)=>item.code),requireWeek:Boolean(contract),trainingDays:contract?.trainingDays??null,trainingDayNames:contract?.targetTrainingDays??[],answerOnly})});
       const ask=async(/** @type {string} */ note,forceCompact=false)=>{
         let compact=forceCompact,first;
         // A context overflow gets one compact retry without history and with a smaller shortlist.
@@ -122,9 +126,10 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
     }catch(error){
       const failure=/** @type {any} */(error);
       job.error={code:failure?.code||"AI_FAILED",message:failure?.status?failure.message:"Strata AI could not finish that request. Try again."};job.status="failed";
-      if(REFUNDED.has(job.error.code)&&usage.has(job.usageKey))usage.set(job.usageKey,Math.max(0,(usage.get(job.usageKey)||0)-1));
+      if(REFUNDED.has(job.error.code)&&!job.tokens)void quota.refund("chat",job.userId,job.usageDate).catch(()=>{});
       if(!failure?.status)logger?.warn?.("ai.request_failed",{error});
     }finally{
+      void quota.record("chat",job.userId,job.usageDate,job.tokens).catch(()=>{});
       job.finishedAt=now();delete job.message;delete job.history;delete job.draftPlan;delete job.draftPlanUpdatedAt;
       logger?.info?.("ai.request",{kind:job.kind,status:job.status,code:job.error?.code||null,durationMs:job.finishedAt-started});
     }
@@ -162,8 +167,8 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       if(method!==allowed){json(res,405,{error:"Method not allowed."},{Allow:allowed});return true;}
       if(method==="GET"&&!rateAllowed(req,`identity:ai:read:${session.id}`,240,60000))throw aiError("AI_RATE_LIMIT","Too many Strata AI checks. Wait a moment.",429);
       if(url.pathname==="/api/ai/status"){
-        const state=await checkHealth(),used=usedToday(session.id);
-        json(res,200,{configured:provider.configured,online:state.online,code:state.code,dailyLimit,usedToday:used,remainingToday:Math.max(0,dailyLimit-used),hasProfile:Boolean(profilePayload(await store.coachingProfile(session.id))),csrfToken:session.csrf_token});return true;
+        const [state,member,settings]=await Promise.all([checkHealth(),quota.memberStatus(String(session.id)),store.aiSettings(String(session.id))]),choice=settingsPayload(settings);
+        json(res,200,{configured:provider.configured,online:state.online,code:state.code,...member,consent:choice.consent,dailyBrief:choice.dailyBrief,hasProfile:Boolean(profilePayload(await store.coachingProfile(session.id))),csrfToken:session.csrf_token});return true;
       }
       if(jobMatch){
         const job=jobs.get(jobMatch[1]??"");
@@ -185,10 +190,12 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       if(!draftPlan&&input.draftPlanUpdatedAt!==undefined)throw aiError("AI_INVALID_REQUEST","A draft-plan revision needs a draft plan.",400);
       if(!provider.configured)throw aiError("AI_NOT_CONFIGURED","Strata AI is not set up on this server yet.",503);
       if([...jobs.values()].some((job)=>job.userId===String(session.id)&&(job.status==="queued"||job.status==="running")))throw aiError("AI_REQUEST_IN_PROGRESS","Strata AI is still working on your last request.",409);
-      if(usedToday(session.id)>=dailyLimit)throw aiError("AI_DAILY_LIMIT",`You have used today's ${dailyLimit} Strata AI requests. They reset at midnight UTC.`,429);
       if(queue.length>=maxQueue)throw aiError("AI_BUSY","Strata AI is busy with other members. Try again in a minute.",503);
-      const usageKey=`${session.id}:${today()}`;usage.set(usageKey,usedToday(session.id)+1);
-      const job={id:randomUUID(),userId:String(session.id),kind,message,history,draftPlan,draftPlanUpdatedAt,usageKey,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
+      // Nothing reaches the provider without the member's consent; the shared daily budget is claimed last.
+      if(!settingsPayload(await store.aiSettings(String(session.id))).consent)throw aiError("AI_CONSENT_REQUIRED","Allow Strata AI to read your training summary first.",409);
+      const claim=await quota.reserve("chat",String(session.id));
+      if(!claim.ok)throw claim.code==="AI_DAILY_LIMIT"?aiError("AI_DAILY_LIMIT",`You have used today's ${quota.limits.userDaily} Strata AI requests. They reset at midnight UTC.`,429):claim.code==="AI_RESTING"?aiError("AI_RESTING","Strata AI is resting for today and will be back tomorrow. Your Daily Brief is still on the Overview.",503):aiError("AI_BUSY","Strata AI is busy right now. Try again in a minute.",503);
+      const job={id:randomUUID(),userId:String(session.id),kind,message,history,draftPlan,draftPlanUpdatedAt,usageDate:String(claim.date),tokens:0,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
       jobs.set(job.id,job);queue.push(job);pump();
       json(res,202,{request:publicJob(job),csrfToken:session.csrf_token});
     }catch(error){

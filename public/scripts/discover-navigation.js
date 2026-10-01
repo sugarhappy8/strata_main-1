@@ -77,6 +77,7 @@
         }
         if(active&&link.classList.contains("destination-link"))activeDestination=link;
       }
+      for(const link of document.querySelectorAll("[data-section]")){if(!link.dataset?.section)continue;const current=link.dataset.section===(item.section||"week");link.classList.toggle("active",current);if(current)link.setAttribute?.("aria-current","page");else link.removeAttribute?.("aria-current");}
       const skip=element("activeWorkspaceSkip");if(skip){skip.setAttribute?.("href",`#${item.headingId}`);skip.textContent=`Skip to ${item.label}`;}
       document.body.dataset.activeFeature=name;updateFeatureHistory(name,historyMode);revealDestination(activeDestination,{smooth});
       if(announce&&element("featureStatus"))element("featureStatus").textContent=`${item.label} workspace opened.`;

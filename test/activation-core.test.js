@@ -68,3 +68,12 @@ test("a local safety backup captures both versions before replacement without de
   assert.equal(result.value.accountRevision,42);
   assert.equal(storage.getItem(Activation.GUEST_PLAN_KEY),before,"backing up never consumes the free device week");
 });
+
+test("local safety backups keep only the newest three per account",()=>{
+  class ListedStorage extends MemoryStorage{get length(){return this.values.size;}key(index){return [...this.values.keys()][index]??null;}}
+  const storage=new ListedStorage([["strata_activation_backup_v1:user-2:5-other","{}"]]),account=week("account-entry","barbell-row"),candidate={source:"guest",plan:week()};
+  for(const stamp of [100,400,200,300,500])Activation.backup(storage,{userId:"user-1",accountPlan:account,candidate,reason:"claim"},stamp);
+  const kept=[...storage.values.keys()].filter(key=>key.startsWith("strata_activation_backup_v1:user-1:")).map(key=>Number.parseInt(key.split(":")[2],10)).sort((a,b)=>a-b);
+  assert.deepEqual(kept,[300,400,500]);
+  assert.equal(storage.getItem("strata_activation_backup_v1:user-2:5-other"),"{}","another account's backup is untouched");
+});

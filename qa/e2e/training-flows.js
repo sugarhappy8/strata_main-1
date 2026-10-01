@@ -342,7 +342,7 @@ test("training journeys use real browser controls and isolated local fixtures",{
     assert.equal(await entry.locator('[data-complete="0"]').getAttribute("aria-pressed"),"true");
     await page.click("#finishWorkout");await page.locator("#finishDialog").waitFor({state:"visible"});await page.click('#finishDialog button[value="finish"]');
     await page.locator("#celebration").waitFor({state:"visible"});
-    await page.locator("#calendarNext").waitFor({state:"visible"});assert.match(await page.locator("#calendarLink").getAttribute("href"),/^data:text\/calendar;charset=utf-8,/);assert.match(await page.locator("#calendarNext").textContent(),/does not request notification access/i);
+    assert.equal(await page.locator("#calendarNext").count(),0,"the weekly calendar file is the one calendar export");
     await page.selectOption('#checkInDifficulty','3');await page.selectOption('#checkInEnergy','4');await page.selectOption('#checkInComfort','4');await page.selectOption('#checkInEnjoyment','5');
     const checkInSaving=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/workouts/${workoutId}/check-in`&&response.request().method()==="POST");
     await page.click('#saveCheckIn');const checkInResponse=await checkInSaving;assert.equal(checkInResponse.status(),200,await checkInResponse.text());
@@ -435,7 +435,7 @@ test("training journeys use real browser controls and isolated local fixtures",{
     await goto(page,"/workout.html");await page.locator("#trainingRoom").waitFor({state:"visible"});await page.waitForFunction(()=>globalThis.document.querySelector("#planStatus")?.textContent==="You have not built a weekly plan yet.");
     assert.equal(await page.locator("#openPlannerFromEmpty").isVisible(),true);assert.match(await page.locator("#openPlannerFromEmpty").textContent(),/Build your first week/);
     for(const selector of ["#resumeWorkout","#chooseScheduledDay","#startWorkout","#differentWorkout","#editWorkoutWeek","#calendarWeekly"])assert.equal(await page.locator(selector).isHidden(),true,`${selector} must stay hidden before a weekly plan exists`);
-    assert.equal(await page.locator("#planDayField").isHidden(),true);assert.match(await page.locator("#historyList").textContent(),/progress appears after your first completed workout/i);
+    assert.equal(await page.locator("#planDayField").isHidden(),true);assert.match(await page.locator("#historyList").textContent(),/Finished sessions appear here, set by set/i);
     await goto(page,"/discover.html");
     const firstWeekAction=page.getByRole('link',{name:'Build your first week',exact:true});
     await firstWeekAction.waitFor({state:"visible"});assert.equal(new URL(await firstWeekAction.getAttribute('href'),baseUrl).pathname,'/planner.html');

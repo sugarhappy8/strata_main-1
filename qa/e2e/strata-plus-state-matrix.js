@@ -48,6 +48,8 @@ async function fixture(t,{plan=scheduledWeek(),workouts=[],historyMode="ready",p
       return json({user:USER,csrfToken:CSRF,workouts,hasMore:false});
     }
     if(pathname==="/api/training")return json({user:USER,csrfToken:CSRF,block:null,adaptation:null});
+    if(pathname==="/api/training-log")return json({from:"",to:"",entries:[]});
+    if(pathname==="/api/snapshots")return json({from:"",to:"",snapshots:[]});
     if(pathname==="/api/ratings/aggregates")return json({csrfToken:CSRF,aggregates:[]});
     if(pathname==="/api/wellness/today")return json({configured:false,connected:false,connection:null,csrfToken:CSRF});
     if(pathname==="/api/monthly-plan"&&request.method()==="PUT"){
@@ -95,9 +97,9 @@ test("the four Strata+ destinations and Overview's Plan and Nutrition cards reta
   await page.locator("#progressFirstWorkout").waitFor({state:"attached"});await page.waitForFunction(()=>globalThis.document.querySelector("#progressFirstWorkout")?.hidden===false);
   assert.match(await page.locator("#plusStartWorkout").textContent(),/Start workout/);assert.equal(await page.locator("#todayAlternativeWorkout").isVisible(),true);
   const primary=page.locator(".destination-nav .destination-link");
-  assert.deepEqual(await primary.locator("span").allTextContents(),["Overview","Recovery","Progress","Exercises"]);
+  assert.deepEqual(await primary.locator("span").allTextContents(),["Overview","Recovery","Progress","Rankings"]);
   assert.deepEqual(await page.locator("#todayWorkspace .overview-tool .overview-tool-label").allTextContents(),["Plan","Train","Nutrition"]);
-  const mobile=page.locator(".studio-nav-mobile");assert.equal(await mobile.isVisible(),true);assert.deepEqual(await mobile.locator("a").allTextContents(),["Exercises","Strata+","Plan","Train"]);assert.equal(await mobile.locator('[aria-current="page"]').textContent(),"Strata+");
+  const mobile=page.locator(".studio-nav-mobile");assert.equal(await mobile.isVisible(),true);assert.deepEqual(await mobile.locator("a").allTextContents(),["Rankings","My Week","Train","Recovery","Profile"]);assert.equal(await mobile.locator('[aria-current="page"]').textContent(),"My Week");
   const layout=await page.evaluate(()=>({overflow:globalThis.document.documentElement.scrollWidth-globalThis.document.documentElement.clientWidth,reduced:globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches,motion:[...globalThis.document.querySelectorAll(".destination-link")].map((node)=>{const style=globalThis.getComputedStyle(node);return[style.animationDuration,style.transitionDuration];})}));
   assert.ok(layout.overflow<=1,`Strata+ overflows the 390px viewport by ${layout.overflow}px`);assert.equal(layout.reduced,true);for(const durations of layout.motion)for(const value of durations)assert.ok(value.split(",").every((part)=>Number.parseFloat(part)===0),`Reduced motion left ${value}`);
 
@@ -107,12 +109,13 @@ test("the four Strata+ destinations and Overview's Plan and Nutrition cards reta
     await page.waitForFunction((id)=>globalThis.document.activeElement?.id===id,heading);assert.equal(await overview.getAttribute("aria-current"),"location",`${label} keeps Overview highlighted`);assert.equal(await page.locator("[data-feature-panel]:not([hidden])").count(),1);
     await page.locator(`#${panel} .tool-menu-link[data-feature-target="today"]`).click();await page.locator("#todayWorkspace").waitFor({state:"visible"});
   }
-  for(const [label,panel,heading] of [["Overview","todayWorkspace","todayTitle"],["Progress","progressWorkspace","progressWorkspaceTitle"],["Exercises","exerciseExplorer","explorerTitle"],["Recovery","recoveryWorkspace","recoveryWorkspaceTitle"]]){
+  for(const [label,panel,heading,section] of [["Overview","todayWorkspace","todayTitle","My Week"],["Progress","progressWorkspace","progressWorkspaceTitle","Train"],["Rankings","exerciseExplorer","explorerTitle","Rankings"],["Recovery","recoveryWorkspace","recoveryWorkspaceTitle","Recovery"]]){
     const link=primary.filter({hasText:label}).first();await link.focus();await page.keyboard.press("Enter");await page.locator(`#${panel}`).waitFor({state:"visible"});await page.waitForFunction((hash)=>globalThis.location.hash===hash,`#${panel}`);
     await page.waitForFunction((id)=>globalThis.document.activeElement?.id===id,heading);assert.equal(await link.getAttribute("aria-current"),"location");assert.equal(await page.locator("[data-feature-panel]:not([hidden])").count(),1);
+    assert.equal(await mobile.locator('[aria-current="page"]').textContent(),section,`${label} highlights ${section} in the site navigation`);
     const visible=await link.evaluate((node)=>{const rail=node.parentElement,linkBox=node.getBoundingClientRect(),railBox=rail.getBoundingClientRect();return linkBox.left>=railBox.left-1&&linkBox.right<=railBox.right+1;});assert.equal(visible,true,`${label} should remain visible in the mobile destination rail`);
   }
-  assert.equal(await page.locator("#scoreGuide").isHidden(),true,"Coaching should not show the exercise-score guide");await primary.filter({hasText:"Exercises"}).first().click();assert.equal(await page.locator("#scoreGuide").isVisible(),true);assert.equal(await page.locator("#scoreGuideDetails").evaluate((node)=>node.open),false);assert.equal(await page.locator("#scoreGuide").count(),1);
+  assert.equal(await page.locator("#scoreGuide").isHidden(),true,"Coaching should not show the exercise-score guide");await primary.filter({hasText:"Rankings"}).first().click();assert.equal(await page.locator("#scoreGuide").isVisible(),true);assert.equal(await page.locator("#scoreGuideDetails").evaluate((node)=>node.open),false);assert.equal(await page.locator("#scoreGuide").count(),1);
 
   await overview.click();await page.locator(".overview-tool").filter({hasText:"Plan"}).click();assert.equal(await page.locator("#planSummaryTitle").textContent(),"Your weekly plan");
   for(const id of ["workoutBuilderDetails","planAheadDetails","reuseWeekDetails"])assert.equal(await page.locator(`#${id}`).evaluate((node)=>node.open),false);

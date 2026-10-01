@@ -141,3 +141,9 @@ body:has(.compare-tray:not([hidden])) .ai-panel { bottom:calc(184px + env(safe-a
   .ai-launcher-face,.ai-launcher-tip { transition:none; }
 }
 @media print { .ai-launcher,.ai-panel { display:none !important; } }
+
+/* Consent comes first: the panel shows one clear action and a link to what is sent. */
+.ai-consent-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; margin:0 0 12px; padding:12px 14px; border:1px solid var(--line,#3b4134); border-radius:12px; }
+.ai-consent-actions span { flex:1 1 220px; }
+.ai-consent-actions a { min-height:44px; display:inline-flex; align-items:center; }
+.ai-consent-allow { min-height:44px; padding:0 18px; border:0; border-radius:10px; background:var(--accent,#c8ff00); color:var(--ink,#10110f); font-weight:800; cursor:pointer; }

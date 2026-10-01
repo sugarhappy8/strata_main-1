@@ -15,11 +15,17 @@ const { createCoachingService } = require("./coaching");
 const { createDevicesService,devicesSettings } = require("./devices");
 const { createAiService } = require("./ai");
 const { aiSettings,createAiProvider } = require("./ai-provider");
+const {createAiQuota}=require("./ai-quota");
+const {createAiSettingsService}=require("./ai-settings");
+const {createDailyBriefJob}=require("./ai-daily-brief");
 const { createSetupService } = require("./setup");
 const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
 const {adminGrantState}=require("./access-controls");
 const {entitlementSettings,tierFor,capabilitiesFor}=require("./entitlements");
+const {createEventBus}=require("./events");
+const {createDataService}=require("./data-service");
+const {profilePayload:coachingProfilePayload}=require("./coaching");
 const { createBillingService } = require("./billing");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
@@ -118,6 +124,7 @@ const STATIC_FILES = new Map([
   ["refunds.html","pages/refunds.html"],
   ["styles.css","styles/styles.css"],
   ["fonts.css","styles/fonts.css"],
+  ["tokens.css","styles/tokens.css"],
   ["experience.css","styles/experience.css"],
   ["site-experience.css","styles/site-experience.css"],
   ["product-signals.css","styles/product-signals.css"],
@@ -177,7 +184,7 @@ const STATIC_FILES = new Map([
   ["discover-program.js","scripts/discover-program.js"],
   ["discover-coaching-meals.js","scripts/discover-coaching-meals.js"],
   ["discover.js","scripts/discover.js"],
-  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["discover-recovery.js","scripts/discover-recovery.js"],["workout-recovery.js","scripts/workout-recovery.js"],
+  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["discover-recovery.js","scripts/discover-recovery.js"],["discover-brief.js","scripts/discover-brief.js"],["workout-recovery.js","scripts/workout-recovery.js"],
   ["install.js","scripts/install.js"],
   ["offline.js","scripts/offline.js"],
   ["pricing-logic.js","scripts/pricing-logic.js"],
@@ -204,6 +211,7 @@ const STATIC_FILES = new Map([
   ["icons/strata-maskable-512.png","icons/strata-maskable-512.png"],
   ["icons/apple-touch-icon.png","icons/apple-touch-icon.png"],
   ["images/hero-training.jpg","images/hero-training.jpg"],
+  ["images/strata-og.jpg","images/strata-og.jpg"],
   ["fonts/manrope-latin.woff2","fonts/manrope-latin.woff2"],
   ["fonts/dm-mono-400-latin.woff2","fonts/dm-mono-400-latin.woff2"],
   ["fonts/dm-mono-500-latin.woff2","fonts/dm-mono-500-latin.woff2"]
@@ -223,6 +231,13 @@ const PAGE_ALIASES = new Map([
   ["/delete-account","delete-account.html"],
   ["/admin","admin.html"],
   ["/ai","ai.html"]
+]);
+// The five top-level sections. Rankings, My Week, and Recovery open the Strata+ studio for members; everyone else
+// gets the public rankings, the free planner, and the Strata+ plan that includes Recovery.
+const SECTION_ROUTES = new Map([
+  ["/rankings",{plus:"/discover.html#exerciseExplorer",member:"/#rankings",visitor:"/#rankings"}],
+  ["/my-week",{plus:"/discover.html#todayWorkspace",member:"/planner.html",visitor:"/planner.html"}],
+  ["/recovery",{plus:"/discover.html#recoveryWorkspace",member:"/pricing?reason=recovery",visitor:"/pricing?reason=recovery"}]
 ]);
 const PROTECTED_HTML = new Set(["discover.html","workout.html","onboarding.html","ai.html"]);
 const PRIVATE_HTML = new Set(["index.html","account.html","verify-email.html","forgot-password.html","reset-password.html","delete-account.html","admin.html",...PROTECTED_HTML]);
@@ -246,7 +261,7 @@ let workouts;
 let training;
 let coaching;
 let devices;
-let ai;
+let ai,aiSettingsService,briefJob;
 let setup;
 let productSignals;
 let billing;
@@ -417,7 +432,9 @@ async function handleApi(req,res,url) {
   if (await support.handleApi(req,res,url)) return;
   if (await auth.handleApi(req,res,url)) return;
   if (await admin.handleApi(req,res,url)) return;
+  if (await aiSettingsService.handleApi(req,res,url)) return;
   if (await ai.handleApi(req,res,url)) return;
+  if (await dataService.handleApi(req,res,url)) return;
   if (await training.handleApi(req,res,url)) return;
   if (await coaching.handleApi(req,res,url)) return;
   if (await devices.handleApi(req,res,url)) return;
@@ -438,6 +455,7 @@ async function handleApi(req,res,url) {
     const input=await bodyJson(req), expectedPlanUpdatedAt=expectedPlanRevision(input.expectedPlanUpdatedAt), plan=sanitizePlan(input.plan);
     if (input.expectedUserId!==undefined && String(input.expectedUserId)!==String(session.id)) { json(res,409,{error:"The signed-in account changed. Reload before saving.",code:"ACCOUNT_CHANGED"}); return; }
     const saved=await store.upsertPlan(session.id,JSON.stringify(plan),Date.now(),expectedPlanUpdatedAt);
+    if (saved) await events.emit("plan.updated",{userId:session.id,plan,updatedAt:Number(saved.updated_at),source:input.source==="ai"?"ai":"manual",detail:input.source==="ai"?"ai-proposal":"plan-edit"});
     if (!saved) {
       const current=await planSnapshotFor(session.id);
       // A retry after a committed response was lost is not a conflict. The
@@ -491,6 +509,7 @@ async function handleApi(req,res,url) {
     if (!auth.validCsrf(req,session)) { json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"}); return; }
     const input=await bodyJson(req), preferences=sanitizePreferences(input.preferences);
     await store.upsertPreferences(session.id,JSON.stringify(preferences),Date.now());
+    await events.emit("preferences.saved",{userId:session.id,preferences});
     json(res,200,{ok:true,preferences}); return;
   }
   const ratingMatch=url.pathname.match(/^\/api\/ratings\/([a-z0-9-]{2,80})$/);
@@ -515,6 +534,13 @@ async function serveStatic(req,res,url) {
     : PAGE_ALIASES.has(aliasPath)
       ? PAGE_ALIASES.get(aliasPath)
       : normalize(url.pathname).replace(/^[/\\]+/,"");
+  const section=SECTION_ROUTES.get(aliasPath);
+  if (section) {
+    const session=await auth.sessionFor(req),plus=Boolean(session&&await hasCurrentDiscoveryAccess(session.id));
+    res.writeHead(302,{...securityHeaders(),Location:plus?section.plus:session?section.member:section.visitor,"Cache-Control":"private, no-store",Vary:"Cookie"});
+    res.end();
+    return;
+  }
   if (!STATIC_FILES.has(requested)) { json(res,404,{error:"Page not found."}); return; }
   const activeSession=(PROTECTED_HTML.has(requested)||requested==="index.html"||requested==="admin.html")?await auth.sessionFor(req):null;
   if (requested==="admin.html") {
@@ -594,7 +620,7 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
     else json(res,405,{error:"Method not allowed."},{Allow:"GET, HEAD"});
   } catch(error) {
     if (!res.headersSent) {
-      const payload={error:error.status?error.message:"Unexpected server error."};
+      const payload={error:error.status?error.message:"Something went wrong on our side. Try again in a moment."};
       if (error.status&&/^[A-Z][A-Z0-9_]{2,63}$/.test(String(error.code||""))) payload.code=String(error.code);
       json(res,error.status||500,payload);
     }
@@ -604,13 +630,14 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
 
 server.setTimeout(60_000,(socket)=>socket.destroy());
 
-let cleanup,shuttingDown=false;
+let cleanup,shuttingDown=false,events,dataService;
 async function start() {
   if (process.env.NODE_ENV==="production"&&!EMAIL_CONFIG.flagValid) {
     throw new Error("EMAIL_VERIFICATION_ENABLED must be set explicitly to true or false in production.");
   }
   publicAssets=loadPublicAssets({root:PUBLIC_ROOT,files:STATIC_FILES,privateFiles:PRIVATE_HTML,mime:MIME});
   store = await createStore(PROJECT_ROOT);
+  events=createEventBus({logger:LOGGER});
   billing=createBillingService({
     store,paymentConfig:PAYMENT_CONFIG,enforcePaddleIps:ENFORCE_PADDLE_IPS,
     requestAddress,rateAllowed,isUniqueViolation,getAuth:()=>auth,getUserPayload:userPayload,
@@ -625,29 +652,39 @@ async function start() {
     reconcileUnsettledPurchases:billing.reconcileUnsettledPurchases,isUniqueViolation,
     createAuthService,createAdminService,createSupportService
   }));
+  dataService=createDataService({store,events,getPlan:planFor,coachingProfile:async(userId)=>coachingProfilePayload(await store.coachingProfile(userId)),requireSession:(req,res)=>auth.requireSession(req,res),requireFeature,http:{json},logger:LOGGER});
   productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
-  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson}});
-  training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
+  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson},events});
+  training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
+  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events,getPlan:planFor});
+  devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation,events});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
-  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
+  const aiProvider=createAiProvider(AI_SETTINGS.provider),aiQuota=createAiQuota({store,limits:AI_SETTINGS.limits});
+  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:aiProvider,getPlanSnapshot:planSnapshotFor,quota:aiQuota,dataService,logger:LOGGER,config:AI_SETTINGS.limits});
+  aiSettingsService=createAiSettingsService({store,auth,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},quota:aiQuota,admin});
+  // The Daily Brief runs through the night's queue; tests turn it on explicitly.
+  briefJob=createDailyBriefJob({store,dataService,provider:aiProvider,quota:aiQuota,hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,settings:{hour:AI_SETTINGS.brief.hour}});briefJob.subscribe(events);
+  if (AI_SETTINGS.brief.enabled&&aiProvider.configured&&(process.env.NODE_ENV!=="test"||process.env.STRATA_AI_DAILY_BRIEF==="true")) briefJob.start();
+  if (aiProvider.configured&&process.env.NODE_ENV!=="test") void aiProvider.health().then((health)=>LOGGER.info("ai.models",{primaryListed:health.modelListed,fallbackListed:health.fallbackListed})).catch((error)=>LOGGER.warn("ai.models_unchecked",{code:error?.code||"AI_FAILED"}));
   setup=createSetupService({
     store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,
     getPlanSnapshot:planSnapshotFor,getPreferencesSnapshot:preferencesSnapshotFor,getUserPayload:userPayload,
-    http:{json,bodyJson}
+    http:{json,bodyJson},events
   });
   await admin.bootstrap();
   await store.deleteExpired(Date.now());
   await auth.cleanup();
   await support.cleanup();
   await productSignals.cleanup();
+  await dataService.cleanup();
   if (ENFORCE_PADDLE_IPS) void billing.warmProviderTrust().catch((error)=>LOGGER.error("billing.webhook_allowlist_warm_failed",{error}));
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
     void auth.cleanup().catch((error)=>LOGGER.error("cleanup.auth_failed",{error}));
     void support.cleanup().catch((error)=>LOGGER.error("cleanup.support_failed",{error}));
     void productSignals.cleanup().catch((error)=>LOGGER.error("cleanup.product_signals_failed",{error}));
+    void dataService.cleanup().catch((error)=>LOGGER.error("cleanup.data_layer_failed",{error}));
+    void aiQuota.cleanup(90).catch((error)=>LOGGER.error("cleanup.ai_usage_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
   },60*60*1000);
   cleanup.unref();
@@ -662,6 +699,7 @@ function shutdown() {
   shuttingDown=true;
   if (cleanup) clearInterval(cleanup);
   devices?.stop();
+  briefJob?.stop();
   const deadline=setTimeout(()=>{
     console.error("Shutdown deadline reached; closing remaining connections.");
     server.closeAllConnections();

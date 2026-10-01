@@ -1,19 +1,10 @@
 :root {
-  --ink:#10110f;
-  --paper:#f0efe9;
-  --white:#faf9f5;
-  --muted:#60635d;
-  --line:#c4c2b9;
-  --accent:#d4f578;
-  --orange:#4a6a10; --danger:#b3261e;
+  --orange:var(--strata-green-text); --danger:var(--strata-danger);
   --orange-soft:#fff0eb;
   --green:#327a31;
   --green-soft:#eef8ea;
   --amber:#8c6100;
   --amber-soft:#fff8dc;
-  --display:"Manrope",sans-serif;
-  --body:"Manrope",sans-serif;
-  --mono:"DM Mono",monospace;
   --shadow:0 8px 24px rgba(16,17,15,.055);
 }
 

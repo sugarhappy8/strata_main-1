@@ -191,3 +191,44 @@ test("profile and log compare-and-swap races have exactly one winner",async()=>{
   const date=(await request("/api/coaching/week",member)).data.week.weekStart,logRace=await Promise.all([1900,2100].map((calories)=>request(`/api/coaching/logs/${date}`,member,"PUT",{log:{calories},expectedRevision:0})));
   assert.deepEqual(logRace.map((item)=>item.status).sort(),[200,409]);const log=await request(`/api/coaching/logs/${date}`,member);assert.equal(log.data.log.revision,1);assert.ok([1900,2100].includes(log.data.log.calories));
 });
+
+test("the Athlete Profile keeps the ranking lens and the coaching profile telling one story",async()=>{
+  const member=await account("athlete-profile");
+  const before=await request("/api/profile",member);assert.equal(before.status,200);assert.equal(before.data.profile.training.source,"preferences");assert.equal(before.data.profile.body,null);
+  const saved=await request("/api/coaching/profile",member,"PUT",{profile:profile({experience:"advanced",trainingGoal:"strength",availableEquipment:["Dumbbells"],movementLimitations:["no-overhead"]}),expectedRevision:0});
+  assert.equal(saved.status,200);
+  const mirrored=await request("/api/profile",member);
+  assert.equal(mirrored.data.profile.training.source,"coaching");assert.equal(mirrored.data.profile.training.experience,"advanced");assert.deepEqual(mirrored.data.profile.training.workoutDays,["Monday","Wednesday","Friday"]);
+  assert.equal(mirrored.data.profile.rankingLens.level,"Advanced");assert.equal(mirrored.data.profile.rankingLens.goal,"strength");assert.equal(mirrored.data.profile.rankingLens.days,3);assert.deepEqual(mirrored.data.profile.rankingLens.equipment,["Dumbbells"]);assert.deepEqual(mirrored.data.profile.rankingLens.limitations,["no-overhead"]);
+  assert.equal(mirrored.data.profile.body.weightKg,80);assert.equal(mirrored.data.profile.coachingRevision,1);
+  const lens=await request("/api/preferences",member,"PUT",{preferences:{version:1,goal:"hypertrophy",level:"Beginner",days:3,equipment:["Bodyweight"],preferences:["compound"],limitations:[]}});
+  assert.equal(lens.status,200);
+  const coaching=await request("/api/coaching/profile",member);
+  assert.equal(coaching.data.profile.experience,"beginner");assert.equal(coaching.data.profile.trainingGoal,"hypertrophy");assert.deepEqual(coaching.data.profile.availableEquipment,["Bodyweight"]);assert.deepEqual(coaching.data.profile.movementLimitations,[]);
+  assert.equal(coaching.data.profile.revision,2,"the mirrored write is an ordinary revision bump");
+  assert.equal(coaching.data.profile.sessionMinutes,60,"coaching-only fields are untouched");
+  const stale=await request("/api/coaching/profile",member,"PUT",{profile:profile(),expectedRevision:1});
+  assert.equal(stale.status,409);assert.equal(stale.data.code,"COACHING_PROFILE_CHANGED","a client that saved before the lens changed must reload rather than overwrite");
+  assert.equal((await request("/api/profile")).status,401);
+});
+
+
+test("the coaching week follows the saved weekly plan and refreshes when the plan changes",async()=>{
+  const member=await account("plan-week"),saved=await request("/api/coaching/profile",member,"PUT",{profile:profile(),expectedRevision:0});
+  assert.equal(saved.status,200);assert.equal(saved.data.week.training.source,"suggested","without training days the member gets a starter suggestion");
+  const empty=Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(day=>[day,[]]));
+  const current=await request("/api/plan",member);
+  const plan={version:1,restDay:"Sunday",restDays:["Sunday"],days:{...empty,Tuesday:[{instanceId:"tue-press-1",exerciseId:"flat-dumbbell-press",sets:4,reps:"6–10"}],Saturday:[{instanceId:"sat-squat-1",exerciseId:"barbell-back-squat",sets:5,reps:"5–8"}]}};
+  const put=await request("/api/plan",member,"PUT",{plan,expectedPlanUpdatedAt:current.data.planUpdatedAt});assert.equal(put.status,200);
+  const week=await request("/api/coaching/week",member);assert.equal(week.status,200);
+  assert.equal(week.data.week.training.source,"plan");assert.deepEqual(week.data.week.training.sessions.map(session=>session.day),["Tuesday","Saturday"]);
+  assert.deepEqual(week.data.week.training.sessions[0].exercises.map(item=>[item.exerciseId,item.sets,item.reps]),[["flat-dumbbell-press",4,"6–10"]]);
+  assert.deepEqual(week.data.week.nutrition.activityBreakdown.sessions.map(session=>session.day),["Tuesday","Saturday"]);
+  assert.equal(week.data.week.profileRevision,1,"a plan change never edits the coaching profile");
+  const again=await request("/api/coaching/week",member);assert.equal(again.data.week.planKey,week.data.week.planKey,"an unchanged plan reuses the stored week");
+  const edited={...plan,days:{...plan.days,Thursday:[{instanceId:"thu-row-1",exerciseId:"barbell-bent-over-row",sets:3,reps:"8–12"}]}};
+  assert.equal((await request("/api/plan",member,"PUT",{plan:edited,expectedPlanUpdatedAt:put.data.planUpdatedAt})).status,200);
+  const refreshed=await request("/api/coaching/week",member);
+  assert.deepEqual(refreshed.data.week.training.sessions.map(session=>session.day),["Tuesday","Thursday","Saturday"]);assert.notEqual(refreshed.data.week.planKey,week.data.week.planKey);
+  assert.equal((await request("/api/coaching/profile",member)).data.profile.revision,1);
+});

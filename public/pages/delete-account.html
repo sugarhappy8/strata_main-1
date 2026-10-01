@@ -10,11 +10,12 @@
     <title>Delete account — STRATA</title>
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.9.0" />
-    <link rel="stylesheet" href="/account.css?v=8.9.0" />
-    <link rel="stylesheet" href="/experience.css?v=8.9.0" />
-    <script src="/motion.js?v=8.9.0"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=8.9.0" />
+    <link rel="stylesheet" href="/fonts.css?v=9.0.0" />
+    <link rel="stylesheet" href="/tokens.css?v=9.0.0" />
+    <link rel="stylesheet" href="/account.css?v=9.0.0" />
+    <link rel="stylesheet" href="/experience.css?v=9.0.0" />
+    <script src="/motion.js?v=9.0.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=9.0.0" />
   </head>
   <body data-account-page="delete-account">
     <a class="skip-link" href="#deletePanel">Skip to account deletion</a>
@@ -37,7 +38,7 @@
             <p>Permanent deletion removes from STRATA’s account database:</p>
             <ul><li>Your account and every signed-in session</li><li>Your private weekly and monthly plans, profile, and preferences</li><li>Your ratings and their contribution to community scores</li><li>Your STRATA entitlement and local billing mapping</li></ul>
             <p>Plans already copied by somebody else remain as independent copies in that person’s private Plan. Separately submitted support records, administrator security logs, and provider records may be retained where reasonably needed for support, security, payments, tax, fraud prevention, or legal obligations. See the <a href="/privacy">Privacy Policy</a> for details.</p>
-            <p><strong>Deletion is not cancellation and is not a refund.</strong> Cancel any monthly subscription through the Paddle portal in Account and separately request any eligible refund before deleting. Paddle’s merchant-of-record records are not deleted, and removing this account does not stop renewal by itself.</p>
+            <p><strong>Deletion is not cancellation and is not a refund.</strong> Cancel any monthly subscription through the Paddle portal in Profile and separately request any eligible refund before deleting. Paddle’s merchant-of-record records are not deleted, and removing this account does not stop renewal by itself.</p>
           </div>
           <form id="deleteAccountForm" action="/auth/account-delete/complete" method="post" aria-describedby="deleteMessage" hidden>
             <div class="account-message panel-message" id="deleteMessage" role="alert" tabindex="-1" hidden></div>
@@ -59,7 +60,7 @@
         </article>
       </section>
     </main>
-    <footer class="build-footer">STRATA · Build 8.9.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
-    <script src="/account-recovery.js?v=8.9.0"></script>
+    <footer class="build-footer">STRATA · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <script src="/account-recovery.js?v=9.0.0"></script>
   </body>
 </html>

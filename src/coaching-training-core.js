@@ -15,6 +15,9 @@ const PRIMARY_ROLES=new Set(["knee","posterior","push","pull"]);
 const UPPER=["push","pull","shoulders","pull","triceps","biceps","core"],LOWER=["knee","posterior","calves","core","posterior","knee","calves"];
 const FULL=["knee","push","pull","posterior","core","shoulders","calves"];
 const PUSH=["push","shoulders","triceps","push","shoulders","triceps","core"],PULL=["pull","posterior","biceps","pull","biceps","core","shoulders"];
+const PROGRESSION_NOTE="Record every set. Load or assistance changes use two recent, complete, comparable workouts at the top of the range, subject to recorded effort and check-ins. These are optional next-workout targets, not automatic Plan changes.";
+const GROUP_LABELS=/** @type {Record<string,string>} */({chest:"Chest",back:"Back",legs:"Legs",glutes:"Glutes",shoulders:"Shoulders",arms:"Arms",calves:"Calves",core:"Core"});
+const EXERCISE_BY_ID=new Map(EXERCISES.map(exercise=>[String(exercise.id),exercise]));
 /** @param {string} message */
 function constraintError(message){return Object.assign(new Error(message),{code:"COACHING_PLAN_CONSTRAINTS",status:422});}
 /** @param {number} count @returns {{label:string,roles:string[]}[]} */
@@ -102,6 +105,37 @@ function buildTraining(profile,weekStart,evidence={}){
     return {day,date:new Date(Date.parse(`${weekStart}T00:00:00Z`)+DAYS.indexOf(day)*86400000).toISOString().slice(0,10),label:status==="ready"?template.label:status==="partial"?"Partial workout · manual review":"Workout unavailable",plannedLabel:template.label,status,missingRoles,readinessWarning,rationale:readinessWarning||`${workingSets} working sets with ${goal==="strength"?"longer rests for strength-focused compound work":goal==="hypertrophy"?"moderate repetition ranges for muscle-focused training":"repeatable strength and muscle-building practice"}. About ${estimatedDurationMinutes} minutes including planned rests and setup.`,exercises,workingSets,estimatedDurationMinutes,estimatedDurationSeconds,availableMinutes:profile.sessionMinutes,durationAdjusted:duration.adjusted};
   });
   const summary=trainingSummary(sessions,profile,normalized);
-  return {sessions,summary,modelVersion:MODEL_VERSION,evidenceFingerprint:normalized.fingerprint,progression:"Record every set. Load or assistance changes use two recent, complete, comparable workouts at the top of the range, subject to recorded effort and check-ins. These are optional next-workout targets, not automatic Plan changes.",frequencyCaveat:profile.sessionsPerWeek<2?"General adult guidance recommends strengthening all major muscle groups on at least two days per week; this reflects your selected one-day starting schedule.":"Review direct-muscle coverage below. Your selected days, time, and equipment determine which groups receive direct work twice per week."};
+  return {source:"suggested",planFingerprint:null,sessions,summary,modelVersion:MODEL_VERSION,evidenceFingerprint:normalized.fingerprint,progression:PROGRESSION_NOTE,frequencyCaveat:profile.sessionsPerWeek<2?"General adult guidance recommends strengthening all major muscle groups on at least two days per week; this reflects your selected one-day starting schedule.":"Review direct-muscle coverage below. Your selected days, time, and equipment determine which groups receive direct work twice per week."};
 }
-module.exports={buildTraining,CATALOG_FINGERPRINT,MODEL_VERSION};
+/** Training days of a saved weekly plan, in calendar order. @param {Value|null|undefined} plan */
+function planTrainingDays(plan){return DAYS.filter(day=>Array.isArray(plan?.days?.[day])&&plan.days[day].some((/** @type {Value} */ item)=>EXERCISE_BY_ID.has(String(item?.exerciseId))));}
+/** Identifies the plan's training content, not when it was saved. @param {Value|null|undefined} plan */
+function planFingerprint(plan){
+  const days=planTrainingDays(plan);if(!days.length||!plan)return null;
+  return createHash("sha256").update(JSON.stringify(days.map(day=>[day,plan.days[day].map((/** @type {Value} */ item)=>[String(item?.exerciseId),Number(item?.sets),String(item?.reps??"")])]))).digest("hex").slice(0,16);
+}
+/** One saved plan entry with coaching rest, effort, and history-based targets; sets and reps stay the member's.
+ * @param {Value} profile @param {Value} raw @param {ReturnType<typeof prepareEvidence>} evidence @param {string} weekStart */
+function planEntry(profile,raw,evidence,weekStart){
+  const exercise=EXERCISE_BY_ID.get(String(raw?.exerciseId));if(!exercise)return null;
+  const reps=String(raw.reps??"").trim()||String(exercise.reps||"8–12"),unit=profile.preferredLoadUnit;
+  const format=exerciseFormat({...exercise,reps},unit)||exerciseFormat(exercise,unit)||exerciseFormat({...exercise,reps:"8-12"},unit);if(!format)return null;
+  const sets=Math.max(1,Math.min(10,Math.round(Number(raw.sets)||3))),prescription=startingPrescription({...profile,usualExercises:[]},exercise,format);
+  return withPerformance({exerciseId:String(exercise.id),instanceId:String(raw.instanceId||""),name:String(exercise.name),group:String(exercise.group),primaryMuscle:String(exercise.sub),role:null,roleLabel:GROUP_LABELS[String(exercise.group)]||String(exercise.group),...format,...prescription,sets,reps,range:{low:format.low,high:format.high}},evidence,weekStart);
+}
+/** @param {Value[]} items */
+function sessionLabel(items){const sets=new Map();for(const item of items)sets.set(item.roleLabel,(sets.get(item.roleLabel)||0)+item.sets);return [...sets].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]))).slice(0,3).map(([label])=>label).join(" · ");}
+/**
+ * The member's saved week read as coaching sessions, so the Plan stays the only weekly program.
+ * Never mutates the Plan; sets and reps are the Plan's, rest and targets come from coaching.
+ * @param {Value} profile @param {Value} plan @param {string} weekStart @param {unknown} [evidence]
+ */
+function trainingFromPlan(profile,plan,weekStart,evidence={}){
+  const normalized=prepareEvidence(/** @type {Value} */(evidence&&typeof evidence==="object"?evidence:{}),weekStart,profile.timeZone||"UTC"),days=planTrainingDays(plan);
+  const sessions=days.map(day=>{
+    const exercises=/** @type {Value[]} */(plan.days[day].map((/** @type {Value} */ raw)=>planEntry(profile,raw,normalized,weekStart)).filter(Boolean)),workingSets=exercises.reduce((sum,item)=>sum+item.sets,0),estimatedDurationSeconds=totalSeconds(exercises),estimatedDurationMinutes=Math.ceil(estimatedDurationSeconds/60),over=estimatedDurationMinutes>profile.sessionMinutes,label=sessionLabel(exercises)||"Training";
+    return {day,date:new Date(Date.parse(`${weekStart}T00:00:00Z`)+DAYS.indexOf(day)*86400000).toISOString().slice(0,10),label,plannedLabel:label,status:exercises.length?"ready":"unavailable",missingRoles:[],readinessWarning:null,rationale:`${workingSets} working sets from your saved week. About ${estimatedDurationMinutes} minutes including planned rests and setup.${over?` That is longer than your usual ${profile.sessionMinutes} minutes; trim this day in the planner if time is tight.`:""}`,exercises,workingSets,estimatedDurationMinutes,estimatedDurationSeconds,availableMinutes:profile.sessionMinutes,durationAdjusted:false,overAvailableTime:over};
+  });
+  return {source:"plan",planFingerprint:planFingerprint(plan),sessions,summary:trainingSummary(sessions,{...profile,workoutDays:days},normalized),modelVersion:MODEL_VERSION,evidenceFingerprint:normalized.fingerprint,progression:PROGRESSION_NOTE,frequencyCaveat:days.length<2?"General adult guidance recommends strengthening all major muscle groups on at least two days per week; your saved week has one training day.":"Review direct-muscle coverage below. Your saved week decides which groups receive direct work twice per week."};
+}
+module.exports={buildTraining,CATALOG_FINGERPRINT,MODEL_VERSION,planFingerprint,planTrainingDays,trainingFromPlan};

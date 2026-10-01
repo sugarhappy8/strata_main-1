@@ -10,11 +10,12 @@
     <title>Admin — STRATA</title>
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.9.0" />
-    <link rel="stylesheet" href="/admin.css?v=8.9.0" />
-    <link rel="stylesheet" href="/experience.css?v=8.9.0" />
-    <script src="/motion.js?v=8.9.0"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=8.9.0" />
+    <link rel="stylesheet" href="/fonts.css?v=9.0.0" />
+    <link rel="stylesheet" href="/tokens.css?v=9.0.0" />
+    <link rel="stylesheet" href="/admin.css?v=9.0.0" />
+    <link rel="stylesheet" href="/experience.css?v=9.0.0" />
+    <script src="/motion.js?v=9.0.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=9.0.0" />
   </head>
   <body>
     <a class="skip-link" href="#adminMain">Skip to administration</a>
@@ -25,7 +26,7 @@
       </a>
       <div class="header-label" aria-hidden="true">Admin / Private</div>
       <nav class="header-nav" aria-label="Administrator navigation">
-        <a href="/account.html">Account</a><a href="/#rankings">Exercises</a>
+        <a href="/account.html">Account</a><a href="/#rankings">Rankings</a>
       </nav>
     </header>
 
@@ -80,6 +81,13 @@
             <div><dt>Active sessions</dt><dd id="activeSessionsStat">—</dd></div>
             <div><dt>Pending payments</dt><dd id="pendingPaymentsStat">—</dd></div>
             <div><dt>Deletion requests</dt><dd id="pendingDeletionsStat">—</dd></div>
+          </dl>
+
+          <dl class="attention-grid ai-usage-grid" aria-label="Strata AI today">
+            <div><dt>Strata AI chats today</dt><dd id="aiChatRequestsStat">—</dd></div>
+            <div><dt>Daily Briefs today</dt><dd id="aiBriefRequestsStat">—</dd></div>
+            <div><dt>AI tokens today</dt><dd id="aiTokensStat">—</dd></div>
+            <div><dt>AI requests left today</dt><dd id="aiRemainingStat">—</dd></div>
           </dl>
 
           <div class="panel activation-panel" aria-labelledby="activationTitle">
@@ -260,14 +268,14 @@
       </div>
     </dialog>
 
-    <footer class="admin-footer">STRATA · Build 8.9.0 · Private administration · <a href="/contact">Contact</a> · <a href="/policies">Policies</a></footer>
+    <footer class="admin-footer">STRATA · Build 9.0.0 · Private administration · <a href="/contact">Contact</a> · <a href="/policies">Policies</a></footer>
     <noscript><p class="noscript-message">JavaScript is required for private administration. Your public STRATA pages still work normally.</p></noscript>
-    <script src="/admin-state.js?v=8.9.0"></script>
-    <script src="/admin-logic.js?v=8.9.0"></script>
-    <script src="/admin-api.js?v=8.9.0"></script>
-    <script src="/admin-render.js?v=8.9.0"></script>
-    <script src="/admin-session.js?v=8.9.0"></script>
-    <script src="/admin-events.js?v=8.9.0"></script>
-    <script src="/admin.js?v=8.9.0"></script>
+    <script src="/admin-state.js?v=9.0.0"></script>
+    <script src="/admin-logic.js?v=9.0.0"></script>
+    <script src="/admin-api.js?v=9.0.0"></script>
+    <script src="/admin-render.js?v=9.0.0"></script>
+    <script src="/admin-session.js?v=9.0.0"></script>
+    <script src="/admin-events.js?v=9.0.0"></script>
+    <script src="/admin.js?v=9.0.0"></script>
   </body>
 </html>

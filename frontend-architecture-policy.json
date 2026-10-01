@@ -230,10 +230,16 @@
           "maxLines": 140
         },
         {
+          "file": "public/scripts/discover-brief.js",
+          "role": "events",
+          "global": "StrataDiscoverBrief",
+          "maxLines": 60
+        },
+        {
           "file": "public/scripts/ai-logic.js",
           "role": "logic",
           "global": "StrataAiLogic",
-          "maxLines": 150
+          "maxLines": 160
         },
         {
           "file": "public/scripts/ai-state.js",
@@ -507,7 +513,7 @@
           "file": "public/scripts/ai-logic.js",
           "role": "logic",
           "global": "StrataAiLogic",
-          "maxLines": 150
+          "maxLines": 160
         },
         {
           "file": "public/scripts/ai-state.js",

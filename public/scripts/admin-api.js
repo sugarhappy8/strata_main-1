@@ -31,6 +31,7 @@
       identity:()=>request("/api/me"),
       adminSession:()=>request("/api/admin/session"),
       overview:()=>request("/api/admin/overview"),
+      aiUsage:()=>request("/api/ai/usage"),
       productSignals:(days)=>request(`/api/admin/product-signals?days=${encodeURIComponent(days)}`),
       users:(params)=>request(`/api/admin/users?${params}`),
       user:(id)=>request(`/api/admin/users/${encodeURIComponent(id)}`),

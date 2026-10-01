@@ -39,3 +39,10 @@ test("the browser helper trusts the server map and falls back for payloads from 
   assert.equal(browser.can({discovery:{active:false}},"plus.studio"),false);
   assert.equal(browser.can({discovery:{active:true}},"made.up"),false);
 });
+
+test("upgrade lines come from one table, and unknown reasons stay quiet",()=>{
+  assert.equal(browser.upsell("ai"),"Strata AI is included with Strata+.");
+  assert.match(browser.upsell("recovery"),/^Recovery, with your Polar sleep and Nightly Recharge, is part of Strata\+\.$/);
+  assert.equal(browser.upsell("access"),browser.upsell("discovery-required"));
+  for(const reason of [null,undefined,"","toString","__proto__","made-up"])assert.equal(browser.upsell(reason),"",String(reason));
+});
