@@ -2,6 +2,8 @@
 
 **Product decision:** build the most straightforward way for a recreational lifter to know the next workout and remember the last one. Keep Strata+ at **$2.99 USD per month**, and make repeated use the reason to subscribe.
 
+> **Build 8.9.0 note:** the free seven-day trial described below has been retired. Strata+ is now offered only as the $2.99 USD monthly subscription; the trial sections remain as a record of the original plan.
+
 This plan is grounded in the supplied 7.5.1 source and the changes delivered in 7.6.0. It is a product hypothesis to validate with customers, not a forecast of demand or revenue.
 
 ## The customer and the promise

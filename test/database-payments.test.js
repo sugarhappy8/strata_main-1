@@ -6,6 +6,7 @@ const { mkdirSync,mkdtempSync,rmSync } = require("node:fs");
 const { join } = require("node:path");
 const { createStore } = require("../src/database");
 const { STRATA_PLUS_TRIAL_MS } = require("../src/payments");
+const { insertLegacyTrial } = require("./support/strata-plus-access");
 
 const PROJECT_ROOT=join(__dirname,"..");
 
@@ -36,7 +37,7 @@ async function fixture() {
     createdAt:100
   });
   return {
-    store,
+    store,root,
     async close() {
       await store.close();
       rmSync(root,{recursive:true,force:true});
@@ -121,18 +122,18 @@ test("checkout creation claims serialize per user, track provider work, and reco
   }
 });
 
-test("one-time Strata+ trials grant temporary access without becoming purchases",async()=>{
-  const {store,close}=await fixture();
+test("trials started before the trial was retired grant temporary access without becoming purchases",async()=>{
+  const {store,root,close}=await fixture();
   try{
     assert.equal(await store.discoveryTrial("user-1"),null);
     assert.equal(await store.hasDiscoveryAccess("user-1",null,999),false);
-    const trial=await store.startDiscoveryTrial("user-1",1_000,1_000+STRATA_PLUS_TRIAL_MS);
+    assert.equal(typeof store.startDiscoveryTrial,"undefined","the store has no way to start a new trial");
+    insertLegacyTrial(join(root,"data"),"user-1",{startedAt:1_000,expiresAt:1_000+STRATA_PLUS_TRIAL_MS});
+    const trial=await store.discoveryTrial("user-1");
     assert.deepEqual(trial,{user_id:"user-1",started_at:1_000,expires_at:1_000+STRATA_PLUS_TRIAL_MS});
     assert.equal(await store.hasPaidDiscoveryAccess("user-1"),false);
     assert.equal(await store.hasDiscoveryAccess("user-1",null,999+STRATA_PLUS_TRIAL_MS),true);
     assert.equal(await store.hasDiscoveryAccess("user-1",null,1_000+STRATA_PLUS_TRIAL_MS),false,"access expires on the exact server timestamp");
-    assert.equal(await store.startDiscoveryTrial("user-1",2_000+STRATA_PLUS_TRIAL_MS,2_000+2*STRATA_PLUS_TRIAL_MS),null,"a used trial cannot restart or extend");
-    assert.deepEqual(await store.discoveryTrial("user-1"),trial);
   }finally{await close();}
 });
 

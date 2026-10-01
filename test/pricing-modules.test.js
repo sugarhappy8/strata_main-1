@@ -29,25 +29,26 @@ test("pricing API normalizes transport failures and rejects malformed success bo
   await assert.rejects(denied("/api/me"),error=>error.status===403&&error.code==="CSRF");
 });
 
-test("pricing rendering gives an eligible member a single trial-first action",()=>{
+test("pricing rendering gives a member without Strata+ a single subscribe action",()=>{
   const makeNode=()=>({hidden:false,disabled:false,textContent:"",attrs:{},classList:{toggle(){}},setAttribute(name,value){this.attrs[name]=value;},focus(){}});
-  const nodes={panel:makeNode(),statusNode:makeNode(),signupLink:makeNode(),loginLink:makeNode(),trialButton:makeNode(),buyButton:makeNode(),openLink:makeNode(),manageLink:makeNode(),checkButton:makeNode()};
+  const nodes={panel:makeNode(),statusNode:makeNode(),signupLink:makeNode(),loginLink:makeNode(),buyButton:makeNode(),openLink:makeNode(),manageLink:makeNode(),checkButton:makeNode()};
   const state=State.createState();
   state.busy=false;state.paddleReady=true;state.config={environment:"live"};
-  state.user={id:"member",discovery:{active:false,accessType:"none",trial:{eligible:true,active:false},subscription:null}};
+  state.user={id:"member",discovery:{active:false,accessType:"none",trial:{eligible:false,active:false},subscription:null}};
   const renderer=Render.createRenderer({state,nodes,logic:Logic,navigatorImpl:{onLine:true},locationImpl:{search:""},frame:callback=>callback()});
   renderer.renderPurchaseState();
-  assert.equal(nodes.trialButton.hidden,false);
-  assert.equal(nodes.buyButton.hidden,true);
+  assert.equal(nodes.buyButton.hidden,false);
+  assert.equal(nodes.buyButton.textContent,"Subscribe to Strata+ →");
   assert.equal(nodes.signupLink.hidden,true);
-  assert.match(nodes.statusNode.textContent,/eligible for one free 7-day/i);
+  assert.equal(nodes.openLink.hidden,true);
+  assert.doesNotMatch(nodes.statusNode.textContent,/trial/i);
 });
 
 test("pricing events keep user input wiring outside the orchestrator",()=>{
   const calls=[];
   const node=()=>({addEventListener(type,handler){this[type]=handler;}});
-  const buyButton=node(),trialButton=node(),checkButton=node(),windowImpl={addEventListener(type,handler){this[type]=handler;}},documentImpl={visibilityState:"visible",addEventListener(type,handler){this[type]=handler;}};
-  Events.bind({windowImpl,documentImpl,buyButton,trialButton,checkButton,actions:{openCheckout(){calls.push("buy");},startTrial(){calls.push("trial");},refreshAccess(){calls.push("check");},recheckAccount(){calls.push("recheck");},renderPurchaseState(){calls.push("render");}}});
-  buyButton.click();trialButton.click();checkButton.click();windowImpl.online();windowImpl.offline();documentImpl.visibilitychange();windowImpl.focus();windowImpl.pageshow({persisted:false});windowImpl.pageshow({persisted:true});
-  assert.deepEqual(calls,["buy","trial","check","render","render","recheck","recheck","recheck"]);
+  const buyButton=node(),checkButton=node(),windowImpl={addEventListener(type,handler){this[type]=handler;}},documentImpl={visibilityState:"visible",addEventListener(type,handler){this[type]=handler;}};
+  Events.bind({windowImpl,documentImpl,buyButton,checkButton,actions:{openCheckout(){calls.push("buy");},refreshAccess(){calls.push("check");},recheckAccount(){calls.push("recheck");},renderPurchaseState(){calls.push("render");}}});
+  buyButton.click();checkButton.click();windowImpl.online();windowImpl.offline();documentImpl.visibilitychange();windowImpl.focus();windowImpl.pageshow({persisted:false});windowImpl.pageshow({persisted:true});
+  assert.deepEqual(calls,["buy","check","render","render","recheck","recheck","recheck"]);
 });

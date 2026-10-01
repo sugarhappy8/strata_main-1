@@ -17,6 +17,7 @@ const {gunzipSync}=require("node:zlib");
 
 const ROOT=resolve(process.env.STRATA_LOAD_PROJECT_ROOT||join(__dirname,".."));
 const {isolatedServerEnvironment}=require(join(ROOT,"scripts","performance-check.js"));
+const {grantStrataPlus}=require(join(ROOT,"test","support","strata-plus-access.js"));
 const USERS=100;
 const SHARED_IP=process.argv.includes("--shared-ip");
 const roundsInput=Number(process.env.STRATA_LOAD_ROUNDS||5);
@@ -371,9 +372,8 @@ async function main() {
       assert.equal(retry.body.planUpdatedAt,user.revision,"A duplicate save cannot advance the revision.");
     }));
 
-    await phase("100 explicit Strata+ trial activations",()=>allUsers(users,async(user)=>{
-      await request(user,"/api/discovery/trial",{method:"POST",metric:"plus.trial",expected:[200,201],body:{}});
-    }));
+    // Strata+ has no free trial, so every virtual member gets access the way the owner grants it.
+    for(const user of users)grantStrataPlus(directory,user.id);
 
     await phase("100 concurrent workout starts and safe retries",()=>allUsers(users,async(user)=>{
       user.createdWorkout=fixtureWorkout(user);

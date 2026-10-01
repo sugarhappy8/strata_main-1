@@ -2,6 +2,7 @@
 const test=require("node:test"),assert=require("node:assert/strict");
 const {spawn}=require("node:child_process"),{mkdirSync,mkdtempSync,rmSync}=require("node:fs"),{join}=require("node:path");
 const {workoutFixture}=require("./support/workout-fixtures");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 
 const ROOT=join(__dirname,"..");let server,directory,base;
 async function startServer() {
@@ -28,7 +29,7 @@ async function account(suffix,{plus=true}={}) {
   assert.equal(result.status,201);
   const me=await request("/api/me",{cookie:result.cookie,csrfToken:""});
   const member={cookie:result.cookie,csrfToken:me.data.csrfToken,id:me.data.user.id};
-  if(plus)assert.ok([200,201].includes((await request("/api/discovery/trial",member,"POST",{})).status));
+  if(plus)grantStrataPlus(directory,member.id);
   return member;
 }
 test.before(startServer);test.after(stopServer);
@@ -176,14 +177,14 @@ test("free plans stay editable while every workout route and setup page requires
   }
 });
 
-test("trial expiry closes private pages and API access while retaining logged sessions",async()=>{
+test("Strata+ expiry closes private pages and API access while retaining logged sessions",async()=>{
   const member=await account("expiry"),workout=workoutFixture("retained-session");
   assert.equal((await request("/api/workouts",member,"POST",{workout})).status,201);
   for(const page of ["workout.html","onboarding.html"]){
     const response=await fetch(`${base}/${page}`,{headers:{Cookie:member.cookie},redirect:"manual"});assert.equal(response.status,200);assert.match(response.headers.get("cache-control"),/no-store/);
   }
   const {DatabaseSync}=require("node:sqlite"),db=new DatabaseSync(join(directory,"strata.sqlite"));
-  try{db.prepare("UPDATE discovery_trials SET started_at=?,expires_at=? WHERE user_id=?").run(Date.now()-20000,Date.now()-1000,member.id);}finally{db.close();}
+  try{db.prepare("UPDATE admin_account_controls SET grant_starts_at=?,grant_expires_at=? WHERE user_id=?").run(Date.now()-20000,Date.now()-1000,member.id);}finally{db.close();}
   assert.equal((await request("/api/workouts",member)).status,402);
   assert.equal((await fetch(`${base}/workout.html`,{headers:{Cookie:member.cookie},redirect:"manual"})).status,302);
   const check=new DatabaseSync(join(directory,"strata.sqlite"),{readOnly:true});

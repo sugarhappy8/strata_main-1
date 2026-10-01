@@ -1,5 +1,16 @@
 # Changelog
 
+## 8.9.0 — Subscription-only Strata+ and a simpler studio
+
+- Retire the free Strata+ trial. Pricing, the homepage, Account, Terms, and Privacy no longer offer it; `POST /api/discovery/trial` answers `410 TRIAL_RETIRED`; a trial started earlier runs to its recorded end.
+- Move Strata AI off the homepage into an “AI” speech bubble that stays on every Strata+ view and explains itself on hover or keyboard focus.
+- Reduce the Strata+ tabs to Overview, Recovery, Progress, and Exercises. Overview keeps everything it showed and adds Plan, Train, and Nutrition cards; Plan and Nutrition open their views with a way back, and Train opens the Train page.
+- State each pricing fact once and drop the repeated trial, comparison, and assurance sections.
+- Remove the Weekly progress, Recent momentum, and Training signal cards from Account.
+- Unlock Strata+ in tests, E2E journeys, and the 100-user load check through a complimentary-grant fixture instead of the trial.
+
+See the [8.9.0 release guide](docs/release-8.9.0.md).
+
 ## 8.8.8 — Clock-relative billing test fixtures
 
 - Derive the Paddle subscription billing period in the account-recovery server tests and the browser payment journey from the current clock instead of a fixed window that ended on 2026-10-01, so entitlement checks in CI no longer expire with the calendar.

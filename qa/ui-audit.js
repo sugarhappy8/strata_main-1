@@ -4,9 +4,12 @@ const assert=require("node:assert/strict");
 const {mkdirSync}=require("node:fs");
 const {resolve,join}=require("node:path");
 const {chromium}=require("playwright");
+const {grantStrataPlus}=require("../test/support/strata-plus-access");
 
 const BASE_URL=(process.env.STRATA_QA_BASE_URL||"http://127.0.0.1:4173").replace(/\/+$/,""),BASE_ORIGIN=new URL(BASE_URL).origin;
 const ARTIFACT_DIR=process.env.STRATA_QA_ARTIFACT_DIR?resolve(process.env.STRATA_QA_ARTIFACT_DIR):null;
+// Strata+ has no free trial, so the audit grants its account access in the running server's data directory.
+const DATA_DIR=process.env.STRATA_QA_DATA_DIR?resolve(process.env.STRATA_QA_DATA_DIR):null;
 const launchOptions={headless:true};
 if(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)launchOptions.executablePath=resolve(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
 
@@ -130,12 +133,14 @@ let browser;
     const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
     page.on("console",message=>{const location=message.location(),text=message.text();if(message.type()==="error"&&(!location.url||isFirstParty(location.url))&&!isExpectedGuestAuthConsole(text,page.url()))errors.push(`console at ${new URL(page.url()).pathname}: ${text}`);});
     page.on("pageerror",error=>errors.push(`page: ${error.stack||error.message}`));
-    page.on("requestfailed",request=>{if(isFirstParty(request.url()))errors.push(`request: ${request.url()} ${request.failure()?.errorText||"failed"}`);});
+    // A navigation cancels requests still in flight (net::ERR_ABORTED); that is expected, not a failure.
+    page.on("requestfailed",request=>{if(isFirstParty(request.url())&&request.failure()?.errorText!=="net::ERR_ABORTED")errors.push(`request on ${new URL(page.url()).pathname}${new URL(page.url()).hash}: ${request.url()} ${request.failure()?.errorText||"failed"}`);});
 
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const publicHeaderLinks=await page.locator(".desktop-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
     assert.deepEqual(publicHeaderLinks,[["#rankings","Exercises"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Homepage desktop navigation must match the four product destinations used everywhere else");
-    assert.match((await page.locator(".discovery-offer").textContent())||"",/7 days[\s\S]*\$2\.99 USD per month[\s\S]*renews monthly until canceled/i);
+    assert.match((await page.locator(".discovery-offer").textContent())||"",/\$2\.99 USD per month[\s\S]*renews monthly until canceled/i);
+    assert.doesNotMatch((await page.locator("main").textContent())||"",/trial|7 days|no card|Strata AI/i,"The homepage neither offers the retired trial nor promotes Strata AI");
     for(const [label,control] of [["homepage primary action",page.locator(".hero .button-accent").first()]]){
       const ratio=await contrastRatio(control);assert.ok(ratio>=4.5,`${label} text contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1`);
     }
@@ -192,11 +197,9 @@ let browser;
     await page.goto(`${BASE_URL}/pricing`,{waitUntil:"networkidle"});
     await page.locator("#purchaseStatus").waitFor();
     snapshot.checkoutStatus=((await page.locator("#purchaseStatus").textContent())||"").trim();
-    snapshot.trialVisible=await page.locator("#trialDiscovery").isVisible();
     snapshot.buyVisible=await page.locator("#buyDiscovery").isVisible();
-    assert.equal(snapshot.trialVisible,true,"An eligible signed-in account should see the no-card trial as its one primary start");
-    assert.equal(snapshot.buyVisible,false,"Checkout must not compete with the eligible account's trial action");
-    assert.match(snapshot.checkoutStatus,/eligible for one free|temporarily unavailable|not configured correctly/i,"Pricing must explain either the available no-card trial or the disabled checkout state");
+    assert.equal(snapshot.buyVisible,true,"A signed-in account without Strata+ should see one subscribe action");
+    assert.match(snapshot.checkoutStatus,/ready for secure Paddle checkout|temporarily unavailable|not configured correctly/i,"Pricing must explain either the available checkout or the disabled checkout state");
     await capture(page,"pricing-locked-desktop.png",{fullPage:true});
 
     await page.goto(`${BASE_URL}/discover.html`,{waitUntil:"networkidle"});
@@ -226,18 +229,11 @@ let browser;
 
     await page.setViewportSize({width:1440,height:1000});
     await page.goto(`${BASE_URL}/pricing`,{waitUntil:"networkidle"});
-    const trialButton=page.locator("#trialDiscovery");
-    await trialButton.waitFor({state:"visible"});
-    assert.equal(await trialButton.isDisabled(),false,"An eligible account must be able to start its single free trial without Paddle checkout");
-    const [trialResponse]=await Promise.all([
-      page.waitForResponse(response=>new URL(response.url()).pathname==="/api/discovery/trial"&&response.request().method()==="POST"),
-      trialButton.click()
-    ]);
-    assert.ok(trialResponse.ok(),`Trial activation failed with HTTP ${trialResponse.status()}`);
-    assert.ok([200,201].includes(trialResponse.status()),`Trial activation returned unexpected HTTP ${trialResponse.status()}`);
+    assert.equal(await page.locator("#trialDiscovery").count(),0,"Pricing must not offer the retired free trial");
+    assert.ok(DATA_DIR,"Set STRATA_QA_DATA_DIR to the running server's STRATA_DATA_DIR so the audit can grant Strata+");
+    grantStrataPlus(DATA_DIR,(await (await page.request.get(`${BASE_URL}/api/me`)).json()).user.id);
+    await page.reload({waitUntil:"networkidle"});
     await page.locator("#openDiscovery").waitFor({state:"visible"});
-    snapshot.trialStatus=((await page.locator("#purchaseStatus").textContent())||"").trim();
-    assert.match(snapshot.trialStatus,/free Strata\+ trial is active/i,"Pricing must confirm the active 7-day trial");
     await Promise.all([
       page.waitForURL(url=>url.pathname.endsWith("/discover.html")),
       page.locator("#openDiscovery").click()
@@ -246,7 +242,7 @@ let browser;
 
     assert.equal(new URL(page.url()).hash,"","Opening Strata+ without a tool hash must keep a clean URL");
     assert.ok(await page.evaluate(()=>scrollY<=1),"Opening Strata+ without a tool hash must stay at the top of the page");
-    assert.match(((await page.locator("#todayTitle").textContent())||"").replace(/\s+/g," ").trim(),/^ONE SESSION\.\s*ONE CLEAR NEXT STEP\.$/,"Today must open with one clear action");
+    assert.match(((await page.locator("#todayTitle").textContent())||"").replace(/\s+/g," ").trim(),/^Your next step\.\s*Ready when you are\.$/,"Overview must open with one clear action");
     const todayContrast=await contrastRatio(page.locator("#todayTitle"));
     assert.ok(todayContrast>=4.5,`Today title contrast is ${todayContrast.toFixed(2)}:1; expected at least 4.5:1`);
     const primaryWorkout=page.getByRole("link",{name:"Start workout",exact:true}),pulseAction=page.getByRole("link",{name:"Review plan",exact:true});
@@ -262,7 +258,7 @@ let browser;
     await capture(page,"strata-plus-today-desktop.png",{fullPage:false});
     await page.setViewportSize({width:390,height:844});await capture(page,"strata-plus-today-mobile.png",{fullPage:false});
     await page.setViewportSize({width:1440,height:1000});
-    await page.locator('.destination-link[data-feature-target="plan"]').click();await page.locator("#planWorkspace").waitFor({state:"visible"});
+    await page.locator('.destination-link[data-feature-target="today"]').click();await page.locator('.overview-tool[data-feature-target="plan"]').click();await page.locator("#planWorkspace").waitFor({state:"visible"});
     assert.equal(new URL(page.url()).hash,"#planWorkspace");await page.waitForFunction(()=>document.activeElement?.id==="planWorkspaceTitle");
     assert.equal(await page.locator("#planAheadDetails").evaluate((node)=>node.open),false,"Secondary planning tools should start collapsed");
     await page.locator("#planAheadDetails > summary").click();
@@ -362,7 +358,7 @@ let browser;
     assert.ok(await page.evaluate(()=>scrollY<=1),"Returning to plain Strata+ must stay at the top");
 
     const sessionBuilder=page.locator("#sessionBuilder"),sessionGroup=page.locator("#sessionGroup"),sessionLength=page.locator("#sessionLength"),sessionDay=page.locator("#sessionDay"),sessionGenerate=page.locator("#sessionGenerate"),sessionResults=page.locator("#sessionResults"),sessionStatus=page.locator("#sessionStatus"),sessionAddAll=page.locator("#sessionAddAll");
-    await page.locator('.destination-link[data-feature-target="plan"]').click();await page.locator("#workoutBuilderDetails > summary").click();
+    await page.locator('.destination-link[data-feature-target="today"]').click();await page.locator('.overview-tool[data-feature-target="plan"]').click();await page.locator("#workoutBuilderDetails > summary").click();
     const sessionFeature=page.locator('#workoutBuilderDetails [data-feature-target="session"]');
     await sessionFeature.waitFor({state:"visible"});
     await sessionFeature.focus();

@@ -7,7 +7,7 @@
   const el=(id)=>document.getElementById(id);
   const nodes={
     panel:el("purchasePanel"),statusNode:el("purchaseStatus"),signupLink:el("purchaseSignup"),
-    loginLink:el("purchaseLogin"),trialButton:el("trialDiscovery"),buyButton:el("buyDiscovery"),
+    loginLink:el("purchaseLogin"),buyButton:el("buyDiscovery"),
     openLink:el("openDiscovery"),manageLink:el("manageSubscription"),checkButton:el("checkAccess")
   };
   const signal=name=>globalThis.StrataSignals?.record?.(name);
@@ -83,36 +83,13 @@
     state.busy=false;renderPurchaseState();
   }
 
-  async function startTrial(){
-    if(state.busy||state.awaitingAccess||state.checkoutOpen)return;
-    if(!state.user?.id){location.assign("/account.html?mode=login&next=pricing");return;}
-    if(!state.csrfToken){setStatus("Your session needs refreshing before the trial can start.","error",{focus:true});return;}
-    const trialUserId=String(state.user.id);let identityChanged=false;
-    state.busy=true;state.actionError="";renderPurchaseState();
-    try{
-      const result=await requestJson("/api/discovery/trial",{method:"POST",headers:{"X-CSRF-Token":state.csrfToken},body:"{}"});
-      const current=await readAccount();
-      if(String(current?.id||"")!==trialUserId){identityChanged=true;return;}
-      state.user=String(result.user?.id||"")===trialUserId?result.user:current;
-      renderPurchaseState();
-      setStatus("Your free 7-day Strata+ trial has started. No card was charged and it will end automatically.","good",{focus:true});
-      signal("trial_started");
-    }catch(error){
-      if(error.status===401){location.assign("/account.html?mode=login&next=pricing");return;}
-      state.actionError=error.message||"The trial could not be started.";
-    }finally{
-      state.busy=false;renderPurchaseState();
-      if(identityChanged)setStatus("The trial request belongs to the account that started it, but this tab is no longer signed in to that account. Sign back in to the original account to use its trial.","warn",{focus:true});
-      else if(state.actionError)setStatus(state.actionError,"error",{focus:true});
-    }
-  }
-
   async function openCheckout(){
     if(state.busy||state.awaitingAccess)return;
     if(!state.user?.id){location.assign("/account.html?mode=signup&next=pricing");return;}
     const checkoutUserId=String(state.user.id),checkoutEmail=String(state.user.email||"");
-    const subscription=logic.subscriptionFor(state.user),trialAccess=state.user?.discovery?.accessType==="trial";
-    if((logic.discoveryIsActive(state.user)&&!trialAccess)||subscription?.status==="paused"){renderPurchaseState();return;}
+    // A trial started before the trial was retired may still subscribe early.
+    const subscription=logic.subscriptionFor(state.user),legacyTrial=state.user?.discovery?.accessType==="trial";
+    if((logic.discoveryIsActive(state.user)&&!legacyTrial)||subscription?.status==="paused"){renderPurchaseState();return;}
     if(!state.csrfToken){setStatus("Your session needs to be refreshed before checkout. Reload this page and try again.","error",{focus:true});return;}
     try{
       state.actionError="";state.checkoutOpen=false;state.busy=true;renderPurchaseState();
@@ -191,7 +168,6 @@
     if(event.name==="checkout.closed"){
       state.checkoutOpen=false;renderPurchaseState();
       if(!nodes.buyButton.hidden)nodes.buyButton.focus({preventScroll:true});
-      else if(!nodes.trialButton.hidden)nodes.trialButton.focus({preventScroll:true});
       return;
     }
     if(event.name!=="checkout.completed")return;
@@ -207,7 +183,7 @@
     else setStatus("Paddle completed the checkout, but access is still processing. Wait a moment, then choose Check access. Do not purchase again.","warn",{focus:true});
   }
 
-  globalThis.StrataPricingEvents.bind({...nodes,actions:{openCheckout,startTrial,refreshAccess,recheckAccount,renderPurchaseState}});
+  globalThis.StrataPricingEvents.bind({...nodes,actions:{openCheckout,refreshAccess,recheckAccount,renderPurchaseState}});
   signal("upgrade_viewed");
   void loadPageState();
 })();

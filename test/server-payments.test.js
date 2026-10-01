@@ -489,8 +489,8 @@ test("live monthly checkout grants, manages, updates, and revokes Strata+ secure
     headers:{Cookie:account.cookie,Origin:BASE,"X-CSRF-Token":account.csrfToken,"Content-Type":"application/json"},
     body:"{}"
   });
-  assert.equal(paidTrial.response.status,409,"a paid account cannot consume or layer a trial");
-  assert.equal(paidTrial.data.code,"DISCOVERY_ALREADY_ACTIVE");
+  assert.equal(paidTrial.response.status,410,"the free trial is retired for every account");
+  assert.equal(paidTrial.data.code,"TRIAL_RETIRED");
 
   const subscriptionStatus=await request("/api/billing/subscription",{headers:{Cookie:account.cookie}});
   assert.equal(subscriptionStatus.response.status,200);

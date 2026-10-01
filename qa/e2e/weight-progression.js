@@ -10,6 +10,7 @@ const {join,resolve}=require("node:path");
 const {DatabaseSync}=require("node:sqlite");
 const test=require("node:test");
 const {chromium}=require("playwright");
+const {grantStrataPlus}=require("../../test/support/strata-plus-access");
 const {sanitizeWorkout,summarizeWorkout}=require("../../src/workouts");
 
 const ROOT=join(__dirname,"..","..");
@@ -62,7 +63,7 @@ async function newMember(label,{sets=3}={}){
   const signup=await context.request.post("/api/signup",{headers:{Origin:baseUrl},data:{name:`Progression ${label}`,email:`progression-${label}@example.test`,password:"synthetic-progression-e2e-123"}});
   assert.equal(signup.status(),201,await signup.text());const user=(await signup.json()).user;
   const initial=await read(context,"/api/plan"),headers={Origin:baseUrl,"X-CSRF-Token":initial.csrfToken,"X-Strata-User":user.id};
-  const trial=await context.request.post("/api/discovery/trial",{headers,data:{}});assert.ok([200,201].includes(trial.status()),await trial.text());
+  grantStrataPlus(runtimeDir,user.id);
   const plan={version:1,restDay:"Sunday",days:Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(day=>[day,["Monday","Wednesday"].includes(day)?[{instanceId:`progression-${day.toLowerCase()}`,exerciseId:EXERCISE.id,sets,reps:"8–12"}]:[]]))};
   const saved=await context.request.put("/api/plan",{headers,data:{plan,expectedPlanUpdatedAt:initial.planUpdatedAt,expectedUserId:user.id}});
   assert.equal(saved.status(),200,await saved.text());return{context,page,user,headers};

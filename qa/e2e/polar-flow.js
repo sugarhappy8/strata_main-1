@@ -12,6 +12,7 @@ const {tmpdir}=require("node:os");
 const {join,resolve}=require("node:path");
 const test=require("node:test");
 const {chromium}=require("playwright");
+const {grantStrataPlus}=require("../../test/support/strata-plus-access");
 const AxeBuilder=require("@axe-core/playwright").default;
 
 const ROOT=join(__dirname,"..","..");
@@ -108,7 +109,7 @@ test("a Strata+ member connects their own Polar, sees recovery, trains lighter, 
   const signup=await context.request.post("/api/signup",{headers:{Origin:baseUrl},data:{name:"Polar Member",email:"polar-e2e@example.test",password:PASSWORD}});
   assert.equal(signup.status(),201,await signup.text());
   const csrf=(await (await context.request.get("/api/me")).json()).csrfToken;
-  assert.ok([200,201].includes((await context.request.post("/api/discovery/trial",{headers:{Origin:baseUrl,"X-CSRF-Token":csrf},data:{}})).status()));
+  grantStrataPlus(runtimeDir,(await signup.json()).user.id);
   const today=DAYS[(new Date().getUTCDay()+6)%7];
   const plan={version:1,restDay:null,restDays:[],days:Object.fromEntries(DAYS.map((day)=>[day,day===today?[{instanceId:"polar-a",exerciseId:"flat-dumbbell-press",sets:4,reps:"8–10"},{instanceId:"polar-b",exerciseId:"machine-chest-press",sets:3,reps:"10–12"}]:[]]))};
   assert.equal((await context.request.put("/api/plan",{headers:{Origin:baseUrl,"X-CSRF-Token":csrf},data:{plan,expectedPlanUpdatedAt:0}})).status(),200);
@@ -148,7 +149,7 @@ test("a Strata+ member connects their own Polar, sees recovery, trains lighter, 
   await small.goto("/discover.html#recoveryWorkspace",{waitUntil:"domcontentloaded"});
   await small.locator("#recoveryResults").waitFor({state:"visible"});
   const layout=await small.evaluate(()=>({overflow:globalThis.document.documentElement.scrollWidth-globalThis.innerWidth,clipped:[...globalThis.document.querySelectorAll(".destination-link span")].filter((node)=>node.scrollWidth>node.clientWidth+1).map((node)=>node.textContent),destinations:globalThis.document.querySelectorAll(".destination-link").length}));
-  assert.ok(layout.overflow<=1,`Recovery overflows 360px by ${layout.overflow}px`);assert.deepEqual(layout.clipped,[],"every destination label fits on a narrow phone");assert.equal(layout.destinations,7);
+  assert.ok(layout.overflow<=1,`Recovery overflows 360px by ${layout.overflow}px`);assert.deepEqual(layout.clipped,[],"every destination label fits on a narrow phone");assert.equal(layout.destinations,4);
   await phone.close();
 
   await page.goto("/workout.html",{waitUntil:"domcontentloaded"});

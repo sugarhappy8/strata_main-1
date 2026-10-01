@@ -89,8 +89,6 @@
       const button=el("accountButton"),signup=el("signupButton"),discoveryButton=el("discoverButton"),discoveryActive=state.user?.discovery?.active===true;
       button.textContent=state.user?`${state.user.name.split(/\s+/)[0]} profile`:"Log in";button.href=state.user?"/account.html":"/account.html?mode=login";button.classList.toggle("signed-in",Boolean(state.user));signup.hidden=Boolean(state.user);
       discoveryButton.hidden=!state.user;discoveryButton.href=discoveryActive?"/discover.html":"/pricing";discoveryButton.textContent=discoveryActive?"Strata+":"Unlock Strata+";
-      // Strata AI opens directly for members with Strata+; everyone else sees what it costs first.
-      el("aiOfferLink").href=discoveryActive?"/ai":"/pricing?reason=ai";el("aiOfferNote").textContent=discoveryActive?"Included with your Strata+":"Included with Strata+ · Try it free for 7 days, no card";
       const previewLogin=el("quickPreviewLogin"),previewContinue=el("quickPreviewContinue");previewLogin.hidden=Boolean(state.user);previewContinue.href=state.user?"/planner.html":"/account.html?mode=signup&next=planner";
       if(state.user)previewContinue.innerHTML="<strong>Compare with my account</strong><span>Choose which week to keep →</span>";
       else previewContinue.innerHTML="<strong>Keep this exact week</strong><span>Create an account, then choose what to save →</span>";

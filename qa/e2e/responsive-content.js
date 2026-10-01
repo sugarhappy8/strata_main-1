@@ -104,7 +104,7 @@ test("pricing benefits keep their descriptions in the readable content column",{
   }finally{await page.close();await browser.close();}
 });
 
-test("pricing hero and collapsed decisions keep actions readable at release breakpoints",{timeout:30_000},async()=>{
+test("pricing hero keeps actions readable at release breakpoints",{timeout:30_000},async()=>{
   const options={headless:true};
   if(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)options.executablePath=resolve(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
   const browser=await chromium.launch(options),page=await browser.newPage({viewport:{width:1440,height:900}});
@@ -112,7 +112,6 @@ test("pricing hero and collapsed decisions keep actions readable at release brea
     const pricing=read("public/pages/pricing.html"),hero=pricing.match(/<section class="info-hero"[\s\S]*?<\/section>/)?.[0];
     assert.ok(hero,"pricing page must include its purchase hero");
     const disclosures=[...pricing.matchAll(/<details class="[^"]*pricing-disclosure[^"]*"[\s\S]*?<\/details>/g)].map(match=>match[0]);
-    assert.ok(disclosures.length>=3,"pricing must keep secondary decisions in collapsed disclosures");
     const styles=`${read("public/styles/site-info.css")}\n${read("public/styles/experience.css")}`;
     for(const width of [1440,981,800,768,430,390,360,320]){
       await page.setViewportSize({width,height:844});

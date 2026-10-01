@@ -85,33 +85,3 @@ body { line-height:1.5; }
   .planner-page .user-menu :is(a,button) { min-height:40px; padding:0 16px; border:1px solid rgba(255,255,255,.3); color:var(--white); font:600 .8125rem/1 var(--body); }
   .planner-page .user-menu :is(a,button):hover { border-color:var(--accent); color:var(--accent); }
 }
-
-/* Build 8.8: the homepage introduces Strata AI with a short, real-looking exchange. */
-.ai-offer { padding:72px 0; color:#f2f3eb; background:linear-gradient(132deg,#10110f 0 58%,#172012 100%); border-top:1px solid #2b2f26; }
-.ai-offer-grid { display:grid; grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr); gap:clamp(32px,6vw,80px); align-items:center; }
-.ai-offer .kicker { color:#d4f578; }
-.ai-offer h2 { max-width:17ch; margin:0; font:700 clamp(2.25rem,4.6vw,3.9rem)/1.06 var(--display,"Manrope",Arial,sans-serif); letter-spacing:-.04em; }
-.ai-offer h2 em { display:block; color:#d4f578; font-style:normal; }
-.ai-offer p:not(.kicker) { max-width:54ch; margin:20px 0 0; color:#b7bcae; font-size:1rem; line-height:1.7; }
-.ai-offer-actions { display:flex; flex-wrap:wrap; align-items:center; gap:12px 18px; margin-top:28px; }
-.ai-offer-actions .button { min-height:52px; color:#10110f; background:#d4f578; border-color:#d4f578; }
-.ai-offer-actions .button:hover,.ai-offer-actions .button:focus-visible { background:#e4fb9f; border-color:#e4fb9f; }
-.ai-offer-actions small { color:#b7bcae; font-size:.8125rem; }
-.ai-offer-demo { display:grid; gap:12px; margin:0; padding:22px; list-style:none; background:#151713; border:1px solid #393d32; border-radius:20px; box-shadow:0 30px 80px rgba(0,0,0,.3); }
-.ai-offer-demo li { font-size:.9375rem; line-height:1.55; }
-.ai-offer-you { justify-self:end; max-width:88%; padding:12px 16px; background:#2b3520; border:1px solid #3d4a2b; border-radius:18px 18px 6px 18px; }
-.ai-offer-reply { max-width:92%; padding:2px 0 0 44px; position:relative; }
-.ai-offer-reply::before { content:"AI"; position:absolute; top:0; left:0; display:grid; place-items:center; width:32px; height:32px; color:#10110f; background:#d4f578; border-radius:50%; font:700 .6875rem/1 var(--body,"Manrope",Arial,sans-serif); }
-.ai-offer-card { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; margin-left:44px; padding:14px; background:#1a1d17; border:1px solid #393d32; border-radius:14px; }
-.ai-offer-card b { grid-column:1 / -1; color:#d4f578; font-size:.8125rem; }
-.ai-offer-card span { padding:8px 10px; font-size:.8125rem; background:#141612; border-radius:8px; }
-.ai-offer-card i { grid-column:1 / -1; justify-self:start; margin-top:4px; padding:8px 14px; color:#10110f; font:600 .8125rem/1 var(--body,"Manrope",Arial,sans-serif); font-style:normal; background:#d4f578; border-radius:999px; }
-@media (max-width:860px) {
-  .ai-offer-grid { grid-template-columns:minmax(0,1fr); }
-}
-@media (max-width:680px) {
-  .ai-offer { padding:52px 0; }
-  .ai-offer-demo { padding:16px; }
-  .ai-offer-reply { padding-left:40px; }
-  .ai-offer-card { margin-left:0; }
-}

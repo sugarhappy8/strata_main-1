@@ -38,6 +38,8 @@
     }
     function featurePanel(name){const item=config[name];return item?element(item.panelId):null;}
     function featureHash(name){return `#${config[name].panelId}`;}
+    // Every destination above a tool, so a tool two levels down (Plan → session builder) still highlights Overview.
+    function ancestors(name){const found=new Set();for(let parent=config[name]?.parent;parent&&!found.has(parent);parent=config[parent]?.parent)found.add(parent);return found;}
     function updateFeatureHistory(name,mode){
       if(mode!=="push"&&mode!=="replace")return;
       const hash=featureHash(name);
@@ -64,9 +66,9 @@
         const candidatePanel=featurePanel(candidate);
         if(candidatePanel)candidatePanel.hidden=candidate!==name;
       }
-      let activeDestination=null;
+      let activeDestination=null;const lineage=ancestors(name);
       for(const link of document.querySelectorAll("[data-feature-target]")){
-        const target=featureName(link.dataset.featureTarget),active=target===name||(link.classList.contains("destination-link")&&target===item.parent);
+        const target=featureName(link.dataset.featureTarget),active=target===name||(link.classList.contains("destination-link")&&lineage.has(target));
         link.classList.toggle("active",active);
         link.setAttribute?.("aria-controls",config[target]?.panelId||"");
         link.setAttribute?.("aria-expanded",String(target===name));

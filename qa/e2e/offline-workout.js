@@ -8,6 +8,7 @@ const {tmpdir}=require("node:os");
 const {join,resolve:resolvePath}=require("node:path");
 const test=require("node:test");
 const {chromium}=require("playwright");
+const {grantStrataPlus}=require("../../test/support/strata-plus-access");
 
 const ROOT=join(__dirname,"..","..");
 const WAIT_MS=15_000;
@@ -109,11 +110,9 @@ test("an authorized active workout continues offline without caching private acc
     const initialPlan=await context.request.get("/api/plan");
     assert.equal(initialPlan.status(),200,await initialPlan.text());
     const account=await initialPlan.json();
-    const trialResponse=await context.request.post("/api/discovery/trial",{headers:{Origin:baseUrl,"X-CSRF-Token":account.csrfToken},data:{}});
-    assert.equal(trialResponse.status(),201,await trialResponse.text());
-    const trial=(await trialResponse.json()).user.discovery.trial;
-    assert.ok(Number(trial.expiresAt)>Date.now(),"The account should receive a live server-owned trial window.");
-    assert.ok(Number(trial.expiresAt)<=Date.now()+7*24*60*60*1000,"The browser flow must use the 7-day trial, not a longer client-selected window.");
+    // A time-limited grant inside the 24-hour offline cap makes the offline window exactly the access expiry.
+    const accessExpiresAt=Date.now()+6*60*60*1000;
+    grantStrataPlus(runtimeDir,user.id,{expiresAt:accessExpiresAt});
 
     const planResponse=await context.request.put("/api/plan",{
       headers:{Origin:baseUrl,"X-CSRF-Token":account.csrfToken,"X-Strata-User":user.id},
@@ -142,7 +141,7 @@ test("an authorized active workout continues offline without caching private acc
     });
     assert.equal(stored.context.userId,String(user.id));
     assert.equal(stored.context.ownerId,`account:${user.id}`);
-    assert.equal(stored.context.authorizedUntil,Number(trial.expiresAt));
+    assert.equal(stored.context.authorizedUntil,accessExpiresAt);
     assert.ok(stored.context.draftKey.startsWith(`strata_workout_draft_v1:${encodeURIComponent(`account:${user.id}`)}:`));
     assert.equal(stored.draft.ownerId,stored.context.ownerId);
     assert.equal(stored.draft.contextId,stored.context.contextId);
