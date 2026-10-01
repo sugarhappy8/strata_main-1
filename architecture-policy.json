@@ -606,6 +606,11 @@
       "role": "Strata AI consent, Daily Brief choice, note deletion, and the owner's usage view",
       "maxLines": 70,
       "allowedDependencies": []
+    },
+    "src/apple-jws.js": {
+      "role": "App Store JWS verification: Apple Root CA - G3 chain, marker extensions, ES256",
+      "maxLines": 100,
+      "allowedDependencies": []
     }
   }
 }

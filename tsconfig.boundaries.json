@@ -25,6 +25,7 @@
     "src/account-self-service.js",
     "src/account-self-service-schema.js",
     "src/account-self-service-store.js",
+    "src/apple-jws.js",
     "src/billing.js",
     "src/billing-store.js",
     "src/coaching-core.js",
