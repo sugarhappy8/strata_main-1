@@ -22,6 +22,7 @@ test("Discover state creates isolated mutable workspaces from immutable configur
   assert.deepEqual(second.shortlist,[]);assert.equal(second.aggregate.size,0);
   assert.equal(State.FEATURE_DEFAULT,"today");
   assert.deepEqual(Object.keys(State.FEATURE_CONFIG).slice(0,4),["today","plan","progress","explore"]);
+  assert.equal(State.FEATURE_CONFIG.plan.parent,"today");assert.equal(State.FEATURE_CONFIG.nutrition.parent,"today");
   assert.equal(State.LIMITS.movementBoard,4);
 });
 
@@ -55,6 +56,23 @@ test("Discover navigation reveals an active destination inside the mobile rail",
   const document={body:element("body"),getElementById:id=>panels.get(id)||null,querySelectorAll:()=>links};
   const navigation=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state,document,window:{matchMedia:()=>({matches:true})}});
   assert.equal(navigation.activate("coaching",{smooth:true}),true);assert.equal(nav.scrollLeft,420);assert.equal(nav.behavior,"auto");
+});
+
+test("Plan, Nutrition, and their tools keep Overview highlighted as their destination",()=>{
+  const panels=new Map(Object.values(State.FEATURE_CONFIG).map(({panelId})=>[panelId,element(panelId)])),state=State.createState();
+  const destinations=["today","recovery","progress","explore"].map((target)=>{const link=element(target);link.dataset.featureTarget=target;link.classList.add("destination-link");return link;});
+  const cards=["plan","nutrition"].map((target)=>{const link=element(`card-${target}`);link.dataset.featureTarget=target;link.classList.add("overview-tool");return link;});
+  const document={body:element("body"),getElementById:id=>panels.get(id)||null,querySelectorAll:()=>[...destinations,...cards]};
+  const navigation=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state,document,window:{matchMedia:()=>({matches:true})}});
+  const highlighted=()=>destinations.filter((link)=>link.classList.contains("active")).map((link)=>link.dataset.featureTarget);
+  for(const feature of ["plan","nutrition","session","monthly","community","coaching"]){
+    assert.equal(navigation.activate(feature),true);
+    assert.deepEqual(highlighted(),["today"],`${feature} belongs to Overview`);
+    assert.equal(destinations[0].attributes["aria-current"],"location");
+  }
+  assert.equal(navigation.activate("plan"),true);
+  assert.equal(cards[0].classList.contains("active"),true);assert.equal(cards[0].attributes["aria-expanded"],"true");
+  assert.equal(navigation.activate("library"),true);assert.deepEqual(highlighted(),["explore"]);
 });
 
 test("Discover navigation scrolls the destination switcher, not the panel, so the tabs stay visible",()=>{

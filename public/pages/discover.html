@@ -42,10 +42,7 @@
         <div class="studio-container">
           <h1 class="sr-only" id="featureHubTitle">Strata+ workspace</h1>
           <nav class="destination-nav" aria-label="Strata+ workspace">
-            <a class="destination-link" href="#todayWorkspace" data-feature-target="today" aria-controls="todayWorkspace" aria-expanded="false"><span>Overview</span><small>Your next step</small></a>
-            <a class="destination-link" href="#planWorkspace" data-feature-target="plan" aria-controls="planWorkspace" aria-expanded="false"><span>Plan</span><small>Build your week</small></a>
-            <a class="destination-link" href="/workout.html"><span>Train</span><small>Start or resume</small></a>
-            <a class="destination-link" href="#nutritionWorkspace" data-feature-target="nutrition" aria-controls="nutritionWorkspace" aria-expanded="false"><span>Nutrition</span><small>Calories & food</small></a>
+            <a class="destination-link" href="#todayWorkspace" data-feature-target="today" aria-controls="todayWorkspace" aria-expanded="false"><span>Overview</span><small>Plan, train &amp; eat</small></a>
             <a class="destination-link" href="#recoveryWorkspace" data-feature-target="recovery" aria-controls="recoveryWorkspace" aria-expanded="false"><span>Recovery</span><small>Sleep & stress</small></a>
             <a class="destination-link" href="#progressWorkspace" data-feature-target="progress" aria-controls="progressWorkspace" aria-expanded="false"><span>Progress</span><small>Review your results</small></a>
             <a class="destination-link" href="#exploreWorkspace" data-feature-target="explore" aria-controls="exploreWorkspace" aria-expanded="false"><span>Exercises</span><small>Find & compare</small></a>
@@ -77,6 +74,14 @@
             <div class="weekly-pulse-footer" id="weeklyPulseFooter"><span><strong id="weeklyPulseDays">—</strong> planned days completed this week</span><a id="weeklyPulseAction" href="#planWorkspace" data-feature-target="plan">Review plan <span aria-hidden="true">→</span></a></div>
           </aside>
         </div>
+        <section class="studio-container overview-tools" aria-labelledby="overviewToolsTitle">
+          <h2 class="overview-tools-title" id="overviewToolsTitle">Plan, train, and eat for your goal</h2>
+          <nav class="overview-tool-grid" aria-labelledby="overviewToolsTitle">
+            <a class="overview-tool" href="#planWorkspace" data-feature-target="plan" aria-controls="planWorkspace" aria-expanded="false"><span class="overview-tool-label">Plan</span><strong>Build your week</strong><small id="overviewPlanDetail">Your weekly plan, a one-off workout builder, and longer-range tools.</small><b aria-hidden="true">→</b></a>
+            <a class="overview-tool" href="/workout.html"><span class="overview-tool-label">Train</span><strong>Start or resume</strong><small>Log each set with last time’s results beside it. Opens the Train page.</small><b aria-hidden="true">↗</b></a>
+            <a class="overview-tool" href="#nutritionWorkspace" data-feature-target="nutrition" aria-controls="nutritionWorkspace" aria-expanded="false"><span class="overview-tool-label">Nutrition</span><strong>Calories &amp; food</strong><small>Your calorie target, today’s diary, and meal ideas for what is left.</small><b aria-hidden="true">→</b></a>
+          </nav>
+        </section>
         <div class="studio-container today-support-grid">
           <aside class="today-context-card today-recovery-card" id="todayRecovery" aria-labelledby="todayRecoveryTitle" hidden><p class="kicker">Recovery · Polar</p><h2 id="todayRecoveryTitle">Last night</h2><p id="todayRecoveryDetail" role="status" aria-live="polite"></p><dl class="today-recovery-metrics" id="todayRecoveryMetrics"></dl><a class="small-button" id="todayRecoveryAction" href="#recoveryWorkspace" data-feature-target="recovery">Open Recovery <span aria-hidden="true">→</span></a><a class="small-button" id="todayRecoveryConnect" href="/account.html#connectedDevices" hidden>Connect Polar <span aria-hidden="true">→</span></a></aside>
 
@@ -86,6 +91,7 @@
 
       <section class="plan-workspace feature-panel" id="planWorkspace" data-feature-panel="plan" aria-labelledby="planWorkspaceTitle">
         <div class="studio-container">
+          <a class="tool-menu-link" href="#todayWorkspace" data-feature-target="today">Back to Overview ↑</a>
           <div class="workspace-heading"><div><p class="kicker">Plan · make the week workable</p><h2 id="planWorkspaceTitle" tabindex="-1">Make room for <em>progress.</em></h2></div><p>Review your weekly plan, create one workout, or organize the same week over a longer period.</p></div>
 <section class="progression-card" id="progressionCard" aria-labelledby="progressionTitle" hidden>
             <div class="progression-card-copy"><p class="kicker">Review before anything changes</p><h2 id="progressionTitle">A small saved-plan adjustment</h2><p id="progressionExplanation">Once you have comparable sessions, Strata+ can suggest one clear saved weekly Plan edit here.</p><small id="progressionEvidence">A suggestion is based only on work you logged and any check-in you chose to save.</small></div>
@@ -323,6 +329,7 @@
         </div>
       </section>
       <section class="coaching-workspace nutrition-workspace feature-panel" id="nutritionWorkspace" data-feature-panel="nutrition" aria-labelledby="nutritionWorkspaceTitle"><div class="studio-container">
+        <a class="tool-menu-link tool-menu-link-light" href="#todayWorkspace" data-feature-target="today">Back to Overview ↑</a>
         <div class="workspace-heading"><div><p class="kicker kicker-light">Nutrition · your daily diary</p><h2 id="nutritionWorkspaceTitle" tabindex="-1">Eat for <em>your goal.</em></h2></div><p>Your calorie target, today’s diary, this week at a glance, and meal ideas for what is left.</p></div>
         <div class="workspace-empty" id="nutritionState" role="status"><div><p class="kicker">Personal setup</p><h3>Your calories, made personal</h3><p id="nutritionStateMessage">Loading your saved profile…</p></div><a class="button button-accent" id="nutritionSetupLink" href="#coachingWorkspace" data-feature-target="coaching" hidden>Set up my profile →</a><button class="small-button" id="nutritionRetry" type="button" hidden>Try again</button></div>
         <section class="coaching-dashboard" id="coachingDashboard" aria-labelledby="coachingDashboardTitle" hidden>
@@ -615,6 +622,10 @@
 
     </main>
 
+    <a class="ai-bubble" id="strataAiBubble" href="/ai" aria-label="Strata AI" aria-describedby="strataAiBubbleTip">
+      <svg class="ai-bubble-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M10 7h28a7 7 0 0 1 7 7v15a7 7 0 0 1-7 7H23l-9 8v-8h-4a7 7 0 0 1-7-7V14a7 7 0 0 1 7-7Z"/><text x="24" y="26.5" text-anchor="middle">AI</text></svg>
+      <span class="ai-bubble-tip" id="strataAiBubbleTip" role="tooltip"><strong>This is Strata AI</strong> Press it to describe your week and let Strata AI plan it for you.</span>
+    </a>
     <footer class="build-footer">STRATA · Build 8.8.8 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
 
     <aside class="compare-tray" id="compareTray" hidden aria-label="Exercise comparison tray">

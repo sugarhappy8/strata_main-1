@@ -10,6 +10,7 @@ const {join,resolve}=require("node:path");
 const test=require("node:test");
 const {AxeBuilder}=require("@axe-core/playwright");
 const {chromium}=require("playwright");
+const {grantStrataPlus}=require("../../test/support/strata-plus-access");
 
 const ROOT=join(__dirname,"..","..");
 const WAIT_MS=15_000;
@@ -89,8 +90,8 @@ async function signup(context,label){
 }
 async function csrf(context){return (await (await context.request.get("/api/plan")).json()).csrfToken;}
 async function activatePlus(context){
-  const response=await context.request.post("/api/discovery/trial",{headers:{Origin:baseUrl,"X-CSRF-Token":await csrf(context)},data:{}});
-  assert.ok([200,201].includes(response.status()),await response.text());
+  const me=await context.request.get("/api/me");assert.equal(me.status(),200,await me.text());
+  grantStrataPlus(runtimeDir,(await me.json()).user.id);
 }
 async function savedPlan(context){return (await (await context.request.get("/api/plan")).json()).plan;}
 const trainingDays=(plan)=>Object.entries(plan.days).filter(([,items])=>items.length).map(([day])=>day);
@@ -109,18 +110,13 @@ async function noOverflow(page,label){
   await page.setViewportSize({width:1280,height:900});
 }
 
-test("members without Strata+ are sent to pricing, and the homepage points each visitor to the right place",{timeout:60_000},async()=>{
+test("members without Strata+ are sent to pricing, and Strata AI lives in its Strata+ bubble instead of the homepage",{timeout:60_000},async()=>{
   const context=await browser.newContext({baseURL:baseUrl,serviceWorkers:"block",viewport:{width:1280,height:900},extraHTTPHeaders:{"X-Forwarded-For":"198.51.100.61"}});
   context.setDefaultTimeout(WAIT_MS);
   const page=await context.newPage();
   try{
     await page.goto("/",{waitUntil:"domcontentloaded"});
-    assert.equal(await page.locator("#aiOfferLink").getAttribute("href"),"/pricing?reason=ai");
-    assert.match(await page.locator("#aiOfferTitle").textContent(),/Don’t feel like planning things yourself\? Ask Strata AI to do it for you\./);
-    await page.locator("#strataAi").scrollIntoViewIfNeeded();await shot(page,"home-ai");
-    await page.setViewportSize({width:390,height:844});await page.locator("#strataAi").scrollIntoViewIfNeeded();await shot(page,"home-ai-390");
-    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)<=1,"the homepage call to action fits a phone");
-    await page.setViewportSize({width:1280,height:900});
+    assert.equal(await page.locator("#strataAi,#aiOfferLink").count(),0,"the homepage no longer promotes Strata AI");
     await page.goto("/ai",{waitUntil:"domcontentloaded"});
     assert.match(new URL(page.url()).search,/mode=login&next=ai/,"signed-out visitors sign in first");
     await signup(context,"free");
@@ -129,8 +125,22 @@ test("members without Strata+ are sent to pricing, and the homepage points each 
     await page.waitForFunction(()=>/Strata AI is included with Strata\+/.test(document.querySelector("#purchaseStatus")?.textContent||""));
     await shot(page,"pricing-ai");
     await activatePlus(context);
-    await page.goto("/",{waitUntil:"domcontentloaded"});
-    await page.waitForFunction(()=>document.querySelector("#aiOfferLink")?.getAttribute("href")==="/ai");
+    await page.goto("/discover.html",{waitUntil:"domcontentloaded"});
+    const bubble=page.locator("#strataAiBubble");
+    await bubble.waitFor({state:"visible"});assert.equal(await bubble.getAttribute("href"),"/ai");
+    assert.equal(await page.locator("#strataAiBubbleTip").isVisible(),false,"the bubble's explanation waits for hover or focus");
+    await bubble.hover();await page.locator("#strataAiBubbleTip").waitFor({state:"visible"});
+    assert.match(await page.locator("#strataAiBubbleTip").textContent(),/This is Strata AI/);await shot(page,"strata-plus-ai-bubble");
+    for(const target of ["progress","explore"]){
+      await page.locator(`.destination-link[data-feature-target="${target}"]`).click();
+      assert.equal(await bubble.isVisible(),true,`the Strata AI bubble stays on the ${target} view`);
+    }
+    await page.setViewportSize({width:390,height:844});
+    const bubbleBox=await bubble.boundingBox(),navBox=await page.locator(".studio-nav-mobile").boundingBox();
+    assert.ok(bubbleBox.y+bubbleBox.height<=navBox.y,"the bubble floats above the mobile navigation");
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)<=1,"the bubble fits a phone");
+    await page.setViewportSize({width:1280,height:900});
+    await Promise.all([page.waitForURL(url=>url.pathname==="/ai"),bubble.click()]);
     await page.goto("/pricing?reason=ai",{waitUntil:"domcontentloaded"});
     await page.locator("#openDiscovery").waitFor({state:"visible"});
     assert.equal(await page.locator("#openDiscovery").getAttribute("href"),"/ai");assert.match(await page.locator("#openDiscovery").textContent(),/Open Strata AI/);

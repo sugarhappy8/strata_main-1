@@ -3,6 +3,7 @@
 const test=require("node:test"),assert=require("node:assert/strict");
 const http=require("node:http");
 const {spawn}=require("node:child_process"),{mkdirSync,mkdtempSync,rmSync}=require("node:fs"),{join}=require("node:path");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 const ROOT=join(__dirname,"..");
 let server,directory,base,fake,fakeBase;
 
@@ -49,7 +50,7 @@ async function request(path,account=null,method="GET",body,headers={}){
 async function account(suffix,{plus=true}={}){
   const signup=await request("/api/signup",null,"POST",{name:`AI ${suffix}`,email:`ai-${suffix}@example.test`,password:"strong-ai-password-123"});assert.equal(signup.status,201);
   const me=await request("/api/me",{cookie:signup.cookie,csrf:""});const result={cookie:signup.cookie,csrf:me.data.csrfToken,id:me.data.user.id,email:`ai-${suffix}@example.test`};
-  if(plus)assert.ok([200,201].includes((await request("/api/discovery/trial",result,"POST",{})).status));
+  if(plus)grantStrataPlus(directory,result.id);
   return result;
 }
 function profile(overrides={}){

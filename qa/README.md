@@ -39,10 +39,10 @@ NODE_ENV=test ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS=true EMAIL_VERIFICATION_ENABLED=
   STRATA_DATA_DIR="$(mktemp -d)" npm start
 ```
 
-Then run:
+Then run, pointing `STRATA_QA_DATA_DIR` at the same data directory so the audit can give its account Strata+ (there is no free trial to start):
 
 ```bash
-npm run qa:ui
+STRATA_QA_DATA_DIR=/path/to/that/data/dir npm run qa:ui
 ```
 
 The signup override is intentionally paired with `NODE_ENV=test`; the application rejects it in production.

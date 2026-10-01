@@ -8,7 +8,7 @@
 
   const ACTION_DETAILS=Object.freeze({
     "grant-plus":{title:"Give free Strata+?",button:"Give free Strata+",description:"Give this account complimentary access for the chosen period. This replaces its current grant, never charges the user, and does not cancel a paid subscription."},
-    "revoke-plus":{title:"Revoke free Strata+?",button:"Revoke free Strata+",description:"End the administrator's complimentary grant. Separate paid or trial access is unchanged."},
+    "revoke-plus":{title:"Revoke free Strata+?",button:"Revoke free Strata+",description:"End the administrator's complimentary grant. Separate paid access is unchanged."},
     "close-checkouts":{title:"Block new checkouts?",button:"Block new and close eligible checkouts",description:"Block new checkouts until you allow them again and ask Paddle to cancel eligible unfinished transactions. Paddle does not allow STRATA to cancel a draft checkout, so STRATA retires the draft by disabling its checkout link and clearing STRATA’s checkout metadata while Paddle retains the transaction record. Revoking STRATA sign-in sessions is separate and does not change Paddle payment state. Existing subscriptions and charges are unchanged."},
     "enable-checkouts":{title:"Allow payment sessions?",button:"Allow payment sessions",description:"Allow this account to open new checkouts again. Previously canceled transactions stay canceled."},
     "send-password-reset":{title:"Send password reset?",button:"Send password reset",description:"A single-use password-reset link will be emailed to the account’s registered address. The link itself will not be shown here."},

@@ -179,7 +179,7 @@ function renderPlanOverview(pulse){
   if(!el("planWorkspaceDays"))return;
   const days=pulse.scheduledDays,exercises=weeklyPlanCount(state.weeklyPlan),sets=Monthly.DAYS.flatMap((day)=>state.weeklyPlan?.days?.[day]||[]).reduce((total,item)=>total+Math.max(0,Number(item?.sets)||0),0),hasWeek=days>0;
   el("planWorkspaceDays").textContent=String(days);el("planWorkspaceMovements").textContent=String(exercises);el("planWorkspaceSets").textContent=String(sets);
-  el("planWorkspaceSummary").textContent=hasWeek?`Scheduled: ${scheduledDays().join(", ")}.`:"You have not built a weekly plan yet.";
+  el("planWorkspaceSummary").textContent=hasWeek?`Scheduled: ${scheduledDays().join(", ")}.`:"You have not built a weekly plan yet.";const overviewPlan=el("overviewPlanDetail");if(overviewPlan)overviewPlan.textContent=hasWeek?`${days} training ${days===1?"day":"days"} · ${exercises} ${exercises===1?"exercise":"exercises"}. Edit your week or build a one-off workout.`:"Build your first week, or create a one-off workout.";
   const action=el("planWorkspaceAction");if(action){action.href="/planner.html";action.innerHTML=hasWeek?'Edit weekly plan <span aria-hidden="true">→</span>':'Build your first week <span aria-hidden="true">→</span>';}
 }
 function workoutHistoryStatus(){const status=["loading","ready","error"].includes(state.workoutHistoryStatus)?state.workoutHistoryStatus:(state.workoutHistoryAvailable?"ready":"error");return status==="ready"&&!state.workoutHistoryAvailable?"error":status;}

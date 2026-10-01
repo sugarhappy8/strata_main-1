@@ -118,9 +118,9 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/ai-response-schema.js` | Bounded grammar schema for Strata AI responses | 35 | 32 | 3.0 KiB | 80 | — |
 | `src/ai.js` | Strata AI request queue and review-only proposal API | 204 | 192 | 18.0 KiB | 215 | `src/ai-catalog.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
 | `src/auth.js` | Authentication and account lifecycle | 815 | 772 | 53.6 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |
-| `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 126 | 120 | 17.6 KiB | 140 | — |
-| `src/billing-store.js` | SQLite and Turso commercial storage parity | 240 | 233 | 22.8 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
-| `src/billing.js` | Commercial entitlement, checkout, trial, webhook, and reconciliation service | 719 | 690 | 44.5 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
+| `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 125 | 119 | 17.4 KiB | 140 | — |
+| `src/billing-store.js` | SQLite and Turso commercial storage parity | 237 | 230 | 22.4 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
+| `src/billing.js` | Commercial entitlement, checkout, trial, webhook, and reconciliation service | 699 | 670 | 43.3 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/checkout-reconciliation.js` | Validated checkout closure and settlement reconciliation | 99 | 98 | 8.0 KiB | 130 | `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 133 | 126 | 19.8 KiB | 300 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
 | `src/coaching-evidence.js` | Owner-filtered coaching history and original-target diary assembly | 84 | 78 | 6.9 KiB | 130 | `src/coaching-core.js`, `src/energy-calibration-core.js` |
@@ -162,7 +162,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.8 KiB | 60 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 84 | 77 | 4.9 KiB | 105 | `src/plans.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |
-| `src/store-contract.js` | Storage boundary contract | 176 | 173 | 5.2 KiB | 180 | — |
+| `src/store-contract.js` | Storage boundary contract | 175 | 172 | 5.2 KiB | 180 | — |
 | `src/support.js` | Public and administrative support workflow | 137 | 129 | 10.0 KiB | 160 | `src/email.js`, `src/plans.js` |
 | `src/training-loop-schema.js` | Check-in, training-block, and adaptation storage schema | 57 | 54 | 6.4 KiB | 70 | — |
 | `src/training-loop-store.js` | SQLite and Turso training-loop adapter parity | 136 | 133 | 7.1 KiB | 140 | `src/training-loop-schema.js` |

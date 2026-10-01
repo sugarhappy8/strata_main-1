@@ -5,7 +5,7 @@ const {discoveryTrialState}=require("../src/billing");
 const {STRATA_PLUS_TRIAL_MS}=require("../src/payments");
 const start=Date.UTC(2026,8,9),week=7*24*60*60*1000;
 
-test("a new trial supports repeat workouts and expires exactly at seven days",()=>{
+test("a trial started before the retirement expires exactly at seven days",()=>{
   assert.equal(STRATA_PLUS_TRIAL_MS,week);
   const row={started_at:start,expires_at:start+week};
   assert.equal(discoveryTrialState(row,start+3*24*60*60*1000).active,true);
@@ -27,5 +27,6 @@ test("stored trial rows never grant more than the seven-day server maximum",()=>
   const bounded=discoveryTrialState({started_at:start,expires_at:start+365*24*60*60*1000},start);
   assert.equal(bounded.expiresAt,start+week);
   assert.equal(discoveryTrialState({started_at:"invalid",expires_at:start+week},start).active,false);
-  assert.equal(discoveryTrialState(null,start).eligible,true);
+  assert.equal(discoveryTrialState(null,start).eligible,false,"no account can start a new trial");
+  assert.equal(discoveryTrialState(null,start).active,false);
 });

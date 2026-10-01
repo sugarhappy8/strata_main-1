@@ -14,7 +14,7 @@ function createAdminUserActions({store,auth,adminActionReason,adminAuditEvent,re
     const audit=adminAuditEvent(session.id,target.id,action,reason,action==="close-checkouts"?"requested":"success");
     const saved=await store.writeAdminControls(target.id,row,revision,session.token_hash,audit);
     if(!saved)throw changed();
-    let message=action==="grant-plus"?`Complimentary Strata+ granted ${saved.grant_expires_at===null?"until revoked":`until ${new Date(saved.grant_expires_at).toISOString()}`}. Existing paid subscriptions are unchanged.`:action==="revoke-plus"?"Complimentary access revoked. Any separate paid or trial access remains available.":"New payment sessions enabled. Canceled checkouts stay canceled.";
+    let message=action==="grant-plus"?`Complimentary Strata+ granted ${saved.grant_expires_at===null?"until revoked":`until ${new Date(saved.grant_expires_at).toISOString()}`}. Existing paid subscriptions are unchanged.`:action==="revoke-plus"?"Complimentary access revoked. Any separate paid access remains available.":"New payment sessions enabled. Canceled checkouts stay canceled.";
     if(action==="close-checkouts"){
       try{
         const originalClaim=await store.checkoutCreationForUser(target.id);

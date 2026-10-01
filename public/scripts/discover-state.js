@@ -12,10 +12,11 @@
   const FEATURE_DEFAULT="today";
   const FEATURE_CONFIG=Object.freeze({
     today:Object.freeze({panelId:"todayWorkspace",headingId:"todayTitle",label:"Overview"}),
-    plan:Object.freeze({panelId:"planWorkspace",headingId:"planWorkspaceTitle",label:"Plan"}),
+    // Plan and Nutrition open from Overview, so Overview stays the highlighted destination.
+    plan:Object.freeze({panelId:"planWorkspace",headingId:"planWorkspaceTitle",label:"Plan",parent:"today"}),
     progress:Object.freeze({panelId:"progressWorkspace",headingId:"progressWorkspaceTitle",label:"Progress"}),
     explore:Object.freeze({panelId:"exploreWorkspace",headingId:"exploreWorkspaceTitle",label:"Exercises"}),
-    nutrition:Object.freeze({panelId:"nutritionWorkspace",headingId:"nutritionWorkspaceTitle",label:"Nutrition"}),
+    nutrition:Object.freeze({panelId:"nutritionWorkspace",headingId:"nutritionWorkspaceTitle",label:"Nutrition",parent:"today"}),
     recovery:Object.freeze({panelId:"recoveryWorkspace",headingId:"recoveryWorkspaceTitle",label:"Recovery"}),
     coaching:Object.freeze({panelId:"coachingWorkspace",headingId:"coachingWorkspaceTitle",label:"Personal setup",parent:"nutrition"}),
     recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you",parent:"explore"}),

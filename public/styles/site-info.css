@@ -136,18 +136,10 @@ a { color:inherit; }
 .price strong { font:650 clamp(76px,10vw,116px)/.82 var(--display); letter-spacing:-.065em; }
 .price span { color:var(--muted); font:600 12.5px var(--body,"Manrope",Arial,sans-serif); }
 .price-subtitle { margin:0 0 28px; font-weight:700; }
-.access-path { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; margin:30px 0; padding:1px; border-radius:12px; list-style:none; background:var(--line); overflow:hidden; }
-.access-path li { min-width:0; display:grid; grid-template-columns:auto 1fr; gap:10px; padding:16px; background:#f5f6f1; }
-.access-path li > span { color:var(--orange-text); font:500 12px var(--body,"Manrope",Arial,sans-serif); font-variant-numeric:tabular-nums; }
-.access-path strong,.access-path small { display:block; }
-.access-path strong { margin-bottom:5px; font-size:14px; line-height:1.4; }
-.access-path small { color:var(--muted); font-size:13px; line-height:1.55; }
 .feature-list { margin:30px 0; padding:0; list-style:none; border-top:1px solid var(--line); }
 .feature-list li { display:grid; grid-template-columns:24px minmax(0,1fr); gap:11px; padding:14px 0; border-bottom:1px solid var(--line); color:#363b34; font-size:14px; line-height:1.55; }
 .feature-list li::before { content:"✓"; display:grid; place-items:center; width:20px; height:20px; margin-top:1px; border-radius:50%; color:var(--ink); background:var(--accent); font-size:11px; font-weight:800; }
 .feature-list li > span { min-width:0; }
-.tier-boundary { margin:24px 0; padding:16px 17px; color:var(--muted); border-left:3px solid var(--orange-text); background:var(--paper); font-size:12px; line-height:1.6; }
-.tier-boundary strong { color:var(--ink); }
 .button-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:30px; }
 .button { min-height:50px; display:inline-flex; align-items:center; justify-content:space-between; gap:24px; padding:0 18px; border:1px solid var(--ink); border-radius:8px; text-decoration:none; font:700 14px/1.35 var(--body); cursor:pointer; transition:color .18s,background-color .18s,border-color .18s,transform .22s var(--ease),box-shadow .22s var(--ease); }
 .button:active { transform:translateY(1px); }
@@ -181,29 +173,6 @@ a { color:inherit; }
 .checkout-note a { color:var(--orange-text); text-underline-offset:3px; }
 .free-card h2,.contact-card h2 { margin:23px 0 15px; font:650 42px/1.06 var(--display); letter-spacing:-.04em; }
 .free-card p,.contact-card p { color:var(--muted); font-size:14px; line-height:1.7; }
-.decision-strip { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin-top:22px; }
-.decision-strip article { min-height:220px; display:flex; flex-direction:column; padding:25px; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.72); }
-.decision-strip span { color:var(--orange-text); font:600 11px var(--body,"Manrope",Arial,sans-serif); letter-spacing:0; }
-.decision-strip strong { max-width:14ch; margin:35px 0 10px; font:650 23px/1.05 var(--display); letter-spacing:-.025em; }
-.decision-strip p { margin:auto 0 0; color:var(--muted); font-size:12px; line-height:1.62; }
-.decision-strip a { color:var(--orange-text); text-underline-offset:3px; }
-.pricing-disclosure { overflow:hidden; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.78); box-shadow:var(--shadow-soft); }
-.pricing-disclosure > summary { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:15px 18px; cursor:pointer; color:var(--ink); list-style:none; font:650 15px/1.35 var(--display); }
-.pricing-disclosure > summary::-webkit-details-marker { display:none; }
-.pricing-disclosure > summary::after { content:"+"; flex:0 0 30px; display:grid; place-items:center; width:30px; height:30px; border-radius:50%; color:var(--ink); background:var(--accent); font:600 20px/1 var(--display); transition:transform .25s var(--ease); }
-.pricing-disclosure[open] > summary::after { transform:rotate(45deg); }
-.pricing-disclosure > summary:hover { background:rgba(212,245,120,.18); }
-.pricing-disclosure > summary:focus-visible { outline:3px solid var(--focus-ring,#6f8e27); outline-offset:-3px; }
-.pricing-disclosure > summary span { display:block; }
-.pricing-disclosure > summary small { margin-left:auto; color:var(--muted); font:500 12px/1.45 var(--body); }
-.access-disclosure { margin:24px 0; background:#f5f6f1; box-shadow:none; }
-.access-disclosure .access-path { margin:0; border:0; border-top:1px solid var(--line); border-radius:0; }
-.plan-comparison,.assurance-disclosure { padding:0; }
-.plan-comparison > :not(summary),.assurance-disclosure > :not(summary) { margin-right:clamp(18px,4vw,42px); margin-left:clamp(18px,4vw,42px); }
-.plan-comparison > h2 { margin-top:32px; }
-.plan-comparison > p { margin-bottom:32px; }
-.assurance-disclosure { margin-top:16px; }
-.assurance-disclosure .decision-strip { margin-top:0; padding-top:24px; padding-bottom:24px; }
 
 /* Support */
 .support-path { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1px; margin-bottom:20px; padding:1px; border-radius:14px; background:var(--line); overflow:hidden; }
@@ -299,8 +268,7 @@ a { color:inherit; }
   .policy-support-band { grid-template-columns:1fr; gap:14px; }
   .policy-support-band h2 { margin-bottom:0; }
   .policy-method-list div { grid-template-columns:1fr; gap:8px; }
-  .decision-strip,.support-path { grid-template-columns:1fr; }
-  .decision-strip article { min-height:170px; }
+  .support-path { grid-template-columns:1fr; }
   .support-path > div { padding:17px; }
 }
 
@@ -312,7 +280,6 @@ a { color:inherit; }
   .support-field-full { grid-column:auto; }
   .support-form-actions { align-items:stretch; flex-direction:column; }
   .support-form-actions .button { flex-basis:auto; width:100%; }
-  .access-path { grid-template-columns:1fr; }
   .free-card { display:block; }
 }
 
@@ -328,10 +295,6 @@ a { color:inherit; }
   .hero-facts strong { margin:0 0 4px; font-size:13px; }
   .hero-purchase-panel { margin-top:18px; }
   .hero-purchase-panel .button { min-height:50px; }
-  .pricing-disclosure > summary { min-height:64px; padding:14px; }
-  .pricing-disclosure > summary small { display:none; }
-  .plan-comparison { overflow-x:hidden; }
-  .plan-comparison table { display:block; overflow-x:auto; overscroll-behavior-inline:contain; }
   .price-card,.free-card,.contact-card { padding:27px 22px; border-radius:14px; }
   .price strong { font-size:68px; }
   .button-row,.button { width:100%; }
@@ -353,7 +316,7 @@ a { color:inherit; }
 
 @media (prefers-reduced-motion:reduce) {
   html { scroll-behavior:auto; }
-  .info-nav a,.button,.policy-card,.pricing-disclosure > summary::after,.support-field input,.support-field select,.support-field textarea { transition:none; }
+  .info-nav a,.button,.policy-card,.support-field input,.support-field select,.support-field textarea { transition:none; }
 }
 
 @media print {
@@ -366,9 +329,6 @@ a { color:inherit; }
   .policy-layout { display:block; }
   .policy-page .policy-content { padding:0; border:0; box-shadow:none; }
   .policy-content section { break-inside:avoid; }
-  .pricing-disclosure { display:block; }
-  .pricing-disclosure > summary { display:none; }
-  .pricing-disclosure > :not(summary) { display:block; }
 }
 
 /* Preserve every user-facing status and long identifier without masking it. */
@@ -376,7 +336,7 @@ a { color:inherit; }
   .info-hero-grid > *,.policy-layout > *,.policy-content,
   .policy-card-grid > *,.policy-founder > *,.policy-support-band > *,
   .pricing-grid > *,.price-card > *,.free-card > *,
-  .access-path > *,.decision-strip > *,.contact-grid > *,
+  .contact-grid > *,
   .support-path > *,.support-form > *,.support-form-actions > *,
   .info-footer-grid > *
 ) { min-width:0; }
@@ -386,8 +346,8 @@ a { color:inherit; }
   .policy-content h2,.policy-content h3,.policy-content p,.policy-content li,
   .policy-card > span,.policy-card > strong,.policy-card > small,.policy-card > b,
   .policy-method-list dt,.policy-method-list dd,.policy-founder-copy,
-  .policy-founder-facts dd,.price-subtitle,.access-path,.feature-list,
-  .tier-boundary,.purchase-status,.checkout-note,.decision-strip,
+  .policy-founder-facts dd,.price-subtitle,.feature-list,
+  .purchase-status,.checkout-note,
   .support-path,.contact-email,.safety-note,
   .field-help,.support-response-time,.support-status,.footer-tagline,.footer-meta
 ) { overflow-wrap:anywhere; }

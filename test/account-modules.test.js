@@ -19,11 +19,11 @@ test("account pure logic constrains redirects and derives access state",()=>{
   assert.equal(logic.safePortalUrl("https://customer-portal.paddle.com.evil.test/cpl_123"),"");
 });
 
-test("account pure logic explains every trial, grant, subscription, and legacy access state",()=>{
+test("account pure logic explains every earlier trial, grant, subscription, and legacy access state",()=>{
   const now=Date.parse("2026-09-10T12:00:00Z"),future=now+2*24*60*60*1000;
   const discovery=(value)=>({discovery:value});
   assert.deepEqual(logic.accountAccessSummary(discovery({active:true,accessType:"trial",trial:{expiresAt:future}}),false,now),{
-    state:"Trial",detail:"2d 0h remaining",message:"Your free trial ends automatically and will never convert into a paid subscription."
+    state:"Trial",detail:"2d 0h remaining",message:"Your trial ends automatically and never charges you. Subscribe from Pricing to keep Strata+ after it ends."
   });
   assert.equal(logic.accountAccessSummary(discovery({active:true,adminGrant:{active:true,expiresAt:null}})).detail,"Until revoked");
   assert.match(logic.accountAccessSummary(discovery({active:true,adminGrant:{active:true,expiresAt:future},subscription:{id:"sub_1"}})).message,/subscription remains separate/);
@@ -65,16 +65,6 @@ test("account pure logic covers safe handoffs, useful errors, plan timing, and c
   const week=logic.weekContext(new Date(2026,8,7,8));
   assert.equal(logic.nextPlannedDay(plan,new Set(),week).day,"Monday");
   assert.equal(logic.completedThisWeek([{status:"completed",date:logic.localDateKey(week.today)},{status:"active",date:logic.localDateKey(week.today)}],week).length,1);
-  assert.equal(logic.formatDuration(59),"59 sec");assert.equal(logic.formatDuration(125),"2m 5s");
-  assert.equal(logic.recordMetric({completedSets:1,measurement:"timed",loadType:"bodyweight",maxSeconds:45}).formatted,"45 sec");
-  assert.equal(logic.recordMetric({completedSets:1,measurement:"reps",loadType:"external",maxWeight:22.5,unit:"lb"}).formatted,"22.5 lb");
-  assert.equal(logic.recordMetric({completedSets:1,measurement:"reps",loadType:"bodyweight",maxReps:12}).formatted,"12 reps");
-  assert.equal(logic.recordMetric({completedSets:0}),null);
-  const records=logic.recentRecords([
-    {status:"completed",date:"2026-09-01",startedAt:1,exerciseSummaries:[{exerciseId:"bench-press",completedSets:1,measurement:"reps",loadType:"external",maxWeight:20,unit:"kg"}]},
-    {status:"completed",date:"2026-09-08",startedAt:2,exerciseSummaries:[{exerciseId:"bench-press",completedSets:1,measurement:"reps",loadType:"external",maxWeight:25,unit:"kg"}]}
-  ],false);
-  assert.equal(records[0].exercise,"Bench Press");assert.equal(records[0].scope,"Saved-history best");
   assert.equal(logic.safePortalUrl("not a url"),"");
   assert.equal(logic.accountBoundaryChanged({status:401}),true);assert.equal(logic.accountBoundaryChanged({status:403}),true);assert.equal(logic.accountBoundaryChanged({code:"account-changed"}),true);
   assert.match(logic.securityError({status:409,message:"Pending"}),/Pending/);

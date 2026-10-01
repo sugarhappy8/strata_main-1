@@ -4,6 +4,7 @@ const test=require("node:test"),assert=require("node:assert/strict");
 const {spawn}=require("node:child_process"),{createServer}=require("node:http"),{randomBytes}=require("node:crypto");
 const {mkdirSync,mkdtempSync,rmSync}=require("node:fs"),{join}=require("node:path");
 const {DatabaseSync}=require("node:sqlite");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 
 const ROOT=join(__dirname,".."),CLIENT_BASIC=`Basic ${Buffer.from("polar-client:polar-secret").toString("base64")}`;
 const DAY=24*60*60*1000,SCOPE="sleep:read nightly_recharge:read continuous_samples:read training_sessions:read";
@@ -69,7 +70,7 @@ async function request(path,account=null,method="GET",body,headers={}){
 }
 async function account(suffix,{plus=true}={}){
   const password="strong-devices-password-123",email=`devices-${suffix}@example.test`,signup=await request("/api/signup",null,"POST",{name:`Member ${suffix}`,email,password});assert.equal(signup.status,201);
-  const me=await request("/api/me",{cookie:signup.cookie,csrf:""}),result={cookie:signup.cookie,csrf:me.data.csrfToken,id:me.data.user.id,email,password};if(plus)assert.ok([200,201].includes((await request("/api/discovery/trial",result,"POST",{})).status));return result;
+  const me=await request("/api/me",{cookie:signup.cookie,csrf:""}),result={cookie:signup.cookie,csrf:me.data.csrfToken,id:me.data.user.id,email,password};if(plus)grantStrataPlus(directory,result.id);return result;
 }
 async function signIn(member){const login=await request("/api/login",null,"POST",{email:member.email,password:member.password});assert.equal(login.status,200);const me=await request("/api/me",{cookie:login.cookie,csrf:""});return {...member,cookie:login.cookie,csrf:me.data.csrfToken};}
 async function authorize(member,code){

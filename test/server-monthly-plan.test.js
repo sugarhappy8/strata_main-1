@@ -6,6 +6,7 @@ const {spawn}=require("node:child_process");
 const {mkdirSync,mkdtempSync,rmSync}=require("node:fs");
 const {join}=require("node:path");
 const {DatabaseSync}=require("node:sqlite");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 
 const PROJECT_ROOT=join(__dirname,"..");
 let server;
@@ -64,16 +65,11 @@ async function account(suffix) {
   });
   assert.equal(signup.response.status,201);
   const me=await request("/api/me",{headers:{Cookie:signup.cookie}});
-  return {cookie:signup.cookie,csrfToken:me.data.csrfToken};
+  return {cookie:signup.cookie,csrfToken:me.data.csrfToken,id:me.data.user.id};
 }
 
-async function startTrial(accountFixture) {
-  const result=await request("/api/discovery/trial",{
-    method:"POST",
-    headers:{Cookie:accountFixture.cookie,Origin:BASE,"Content-Type":"application/json","X-CSRF-Token":accountFixture.csrfToken},
-    body:"{}"
-  });
-  assert.equal(result.response.status,201);
+function grantPlus(accountFixture) {
+  grantStrataPlus(runtimeDir,accountFixture.id);
 }
 
 function fixturePlan() {
@@ -112,8 +108,8 @@ test("Strata+ monthly plans are validated, isolated, stored, and returned with t
 
   const locked=await request("/api/monthly-plan",{headers:{Cookie:owner.cookie}});
   assert.equal(locked.response.status,402);
-  await startTrial(owner);
-  await startTrial(other);
+  grantPlus(owner);
+  grantPlus(other);
 
   const initial=await request("/api/monthly-plan",{headers:{Cookie:owner.cookie}});
   assert.equal(initial.response.status,200);

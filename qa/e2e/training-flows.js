@@ -8,6 +8,7 @@ const {tmpdir}=require("node:os");
 const {join,resolve}=require("node:path");
 const test=require("node:test");
 const {chromium}=require("playwright");
+const {grantStrataPlus}=require("../../test/support/strata-plus-access");
 
 const ROOT=join(__dirname,"..","..");
 const CAPTURE_DIR=process.env.STRATA_TRAIN_SCREENSHOT_DIR?resolve(process.env.STRATA_TRAIN_SCREENSHOT_DIR):null;
@@ -64,9 +65,8 @@ async function signup(context,label){
   assert.equal(response.status(),201,await response.text());return(await response.json()).user;
 }
 async function activatePlus(context){
-  const current=await accountPlan(context);
-  const response=await context.request.post("/api/discovery/trial",{headers:{Origin:baseUrl,"X-CSRF-Token":current.csrfToken},data:{}});
-  assert.ok([200,201].includes(response.status()),await response.text());
+  const me=await context.request.get("/api/me");assert.equal(me.status(),200,await me.text());
+  grantStrataPlus(runtimeDir,(await me.json()).user.id);
 }
 async function accountPlan(context){const response=await context.request.get("/api/plan");assert.equal(response.status(),200);return response.json();}
 async function savedAccountEdit(page,action){

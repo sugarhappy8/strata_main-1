@@ -120,7 +120,6 @@ const STORE_METHODS = Object.freeze([
   "adminControls",
   "writeAdminControls",
   "discoveryTrial",
-  "startDiscoveryTrial",
   "discoveryAccessSummary",
   "currentDiscoveryAccessSummary","entitledDiscoveryAccessSummary",
   "webhookEvent",

@@ -979,10 +979,6 @@ test("account deletion requires email confirmation, supports cancel, blocks pend
   assert.equal(firstStatus.response.status,200);
   assert.equal(firstStatus.data.active,true);
   assert.equal((await request("/api/me",{headers:{Cookie:account.cookie}})).data.user.accountDeletion.pending,true);
-  const trialWhileDeleting=await jsonRequest("/api/discovery/trial",{},
-    {cookie:account.cookie,csrf:account.csrfToken});
-  assert.equal(trialWhileDeleting.response.status,409,"a pending account deletion must block trial activation");
-  assert.equal(trialWhileDeleting.data.code,"ACCOUNT_DELETION_PENDING");
 
   const canceled=await jsonRequest("/api/account/delete/cancel",{},
     {cookie:account.cookie,csrf:account.csrfToken});

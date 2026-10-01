@@ -3,6 +3,7 @@
 const test=require("node:test"),assert=require("node:assert/strict");
 const {spawn}=require("node:child_process"),{mkdirSync,mkdtempSync,rmSync}=require("node:fs"),{join}=require("node:path");
 const {workoutFixture}=require("./support/workout-fixtures");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 
 const ROOT=join(__dirname,"..");let server,directory,base;
 async function startServer() {
@@ -26,7 +27,7 @@ async function requestWithoutOrigin(path,account,method="POST",body={}) {
 async function account(suffix,{plus=true}={}) {
   const created=await request("/api/signup",null,"POST",{name:`Training ${suffix}`,email:`training-${suffix}@example.test`,password:"strong-training-password-123"});assert.equal(created.status,201);
   const me=await request("/api/me",{cookie:created.cookie,csrfToken:""}),member={cookie:created.cookie,csrfToken:me.data.csrfToken,id:me.data.user.id};
-  if(plus)assert.ok([200,201].includes((await request("/api/discovery/trial",member,"POST",{})).status));
+  if(plus)grantStrataPlus(directory,member.id);
   return member;
 }
 function completed(id,startedAt,reps=10) {

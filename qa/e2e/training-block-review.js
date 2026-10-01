@@ -8,6 +8,7 @@ const {tmpdir}=require("node:os");
 const {join,resolve}=require("node:path");
 const test=require("node:test");
 const {chromium}=require("playwright");
+const {grantStrataPlus}=require("../../test/support/strata-plus-access");
 
 const ROOT=join(__dirname,"..","..");
 const PASSWORD="training-block-e2e-123";
@@ -36,7 +37,7 @@ test("training-block review derives time, shows only logged evidence, and confir
   const context=await browser.newContext({baseURL:baseUrl,serviceWorkers:"block",timezoneId:"UTC",reducedMotion:"reduce",viewport:{width:390,height:844}}),page=await context.newPage(),errors=[];page.on("pageerror",(error)=>errors.push(error.message));
   const signup=await context.request.post("/api/signup",{headers:{Origin:baseUrl},data:{name:"Block Review",email:"block-review@example.test",password:PASSWORD}});assert.equal(signup.status(),201,await signup.text());
   let account=await (await context.request.get("/api/plan")).json();
-  const trial=await context.request.post("/api/discovery/trial",{headers:{Origin:baseUrl,"X-CSRF-Token":account.csrfToken},data:{}});assert.ok([200,201].includes(trial.status()),await trial.text());
+  grantStrataPlus(runtimeDir,(await signup.json()).user.id);
   const plan=weeklyPlan(),savedPlan=await context.request.put("/api/plan",{headers:{Origin:baseUrl,"X-CSRF-Token":account.csrfToken},data:{plan,expectedPlanUpdatedAt:account.planUpdatedAt}});assert.equal(savedPlan.status(),200,await savedPlan.text());
   account=await (await context.request.get("/api/plan")).json();
   const block={title:"Evidence block",goal:"balanced",weeks:6,currentWeek:2,lightWeek:null,startDate:dateOffset(-7),status:"active",progressionRule:"reps-then-load"};

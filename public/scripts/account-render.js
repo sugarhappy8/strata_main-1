@@ -38,11 +38,10 @@
     }
 
     function clearPrivateData(){
-      const textIds=["accountGreeting","signedInIdentity","accountPrimaryLabel","accountNextEyebrow","accountNextTitle","accountNextDetail","accountNextMovements","accountNextSets","accountWeekScore","accountWeekDetail","accountWinsEmpty","accountAdaptationTitle","accountAdaptationDetail","accountPlanCount","accountWorkoutDays","accountAccessState","accountAccessDetail","accountMemberSince","accountDiscoveryStatus","accountBillingTitle","accountBillingBadge","accountBillingDetail","accountBillingStatus","accountSessionStatus","accountExportStatus","signedInMessage","accountDiscoveryAction","accountSecurityStatus"];
+      const textIds=["accountGreeting","signedInIdentity","accountPrimaryLabel","accountNextEyebrow","accountNextTitle","accountNextDetail","accountNextMovements","accountNextSets","accountPlanCount","accountWorkoutDays","accountAccessState","accountAccessDetail","accountMemberSince","accountDiscoveryStatus","accountBillingTitle","accountBillingBadge","accountBillingDetail","accountBillingStatus","accountSessionStatus","accountExportStatus","signedInMessage","accountDiscoveryAction","accountSecurityStatus"];
       for(const id of textIds)el(id).textContent="";
-      for(const id of ["accountWeekDays","accountWinsList","accountSessionList"])el(id).innerHTML="";
-      const progress=el("accountWeekProgress");progress.hidden=true;progress.value=0;progress.max=1;progress.textContent="";
-      for(const id of ["signedInCard","accountNextMetrics","accountWinsList","accountWinsEmpty","accountBilling","signedInMessage","accountAdminAction","accountDeleteCancel","accountRevokeOtherSessions","accountManageSubscription","accountUpdatePayment","accountCancelSubscription"])el(id).hidden=true;
+      el("accountSessionList").innerHTML="";
+      for(const id of ["signedInCard","accountNextMetrics","accountBilling","signedInMessage","accountAdminAction","accountDeleteCancel","accountRevokeOtherSessions","accountManageSubscription","accountUpdatePayment","accountCancelSubscription"])el(id).hidden=true;
       for(const id of ["accountRevokeOtherSessions","accountManageSubscription","accountUpdatePayment","accountCancelSubscription","accountExportData","accountPasswordReset","accountDeleteRequest","accountDeleteCancel","accountLogout"]){const node=el(id);node.disabled=false;setButtonBusy(node,false);}
       el("accountRevokeOtherSessions").disabled=true;el("accountSessionList").setAttribute("aria-busy","false");el("signedInCard").setAttribute("aria-busy","false");
       for(const id of ["accountBillingStatus","accountSessionStatus","accountExportStatus","accountSecurityStatus"])el(id).classList.remove("bad");
@@ -55,48 +54,18 @@
       else showRequestedPanel({requestedMode,preferredPanel});
     }
 
-    function renderWeekRail(plan,completedDays,week,{completionKnown}){
-      el("accountWeekDays").innerHTML=logic.WEEKDAYS.map((day,index)=>{
-        const scheduled=plan.days[day].length>0,complete=completionKnown&&scheduled&&completedDays.has(day),today=index===week.todayIndex;
-        const state=complete?"complete":scheduled?"scheduled":"recovery",description=complete?"completed":scheduled?completionKnown?"planned":"scheduled":"recovery";
-        return `<li class="${state}${today?" today":""}"${today?' aria-current="date"':""} aria-label="${day}, ${description}${today?", today":""}"><span>${day.slice(0,3)}</span><i aria-hidden="true">${complete?"✓":scheduled?"•":"—"}</i></li>`;
-      }).join("");
-    }
-
-    function renderWins(workouts,hasMore){
-      const completed=workouts.filter((workout)=>workout?.status==="completed"),latest=completed.slice().sort((a,b)=>Number(b.startedAt||0)-Number(a.startedAt||0))[0],records=logic.recentRecords(workouts,hasMore),wins=[];
-      if(latest)wins.push({title:"Session complete",detail:`${String(latest.title||"Workout")} · ${logic.readableDate(latest.date)} · ${Math.max(0,Number(latest.completedSets)||0)} completed sets`});
-      for(const record of records)wins.push({title:record.exercise,detail:`${record.scope} · ${record.label} ${record.value} · ${logic.readableDate(record.date)}`});
-      const list=el("accountWinsList"),empty=el("accountWinsEmpty");
-      if(!wins.length){list.hidden=true;list.innerHTML="";empty.hidden=false;empty.textContent="Complete a session to start a private, saved progress trail.";return records;}
-      list.innerHTML=wins.map((win,index)=>`<li><span aria-hidden="true">${index===0?"✓":"↑"}</span><div><strong>${logic.escapeHtml(win.title)}</strong><small>${logic.escapeHtml(win.detail)}</small></div></li>`).join("");
-      list.hidden=false;empty.hidden=true;return records;
-    }
-
-    function renderDashboard(plan,user,{workouts=null,hasMore=false,historyError=false}={}){
+    function renderDashboard(plan,user,{workouts=null,historyError=false}={}){
       const summary=logic.planSummary(plan),week=logic.weekContext(now()),historyAvailable=Array.isArray(workouts),weekWorkouts=historyAvailable?logic.completedThisWeek(workouts,week):[];
       const completedDays=new Set(weekWorkouts.map((workout)=>String(workout.planDay||"")).filter((day)=>summary.scheduled.includes(day))),active=historyAvailable?workouts.find((workout)=>workout?.status==="active"):null;
       const discoveryActive=user?.discovery?.active===true,historyLoading=discoveryActive&&!historyAvailable&&!historyError;
       el("accountPlanCount").textContent=String(summary.movements);el("accountWorkoutDays").textContent=String(summary.scheduled.length);
-      renderWeekRail(plan,completedDays,week,{completionKnown:historyAvailable});
-
-      const progress=el("accountWeekProgress"),weekSets=weekWorkouts.reduce((total,workout)=>total+Math.max(0,Number(workout.completedSets)||0),0);
-      if(historyAvailable&&summary.scheduled.length){
-        progress.hidden=false;progress.max=summary.scheduled.length;progress.value=Math.min(completedDays.size,summary.scheduled.length);progress.textContent=`${Math.round(progress.value/progress.max*100)}%`;
-        el("accountWeekScore").textContent=`${progress.value}/${progress.max}`;
-        el("accountWeekDetail").textContent=progress.value===progress.max?`Week complete: ${weekWorkouts.length} saved ${weekWorkouts.length===1?"session":"sessions"} and ${weekSets} completed ${weekSets===1?"set":"sets"}.`:`${weekWorkouts.length} saved ${weekWorkouts.length===1?"session":"sessions"} and ${weekSets} completed ${weekSets===1?"set":"sets"} this week.`;
-      }else{
-        progress.hidden=true;progress.value=0;progress.max=Math.max(1,summary.scheduled.length);
-        el("accountWeekScore").textContent=summary.scheduled.length?`${summary.scheduled.length} ${summary.scheduled.length===1?"day":"days"}`:"No plan";
-        el("accountWeekDetail").textContent=!summary.scheduled.length?"No training days are scheduled yet.":historyLoading?"Checking your saved completion history…":historyError?"Completion history could not be loaded. Your saved schedule is still shown.":"Your weekly structure is ready. Completion history is available in the Strata+ workout room.";
-      }
 
       const primary=el("accountPrimaryAction"),primaryLabel=el("accountPrimaryLabel"),nextTitle=el("accountNextTitle"),nextDetail=el("accountNextDetail"),nextEyebrow=el("accountNextEyebrow"),nextMetrics=el("accountNextMetrics");nextMetrics.hidden=true;
       if(active){
         nextEyebrow.textContent="Workout in progress";nextTitle.textContent=String(active.title||"Open workout");nextDetail.textContent=`Started ${logic.readableDate(active.date)} · ${Math.max(0,Number(active.completedSets)||0)} of ${Math.max(0,Number(active.totalSets)||0)} sets completed.`;
         primary.href=`/workout.html#resume=${encodeURIComponent(active.id)}`;primaryLabel.textContent="Continue workout";
       }else if(!summary.scheduled.length){
-        nextEyebrow.textContent="Start here";nextTitle.textContent="Build a week you can repeat.";nextDetail.textContent="Choose your training days and movements before tracking progress.";primary.href=discoveryActive?"/onboarding.html":"/planner.html";primaryLabel.textContent="Build your week";
+        nextEyebrow.textContent="Start here";nextTitle.textContent="Build a week you can repeat.";nextDetail.textContent="Choose your training days and movements to get started.";primary.href=discoveryActive?"/onboarding.html":"/planner.html";primaryLabel.textContent="Build your week";
       }else{
         const next=logic.nextPlannedDay(plan,completedDays,week),movements=next?.items.length||0,sets=(next?.items||[]).reduce((total,item)=>total+Math.max(0,Math.round(Number(item?.sets)||0)),0);
         const when=next?.offset===0?"Today":next?.offset===1?"Tomorrow":next?.offset>=7?`Next ${next.day}`:next?.day||"Next up";
@@ -105,27 +74,11 @@
         el("accountNextMovements").textContent=String(movements);el("accountNextSets").textContent=String(sets);nextMetrics.hidden=false;
         primary.href=discoveryActive?`/workout.html?day=${encodeURIComponent(next.day)}`:"/planner.html";primaryLabel.textContent=discoveryActive?"Open next workout":"Open your week";
       }
-
-      const winsEmpty=el("accountWinsEmpty"),winsList=el("accountWinsList");let records=[];
-      if(historyAvailable)records=renderWins(workouts,hasMore)||[];
-      else{winsList.hidden=true;winsList.innerHTML="";winsEmpty.hidden=false;winsEmpty.textContent=historyLoading?"Loading recent saved sessions…":historyError?"Recent session history could not be loaded. Nothing was changed.":"Workout history is not available in this account view. Your saved plan is still ready.";}
-
-      const adaptationTitle=el("accountAdaptationTitle"),adaptationDetail=el("accountAdaptationDetail");
-      if(!summary.scheduled.length){adaptationTitle.textContent="Start with a repeatable week.";adaptationDetail.textContent="A stable schedule makes future session comparisons meaningful. STRATA will not infer readiness from a plan alone.";}
-      else if(historyLoading){adaptationTitle.textContent="Build a clean baseline.";adaptationDetail.textContent="STRATA is checking repeat movements in your saved sessions. Recovery and form are never guessed from set totals.";}
-      else if(historyError||!discoveryActive){adaptationTitle.textContent="Your week has a shape.";adaptationDetail.textContent=`${summary.scheduled.length} planned ${summary.scheduled.length===1?"day gives":"days give"} you a repeatable structure. No training adaptation is claimed without comparable session data.`;}
-      else if(active){adaptationTitle.textContent="Finish the open session.";adaptationDetail.textContent="An in-progress workout is the clearest next signal. Finish or close it before changing the week.";}
-      else if(!weekWorkouts.length&&!workouts.some((workout)=>workout?.status==="completed")){adaptationTitle.textContent="Create the first data point.";adaptationDetail.textContent="Complete one saved workout. A repeat in the same movement format and unit will make progress comparable.";}
-      else if(records.length){adaptationTitle.textContent="Progress is moving.";adaptationDetail.textContent=`${records.length} repeat ${records.length===1?"movement exceeded":"movements exceeded"} an earlier saved result. Keep the format and unit consistent; recovery and form are not measured here.`;}
-      else if(summary.scheduled.length&&completedDays.size===summary.scheduled.length){adaptationTitle.textContent="Your schedule is complete.";adaptationDetail.textContent="Every planned day has a saved completion this week. Review recovery and notes before changing volume; this dashboard does not measure readiness.";}
-      else{adaptationTitle.textContent="Keep the comparison clean.";adaptationDetail.textContent="Repeat key movements in the same format and unit. STRATA will surface a saved result only when it exceeds an earlier comparable session.";}
     }
 
     function renderDashboardUnavailable(){
       el("accountNextEyebrow").textContent="Saved week unavailable";el("accountNextTitle").textContent="Your account is still safe.";el("accountNextDetail").textContent="STRATA could not load your plan right now. Refresh or open My Plan to retry.";el("accountNextMetrics").hidden=true;
-      el("accountWeekScore").textContent="—";el("accountWeekProgress").hidden=true;el("accountWeekDetail").textContent="Weekly progress could not be loaded.";el("accountWeekDays").innerHTML="";
-      el("accountWinsList").hidden=true;el("accountWinsList").innerHTML="";el("accountWinsEmpty").hidden=false;el("accountWinsEmpty").textContent="Recent activity could not be loaded. Nothing was changed.";
-      el("accountAdaptationTitle").textContent="Keep your current plan.";el("accountAdaptationDetail").textContent="There is not enough verified data to suggest a training change right now.";el("accountPrimaryAction").href="/planner.html";el("accountPrimaryLabel").textContent="Open My Plan";
+      el("accountPrimaryAction").href="/planner.html";el("accountPrimaryLabel").textContent="Open My Plan";
     }
 
     function renderAccountBilling(user){

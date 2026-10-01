@@ -5,6 +5,7 @@ const assert=require("node:assert/strict");
 const {spawn}=require("node:child_process");
 const {mkdirSync,mkdtempSync,rmSync}=require("node:fs");
 const {join}=require("node:path");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 
 const PROJECT_ROOT=join(__dirname,"..");
 let app;
@@ -91,14 +92,7 @@ async function signup(suffix,name=`Community ${suffix}`){
   return {cookie:result.cookie,csrfToken:me.data.csrfToken,user:me.data.user,email};
 }
 
-async function startTrial(account){
-  const result=await request("/api/discovery/trial",{
-    method:"POST",
-    headers:{Cookie:account.cookie,Origin:BASE,"Content-Type":"application/json","X-CSRF-Token":account.csrfToken},
-    body:"{}"
-  });
-  assert.ok([200,201].includes(result.response.status));
-}
+function grantPlus(account){grantStrataPlus(runtimeDir,account.user.id);}
 
 function weeklyPlan(exerciseId="flat-dumbbell-press",instanceId="community-instance-001"){
   const days=Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map((day)=>[day,[]]));
@@ -205,7 +199,7 @@ test("signed-in members can publish a private plan snapshot, while the community
   const lockedApply=await write(viewer,`/api/community-plans/${communityPlanId}/apply`,{});
   assert.equal(lockedApply.response.status,402);
 
-  await startTrial(viewer);
+  grantPlus(viewer);
   const catalog=await request("/api/community-plans?limit=10&offset=0",{headers:{Cookie:viewer.cookie}});
   assert.equal(catalog.response.status,200);
   assert.equal(catalog.response.headers.get("cache-control"),"no-store");
@@ -266,7 +260,7 @@ test("signed-in members can publish a private plan snapshot, while the community
 test("only an upload owner can unpublish, republish, or delete it, and unpublished plans disappear from Strata+",async()=>{
   const owner=await signup("Manager");
   const viewer=await signup("Reader");
-  await startTrial(viewer);
+  grantPlus(viewer);
   const ownerSave=await saveWeeklyPlan(owner,weeklyPlan("neutral-pulldown","managed-plan-001"));
   const created=await write(owner,"/api/community-plans",{
     title:"Managed back day",description:"Owner-controlled listing.",published:true,

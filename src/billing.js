@@ -43,8 +43,9 @@ const PADDLE_CANCELABLE_STALE_STATUSES=new Set(["ready","billed"]);
 const eventTime=(value,fallback=Date.now())=>{const parsed=Date.parse(String(value||""));return Number.isFinite(parsed)?parsed:fallback;};
 
 /**
- * Bound a stored trial to the server-owned seven-day maximum. Old or malformed
- * rows cannot exceed this maximum. Valid earlier expiries remain unchanged.
+ * Strata+ no longer offers a free trial, so no account is eligible to start
+ * one. A trial started before Build 8.9.0 keeps its recorded expiry, bounded
+ * by the old seven-day maximum so a malformed row can never extend access.
  * @param {import("./domain-types").DiscoveryTrialRow|null|undefined} trial
  * @param {number} [now]
  * @returns {import("./domain-types").DiscoveryTrialState}
@@ -58,7 +59,7 @@ function discoveryTrialState(trial,now=Date.now()) {
   const expiresAt=Number.isSafeInteger(storedExpiresAt)&&maximumExpiresAt!==null
     ? Math.min(Number(storedExpiresAt),maximumExpiresAt)
     : null;
-  return {eligible:!trial,active:expiresAt!==null&&expiresAt>now,startedAt,expiresAt};
+  return {eligible:false,active:expiresAt!==null&&expiresAt>now,startedAt,expiresAt};
 }
 
 /**
@@ -497,31 +498,10 @@ function createBillingService({
     json(res,200,{ok:true,outcome});
   }
 
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
-  async function startTrial(req,res) {
-    const auth=authService();
-    const session=await auth.requireSession(req,res);if(!session)return;
-    if(!auth.validCsrf(req,session)){
-      json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});return;
-    }
-    await bodyJson(req);
-    if(await hasCurrentPaidAccess(session.id)||adminGrantState(await store.adminControls(session.id),now()).active){
-      json(res,409,{error:"Strata+ is already active for this account.",code:"DISCOVERY_ALREADY_ACTIVE"});return;
-    }
-    const timestamp=now();
-    if(await store.activeAccountDeletion(session.id,timestamp)){
-      json(res,409,{error:"Cancel the pending account-deletion request before starting a trial.",code:"ACCOUNT_DELETION_PENDING"});return;
-    }
-    if(!rateAllowed(req,`discovery-trial:${session.id}`,5)){
-      json(res,429,{error:"Too many trial attempts. Try again later."});return;
-    }
-    const created=await store.startDiscoveryTrial(session.id,timestamp,timestamp+STRATA_PLUS_TRIAL_MS);
-    const trial=created||await store.discoveryTrial(session.id);
-    if(!trial){json(res,409,{error:"The trial could not be started for this account.",code:"TRIAL_UNAVAILABLE"});return;}
-    if(!created&&Number(trial.expires_at)<=timestamp){
-      json(res,409,{error:"This account has already used its one-time Strata+ trial.",code:"TRIAL_ALREADY_USED"});return;
-    }
-    json(res,created?201:200,{ok:true,user:await getUserPayload(session)});
+  /** @param {import("./domain-types").HttpResponse} res */
+  function retiredTrial(res) {
+    // Installed apps from earlier builds may still offer the old trial button.
+    json(res,410,{error:"The free Strata+ trial is no longer offered. Subscribe to use Strata+.",code:"TRIAL_RETIRED"});
   }
 
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
@@ -689,7 +669,7 @@ function createBillingService({
       json(res,200,publicPaymentConfig(paymentConfig));return true;
     }
     if(url.pathname==="/api/discovery/trial"&&req.method==="POST"){
-      await startTrial(req,res);return true;
+      retiredTrial(res);return true;
     }
     if(url.pathname==="/api/billing/checkout"&&req.method==="POST"){
       await beginCheckout(req,res);return true;

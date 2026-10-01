@@ -6,10 +6,9 @@
 })(typeof globalThis!=="undefined"?globalThis:this,function(){
   "use strict";
 
-  function bind({windowImpl=globalThis.window,documentImpl=globalThis.document,buyButton,trialButton,checkButton,actions}){
+  function bind({windowImpl=globalThis.window,documentImpl=globalThis.document,buyButton,checkButton,actions}){
     const recheckAccount=()=>{if(!documentImpl.visibilityState||documentImpl.visibilityState==="visible")void actions.recheckAccount();};
     buyButton.addEventListener("click",()=>{void actions.openCheckout();});
-    trialButton.addEventListener("click",()=>{void actions.startTrial();});
     checkButton.addEventListener("click",()=>{void actions.refreshAccess({focus:true});});
     windowImpl?.addEventListener?.("online",actions.renderPurchaseState);
     windowImpl?.addEventListener?.("offline",actions.renderPurchaseState);

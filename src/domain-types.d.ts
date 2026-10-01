@@ -349,7 +349,6 @@ export interface BillingStore {
   discoveryTrial(userId:string):Promise<DiscoveryTrialRow|null>;
   currentDiscoveryAccessSummary(userId:string,priceId:string,productId:string,now?:number):Promise<DiscoveryAccessSummary>;
   entitledDiscoveryAccessSummary(userId:string,priceIds:readonly string[],productId:string,now?:number):Promise<DiscoveryAccessSummary>;
-  startDiscoveryTrial(userId:string,startedAt:number,expiresAt:number):Promise<DiscoveryTrialRow|null>;
   activeAccountDeletion(userId:string,now:number):Promise<JsonObject|null>;
   checkoutCreationForUser(userId:string):Promise<CheckoutClaimRow|null>;
   claimCheckoutCreation(claim:CheckoutClaimWrite):Promise<CheckoutClaimRow|null>;
@@ -737,7 +736,7 @@ export type BillingPreparedStatementName=
   |"bindPurchaseSubscription"|"createPaddleSubscription"|"updatePaddleSubscription"|"updatePaddleSubscriptionAfterCatalog"|"replaceSubscriptionPurchaseCatalog"
   |"subscriptionById"|"subscriptionForUser"|"upsertAdjustment"|"adjustmentById"
   |"revokePurchase"|"hasDiscoveryAccess"|"hasCurrentDiscoveryAccess"|"hasEntitledDiscoveryAccess"|"activeDiscoveryTrial"
-  |"activeAdminGrant"|"discoveryTrial"|"startDiscoveryTrial"|"discoveryAccessSummary"
+  |"activeAdminGrant"|"discoveryTrial"|"discoveryAccessSummary"
   |"currentDiscoveryAccessSummary"|"entitledDiscoveryAccessSummary"|"webhookEvent"|"recordWebhookEvent";
 
 export interface LocalBillingStoreDependencies {

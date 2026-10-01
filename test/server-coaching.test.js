@@ -5,6 +5,7 @@ const {spawn}=require("node:child_process"),{mkdirSync,mkdtempSync,rmSync}=requi
 const {DatabaseSync}=require("node:sqlite");
 const {ENERGY_MODEL_VERSION,addDays,currentWeekStart,localDate}=require("../src/coaching-core");
 const {logPayload}=require("../src/coaching");
+const {grantStrataPlus}=require("./support/strata-plus-access");
 const ROOT=join(__dirname,"..");let server,directory,base;
 
 async function launch(){
@@ -14,7 +15,7 @@ async function launch(){
 }
 async function stop(){if(server&&server.exitCode===null)await new Promise((resolve)=>{const timer=setTimeout(()=>server.kill("SIGKILL"),2000);server.once("exit",()=>{clearTimeout(timer);resolve();});server.kill("SIGTERM");});if(directory)rmSync(directory,{recursive:true,force:true});}
 async function request(path,account=null,method="GET",body,headers={}){const response=await fetch(`${base}${path}`,{method,headers:{Origin:base,"Content-Type":"application/json",...(account?{Cookie:account.cookie,"X-CSRF-Token":account.csrf}:{}),...headers},...(body===undefined?{}:{body:typeof body==="string"?body:JSON.stringify(body)})});return {status:response.status,data:await response.json(),cookie:response.headers.get("set-cookie")?.split(";")[0]||""};}
-async function account(suffix,{plus=true}={}){const signup=await request("/api/signup",null,"POST",{name:`Coach ${suffix}`,email:`coach-${suffix}@example.test`,password:"strong-coaching-password-123"});assert.equal(signup.status,201);const me=await request("/api/me",{cookie:signup.cookie,csrf:""});const result={cookie:signup.cookie,csrf:me.data.csrfToken,id:me.data.user.id};if(plus)assert.ok([200,201].includes((await request("/api/discovery/trial",result,"POST",{})).status));return result;}
+async function account(suffix,{plus=true}={}){const signup=await request("/api/signup",null,"POST",{name:`Coach ${suffix}`,email:`coach-${suffix}@example.test`,password:"strong-coaching-password-123"});assert.equal(signup.status,201);const me=await request("/api/me",{cookie:signup.cookie,csrf:""});const result={cookie:signup.cookie,csrf:me.data.csrfToken,id:me.data.user.id};if(plus)grantStrataPlus(directory,result.id);return result;}
 function profile(overrides={}){
   const version=overrides.version??4,activity=version===4?{dailyMovement:"mostly_seated",additionalActivityMinutesPerWeek:0,additionalActivityIntensity:"moderate"}:{lifestyleActivity:"moderately_active"};
   return {version,measurementSystem:"metric",preferredLoadUnit:"kg",age:30,heightCm:180,weightKg:80,bodyFatPercent:null,sexForEquation:"male",goal:"maintenance",goalPace:"moderate",experience:"intermediate",...activity,workoutDays:["Monday","Wednesday","Friday"],sessionMinutes:60,usualExercises:[{exerciseId:"flat-dumbbell-press",maxSets:4,maxReps:10,maxWeightKg:30}],availableEquipment:[],movementLimitations:[],caloriePattern:"zigzag",flexibleDay:null,macroPreference:"balanced",timeZone:"Asia/Dubai",...overrides};
@@ -161,7 +162,7 @@ test("expired Strata+ access denies existing coaching data without mutating it",
   assert.equal((await request(`/api/coaching/logs/${date}`,member,"PUT",{log:{calories:2000},expectedRevision:0})).status,200);
   const database=new DatabaseSync(join(directory,"strata.sqlite"));
   const before={profile:database.prepare("SELECT profile_json,revision FROM coaching_profiles WHERE user_id=?").get(member.id),log:database.prepare("SELECT calories,revision FROM coaching_daily_logs WHERE user_id=? AND log_date=?").get(member.id,date)};
-  database.prepare("UPDATE discovery_trials SET expires_at=? WHERE user_id=?").run(Date.now()-1,member.id);database.close();
+  database.prepare("UPDATE admin_account_controls SET grant_expires_at=? WHERE user_id=?").run(Date.now()-1,member.id);database.close();
   const attempts=[
     ["/api/coaching/profile","GET"],
     ["/api/coaching/profile","PUT",{profile:profile({weightKg:99}),expectedRevision:1}],

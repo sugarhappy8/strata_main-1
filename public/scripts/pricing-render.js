@@ -7,10 +7,9 @@
   "use strict";
 
   function createRenderer({state,nodes,logic,navigatorImpl=globalThis.navigator,locationImpl=globalThis.location,frame=globalThis.requestAnimationFrame}){
-    const{panel,statusNode,signupLink,loginLink,trialButton,buyButton,openLink,manageLink,checkButton}=nodes;
+    const{panel,statusNode,signupLink,loginLink,buyButton,openLink,manageLink,checkButton}=nodes;
     const pageReason=new URLSearchParams(locationImpl.search).get("reason");
-    const trialRequested=new URLSearchParams(locationImpl.search).get("trial")==="1";
-    // Members sent here from Strata AI return to it after signing up, signing in, or starting the trial.
+    // Members sent here from Strata AI return to it after signing up, signing in, or subscribing.
     if(pageReason==="ai"){
       signupLink.href="/account.html?mode=signup&next=ai";loginLink.href="/account.html?mode=login&next=ai";openLink.href="/ai";
       if(openLink.firstChild?.nodeType===3)openLink.firstChild.textContent="Open Strata AI ";
@@ -28,33 +27,26 @@
     function renderPurchaseState(){
       const signedIn=Boolean(state.user?.id);
       const active=logic.discoveryIsActive(state.user);
-      const trial=state.user?.discovery?.trial;
       const subscription=logic.subscriptionFor(state.user),subscriptionStatus=String(subscription?.status||"");
-      const paid=logic.paidAccessType(state.user),trialAccess=active&&state.user?.discovery?.accessType==="trial";
+      // The free trial is retired; a trial started before then still runs to its recorded end and may subscribe early.
+      const legacyTrial=active&&state.user?.discovery?.accessType==="trial"?state.user.discovery.trial:null;
       const grandfathered=active&&!subscription&&["lifetime","paid"].includes(String(state.user?.discovery?.accessType||""));
-      const trialEligible=signedIn&&!active&&!subscription&&trial?.eligible===true;
       const online=navigatorImpl.onLine!==false;
       const checkoutReady=Boolean(state.config&&!state.configError&&state.paddleReady&&online);
       const paused=subscriptionStatus==="paused",canceled=subscriptionStatus==="canceled";
-      const canSubscribe=signedIn&&(!active||trialAccess)&&!paused;
+      const canSubscribe=signedIn&&(!active||Boolean(legacyTrial))&&!paused;
       const checkoutBlocked=state.user?.discovery?.checkoutBlocked===true;
       const checkoutAccountChanged=Boolean(state.currentCheckoutUserId)&&String(state.user?.id||"")!==state.currentCheckoutUserId;
 
       signupLink.hidden=signedIn;
       loginLink.hidden=signedIn;
-      // An eligible member gets one obvious next step. Checkout appears after the
-      // trial starts or once that one-time trial has already been used.
-      buyButton.hidden=!canSubscribe||trialEligible;
-      trialButton.hidden=!trialEligible;
+      buyButton.hidden=!canSubscribe;
       openLink.hidden=!signedIn||!active;
       manageLink.hidden=!signedIn||!subscription;
       checkButton.hidden=!signedIn||logic.paidAccessReady(state.user)||!state.awaitingAccess;
       buyButton.disabled=state.busy||state.awaitingAccess||state.checkoutOpen||!checkoutReady||checkoutBlocked;
-      trialButton.disabled=state.busy||state.awaitingAccess||state.checkoutOpen||!online;
       checkButton.disabled=state.busy;
-      buyButton.classList.toggle("button-dark",true);
-      buyButton.classList.toggle("button-light",false);
-      buyButton.textContent=trialAccess?"Subscribe now · $2.99 USD / month →":canceled?"Restart Strata+ · $2.99 USD / month →":"Subscribe · $2.99 USD / month →";
+      buyButton.textContent=canceled?"Restart Strata+ →":"Subscribe to Strata+ →";
       panel.setAttribute("aria-busy",String(state.busy||state.awaitingAccess));
 
       if(state.busy&&state.awaitingAccess){setStatus("Your checkout completed. STRATA is securely confirming access…","warn");return;}
@@ -73,12 +65,12 @@
             ?"Your existing monthly subscription remains separate and is not canceled by this grant; manage it from Account."
             :grandfathered
               ?"Your grandfathered lifetime access remains separate and does not renew."
-              :"It did not create a paid subscription or consume your trial.";
+              :"It did not create a paid subscription.";
           setStatus(`You have complimentary Strata+ ${grant?.expiresAt==null?"until an administrator revokes it":`until ${new Date(grant.expiresAt).toLocaleString([], {dateStyle:"medium",timeStyle:"short"})}`}. This grant never charges you. ${coexistence}`,"good");return;
         }
-        if(trial?.active&&!paid&&!subscription){
-          const expiry=new Date(trial.expiresAt).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
-          setStatus(`Your free Strata+ trial is active until ${expiry}. No card was charged, it will end automatically, and subscribing still requires your explicit approval.${state.configError?` ${state.configError} You can keep using your active trial.`:""}`,state.configError?"warn":"good");
+        if(legacyTrial&&!subscription){
+          const expiry=new Date(legacyTrial.expiresAt).toLocaleString([], {dateStyle:"medium",timeStyle:"short"});
+          setStatus(`Your Strata+ trial ends ${expiry} and never charges you. Subscribe any time to keep Strata+ after it ends.${state.configError?` ${state.configError}`:""}`,state.configError?"warn":"good");
         }else if(grandfathered)setStatus("Your prior lifetime Strata+ purchase is grandfathered. It stays active with no monthly renewal or recurring charge.","good");
         else if(subscription?.scheduledChange?.action==="cancel")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its cancellation takes effect. It will not renew after that date.`,"warn");
         else if(subscription?.scheduledChange?.action==="pause")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its scheduled pause takes effect and paid access stops.`,"warn");
@@ -88,27 +80,23 @@
         return;
       }
       if(!signedIn){
-        const message=trialRequested
-          ?"Sign in or create an account to start your one free 7-day Strata+ trial. No card is required."
-          :pageReason==="ai"
-            ?"Strata AI is included with Strata+. Create an account or sign in, then start your free 7-day trial. No card required."
+        const message=pageReason==="ai"
+          ?"Strata AI is included with Strata+. Create an account or sign in, then subscribe to use it."
           :pageReason==="access"||pageReason==="discovery-required"
-            ?"Sign in or create an account, then start the free trial or explicitly subscribe for $2.99 USD per month to continue."
-            :"Create an account or sign in before starting the trial or subscribing, so access follows you across devices.";
+            ?"That page is part of Strata+. Sign in or create an account, then subscribe to continue."
+            :"Create an account or sign in to subscribe, so access follows you across devices.";
         setStatus(message);return;
       }
       if(paused){setStatus("Your monthly subscription is paused and paid access is inactive. Open Account to manage it in Paddle.","warn");return;}
       if(canceled){setStatus("Your previous monthly subscription is canceled and will not renew. You can explicitly start a new subscription whenever you choose.","warn");return;}
-      if(!online){setStatus("You are offline. Reconnect before starting a trial or opening secure checkout.","warn");return;}
+      if(!online){setStatus("You are offline. Reconnect before opening secure checkout.","warn");return;}
       if(checkoutBlocked){setStatus("New payment sessions are disabled for this account. Contact STRATA for help.","warn");return;}
-      if(trial?.eligible&&pageReason==="ai"){setStatus("Strata AI is included with Strata+. Start your free 7-day trial to use it. No card required and no automatic charge.");return;}
-      if(state.configError){setStatus(`${state.configError}${trial?.eligible?" You can still start your free 7-day trial; no card required.":""}`,"warn");return;}
-      if(trial?.eligible){setStatus("Your account is eligible for one free 7-day Strata+ trial. No card required and no automatic charge.");return;}
+      // Why the member arrived stays visible even when checkout cannot open right now.
+      const reasonNote=pageReason==="ai"?"Strata AI is included with Strata+.":pageReason==="access"||pageReason==="discovery-required"?"That page is part of Strata+.":"";
+      if(state.configError){setStatus(`${reasonNote?`${reasonNote} `:""}${state.configError}`,"warn");return;}
       if(pageReason==="access-revoked"){setStatus("Strata+ access is no longer active, usually because a subscription ended or a charge was refunded or reversed. You may subscribe again or contact STRATA if this is unexpected.","warn");return;}
-      if(pageReason==="ai"){setStatus("Strata AI is included with Strata+ for $2.99 USD per month. It renews monthly until canceled.");return;}
-      if(pageReason==="access"||pageReason==="discovery-required"){setStatus("Strata+ is $2.99 USD per month and renews monthly until canceled.");return;}
-      if(trial&&trial.eligible===false)setStatus("This account has already used its free trial. Subscribe for $2.99 USD per month; it renews monthly until canceled.");
-      else setStatus("Signed in and ready for secure Paddle checkout.");
+      if(reasonNote){setStatus(`${reasonNote} Subscribe to ${pageReason==="ai"?"use it":"continue"}.`);return;}
+      setStatus("Signed in and ready for secure Paddle checkout.");
     }
 
     return{renderPurchaseState,setStatus};

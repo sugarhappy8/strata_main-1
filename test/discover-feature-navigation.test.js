@@ -10,7 +10,7 @@ const read=(...parts)=>readFileSync(join(PROJECT_ROOT,"public",...parts),"utf8")
 const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-sharing.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover.js"];
 const discoverScript=()=>discoverModules.map(name=>read("scripts",name)).join("\n");
 
-test("Strata+ progressively enhances seven primary destinations and focused supporting tools",()=>{
+test("Strata+ progressively enhances four primary destinations and focused supporting tools",()=>{
   const html=read("pages","discover.html");
   const script=discoverScript();
   const panels=[...html.matchAll(/<section\b([^>]*\bdata-feature-panel="([^"]+)"[^>]*)>/g)];
@@ -19,7 +19,10 @@ test("Strata+ progressively enhances seven primary destinations and focused supp
   assert.deepEqual(panels.map((match)=>match[2]).sort(),["battle","coaching","community","explore","library","monthly","nutrition","plan","profile","progress","recommendations","recovery","session","today"]);
   assert.equal(blocks.length,4);
   for(const label of ["Recommendations","Library","Compare","Preferences"])assert.match(html,new RegExp(`<span>${label}</span>`));
-  for(const destination of ["today","plan","progress","explore","nutrition","recovery"])assert.match(html,new RegExp(`class="destination-link"[^>]*data-feature-target="${destination}"[^>]*aria-controls="[^"]+"[^>]*aria-expanded="false"`));
+  const destinationNav=html.match(/<nav class="destination-nav"[\s\S]*?<\/nav>/)?.[0]||"";
+  assert.deepEqual([...destinationNav.matchAll(/data-feature-target="([^"]+)"/g)].map((match)=>match[1]),["today","recovery","progress","explore"]);
+  assert.equal((destinationNav.match(/class="destination-link"/g)||[]).length,4,"Plan, Train, and Nutrition moved into Overview");
+  for(const destination of ["today","progress","explore","recovery"])assert.match(destinationNav,new RegExp(`class="destination-link"[^>]*data-feature-target="${destination}"[^>]*aria-controls="[^"]+"[^>]*aria-expanded="false"`));
   for(const [tag] of panels)assert.doesNotMatch(tag,/\bhidden\b/,"feature panels must remain visible when JavaScript is unavailable");
   for(const [tag] of blocks){
     assert.match(tag,/\baria-controls="[^"]+"/);
@@ -31,9 +34,31 @@ test("Strata+ progressively enhances seven primary destinations and focused supp
   const primaryExplore=html.match(/<nav class="feature-grid explore-tool-grid explore-primary-tools"[\s\S]*?<\/nav>/)?.[0]||"";
   assert.equal((primaryExplore.match(/class="feature-block"/g)||[]).length,2,"Explore should present only recommendations and the library as immediate tools");
   assert.doesNotMatch(html,/<details class="explore-advanced-tools"/);
-  assert.match(html,/class="destination-link" href="\/workout\.html"/);
+  const overview=html.match(/<section class="studio-hero feature-panel" id="todayWorkspace"[\s\S]*?<\/section>\n\n {6}<section class="plan-workspace/)?.[0]||"";
+  const tools=overview.match(/<nav class="overview-tool-grid"[\s\S]*?<\/nav>/)?.[0]||"";
+  assert.match(tools,/class="overview-tool" href="#planWorkspace" data-feature-target="plan" aria-controls="planWorkspace" aria-expanded="false"><span class="overview-tool-label">Plan<\/span>/);
+  assert.match(tools,/class="overview-tool" href="\/workout\.html"><span class="overview-tool-label">Train<\/span>/,"Train opens its own page");
+  assert.match(tools,/class="overview-tool" href="#nutritionWorkspace" data-feature-target="nutrition" aria-controls="nutritionWorkspace" aria-expanded="false"><span class="overview-tool-label">Nutrition<\/span>/);
+  assert.match(overview,/id="plusAskAi" href="\/ai">Ask Strata AI to plan/,"Overview keeps its Strata AI action");
+  for(const panel of ["planWorkspace","nutritionWorkspace"]){
+    const section=html.match(new RegExp(`<section[^>]*id="${panel}"[\\s\\S]*?<div class="studio-container">\\s*<a class="tool-menu-link[^"]*" href="#todayWorkspace" data-feature-target="today">Back to Overview`));
+    assert.ok(section,`${panel} offers a way back to Overview`);
+  }
   assert.match(html,/<details class="plan-tool-disclosure" id="workoutBuilderDetails">/);
   assert.doesNotMatch(html,/<details class="(?:explore-advanced-tools|plan-tool-disclosure)"[^>]*\bopen\b/,"secondary tools should start collapsed");
+});
+
+test("the Strata AI bubble stays on every Strata+ view and explains itself on hover or focus",()=>{
+  const html=read("pages","discover.html"),css=read("styles","discover.css");
+  const bubble=html.match(/<a class="ai-bubble"[\s\S]*?<\/a>/)?.[0]||"";
+  assert.match(bubble,/href="\/ai"/);
+  assert.match(bubble,/aria-label="Strata AI"/);
+  assert.match(bubble,/aria-describedby="strataAiBubbleTip"/);
+  assert.match(bubble,/<span class="ai-bubble-tip" id="strataAiBubbleTip" role="tooltip"><strong>This is Strata AI<\/strong> Press it/);
+  assert.ok(html.indexOf(bubble)>html.indexOf("</main>"),"the bubble sits outside every feature panel so it never hides with one");
+  assert.match(css,/\.ai-bubble \{ position:fixed;/);
+  assert.match(css,/\.ai-bubble:hover \.ai-bubble-tip,\.ai-bubble:focus-visible \.ai-bubble-tip \{ opacity:1; visibility:visible;/);
+  assert.match(css,/@media print \{ \.ai-bubble \{ display:none !important; \} \}/);
 });
 
 test("coaching profile setup presents four navigable cards and labels every capability input",()=>{
@@ -309,7 +334,7 @@ test("Strata+ copy and visual polish remain resilient across content and breakpo
   assert.match(html,/id="recommendationTitle"[^>]*>Best exercises <em>for you\.<\/em>/);
   assert.doesNotMatch(script,/recommendationTitle"\)\.innerHTML/,"A display name must not be interpolated into the recommendation heading");
   assert.match(html,/>Explore every movement<\/strong>/);
-  assert.match(html,/>Your next step<\/small>/);
+  assert.match(html,/<span>Overview<\/span><small>Plan, train &amp; eat<\/small>/,"the Overview tab tells members where Plan, Train, and Nutrition live");
   assert.doesNotMatch(html,/feature-block-session/);
   assert.doesNotMatch(css,/feature-block-session/);
   assert.match(css,/\.plus-studio \.profile-section,\.plus-studio \.recommendation-section\s*\{[^}]*color:var\(--ink\);[^}]*background:var\(--paper\)/);

@@ -845,7 +845,7 @@ test("admin grants timed or indefinite free Strata+, revokes it, and controls ne
   let me=await request("/api/me",{headers:{Cookie:target.cookie}});
   assert.equal(me.data.user.discovery.accessType,"grant");
   assert.equal((await request("/api/discovery",{headers:{Cookie:target.cookie}})).response.status,200);
-  assert.equal((await jsonRequest("/api/discovery/trial",{},{cookie:target.cookie,csrf:target.csrf})).response.status,409);
+  assert.equal((await jsonRequest("/api/discovery/trial",{},{cookie:target.cookie,csrf:target.csrf})).response.status,410,"the retired trial cannot start alongside a grant");
   const db=openDatabase();
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM discovery_trials WHERE user_id=?").get(target.user.id).n,0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM paddle_purchases WHERE user_id=?").get(target.user.id).n,0);

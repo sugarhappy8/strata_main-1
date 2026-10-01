@@ -20,7 +20,7 @@
   function renderWeek(plan,profile,exercises,{restored=false}={}){
     const movementCount=DAYS.reduce((total,day)=>total+(Array.isArray(plan?.days?.[day])?plan.days[day].length:0),0),trainingDays=DAYS.filter(day=>plan?.days?.[day]?.length).length;
     $("quickWeekGrid").innerHTML=weekMarkup(plan,exercises);$("quickWeekMeta").textContent=`${trainingDays} training days · ${movementCount} movements · ${profile.minutes} minutes per session`;
-    $("quickWeekBoundary").textContent=restored?"Your preview is back. Sign in to choose which week to keep. Your account plan stays unchanged until you save.":"Like this week? Save it with a free account. Guided workouts and Training Memory are included in the optional 7-day Strata+ trial; no card required.";$("quickWeekPreview").hidden=false;
+    $("quickWeekBoundary").textContent=restored?"Your preview is back. Sign in to choose which week to keep. Your account plan stays unchanged until you save.":"Like this week? Save it with a free account. Guided workouts and Training Memory are part of Strata+.";$("quickWeekPreview").hidden=false;
   }
   function render({exercises,sample,profile,plan,previewResultMarkup,restored=false}){
     const result=globalThis.StrataPreview.buildPreview({exercises,profile:sample,discovery:globalThis.StrataDiscovery,limit:3});

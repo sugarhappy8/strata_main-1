@@ -89,11 +89,6 @@
     return Number.isNaN(date.getTime())?"Saved session":new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric"}).format(date);
   }
 
-  function readableExerciseId(value){
-    const words=String(value||"").split(/[-_]+/).filter(Boolean).slice(0,8);
-    return words.length?words.map((word)=>word.charAt(0).toUpperCase()+word.slice(1)).join(" "):"Repeat movement";
-  }
-
   function validPlan(value){
     if(!value||typeof value!=="object"||!value.days||typeof value.days!=="object")return null;
     return WEEKDAYS.every((day)=>Array.isArray(value.days[day]))?value:null;
@@ -114,41 +109,6 @@
     return null;
   }
 
-  function formatDuration(seconds){
-    const safe=Math.max(0,Math.round(Number(seconds)||0));
-    if(safe<60)return `${safe} sec`;
-    const minutes=Math.floor(safe/60),remaining=safe%60;
-    return remaining?`${minutes}m ${remaining}s`:`${minutes} min`;
-  }
-
-  function recordMetric(summary){
-    if(!summary||Number(summary.completedSets)<=0||summary.loadType==="assisted")return null;
-    if(summary.measurement==="timed"&&Number.isFinite(Number(summary.maxSeconds))&&Number(summary.maxSeconds)>0)return{key:"time",value:Number(summary.maxSeconds),label:"Longest set",formatted:formatDuration(summary.maxSeconds)};
-    if(summary.loadType==="external"&&Number.isFinite(Number(summary.maxWeight))&&Number(summary.maxWeight)>0){
-      const unit=summary.unit==="lb"?"lb":"kg";
-      return{key:`load:${unit}`,value:Number(summary.maxWeight),label:"Top load",formatted:`${Number(summary.maxWeight).toLocaleString()} ${unit}`};
-    }
-    if(summary.loadType==="bodyweight"&&Number.isFinite(Number(summary.maxReps))&&Number(summary.maxReps)>0)return{key:"reps",value:Number(summary.maxReps),label:"Most reps in a set",formatted:`${Number(summary.maxReps).toLocaleString()} reps`};
-    return null;
-  }
-
-  function recentRecords(workouts,hasMore){
-    const completed=workouts.filter((workout)=>workout?.status==="completed").sort((a,b)=>Number(a.startedAt||0)-Number(b.startedAt||0));
-    const previous=new Map(),records=[];
-    for(const workout of completed){
-      for(const summary of Array.isArray(workout.exerciseSummaries)?workout.exerciseSummaries:[]){
-        const metric=recordMetric(summary);if(!metric)continue;
-        const comparisonKey=`${String(summary.exerciseId||"")}:${String(summary.measurement||"")}:${String(summary.loadType||"")}:${metric.key}`;
-        const earlier=previous.get(comparisonKey);
-        if(Number.isFinite(earlier)&&metric.value>earlier)records.push({comparisonKey,exercise:readableExerciseId(summary.exerciseId),label:metric.label,value:metric.formatted,date:String(workout.date||""),startedAt:Number(workout.startedAt||0),scope:hasMore?"Recent-history best":"Saved-history best"});
-        if(!Number.isFinite(earlier)||metric.value>earlier)previous.set(comparisonKey,metric.value);
-      }
-    }
-    const latestByMetric=new Map();
-    for(const record of records.sort((a,b)=>b.startedAt-a.startedAt))if(!latestByMetric.has(record.comparisonKey))latestByMetric.set(record.comparisonKey,record);
-    return[...latestByMetric.values()].slice(0,2);
-  }
-
   function subscriptionFor(user){
     const subscription=user?.discovery?.subscription;
     return subscription&&typeof subscription==="object"&&subscription.id?subscription:null;
@@ -166,16 +126,17 @@
 
   function accountAccessSummary(user,pending=false,now=Date.now()){
     const discovery=user?.discovery||{},subscription=subscriptionFor(user),status=String(subscription?.status||"");
+    // The free trial is retired; only a trial started before then can still be running.
     const trialActive=discovery.active===true&&discovery.accessType==="trial";
     if(discovery.adminGrant?.active===true){
       const grant=discovery.adminGrant;
-      const coexistence=subscription?"Your existing monthly subscription remains separate and is not canceled by this grant; review its billing state below.":grandfatheredAccess(user)?"Your grandfathered lifetime access remains separate and does not renew.":"It did not create a paid subscription or consume your trial.";
+      const coexistence=subscription?"Your existing monthly subscription remains separate and is not canceled by this grant; review its billing state below.":grandfatheredAccess(user)?"Your grandfathered lifetime access remains separate and does not renew.":"It did not create a paid subscription.";
       return{state:"Complimentary",detail:grant.expiresAt==null?"Until revoked":`Until ${billingDate(grant.expiresAt)}`,message:`An administrator granted you free Strata+ access. This grant never renews or charges you. ${coexistence}`};
     }
     if(trialActive){
       const expiresAt=Number(discovery.trial?.expiresAt),remaining=Math.max(0,expiresAt-now);
       const detail=remaining>=86400000?`${Math.floor(remaining/86400000)}d ${Math.floor(remaining%86400000/3600000)}h remaining`:remaining>=3600000?`${Math.floor(remaining/3600000)}h ${Math.floor(remaining%3600000/60000)}m remaining`:remaining>=60000?`${Math.ceil(remaining/60000)} min remaining`:`${Math.ceil(remaining/1000)} sec remaining`;
-      return{state:"Trial",detail,message:"Your free trial ends automatically and will never convert into a paid subscription."};
+      return{state:"Trial",detail,message:"Your trial ends automatically and never charges you. Subscribe from Pricing to keep Strata+ after it ends."};
     }
     if(subscription){
       if(status==="paused")return{state:"Paused",detail:"Paid access inactive",message:"Your monthly subscription is paused and Strata+ paid access is inactive. Manage it in Paddle to review the available next steps."};
@@ -234,7 +195,7 @@
 
   return{
     WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,weekContext,
-    readableDate,readableExerciseId,validPlan,planSummary,completedThisWeek,nextPlannedDay,formatDuration,recordMetric,recentRecords,
+    readableDate,validPlan,planSummary,completedThisWeek,nextPlannedDay,
     subscriptionFor,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError
   };
 });
