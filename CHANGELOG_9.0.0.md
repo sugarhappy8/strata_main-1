@@ -120,6 +120,18 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
 - **Onboarding gating** is decided with Personal setup → Profile in Phase 2e: onboarding writes
   through `/api/setup`, which is Strata+ today.
 
+## Phase 2e — Train, Progress, Profile (first slice)
+
+- **Progress owns the numbers.** The Train page's three history stat boxes (completed sessions,
+  sets, open sessions) are gone; the Progress view already reports adherence, volume,
+  consistency, and sessions from the same records.
+- **`/ai` is the expanded chat.** The side cards ("How it works", "What Strata AI sees") leave
+  the page; the chat column is centred. The same facts stay in the privacy policy and the
+  chat's own empty state.
+- The navigation rename (Rankings · My Week · Train · Recovery · Profile) and the Personal
+  setup → Profile merge are the next PR: they move Nutrition and Progress between sections and
+  depend on the Phase 3 data layer.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).
