@@ -22,7 +22,7 @@ flowchart LR
   P --> CW ; CP --> CW ; W --> CW
   AP --> AI[Strata AI] ; TL --> AI ; DS --> AI ; RS --> AI ; P --> AI
   AI -- accepted week, source ai --> P
-  DS -- lighter-session offer --> TRAIN[Train / My Week]
+  DS -- lighter-session offer --> TRAIN[Train / Plan]
 ```
 
 ## Read models

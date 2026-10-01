@@ -77,7 +77,7 @@ not reachable from the build environment. The Daily Snapshot already has an `act
 
 - **Recovery** (Strata+ studio): latest night, stress signals against the member's usual
   nights, sleep, heart rate, and 4/8/12-week trends next to training.
-- **Overview card** and **My Week**: the latest Nightly Recharge and, after a poor night, the
+- **Overview card** and the studio's **Plan** view: the latest Nightly Recharge and, after a poor night, the
   lighter-session note with a link to Train.
 - **Train**: offers a lighter session after a poor or very poor Nightly Recharge, or two nights
   in a row with more stress signals than usual.

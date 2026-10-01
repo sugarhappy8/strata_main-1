@@ -30,8 +30,8 @@ done as part of the stranger test (`docs/stranger-test-9.0.0.md`) on phone and d
 | P4 | Plan analysis explains volume, timing, coverage, equipment, and repeats, and never invents recovery claims | `test/plan-insights-core.test.js` | Open "Plan evidence" |
 | P5 | Validation: legacy imports, rest markers, and oversized or malformed plans are rejected before saving | `test/plans.test.js` | Import an old export |
 | P6 | Free accounts keep the full planner; Strata+ guidance cards appear only for members | `qa/planner-runtime-smoke.js`, `test/planner-modules.test.js` | Free account: no guidance cards |
-| P7 | **New:** My Week opens the planner for visitors and free accounts, and the studio Overview for members, whose "Edit weekly plan" opens the same planner | `test/server.test.js`, `qa/e2e/strata-plus-state-matrix.js` | Tap My Week in all three states |
-| P8 | **New:** offline, My Week opens the cached planner with the device week | `test/pwa.test.js` (fallback map) | DevTools offline, tap My Week |
+| P7 | **Changed in 9.1.0:** Dashboard opens the planner for visitors and free accounts; members get a page with two choices, Plan (the same planner) and the Strata+ dashboard. Old `/my-week` links still work | `test/server.test.js`, `qa/e2e/strata-plus-state-matrix.js` | Tap Dashboard in all three states |
+| P8 | **New:** offline, Dashboard opens the cached planner with the device week | `test/pwa.test.js` (fallback map) | DevTools offline, tap Dashboard |
 | P9 | **Better:** coaching targets and Strata AI read the same saved week (no second generated program); every save records whether it came from the member, Strata AI, or setup | `test/coaching-core.test.js`, `test/server-data-layer.test.js` ("plan saves are tagged by source") | Edit the week, then open Plan: the coaching week follows |
 
 ## How a failure is handled
