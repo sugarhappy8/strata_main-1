@@ -2,7 +2,7 @@
 
 const test=require("node:test");
 const assert=require("node:assert/strict");
-const {buildTraining,CATALOG_FINGERPRINT,MODEL_VERSION}=require("../src/coaching-training-core");
+const {buildTraining,CATALOG_FINGERPRINT,MODEL_VERSION,planFingerprint,planTrainingDays,trainingFromPlan}=require("../src/coaching-training-core");
 const {exerciseFormat,estimatedSeconds,prepareEvidence,startingPrescription,withPerformance}=require("../src/coaching-prescription-core");
 const {DAYS,EXERCISES}=require("../src/plans");
 const {sanitizeCoachingProfile}=require("../src/coaching-core");
@@ -188,4 +188,49 @@ test("evidence fingerprints are deterministic, bounded by week and changed by ac
   assert.equal(prepareEvidence({workouts,checkIns:[laterCheckin]},WEEK,"UTC").fingerprint,base.fingerprint);
   const duplicate=prepareEvidence({workouts:[...workouts,workouts[0]]},WEEK,"UTC");assert.equal(duplicate.limited,true);
   assert.doesNotThrow(()=>buildTraining(profile(),WEEK,{previousWeek:{sessions:[null,{day:"Monday",exercises:[null]}]}}));
+});
+
+function savedPlan(){
+  const days=Object.fromEntries(DAYS.map(day=>[day,[]]));
+  days.Monday=[{instanceId:"mon-press",exerciseId:"flat-dumbbell-press",sets:4,reps:"6–10"},{instanceId:"mon-row",exerciseId:"barbell-bent-over-row",sets:3,reps:"8–12"}];
+  days.Thursday=[{instanceId:"thu-squat",exerciseId:"barbell-back-squat",sets:5,reps:"5–8"}];
+  return {version:1,restDay:"Sunday",restDays:["Sunday"],days};
+}
+
+test("a saved weekly plan becomes the coaching week without a second program",()=>{
+  const plan=savedPlan();for(const day of ["Monday","Thursday"])for(const item of plan.days[day])assert.ok(EXERCISES.some(exercise=>exercise.id===item.exerciseId),item.exerciseId);
+  const copy=structuredClone(plan),training=trainingFromPlan(profile(),plan,WEEK);
+  assert.deepEqual(plan,copy,"reading the plan never edits it");
+  assert.equal(training.source,"plan");assert.deepEqual(planTrainingDays(plan),["Monday","Thursday"]);
+  assert.deepEqual(training.sessions.map(session=>session.day),["Monday","Thursday"]);
+  assert.deepEqual(training.sessions.map(session=>session.date),["2026-09-14","2026-09-17"]);
+  assert.deepEqual(training.sessions[0].exercises.map(item=>[item.exerciseId,item.sets,item.reps,item.instanceId]),[["flat-dumbbell-press",4,"6–10","mon-press"],["barbell-bent-over-row",3,"8–12","mon-row"]]);
+  assert.deepEqual(training.sessions[0].exercises[0].range,{low:6,high:10},"the plan's own rep range is the prescription");
+  assert.equal(training.sessions[0].workingSets,7);assert.equal(training.sessions[1].workingSets,5);
+  assert.ok(training.sessions.every(session=>session.status==="ready"&&session.estimatedDurationMinutes>0&&session.estimatedDurationSeconds>0&&!session.durationAdjusted));
+  assert.equal(training.summary.scheduledDays,2);assert.equal(training.summary.reviewNeeded,false);
+  assert.match(training.frequencyCaveat,/saved week/);assert.equal(training.modelVersion,MODEL_VERSION);
+});
+
+test("plan sessions report a longer-than-usual day instead of trimming the member's plan",()=>{
+  const plan=savedPlan();plan.days.Monday=Array.from({length:8},(_,index)=>({instanceId:`mon-${index}`,exerciseId:EXERCISES[index].id,sets:5,reps:"8–12"}));
+  const session=trainingFromPlan(profile({sessionMinutes:30}),plan,WEEK).sessions[0];
+  assert.equal(session.exercises.length,8);assert.equal(session.overAvailableTime,true);assert.match(session.rationale,/longer than your usual 30 minutes/);
+});
+
+test("plan sessions carry history-based targets from comparable logged sets",()=>{
+  const plan=savedPlan(),first=trainingFromPlan(profile(),plan,WEEK).sessions[0].exercises[0];
+  assert.equal(first.performance.status,"starting");
+  const informed=trainingFromPlan(profile(),plan,WEEK,{workouts:pair(first)}).sessions[0].exercises[0];
+  assert.ok(["progression","repeat"].includes(informed.performance.status),informed.performance.status);assert.ok(Array.isArray(informed.targetSets)&&informed.targetSets.length===4);
+});
+
+test("the plan fingerprint follows training content, not save time or rest-day bookkeeping",()=>{
+  const plan=savedPlan(),print=planFingerprint(plan);assert.match(print,/^[a-f0-9]{16}$/);
+  assert.equal(planFingerprint(structuredClone(plan)),print);
+  const restMoved=structuredClone(plan);restMoved.restDays=["Saturday"];restMoved.restDay="Saturday";assert.equal(planFingerprint(restMoved),print);
+  const moreSets=structuredClone(plan);moreSets.days.Monday[0].sets=5;assert.notEqual(planFingerprint(moreSets),print);
+  const moved=structuredClone(plan);moved.days.Friday=moved.days.Thursday;moved.days.Thursday=[];assert.notEqual(planFingerprint(moved),print);
+  assert.equal(planFingerprint({days:Object.fromEntries(DAYS.map(day=>[day,[]]))}),null);assert.equal(planFingerprint(null),null);
+  assert.equal(trainingFromPlan(profile(),plan,WEEK).planFingerprint,print);assert.equal(buildTraining(profile(),WEEK).source,"suggested");assert.equal(buildTraining(profile(),WEEK).planFingerprint,null);
 });

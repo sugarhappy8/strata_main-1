@@ -886,6 +886,8 @@ export interface CoachingServiceDependencies {
   http:JsonHttpHelpers;
   now?:()=>number;
   events?:EventBus|null;
+  /** The member's saved weekly plan; the coaching week reads its training sessions from it. */
+  getPlan?:(userId:string)=>Promise<unknown>;
 }
 export interface CoachingService {handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;}
 

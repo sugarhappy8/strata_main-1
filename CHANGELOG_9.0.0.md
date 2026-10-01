@@ -145,6 +145,17 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
 - **Events.** `src/events.js` is a small in-process bus. Plan, workout, preferences, and
   coaching-profile saves announce themselves; the profile sync is the first listener, the
   Polar matcher and the Daily Brief come next.
+- **One weekly program.** The coaching week no longer builds a second program next to the
+  member's plan. It reads the saved week (same days, exercises, sets, and reps) and adds rest,
+  effort guidance, duration estimates, and targets from logged sets. Calorie targets and the
+  zigzag training days now follow the days the member actually plans to train, matching the
+  Strata AI nutrition preview. Editing the plan refreshes the coaching week; the coaching
+  profile is untouched. A member with no training days saved still gets a starter week to
+  review and save as their plan.
+- **Device copies stay bounded.** Each claim or keep decision used to leave another full
+  copy of both weeks in the browser's storage, forever. The device now keeps the newest three
+  safety copies per account. The free device week and the homepage preview are single entries
+  and stay as they are, so a signed-out visitor keeps their own week.
 
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO

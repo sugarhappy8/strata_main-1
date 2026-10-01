@@ -2,6 +2,7 @@
 "use strict";
 
 const {ENERGY_MODEL_VERSION,GENERATION_VERSION,addDays,currentWeekStart,localDate,generateCoachingWeek,sanitizeCoachingProfile,sanitizeDailyLog,validDate,weekStartForDate}=require("./coaching-core");
+const {planFingerprint}=require("./coaching-training-core");
 const {compatibleWeek,readCoachingDiary,readCoachingEvidence,storedWeek,targetsForWeek}=require("./coaching-evidence");
 const {CALIBRATION_DAYS}=require("./energy-calibration-core");
 const {generateRemainingDayFoodOptions}=require("./meal-planning-core");
@@ -45,7 +46,7 @@ function logPayload(row,target=null){
  * @param {import("./domain-types").CoachingServiceDependencies} dependencies
  * @returns {import("./domain-types").CoachingService}
  */
-function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,now=Date.now,events=null}){
+function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,now=Date.now,events=null,getPlan=async()=>null}){
   if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http)throw new TypeError("Coaching service requires storage, access guards, rate limiting, and HTTP helpers.");
   const {json,bodyJson}=http;
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").SessionRow} session */
@@ -60,12 +61,13 @@ function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllow
     if(row&&!profile)throw coachingError("Your coaching profile could not be read safely. Contact support before replacing it.",500,"COACHING_PROFILE_UNREADABLE");
     return profile;
   }
-  /** @param {string} userId @param {any} profile @param {number} timestamp @param {any} [prepared] */
-  async function ensureWeek(userId,profile,timestamp,prepared=null){
-    const weekStart=currentWeekStart(timestamp,profile.timeZone),existingRow=await store.coachingWeek(userId,weekStart),existing=compatibleWeek(existingRow,profile),expectedEnergySemantics=profile.version>=4?"mifflin_structured_activity_v4":profile.version===3?"nasem_2023_whole_day_eer":"legacy_rmr_activity_multiplier";
-    if(existing&&existing.profileRevision===profile.revision&&existing.inputs?.version===profile.version&&existing.nutrition?.energySemantics===expectedEnergySemantics)return existing;
+  /** The coaching week follows the saved plan: a changed plan regenerates it, an unchanged one is reused.
+   * @param {string} userId @param {any} profile @param {number} timestamp @param {any} [prepared] @param {any} [knownPlan] */
+  async function ensureWeek(userId,profile,timestamp,prepared=null,knownPlan=undefined){
+    const weekStart=currentWeekStart(timestamp,profile.timeZone),[existingRow,plan]=await Promise.all([store.coachingWeek(userId,weekStart),knownPlan===undefined?getPlan(userId):knownPlan]),existing=compatibleWeek(existingRow,profile),expectedEnergySemantics=profile.version>=4?"mifflin_structured_activity_v4":profile.version===3?"nasem_2023_whole_day_eer":"legacy_rmr_activity_multiplier",planPrint=planFingerprint(plan);
+    if(existing&&existing.profileRevision===profile.revision&&existing.inputs?.version===profile.version&&existing.nutrition?.energySemantics===expectedEnergySemantics&&(existing.training?.planFingerprint??null)===planPrint)return existing;
     const input={...profile};delete input.revision;delete input.updatedAt;
-    const generated=prepared&&prepared.weekStart===weekStart?prepared:generateCoachingWeek(input,profile.revision,weekStart,timestamp,await readCoachingEvidence(store,userId,weekStart,profile));
+    const generated=prepared&&prepared.weekStart===weekStart&&(prepared.training?.planFingerprint??null)===planPrint?prepared:generateCoachingWeek(input,profile.revision,weekStart,timestamp,await readCoachingEvidence(store,userId,weekStart,profile),plan);
     const record={userId,weekStart,planKey:generated.planKey,profileRevision:profile.revision,snapshotJson:JSON.stringify(generated),generatedAt:timestamp};
     const saved=await store.upsertCoachingWeek(record),current=compatibleWeek(saved||await store.coachingWeek(userId,weekStart),profile);
     if(!current||current.profileRevision!==profile.revision)throw coachingError("Your coaching profile changed while this week was generated. Refresh and try again.",409,"COACHING_PROFILE_CHANGED");
@@ -91,12 +93,12 @@ function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllow
         if(req.method==="GET"){json(res,200,{profile:await readProfile(session.id),csrfToken:session.csrf_token});return true;}
         const input=object(await bodyJson(req),"Request");exactKeys(input,["profile","expectedRevision","expectedUserId"],"Request");const expectedRevision=revision(input.expectedRevision,"Expected profile version");
         if(input.expectedUserId!==undefined&&String(input.expectedUserId)!==String(session.id))throw coachingError("Your account changed. Reload before saving this profile.",409,"COACHING_ACCOUNT_CHANGED");
-        const profile=sanitizeCoachingProfile(input.profile),timestamp=now(),weekStart=currentWeekStart(timestamp,profile.timeZone),prepared=generateCoachingWeek(profile,expectedRevision+1,weekStart,timestamp,await readCoachingEvidence(store,session.id,weekStart,{...profile,revision:expectedRevision+1}));
+        const profile=sanitizeCoachingProfile(input.profile),timestamp=now(),weekStart=currentWeekStart(timestamp,profile.timeZone),plan=await getPlan(session.id),prepared=generateCoachingWeek(profile,expectedRevision+1,weekStart,timestamp,await readCoachingEvidence(store,session.id,weekStart,{...profile,revision:expectedRevision+1}),plan);
         const saved=await store.upsertCoachingProfile(session.id,JSON.stringify(profile),timestamp,expectedRevision);
         if(!saved){json(res,409,{error:"This coaching profile changed elsewhere. Review the latest version before saving.",code:"COACHING_PROFILE_CHANGED",profile:await readProfile(session.id)});return true;}
         const output=profilePayload(saved);if(!output)throw coachingError("The coaching profile was saved but could not be read safely.",500,"COACHING_PROFILE_UNREADABLE");
         await events?.emit("coaching.profile_saved",{userId:session.id,profile:output});
-        const week=await ensureWeek(session.id,output,timestamp,prepared);
+        const week=await ensureWeek(session.id,output,timestamp,prepared,plan);
         json(res,200,{ok:true,profile:output,...await diaryResponse(session.id,output,week,timestamp),csrfToken:session.csrf_token});return true;
       }
       const profile=await readProfile(session.id);

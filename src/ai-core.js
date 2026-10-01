@@ -252,7 +252,7 @@ function previewNutrition({profile,changes,plan,evidence,timestamp}){
   const schedule=planSchedule(plan),aligned=Boolean(schedule&&(schedule.workoutDays.join()!==profile.workoutDays.join()||schedule.sessionMinutes!==profile.sessionMinutes));
   if(schedule){input.workoutDays=schedule.workoutDays;input.sessionMinutes=schedule.sessionMinutes;}
   const sanitized=/** @type {Record<string,any>} */(sanitizeCoachingProfile(/** @type {any} */(input))),weekStart=currentWeekStart(timestamp,sanitized.timeZone);
-  const week=generateCoachingWeek(/** @type {any} */(sanitized),Number(profile.revision)+1,weekStart,timestamp,evidence),nutrition=week.nutrition;
+  const week=generateCoachingWeek(/** @type {any} */(sanitized),Number(profile.revision)+1,weekStart,timestamp,evidence,plan),nutrition=week.nutrition;
   const saved={...sanitized};delete saved.sessionsPerWeek;
   return {changes,alignment:aligned&&schedule?schedule:null,profile:saved,expectedRevision:Number(profile.revision),preview:{selectedGoal:nutrition.selectedGoal,maintenance:{targetKcal:nutrition.maintenance?.targetKcal??null},dailyTargets:nutrition.dailyTargets}};
 }

@@ -123,13 +123,13 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 231 | 224 | 21.7 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
 | `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 678 | 650 | 42.2 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/checkout-reconciliation.js` | Validated checkout closure and settlement reconciliation | 99 | 98 | 8.0 KiB | 130 | `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
-| `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 133 | 126 | 19.8 KiB | 300 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
+| `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 136 | 129 | 20.1 KiB | 300 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
 | `src/coaching-evidence.js` | Owner-filtered coaching history and original-target diary assembly | 84 | 78 | 6.9 KiB | 130 | `src/coaching-core.js`, `src/energy-calibration-core.js` |
 | `src/coaching-prescription-core.js` | Measurement-aware prescriptions from comparable completed training history | 92 | 91 | 12.2 KiB | 180 | `src/progression.js` |
 | `src/coaching-schema.js` | Coaching profile, weekly snapshot, and daily-log schema | 50 | 47 | 4.5 KiB | 80 | — |
 | `src/coaching-store.js` | SQLite and Turso coaching storage parity | 48 | 42 | 3.9 KiB | 80 | `src/coaching-schema.js` |
-| `src/coaching-training-core.js` | Repeatable goal-specific training composition with duration and coverage accounting | 107 | 106 | 13.3 KiB | 220 | `src/coaching-prescription-core.js`, `src/plans.js` |
-| `src/coaching.js` | Strata+ coaching profile, weekly snapshot, and daily-log API | 135 | 131 | 14.1 KiB | 180 | `src/coaching-core.js`, `src/coaching-evidence.js`, `src/energy-calibration-core.js`, `src/meal-planning-core.js` |
+| `src/coaching-training-core.js` | Repeatable goal-specific training composition with duration and coverage accounting | 141 | 140 | 17.9 KiB | 220 | `src/coaching-prescription-core.js`, `src/plans.js` |
+| `src/coaching.js` | Strata+ coaching profile, weekly snapshot, and daily-log API | 137 | 133 | 14.6 KiB | 180 | `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching-training-core.js`, `src/energy-calibration-core.js`, `src/meal-planning-core.js` |
 | `src/database.js` | SQLite and Turso store adapters | 1081 | 1054 | 57.2 KiB | 1200 | `src/access-controls-store.js`, `src/account-self-service-store.js`, `src/billing-store.js`, `src/coaching-store.js`, `src/devices-store.js`, `src/migrations.js`, `src/schema.js`, `src/store-contract.js`, `src/training-loop-store.js` |
 | `src/devices-config.js` | Connected-device and Polar AccessLink settings | 64 | 57 | 3.4 KiB | 80 | — |
 | `src/devices-crypto.js` | Sealed device tokens and connection secrets | 47 | 39 | 2.5 KiB | 60 | — |

@@ -32,7 +32,7 @@ const SEARCH_DEBOUNCE_MS=StateCore.LIMITS.searchDebounceMs;
 const RATINGS_REFRESH_MIN_INTERVAL_MS=StateCore.LIMITS.ratingsRefreshMinIntervalMs;
 const MOVEMENT_BOARD_LIMIT=StateCore.LIMITS.movementBoard;
 const state=StateCore.createState();
-let workspaceGeneration=0,workspaceReady=false,workspaceRevalidating=false;
+let workspaceGeneration=0,workspaceReady=false,workspaceRevalidating=false;let coachingPlanStamp=null;
 const el=(id)=>document.getElementById(id);
 const api=ApiCore.createClient({fetchImpl:fetch,getCsrfToken:()=>state.csrfToken,getGeneration:()=>workspaceGeneration,redirect:(path)=>window.location.replace(path)});
 const saveRetryMessage=ApiCore.saveRetryMessage;
@@ -289,7 +289,7 @@ function renderProgression(){
   el("progressionAccept").disabled=suggestion.applied;el("progressionAccept").textContent=suggestion.applied?"Change accepted":"Accept change";el("progressionDismiss").hidden=suggestion.applied;el("progressionStatus").textContent=suggestion.applied?"Saved. Your weekly Plan was updated; this edit remains until you change Plan again.":"Nothing changes unless you accept.";
 }
 function clearPrivateWorkspace(){
-  workspaceGeneration+=1;workspaceReady=false;coaching.reset();program.reset();recovery.reset();
+  workspaceGeneration+=1;workspaceReady=false;coachingPlanStamp=null;coaching.reset();program.reset();recovery.reset();
   state.exercises=[];state.methodology=null;state.sources=[];state.limited=new Set();state.preferences=null;state.user=null;state.csrfToken="";state.aggregate=new Map();state.userRatings=new Map();state.ratingsRefreshedAt=0;state.ratingsRefreshPromise=null;state.ratingSaving=new Set();state.compare=[];state.shortlist=[];state.collection="all";state.query="";state.group="all";state.equipment="all";state.pattern="all";state.level="all";state.sort="personal";state.recommendations=[];state.activeExercise=null;state.explorerLimit=EXPLORER_DESKTOP_PAGE_SIZE;
   state.weeklyPlan=null;state.weeklyPlanUpdatedAt=0;state.workouts=[];state.workoutHistoryAvailable=false;state.workoutHistoryHasMore=false;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.trainingBlock=null;state.trainingBlockRevision=0;state.trainingBlockAction=null;state.progressionSuggestion=null;state.session=null;state.sessionSaving=false;state.sessionDayInitialized=false;state.monthlyPlan=null;state.monthlyPlanUpdatedAt=0;state.monthlySchedule=null;state.monthlySource="muscle-schedule";
   const main=document.querySelector("main");if(main){main.hidden=true;main.inert=true;main.setAttribute("aria-busy","true");}
@@ -422,8 +422,10 @@ async function dismissProgression(){
 }
 const session=SessionCore.createSession({
   state,core:Core,monthly:Monthly,labels:GROUP_LABELS,element:el,window,escapeHtml,titleCase,api,saveRetryMessage,showToast,
-  renderWeeklyPulse,renderTrainingBlockReview,updateMonthlySourceButtons
+  renderWeeklyPulse,renderTrainingBlockReview,updateMonthlySourceButtons,onPlanChanged:refreshCoachingForPlan
 });
+// The coaching week reads the saved plan, so a plan edit here refreshes it; the first sighting only records the plan.
+function refreshCoachingForPlan(){const stamp=state.weeklyPlanUpdatedAt,known=coachingPlanStamp!==null;if(stamp===coachingPlanStamp)return;coachingPlanStamp=stamp;if(known&&coaching.state.week)void coaching.load({force:true});}
 const {addToWeek:addSessionToWeek,generate:generateSession,initialize:initializeSessionBuilder,resetPreview:resetSessionPreview,syncPlanViews:syncSessionPlanViews,updateAddButton:updateSessionAddButton}=session;
 function localIsoDate(){const date=new Date(),part=(value)=>String(value).padStart(2,"0");return `${date.getFullYear()}-${part(date.getMonth()+1)}-${part(date.getDate())}`;}
 function friendlyMonthlyDate(value){

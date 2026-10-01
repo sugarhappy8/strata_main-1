@@ -140,3 +140,15 @@ test("unsafe automated deficits fail closed and low-energy variations disclose a
   assert.equal(lowEnergy.nutrition.requestedPattern,"zigzag");assert.equal(lowEnergy.nutrition.effectivePattern,"steady");assert.match(lowEnergy.nutrition.patternFallback,/1,200/);
   assert.throws(()=>generateCoachingWeek(sanitizeCoachingProfile(profile({age:80,heightCm:120,weightKg:35,sexForEquation:"female",caloriePattern:"steady",macroPreference:null})),1,"2026-09-07",1_000),{code:"CALORIE_TARGET_REQUIRES_REVIEW"});
 });
+
+test("the coaching week reads the saved weekly plan, and calories follow its training days",()=>{
+  const clean=sanitizeCoachingProfile(profile({caloriePattern:"zigzag"})),days=Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map(day=>[day,[]]));
+  days.Tuesday=[{instanceId:"tue-press",exerciseId:"flat-dumbbell-press",sets:4,reps:"6–10"}];days.Saturday=[{instanceId:"sat-squat",exerciseId:"barbell-back-squat",sets:5,reps:"5–8"},{instanceId:"sat-row",exerciseId:"barbell-bent-over-row",sets:3,reps:"8–12"}];
+  const plan={version:1,restDay:"Sunday",restDays:["Sunday"],days},week=generateCoachingWeek(clean,1,"2026-09-14",1_000,null,plan),suggested=generateCoachingWeek(clean,1,"2026-09-14",1_000);
+  assert.equal(week.training.source,"plan");assert.deepEqual(week.training.sessions.map(session=>session.day),["Tuesday","Saturday"]);
+  assert.deepEqual(week.nutrition.activityBreakdown.sessions.map(session=>session.day),["Tuesday","Saturday"],"session energy comes from the saved plan, not the profile's Monday/Wednesday/Friday");
+  assert.deepEqual(week.nutrition.dailyTargets.filter(target=>target.kind==="higher_training_day").map(target=>target.day),["Tuesday","Saturday"]);
+  assert.equal(suggested.training.source,"suggested");assert.deepEqual(suggested.training.sessions.map(session=>session.day),["Monday","Wednesday","Friday"]);
+  assert.notEqual(week.planKey,suggested.planKey,"a plan-based week never reuses a suggested week's key");
+  assert.deepEqual(generateCoachingWeek(clean,1,"2026-09-14",1_000,null,{...plan,days:Object.fromEntries(Object.keys(days).map(day=>[day,[]]))}).training.sessions.map(session=>session.day),["Monday","Wednesday","Friday"],"an empty plan falls back to the suggested starter week");
+});

@@ -3,7 +3,7 @@
 
 /**
  * Profile-v4 activity is deliberately split into ordinary non-workout movement,
- * the generated STRATA sessions, and explicitly entered activity outside STRATA.
+ * the planned STRATA sessions, and explicitly entered activity outside STRATA.
  * The PAL anchors are conservative product heuristics informed by the activity
  * descriptions in the 2023 DRI; they are not measured individual PAL values.
  */

@@ -642,7 +642,7 @@ async function start() {
   productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
   workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson},events});
   training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
+  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events,getPlan:planFor});
   devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
   ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});

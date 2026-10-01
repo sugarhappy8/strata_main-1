@@ -122,7 +122,15 @@
     const token=`${now}-${fingerprint(device)}`;
     const key=`${BACKUP_PREFIX}${encodeURIComponent(cleanText(userId,100))}:${token}`;
     const value={format:"strata-activation-backup",version:1,userId:String(userId),reason:reason==="claim"?"claim":"keep-account",accountRevision:Number(accountRevision)||0,accountPlan:current,devicePlan:device,deviceSource:candidate.source,createdAt:now};
-    storage.setItem(key,JSON.stringify(value));return{key,value:copy(value)};
+    storage.setItem(key,JSON.stringify(value));pruneBackups(storage,userId);return{key,value:copy(value)};
+  }
+  // Keep only the newest safety copies per account; older ones would otherwise pile up on the device forever.
+  function pruneBackups(storage,userId,keep=3){
+    if(typeof storage?.key!=="function"||!Number.isInteger(storage.length))return;
+    const prefix=`${BACKUP_PREFIX}${encodeURIComponent(cleanText(userId,100))}:`,keys=[];
+    for(let index=0;index<storage.length;index+=1){const name=storage.key(index);if(typeof name==="string"&&name.startsWith(prefix))keys.push(name);}
+    keys.sort((a,b)=>(Number.parseInt(b.slice(prefix.length),10)||0)-(Number.parseInt(a.slice(prefix.length),10)||0));
+    for(const name of keys.slice(keep))storage.removeItem(name);
   }
 
   return{DAYS,INTENT_KEY,GUEST_PLAN_KEY,DECISION_PREFIX,BACKUP_PREFIX,normalizeProfile,normalizePlan,planCount,fingerprint,samePlan,writeIntent,readIntent,readGuestPlan,deviceCandidates,acknowledge,shouldOffer,backup};
