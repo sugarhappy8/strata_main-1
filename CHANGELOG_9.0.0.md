@@ -110,6 +110,16 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   short footer line; the pricing page remains the one place that sells Strata+. The
   research "receipts" section stays: it is trust content that the footer links to.
 
+### Phase 2d decisions recorded during implementation
+- **Monthly plan stays** as the content of "Plan ahead" (training block + 31-day schedule). It
+  holds member data and is not a duplicate of the weekly plan; `monthly_plans` is not archived.
+- **Session builder stays** where it is: it is already the one deterministic generator, reached
+  from Plan, Overview, and Train.
+- **"Suggested week from personal setup"** is addressed in Phase 3, when coaching reads the
+  weekly plan from `plans` instead of generating a second week.
+- **Onboarding gating** is decided with Personal setup → Profile in Phase 2e: onboarding writes
+  through `/api/setup`, which is Strata+ today.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).
