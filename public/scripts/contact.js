@@ -96,6 +96,14 @@ if(supportForm){
     field.addEventListener("change",()=>clearFieldState(field));
   });
 
+  // A post made without JavaScript comes back here with its outcome in the query string.
+  {
+    const params=new URLSearchParams(location.search),sent=String(params.get("sent")||"").trim().slice(0,40),error=String(params.get("error")||"").trim().slice(0,40);
+    if(sent)setStatus(`Your support request was sent. Reference: ${sent}. Keep this number for follow-up.`,"success",{focus:true});
+    else if(error)setStatus(friendlyError({code:error,status:error==="SUPPORT_RATE_LIMIT"?429:400}),"error",{focus:true});
+    if(sent||error)history.replaceState(null,"",location.pathname);
+  }
+
   supportForm.addEventListener("submit",async(event)=>{
     event.preventDefault();
     if(submitting)return;

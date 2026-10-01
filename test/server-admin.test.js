@@ -628,6 +628,22 @@ test("anonymous support rejects credentials and payment-card numbers before pers
   assert.deepEqual(databaseCounts(member.user.id),before,"rejected sensitive support content must not create tickets, rate reservations, audits, or email deliveries");
 });
 
+test("the contact form still works without JavaScript through a plain form post",async()=>{
+  const form=(fields,ip)=>request("/api/support",{method:"POST",redirect:"manual",headers:{"Content-Type":"application/x-www-form-urlencoded",Origin:base,"X-Forwarded-For":ip},body:new URLSearchParams(fields).toString()});
+  const sent=await form({name:"No Script",email:"no-script@example.test",category:"other",subject:"Form post without scripts",referenceId:"",message:"This came from the plain HTML form with JavaScript disabled.",website:""},"198.51.100.241");
+  assert.equal(sent.response.status,303);
+  const location=sent.response.headers.get("location");
+  assert.match(location,/^\/contact\?sent=STR-\d{4}-[0-9A-F]{6}#supportStatus$/,"a successful post lands back on the contact page with its reference");
+  const reference=new URL(location,base).searchParams.get("sent");
+  const stored=openDatabase().prepare("SELECT reference,email,message FROM support_tickets WHERE reference=?").get(reference);
+  assert.equal(stored.email,"no-script@example.test");
+  const invalid=await form({name:"N",email:"not-an-email",category:"other",subject:"x",message:"short",website:""},"198.51.100.242");
+  assert.equal(invalid.response.status,303);
+  assert.equal(invalid.response.headers.get("location"),"/contact?error=INVALID_SUPPORT_REQUEST#supportStatus");
+  const plainText=await request("/api/support",{method:"POST",headers:{"Content-Type":"text/plain",Origin:base,"X-Forwarded-For":"198.51.100.243"},body:"hello"});
+  assert.equal(plainText.response.status,415,"other content types are still refused");
+});
+
 test("anonymous support rate reservations survive an application restart",async()=>{
   mkdirSync(join(PROJECT_ROOT,"test-runtime"),{recursive:true});
   const durableDir=mkdtempSync(join(PROJECT_ROOT,"test-runtime","admin-support-rate-"));
