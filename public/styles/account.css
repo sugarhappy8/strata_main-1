@@ -38,7 +38,9 @@
 /* Long identities and server responses must wrap instead of widening or clipping a card. */
 html{overflow-x:clip}
 :where(.account-page,.account-intro,.account-access,.auth-grid,.auth-panel,.signed-in-card,.account-loading,.account-dashboard-head>div,.account-training-grid>*,.account-security,.security-actions>*,.verification-ended,.recovery-success){min-width:0}
-:where(.account-message,.panel-message,.auth-panel h2,.auth-panel>p,.auth-panel small,.auth-panel button,.signed-actions a,.signed-actions button,.security-actions button,.security-status,.verification-status,.verification-ended,.recovery-success,.account-primary-action,.build-footer){overflow-wrap:anywhere}
+.storage-state{max-width:100%;white-space:normal}
+.storage-state span{min-width:0}
+:where(.storage-state span,.account-message,.panel-message,.auth-panel h2,.auth-panel>p,.auth-panel small,.auth-panel button,.signed-actions a,.signed-actions button,.security-actions button,.security-status,.verification-status,.verification-ended,.recovery-success,.account-primary-action,.build-footer){overflow-wrap:anywhere}
 :where(.auth-panel button,.signed-actions a,.signed-actions button,.security-actions button,.recovery-success a,.account-primary-action){height:auto;padding-top:10px;padding-bottom:10px;text-align:left;white-space:normal}
 @media(max-width:760px){.account-header{background:var(--ink)}}
 .activation-handoff{max-width:680px;display:grid;gap:5px;margin:18px 0;padding:14px 16px;border:1px solid #647b2d;border-left:4px solid var(--accent);border-radius:8px;background:#f5fadf;color:var(--ink)}

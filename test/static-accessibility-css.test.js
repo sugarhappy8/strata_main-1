@@ -23,6 +23,8 @@ test("homepage styles keep live comparison UI and omit retired modal families",(
 test("homepage navigation and exercise controls expose 44px touch targets",()=>{
   const css=read("public/styles/styles.css");
   assert.match(css,/\.brand\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/);
+  assert.match(css,/\.action-icon\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+  assert.doesNotMatch(css,/\.exercise-row \.action-icon\s*\{[^}]*\b(?:width|height):\s*(?:3\d|4[0-3])px/);
 });
 
 test("compact mobile navigation keeps account actions and every muscle group easy to reach",()=>{
