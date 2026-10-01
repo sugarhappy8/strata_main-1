@@ -423,7 +423,22 @@ Full table in the database sweep. The ones that matter:
 
 ---
 
-## 10. Open decisions for you (asked, not assumed)
+## 10. Decisions (resolved 1 Oct 2026)
+
+The owner approved the matrix in §3 and delegated every decision below except the first.
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | AI included in Strata+ or a separate add-on? | **Owner decides later.** Build 9 ships AI inside Strata+, with the lock implemented as a single entitlements switch (`plus.ai` can be moved to its own product by configuration, no code change). |
+| 2 | Data retention after Strata+ cancellation | **Keep read-only.** Sync pauses, nothing is deleted; existing 400-day Polar cleanup and account deletion remain the only erasure paths. |
+| 3 | Nutrition tier | **Strata+.** |
+| 4 | Community plans | **CUT.** The table is archived (renamed), not dropped, so the cut is reversible. |
+| 5 | Monthly 31-day plan | **MERGE into "Plan ahead"** with the training block; the separate `monthly_plans` store is archived. |
+| 6 | Progress placement | **Under Train** (Train = log + progress). Recovery stays Polar-focused. |
+| 7 | Features kept regardless | None named. |
+| 8 | Groq paid tier | Move when active AI members exceed ~120, or after the first week with daily 429s. |
+
+### Original questions (kept for the record)
 
 1. **AI included in Strata+ or a ~10 USD/month add-on?** Groq free-tier arithmetic to inform it: today one member request can cost up to ~9 completions (first try, compact retry, JSON repair, search re-ask, contract correction). At ~1,000 requests/day per model, a nightly Daily Brief (1 call) plus a cap of ~5 chat calls per member per day supports roughly **150 active AI members** on the free tier, double that with the 20b fallback's separate quota. Beyond that the quota manager serves cached briefs.
 2. **Data retention after Strata+ cancellation:** today Polar data is kept read-only (400-day cleanup) and sync pauses; workouts/plans are kept. Keep read-only, or delete after X days?
