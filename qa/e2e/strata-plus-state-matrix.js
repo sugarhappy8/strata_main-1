@@ -99,7 +99,7 @@ test("the four Strata+ destinations and Overview's Plan and Nutrition cards reta
   const primary=page.locator(".destination-nav .destination-link");
   assert.deepEqual(await primary.locator("span").allTextContents(),["Overview","Recovery","Progress","Rankings"]);
   assert.deepEqual(await page.locator("#todayWorkspace .overview-tool .overview-tool-label").allTextContents(),["Plan","Train","Nutrition"]);
-  const mobile=page.locator(".studio-nav-mobile");assert.equal(await mobile.isVisible(),true);assert.deepEqual(await mobile.locator("a").allTextContents(),["Rankings","My Week","Train","Recovery","Profile"]);assert.equal(await mobile.locator('[aria-current="page"]').textContent(),"My Week");
+  const mobile=page.locator(".studio-nav-mobile");assert.equal(await mobile.isVisible(),true);assert.deepEqual(await mobile.locator("a").allTextContents(),["Rankings","Dashboard","Train","Recovery","Profile"]);assert.equal(await mobile.locator('[aria-current="page"]').textContent(),"Dashboard");
   const layout=await page.evaluate(()=>({overflow:globalThis.document.documentElement.scrollWidth-globalThis.document.documentElement.clientWidth,reduced:globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches,motion:[...globalThis.document.querySelectorAll(".destination-link")].map((node)=>{const style=globalThis.getComputedStyle(node);return[style.animationDuration,style.transitionDuration];})}));
   assert.ok(layout.overflow<=1,`Strata+ overflows the 390px viewport by ${layout.overflow}px`);assert.equal(layout.reduced,true);for(const durations of layout.motion)for(const value of durations)assert.ok(value.split(",").every((part)=>Number.parseFloat(part)===0),`Reduced motion left ${value}`);
 
@@ -109,7 +109,7 @@ test("the four Strata+ destinations and Overview's Plan and Nutrition cards reta
     await page.waitForFunction((id)=>globalThis.document.activeElement?.id===id,heading);assert.equal(await overview.getAttribute("aria-current"),"location",`${label} keeps Overview highlighted`);assert.equal(await page.locator("[data-feature-panel]:not([hidden])").count(),1);
     await page.locator(`#${panel} .tool-menu-link[data-feature-target="today"]`).click();await page.locator("#todayWorkspace").waitFor({state:"visible"});
   }
-  for(const [label,panel,heading,section] of [["Overview","todayWorkspace","todayTitle","My Week"],["Progress","progressWorkspace","progressWorkspaceTitle","Train"],["Rankings","exerciseExplorer","explorerTitle","Rankings"],["Recovery","recoveryWorkspace","recoveryWorkspaceTitle","Recovery"]]){
+  for(const [label,panel,heading,section] of [["Overview","todayWorkspace","todayTitle","Dashboard"],["Progress","progressWorkspace","progressWorkspaceTitle","Train"],["Rankings","exerciseExplorer","explorerTitle","Rankings"],["Recovery","recoveryWorkspace","recoveryWorkspaceTitle","Recovery"]]){
     const link=primary.filter({hasText:label}).first();await link.focus();await page.keyboard.press("Enter");await page.locator(`#${panel}`).waitFor({state:"visible"});await page.waitForFunction((hash)=>globalThis.location.hash===hash,`#${panel}`);
     await page.waitForFunction((id)=>globalThis.document.activeElement?.id===id,heading);assert.equal(await link.getAttribute("aria-current"),"location");assert.equal(await page.locator("[data-feature-panel]:not([hidden])").count(),1);
     assert.equal(await mobile.locator('[aria-current="page"]').textContent(),section,`${label} highlights ${section} in the site navigation`);

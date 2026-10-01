@@ -56,12 +56,6 @@ test("account pure logic covers safe handoffs, useful errors, plan timing, and c
   assert.match(logic.friendlyAuthError({status:503},"signup"),/temporarily unavailable/);
   assert.match(logic.friendlyAuthError({},"signup"),/Could not create/);
 
-  const plan={days:Object.fromEntries(logic.WEEKDAYS.map(day=>[day,day==="Monday"?[{exerciseId:"bench-press"}]:[]]))};
-  assert.equal(logic.validPlan(plan),plan);assert.equal(logic.validPlan({days:{}}),null);
-  assert.deepEqual(logic.planSummary(plan),{scheduled:["Monday"],movements:1});
-  const week=logic.weekContext(new Date(2026,8,7,8));
-  assert.equal(logic.nextPlannedDay(plan,new Set(),week).day,"Monday");
-  assert.equal(logic.completedThisWeek([{status:"completed",date:logic.localDateKey(week.today)},{status:"active",date:logic.localDateKey(week.today)}],week).length,1);
   assert.equal(logic.safePortalUrl("not a url"),"");
   assert.equal(logic.accountBoundaryChanged({status:401}),true);assert.equal(logic.accountBoundaryChanged({status:403}),true);assert.equal(logic.accountBoundaryChanged({code:"account-changed"}),true);
   assert.match(logic.securityError({status:409,message:"Pending"}),/Pending/);
@@ -71,12 +65,12 @@ test("account pure logic covers safe handoffs, useful errors, plan timing, and c
 
 test("account state invalidates stale private requests and clears CSRF",()=>{
   const state=stateModule.createState({pendingQueryError:"Try again."});
-  const identity=state.beginIdentity();state.setPrivateUser("member-one");const dashboard=state.beginDashboard(),sessions=state.beginSessionList(),operation=state.beginPrivateOperation();
+  const identity=state.beginIdentity();state.setPrivateUser("member-one");const sessions=state.beginSessionList(),operation=state.beginPrivateOperation();
   state.setCsrfToken("csrf-one");
-  assert.equal(state.isCurrentIdentity(identity),true);assert.equal(state.isCurrentDashboard(dashboard),true);assert.equal(state.isCurrentSessionList(sessions),true);
+  assert.equal(state.isCurrentIdentity(identity),true);assert.equal(state.isCurrentSessionList(sessions),true);
   assert.equal(state.isCurrentPrivateOperation(operation),true);
   state.invalidatePrivateRequests();
-  assert.equal(state.isCurrentIdentity(identity),false);assert.equal(state.isCurrentDashboard(dashboard),false);assert.equal(state.isCurrentSessionList(sessions),false);assert.equal(state.getCsrfToken(),"");
+  assert.equal(state.isCurrentIdentity(identity),false);assert.equal(state.isCurrentSessionList(sessions),false);assert.equal(state.getCsrfToken(),"");
   assert.equal(state.isCurrentPrivateOperation(operation),false);assert.equal(state.isCurrentPrivateOperation(state.beginPrivateOperation()),false);
   assert.equal(state.takePendingError(),"Try again.");assert.equal(state.takePendingError(),"");
 });

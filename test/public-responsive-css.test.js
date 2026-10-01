@@ -30,7 +30,7 @@ test("public layouts let dynamic text shrink and wrap inside cards",()=>{
 test("responsive grid and flex children may shrink before text is laid out",()=>{
   const expectations={
     "styles.css":[".exercise-row > *",".exercise-title button",".preview-output-head > *"],
-    "account.css":[".auth-panel",".account-dashboard-head>div",".account-training-grid>*"],
+    "account.css":[".auth-panel",".account-dashboard-head>div"],
     "site-info.css":[".policy-layout > *",".pricing-grid > *",".support-form-actions > *"],
     "install.css":[".hero-grid > *",".offline-options > *"],
     "admin.css":[".admin-header > *",".record-card > button > *",".dialog-header > *"]

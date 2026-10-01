@@ -103,9 +103,9 @@ test("release version, cache keys, asset URLs, and catalog claims stay aligned",
   assert.match(serviceWorker,/const STATIC_CACHE=`\$\{CACHE_PREFIX\}\$\{BUILD\}`;/);
   assert.match(serviceWorker,new RegExp(`"/exercises\\.json\\?v=${versionPattern}"`));
   assert.doesNotMatch(serviceWorker,/"\/exercises\.json"/);
-  // Offline, the My Week section opens the cached planner with the week kept on the device.
-  assert.match(serviceWorker,/\["\/my-week","\/planner\.html"\]/);
-  assert.match(serviceWorker,/"\/planner\.html",/,"the planner is precached for the offline My Week");
+  // Offline, the Dashboard section opens the cached planner with the week kept on the device.
+  assert.match(serviceWorker,/\["\/dashboard","\/planner\.html"\]/);
+  assert.match(serviceWorker,/"\/planner\.html",/,"the planner is precached for the offline Dashboard");
 
   for(const page of pages){
     const html=read(`pages/${page}`);

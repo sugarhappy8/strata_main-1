@@ -129,7 +129,6 @@ test("a persisted account-page restore clears private DOM before reloading the c
   }});
   await settle();
   assert.match(page.elements.get("signedInIdentity").textContent,/PRIVATE ACCOUNT SENTINEL/);
-  assert.match(page.elements.get("accountNextTitle").textContent,/PRIVATE WORKOUT SENTINEL/);
   await page.emitWindow("pageshow",{persisted:false});assert.equal(page.reloads.length,0);
   await page.emitWindow("pageshow",{persisted:true});assert.equal(page.reloads.length,1);
   assert.equal(page.elements.get("signedInCard").hidden,true);assert.equal(page.elements.get("accountLoading").hidden,false);
@@ -165,7 +164,7 @@ test("ordinary Account foreground restores purge first and reopen only the same 
   ]){
     let identityReads=0;const pending=deferred(),page=createPage({route:async(path)=>{
       if(path==="/api/status")return jsonResponse(200,{persistent:true});if(path==="/healthz")return jsonResponse(200,{ok:true});
-      if(path==="/api/me"){identityReads+=1;return identityReads<=2?jsonResponse(200,{csrfToken:identityReads===1?"foreground-one":"foreground-two",user:original}):pending.promise;}
+      if(path==="/api/me"){identityReads+=1;return identityReads<=1?jsonResponse(200,{csrfToken:"foreground-one",user:original}):pending.promise;}
       if(path==="/api/plan")return jsonResponse(200,{csrfToken:"foreground-two",user:original,plan:planFixture({Monday:1}),planUpdatedAt:1});
       if(path==="/api/workouts?limit=100&offset=0")return jsonResponse(200,{csrfToken:"foreground-two",hasMore:false,workouts:[workoutFixture({title:"FOREGROUND WORKOUT SENTINEL"})]});
       if(path==="/api/account/sessions")return jsonResponse(200,{userId:original.id,sessions:[{id:"FOREGROUND-SESSION-SENTINEL",current:true}]});
@@ -248,7 +247,7 @@ test("signed-in session and JSON export controls are accessible and CSRF protect
   await page.elements.get("accountRevokeOtherSessions").emit("click",{currentTarget:page.elements.get("accountRevokeOtherSessions")});
   await settle();
   const revoke=page.requests.find(({path})=>path==="/api/account/sessions/revoke-others");
-  assert.equal(revoke.options.headers["X-CSRF-Token"],"csrf-plan-rotated");assert.equal(revoke.options.body,"{}");
+  assert.equal(revoke.options.headers["X-CSRF-Token"],"csrf-self-service");assert.equal(revoke.options.body,"{}");
   assert.match(page.elements.get("accountSessionStatus").textContent,/1 other session/);
   await page.elements.get("accountExportData").emit("click",{currentTarget:page.elements.get("accountExportData")});
   await settle();
@@ -344,7 +343,7 @@ test("a login error stays scoped to the login form",async()=>{
 
 });
 
-test("signed-in dashboard distinguishes access and plan states with a useful next action",async()=>{
+test("signed-in Profile distinguishes access and billing states",async()=>{
   const periodEnd=Date.now()+30*24*60*60*1000,cancelAt=Date.now()+7*24*60*60*1000;
   const subscription=(status,overrides={})=>({id:`sub-${status}`,status,active:["active","trialing","past_due"].includes(status),pastDue:status==="past_due",scheduledChange:null,currentPeriodEndsAt:periodEnd,...overrides});
   const cases=[
@@ -438,8 +437,6 @@ test("signed-in dashboard distinguishes access and plan states with a useful nex
     if(fixture.grantMessage)assert.match(page.elements.get("accountDiscoveryStatus").textContent,fixture.grantMessage,fixture.name);
     if(fixture.grantMessageNot)assert.doesNotMatch(page.elements.get("accountDiscoveryStatus").textContent,fixture.grantMessageNot,fixture.name);
     assert.match(page.elements.get("accountMemberSince").textContent,/2024/,fixture.name);
-    assert.equal(page.elements.get("accountPrimaryLabel").textContent,fixture.primary,fixture.name);
-    assert.match(page.elements.get("accountPrimaryAction").href,fixture.href,fixture.name);
     assert.equal(page.elements.get("accountDiscoveryAction").textContent,fixture.discoveryAction,fixture.name);
     assert.equal(page.elements.get("accountBilling").hidden,fixture.billing===null,fixture.name);
     if(fixture.billing){
@@ -480,107 +477,6 @@ test("subscription controls use the CSRF-protected Paddle portal and clear priva
   assert.equal(page.elements.get("accountBillingStatus").classList.contains("bad"),true);
   sessionExpired=true;await page.elements.get("accountManageSubscription").emit("click",{currentTarget:page.elements.get("accountManageSubscription")});await settle();
   assert.equal(page.elements.get("signedInCard").hidden,true);assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.");assert.equal(page.elements.get("signedInIdentity").textContent,"");assert.equal(page.elements.get("accountBillingDetail").textContent,"");
-});
-
-test("returning dashboard prioritizes an in-progress workout as the single next action",async()=>{
-  const user=memberFixture({planCount:2,workoutDays:1}),plan=planFixture({Monday:2});
-  const page=createPage({route:async(path)=>{
-    if(path==="/api/status")return jsonResponse(200,{persistent:true});
-    if(path==="/healthz")return jsonResponse(200,{ok:true});
-    if(path==="/api/me")return jsonResponse(200,{csrfToken:"csrf",user});
-    if(path==="/api/plan")return jsonResponse(200,{csrfToken:"csrf",user,plan,planUpdatedAt:11});
-    if(path==="/api/workouts?limit=100&offset=0")return jsonResponse(200,{csrfToken:"csrf",hasMore:false,workouts:[workoutFixture({status:"active",completedAt:null,title:"Monday upper",completedSets:1,totalSets:5})]});
-    throw new Error(`Unexpected route ${path}`);
-  }});
-  await settle();
-  assert.equal(page.elements.get("accountPrimaryLabel").textContent,"Continue workout");
-  assert.equal(page.elements.get("accountPrimaryAction").href,"/workout.html#resume=workout-1");
-  assert.equal(page.elements.get("accountNextEyebrow").textContent,"Workout in progress");
-  assert.equal(page.elements.get("accountNextTitle").textContent,"Monday upper");
-  assert.match(page.elements.get("accountNextDetail").textContent,/1 of 5 sets completed/i);
-});
-
-test("a workout completed today moves Next up to the following planned day",async()=>{
-  const todayIndex=(new Date().getDay()+6)%7,today=WEEKDAYS[todayIndex],next=WEEKDAYS[(todayIndex+1)%7];
-  const user=memberFixture({planCount:2,workoutDays:2}),plan=planFixture({[today]:1,[next]:1});
-  const latest=workoutFixture({id:"latest",planDay:today,date:thisWeekDate(today),startedAt:200,title:"Today strength",completedSets:4,totalSets:4});
-  const page=createPage({route:async(path)=>{
-    if(path==="/api/status")return jsonResponse(200,{persistent:true});
-    if(path==="/healthz")return jsonResponse(200,{ok:true});
-    if(path==="/api/me")return jsonResponse(200,{csrfToken:"csrf",user});
-    if(path==="/api/plan")return jsonResponse(200,{csrfToken:"csrf",user,plan,planUpdatedAt:12});
-    if(path==="/api/workouts?limit=100&offset=0")return jsonResponse(200,{csrfToken:"csrf",hasMore:false,workouts:[latest]});
-    throw new Error(`Unexpected route ${path}`);
-  }});
-  await settle();
-  assert.equal(page.elements.get("accountNextTitle").textContent,`${next} workout`);
-  assert.match(page.elements.get("accountNextEyebrow").textContent,/^Tomorrow/);
-  assert.equal(page.elements.get("accountPrimaryLabel").textContent,"Open next workout");
-});
-
-test("free and temporarily unavailable dashboards still point to the next planned day",async()=>{
-  const freeUser=memberFixture({planCount:2,workoutDays:2,discovery:{active:false,accessType:null,pendingPurchaseCount:0}}),plan=planFixture({Tuesday:1,Thursday:1});
-  const free=createPage({route:async(path)=>{
-    if(path==="/api/status")return jsonResponse(200,{persistent:true});
-    if(path==="/healthz")return jsonResponse(200,{ok:true});
-    if(path==="/api/me")return jsonResponse(200,{csrfToken:"csrf",user:freeUser});
-    if(path==="/api/plan")return jsonResponse(200,{csrfToken:"csrf",user:freeUser,plan});
-    throw new Error(`Unexpected route ${path}`);
-  }});
-  await settle();
-  assert.equal(free.requests.some(({path})=>path.startsWith("/api/workouts")),false);
-  assert.match(free.elements.get("accountNextDetail").textContent,/1 movement in your saved plan/i);
-  assert.equal(free.elements.get("accountPrimaryLabel").textContent,"Open your week");
-
-  const paidUser=memberFixture({planCount:2,workoutDays:2});
-  const historyUnavailable=createPage({route:async(path)=>{
-    if(path==="/api/status")return jsonResponse(200,{persistent:true});
-    if(path==="/healthz")return jsonResponse(200,{ok:true});
-    if(path==="/api/me")return jsonResponse(200,{csrfToken:"csrf",user:paidUser});
-    if(path==="/api/plan")return jsonResponse(200,{csrfToken:"csrf",user:paidUser,plan});
-    if(path==="/api/workouts?limit=100&offset=0")throw new Error("offline");
-    throw new Error(`Unexpected route ${path}`);
-  }});
-  await settle();
-  assert.match(historyUnavailable.elements.get("accountNextDetail").textContent,/Completion history is temporarily unavailable/i);
-  assert.equal(historyUnavailable.elements.get("accountPrimaryLabel").textContent,"Open next workout");
-});
-
-test("dashboard refuses to combine plan or workout data across account changes",async()=>{
-  const original=memberFixture({id:"original",name:"ORIGINAL PRIVATE SENTINEL",email:"original-private@example.test",planCount:1,workoutDays:1}),changed=memberFixture({id:"changed",planCount:1,workoutDays:1});
-  const page=createPage({route:async(path)=>{
-    if(path==="/api/status")return jsonResponse(200,{persistent:true});
-    if(path==="/healthz")return jsonResponse(200,{ok:true});
-    if(path==="/api/me")return jsonResponse(200,{csrfToken:"csrf",user:original});
-    if(path==="/api/plan")return jsonResponse(200,{csrfToken:"new-csrf",user:changed,plan:planFixture({Monday:1})});
-    throw new Error(`Unexpected route ${path}`);
-  }});
-  await settle();
-  assert.equal(page.requests.some(({path})=>path.startsWith("/api/workouts")),false);
-  assert.equal(page.elements.get("signedInCard").hidden,true);
-  assert.equal(page.elements.get("accountLoading").hidden,false);
-  assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.");
-  assert.equal(page.elements.get("accountReload").hidden,false);
-  assert.equal(page.elements.get("signedInIdentity").textContent,"");assert.equal(page.elements.get("accountGreeting").textContent,"");assert.equal(page.elements.get("accountPlanCount").textContent,"");
-  await page.elements.get("accountReload").emit("click");
-  assert.equal(page.reloads.length,1);
-});
-
-test("dashboard rechecks identity after workout history before combining private account data",async()=>{
-  const original=memberFixture({id:"original",planCount:1,workoutDays:1}),changed=memberFixture({id:"changed",planCount:1,workoutDays:1});let identityReads=0;
-  const page=createPage({route:async(path)=>{
-    if(path==="/api/status")return jsonResponse(200,{persistent:true});
-    if(path==="/healthz")return jsonResponse(200,{ok:true});
-    if(path==="/api/me"){identityReads+=1;return jsonResponse(200,identityReads===1?{csrfToken:"original-csrf",user:original}:{csrfToken:"changed-csrf",user:changed});}
-    if(path==="/api/plan")return jsonResponse(200,{csrfToken:"original-csrf",user:original,plan:planFixture({Monday:1})});
-    if(path==="/api/workouts?limit=100&offset=0")return jsonResponse(200,{csrfToken:"changed-csrf",hasMore:false,workouts:[workoutFixture({status:"active",completedAt:null,title:"CHANGED ACCOUNT PRIVATE TITLE"})]});
-    throw new Error(`Unexpected route ${path}`);
-  }});
-  await settle();
-  assert.equal(identityReads,2);
-  assert.equal(page.elements.get("signedInCard").hidden,true);
-  assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.");
-  assert.doesNotMatch(page.elements.get("accountNextTitle").textContent,/CHANGED ACCOUNT PRIVATE TITLE/);
 });
 
 test("enhanced signup reports an inline error, recovers, and retries",async()=>{

@@ -527,8 +527,8 @@ html { overflow-x: clip; }
   .header-actions { gap:4px; }
   .account-create,.discover-button,.session-button { display:none!important; }
   .account-button { min-width:44px; max-width:78px; }
-  /* Signed in on a phone, Profile in the bottom bar is the way to the account; the name pill would crowd the header. */
-  .header-actions .account-button.signed-in { display:none!important; }
+  /* The homepage has no Profile link in its navigation, so the signed-in name stays, capped to fit the header. */
+  .header-actions .account-button.signed-in { display:inline-block!important; max-width:132px; line-height:44px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-inline:14px!important; }
   .search-field input,.select-wrap select,.sort-field select { font-size:16px; }
   .filter-chip,.plain-button,.text-link { min-height:44px; display:inline-flex; align-items:center; }
   .plain-button { padding-inline:10px; }

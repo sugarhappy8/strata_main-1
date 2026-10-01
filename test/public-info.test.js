@@ -24,7 +24,7 @@ test("homepage exposes pricing, contact, and the public policy directory without
   const footer=home.match(/<nav class="footer-links"[\s\S]*?<\/nav>/)?.[0]||"";
   for(const route of ["/pricing","/contact","/policies"])assert.match(home,new RegExp(`href="${route}"`),`${route} homepage link`);
   for(const route of ["/terms","/privacy","/refunds"])assert.match(policies,new RegExp(`href="${route}"`),`${route} policy-directory link`);
-  assert.deepEqual(mobileLinks,[["#rankings","Rankings"],["/my-week","My Week"],["/workout.html","Train"],["/recovery","Recovery"],["/account.html","Profile"]]);
+  assert.deepEqual(mobileLinks,[["#rankings","Rankings"],["/dashboard","Dashboard"],["/install.html","Install"]]);
   assert.equal((footer.match(/href="\/policies"/g)||[]).length,1,"homepage footer must expose one Policies destination");
   assert.doesNotMatch(footer,/href="\/(?:terms|privacy|refunds)"/,"the policy hub replaces redundant legal links in the homepage footer");
   assert.match(home,/mailto:stratafitness\.official@gmail\.com/i);
@@ -45,18 +45,21 @@ test("the editorial homepage and the five-section navigation remain canonical",(
   assert.doesNotMatch(home,/<title>Exercises\b/i,"The rejected Exercises-first shell must not replace the STRATA homepage");
   for(const removed of ["start-directory","class=\"ticker\"","system-section","editorial-section","discovery-offer"])assert.doesNotMatch(home,new RegExp(removed),`${removed} was cut: the homepage is hero, free preview, rankings, method, sources`);
 
-  const expected=["Rankings","My Week","Train","Recovery","Profile"];
-  const pages={home:[home,"desktop-nav"],discover:[discover,"studio-nav-desktop"],planner:[planner,"planner-primary-nav-desktop"],workout:[workout,"workout-nav-desktop"]};
+  const expected=["Rankings","Dashboard","Train","Recovery","Profile"];
+  // The homepage is the landing page: Rankings, Dashboard, and Install. Every other page keeps all five sections.
+  assert.deepEqual(navLabels(home,"desktop-nav"),["Rankings","Dashboard","Install"]);
+  assert.deepEqual(navLabels(read("dashboard.html"),"info-nav"),expected,"the Strata+ dashboard page");
+  const pages={discover:[discover,"studio-nav-desktop"],planner:[planner,"planner-primary-nav-desktop"],workout:[workout,"workout-nav-desktop"]};
   for(const page of ["ai","account","onboarding","install","contact","policies","pricing","privacy","refunds","terms"])pages[page]=[read(`${page}.html`),page==="ai"?"studio-nav-desktop":page==="account"?"account-nav":page==="onboarding"?"product-nav":page==="install"?"install-nav":"info-nav"];
   for(const [name,[html,className]] of Object.entries(pages))assert.deepEqual(navLabels(html,className),expected,`${name} uses the five sections`);
   // One way to each section: no page keeps a separate Account link next to Profile, or the retired Strata+/Plan/Exercises labels.
-  for(const [name,[html]] of Object.entries(pages).filter(([name])=>name!=="home")){
+  for(const [name,[html]] of Object.entries(pages)){
     const header=html.match(/<header\b[\s\S]*?<\/header>/)?.[0]||"";
     assert.doesNotMatch(header,/>(?:Account|Exercises|Plan|Strata\+)<\/a>/,`${name} header keeps only the five sections`);
   }
   // Member-aware sections resolve on the server; the studio switches its own views in place.
-  assert.match(planner,/<a href="\/rankings">Rankings<\/a><a href="\/my-week" aria-current="page">My Week<\/a><a href="\/workout\.html">Train<\/a><a href="\/recovery">Recovery<\/a><a href="\/account\.html">Profile<\/a>/);
-  assert.match(discover,/<a href="#exerciseExplorer" data-section="rankings">Rankings<\/a><a class="active" href="#todayWorkspace" data-section="week" aria-current="page">My Week<\/a>/);
+  assert.match(planner,/<a href="\/rankings">Rankings<\/a><a href="\/dashboard" aria-current="page">Dashboard<\/a><a href="\/workout\.html">Train<\/a><a href="\/recovery">Recovery<\/a><a href="\/account\.html">Profile<\/a>/);
+  assert.match(discover,/<a href="#exerciseExplorer" data-section="rankings">Rankings<\/a><a class="active" href="\/dashboard" data-section="week" aria-current="page">Dashboard<\/a>/);
   assert.match(workout,/<a href="\/workout\.html" aria-current="page">Train<\/a>/);
   assert.match(read("account.html"),/<a class="back-link" href="\/account\.html" aria-current="page">Profile<\/a>/);
 });
@@ -138,7 +141,7 @@ test("customer-facing product branding is Strata+ while compatibility identifier
   assert.doesNotMatch(visibleCopy,/\bDiscovery\b/);
   assert.match(manifest,/"name": "Strata\+ Studio"/);
   assert.match(read("pricing.html"),/id="buyDiscovery"/);
-  assert.match(read("discover.html"),/data-section="week"[^>]*>My Week<\/a>/);
+  assert.match(read("discover.html"),/data-section="week"[^>]*>Dashboard<\/a>/);
 });
 
 test("contact and policy pages publish the official support address and cross-links",()=>{
@@ -147,7 +150,7 @@ test("contact and policy pages publish the official support address and cross-li
   assert.match(contact,new RegExp(`mailto:${email.replace(".","\\.")}`,"i"));
   assert.match(text("contact.html"),new RegExp(email.replace(".","\\."),"i"));
   for(const page of ["pricing.html","contact.html","policies.html","terms.html","privacy.html","refunds.html"]){
-    assert.match(read(page),/class="info-nav"[^>]*>[\s\S]*href="\/my-week">My Week<\/a>/,`${page} My Week navigation`);
+    assert.match(read(page),/class="info-nav"[^>]*>[\s\S]*href="\/dashboard">Dashboard<\/a>/,`${page} Dashboard navigation`);
   }
   for(const page of ["policies.html","terms.html","privacy.html","refunds.html"]) {
     const html=read(page);
@@ -203,7 +206,7 @@ test("public copy describes recurring checkout, cancellation, and grandfathered 
 test("Account leaves training progress to Strata+ and keeps its next action and controls",()=>{
   const account=read("account.html");
   assert.doesNotMatch(account,/Weekly progress|Recent momentum|Training signal|accountWeekProgress|accountWinsList|accountAdaptationTitle/);
-  for(const id of ["accountNextTitle","accountPrimaryAction","accountAccessState","accountBilling","connectedDevices","accountSessionList","accountExportData","accountDeleteRequest"])assert.match(account,new RegExp(`id="${id}"`));
+  for(const id of ["accountAccessState","accountBilling","connectedDevices","accountSessionList","accountExportData","accountDeleteRequest"])assert.match(account,new RegExp(`id="${id}"`));
 });
 
 test("public pages share one card: title, description, and the STRATA share image",()=>{

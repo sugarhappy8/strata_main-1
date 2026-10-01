@@ -86,43 +86,9 @@ async function loadAccountSessions(user){
   }
 }
 
-async function loadAccountDashboard(user){
-  const request=state.beginDashboard();
-  try{
-    const planResult=await api.plan();
-    if(!state.isCurrentDashboard(request))return;
-    if(String(planResult.user?.id||"")!==String(user?.id||""))throw Object.assign(new Error("The signed-in account changed."),{code:"account-changed"});
-    if(planResult.csrfToken)state.setCsrfToken(planResult.csrfToken);
-    const plan=logic.validPlan(planResult.plan);
-    if(!plan)throw Object.assign(new Error("The saved plan response was incomplete."),{code:"invalid-response"});
-    const currentUser=planResult.user||user;renderer.renderDashboard(plan,currentUser);
-    if(currentUser?.discovery?.active!==true)return;
-    try{
-      const historyResult=await api.workouts();
-      if(!state.isCurrentDashboard(request))return;
-      if(!Array.isArray(historyResult.workouts)||typeof historyResult.hasMore!=="boolean")throw Object.assign(new Error("Workout history returned an incomplete response."),{code:"invalid-response"});
-      const identity=await api.identity({cache:"no-store"});
-      if(!state.isCurrentDashboard(request))return;
-      if(String(identity.user?.id||"")!==String(currentUser.id)||!historyResult.csrfToken||String(historyResult.csrfToken)!==String(identity.csrfToken||""))throw Object.assign(new Error("The signed-in account changed."),{code:"account-changed"});
-      state.setCsrfToken(identity.csrfToken||state.getCsrfToken());
-      renderer.renderDashboard(plan,currentUser,{workouts:historyResult.workouts,hasMore:historyResult.hasMore});
-    }catch(error){
-      if(!state.isCurrentDashboard(request))return;
-      if(logic.accountBoundaryChanged(error)){showChangedAccount();return;}
-      renderer.renderDashboard(plan,currentUser,{historyError:true});
-    }
-  }catch(error){
-    if(!state.isCurrentDashboard(request))return;
-    if(logic.accountBoundaryChanged(error)){showChangedAccount();return;}
-    renderer.renderDashboardUnavailable();
-  }finally{
-    if(state.isCurrentDashboard(request))el("signedInCard").setAttribute("aria-busy","false");
-  }
-}
-
 function showSignedIn(user,csrfToken=""){
   state.setPrivateUser(user?.id);state.setCsrfToken(csrfToken);renderer.showSignedIn(user);
-  void loadAccountDashboard(user);void loadAccountSessions(user);void devices.load(user);
+  void loadAccountSessions(user);void devices.load(user);
 }
 
 async function initialize(){

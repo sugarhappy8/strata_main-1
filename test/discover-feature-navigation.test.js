@@ -29,7 +29,7 @@ test("Strata+ progressively enhances four primary destinations and focused suppo
     assert.match(tag,/\baria-expanded="false"/);
   }
   assert.doesNotMatch(html,/class="studio-account"/,"Profile in the site navigation replaces the separate Account link");
-  assert.match(html,/aria-label="Primary navigation"><a href="#exerciseExplorer" data-section="rankings">Rankings<\/a><a class="active" href="#todayWorkspace" data-section="week" aria-current="page">My Week<\/a><a href="\/workout\.html" data-section="train">Train<\/a><a href="#recoveryWorkspace" data-section="recovery">Recovery<\/a><a href="\/account\.html" data-section="profile">Profile<\/a>/);
+  assert.match(html,/aria-label="Primary navigation"><a href="#exerciseExplorer" data-section="rankings">Rankings<\/a><a class="active" href="\/dashboard" data-section="week" aria-current="page">Dashboard<\/a><a href="\/workout\.html" data-section="train">Train<\/a><a href="#recoveryWorkspace" data-section="recovery">Recovery<\/a><a href="\/account\.html" data-section="profile">Profile<\/a>/);
   assert.match(script,/account\.html\?mode=login&next=discover/);
   assert.doesNotMatch(html,/id="exploreWorkspace"/,"the Exercises hub is gone; the destination opens the Library");
   const libraryTools=html.match(/<nav class="feature-grid explore-tool-grid library-tools"[\s\S]*?<\/nav>/)?.[0]||"";

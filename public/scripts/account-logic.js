@@ -80,38 +80,6 @@
 
   function localNoon(date,offset=0){return new Date(date.getFullYear(),date.getMonth(),date.getDate()+offset,12);}
 
-  function weekContext(now=new Date()){
-    const today=localNoon(now),todayIndex=(today.getDay()+6)%7,monday=localNoon(today,-todayIndex);
-    const dates=WEEKDAYS.map((day,index)=>({day,date:localNoon(monday,index)}));
-    return{today,todayIndex,monday,dates,dateKeys:new Set(dates.map(({date})=>localDateKey(date)))};
-  }
-
-  function readableDate(value){
-    if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return "Saved session";
-    const date=new Date(`${value}T12:00:00`);
-    return Number.isNaN(date.getTime())?"Saved session":new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric"}).format(date);
-  }
-
-  function validPlan(value){
-    if(!value||typeof value!=="object"||!value.days||typeof value.days!=="object")return null;
-    return WEEKDAYS.every((day)=>Array.isArray(value.days[day]))?value:null;
-  }
-
-  function planSummary(plan){
-    const scheduled=WEEKDAYS.filter((day)=>plan.days[day].length>0);
-    return{scheduled,movements:scheduled.reduce((total,day)=>total+plan.days[day].length,0)};
-  }
-
-  function completedThisWeek(workouts,week){return workouts.filter((workout)=>workout?.status==="completed"&&week.dateKeys.has(String(workout.date||"")));}
-
-  function nextPlannedDay(plan,completedDays,week){
-    for(let offset=0;offset<14;offset+=1){
-      const index=(week.todayIndex+offset)%WEEKDAYS.length,day=WEEKDAYS[index],items=plan.days[day];
-      if(items.length&&(offset>=7||!completedDays.has(day)))return{day,items,offset,date:localNoon(week.today,offset)};
-    }
-    return null;
-  }
-
   function subscriptionFor(user){
     const subscription=user?.discovery?.subscription;
     return subscription&&typeof subscription==="object"&&subscription.id?subscription:null;
@@ -190,8 +158,7 @@
   }
 
   return{hasPlus,
-    WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,weekContext,
-    readableDate,validPlan,planSummary,completedThisWeek,nextPlannedDay,
+    WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,
     subscriptionFor,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError
   };
 });

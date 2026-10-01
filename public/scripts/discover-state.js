@@ -14,7 +14,7 @@
     today:Object.freeze({panelId:"todayWorkspace",headingId:"todayTitle",label:"Overview"}),
     // Plan and Nutrition open from Overview, so Overview stays the highlighted destination.
     plan:Object.freeze({panelId:"planWorkspace",headingId:"planWorkspaceTitle",label:"Plan",parent:"today"}),
-    // section names the top-level section highlighted in the site navigation; My Week when absent.
+    // section names the top-level section highlighted in the site navigation; Dashboard when absent.
     progress:Object.freeze({panelId:"progressWorkspace",headingId:"progressWorkspaceTitle",label:"Progress",section:"train"}),
     nutrition:Object.freeze({panelId:"nutritionWorkspace",headingId:"nutritionWorkspaceTitle",label:"Nutrition",parent:"today"}),
     recovery:Object.freeze({panelId:"recoveryWorkspace",headingId:"recoveryWorkspaceTitle",label:"Recovery",section:"recovery"}),
