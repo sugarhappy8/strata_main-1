@@ -28,7 +28,7 @@ test("keeps root, private server, and public browser files separated",()=>{
     "public/pages/reset-password.html","public/pages/delete-account.html",
     "public/pages/admin.html","public/scripts/admin.js","public/styles/admin.css",
     "public/scripts/app.js","public/scripts/account-recovery.js","public/styles/styles.css",
-    "public/data/exercises.json","public/fonts/manrope-latin.woff2","public/fonts/dm-mono-400-latin.woff2","public/fonts/dm-mono-500-latin.woff2","public/images/strata-layers.jpg","public/images/hero-training.jpg","public/images/training-story.jpg","public/styles/fonts.css","public/service-worker.js","public/manifest.webmanifest"
+    "public/data/exercises.json","public/fonts/manrope-latin.woff2","public/fonts/dm-mono-400-latin.woff2","public/fonts/dm-mono-500-latin.woff2","public/images/hero-training.jpg","public/styles/fonts.css","public/service-worker.js","public/manifest.webmanifest"
   ])assert.ok(existsSync(join(PROJECT_ROOT,required)),`${required} must exist`);
 
   assert.deepEqual(readdirSync(PUBLIC_ROOT).sort(),[

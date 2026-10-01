@@ -125,7 +125,6 @@ const PRECACHE_URLS=[
   "/fonts/dm-mono-400-latin.woff2",
   "/fonts/dm-mono-500-latin.woff2",
   "/images/hero-training.jpg",
-  "/images/training-story.jpg",
   "/manifest.webmanifest",
   "/icons/strata-icon.svg",
   "/icons/strata-192.png",

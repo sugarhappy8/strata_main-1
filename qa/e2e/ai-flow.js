@@ -135,7 +135,7 @@ test("members without Strata+ are sent to pricing, and Strata AI lives in its St
     assert.equal(await launcher.evaluate((node)=>getComputedStyle(node,"::before").animationName),"ai-launcher-glow","the launcher glows on a beat");
     await launcher.hover();await page.waitForFunction(()=>getComputedStyle(document.querySelector(".ai-launcher-tip")).opacity==="1");
     assert.equal((await tip.textContent()).trim(),"Strata AI chat");await shot(page,"strata-plus-ai-launcher");
-    for(const target of ["progress","explore"]){
+    for(const target of ["progress","library"]){
       await page.locator(`.destination-link[data-feature-target="${target}"]`).click();
       assert.equal(await launcher.isVisible(),true,`the Strata AI chat stays on the ${target} view`);
     }

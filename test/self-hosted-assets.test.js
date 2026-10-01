@@ -49,10 +49,8 @@ test("font files, homepage photographs, credits, and licenses stay bundled",()=>
 
   const home=read("public/pages/index.html"),homeCss=read("public/styles/styles.css");
   assert.match(homeCss,/background-image:\s*url\(["']\/images\/hero-training\.jpg["']\)/);
-  assert.match(home,/src="\/images\/training-story\.jpg"/);
   assert.match(home,/<div class="hero-credit">[\s\S]*?href="https:\/\/unsplash\.com\/photos\/a-man-doing-a-pull-up-on-a-bar-in-a-gym-ThLzcgVeU5I"[\s\S]*?Corey Young \/ Unsplash[\s\S]*?<\/div>/);
-  assert.match(home,/<div class="editorial-image">[\s\S]*?href="https:\/\/unsplash\.com\/photos\/a-woman-lifting-a-barbell-in-a-gym-t7SyUNppIeA"[\s\S]*?HamZa NOUASRIA \/ Unsplash[\s\S]*?<\/div>/);
-  for(const path of ["hero-training.jpg","training-story.jpg"]){
+  for(const path of ["hero-training.jpg"]){
     const body=readFileSync(join(PUBLIC,"images",path));
     assert.ok(body.length>100_000,`${path} must contain the retained photograph`);
     assert.deepEqual([...body.subarray(0,3)],[0xff,0xd8,0xff],`${path} JPEG signature`);
@@ -63,7 +61,6 @@ test("font files, homepage photographs, credits, and licenses stay bundled",()=>
   assert.match(notices,/Copyright 2020 The DM Mono Project Authors/);
   assert.match(notices,/SIL OPEN FONT LICENSE Version 1\.1/);
   assert.match(notices,/hero-training\.jpg[\s\S]*Corey Young/);
-  assert.match(notices,/training-story\.jpg[\s\S]*HamZa NOUASRIA/);
 });
 
 test("privacy copy and the content policy describe and enforce same-origin assets",()=>{

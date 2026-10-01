@@ -139,7 +139,6 @@ let browser;
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const publicHeaderLinks=await page.locator(".desktop-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
     assert.deepEqual(publicHeaderLinks,[["#rankings","Exercises"],["/discover.html","Strata+"],["/planner.html","Plan"],["/workout.html","Train"]],"Homepage desktop navigation must match the four product destinations used everywhere else");
-    assert.match((await page.locator(".discovery-offer").textContent())||"",/\$2\.99 USD per month[\s\S]*renews monthly until canceled/i);
     assert.doesNotMatch((await page.locator("main").textContent())||"",/trial|7 days|no card|Strata AI/i,"The homepage neither offers the retired trial nor promotes Strata AI");
     for(const [label,control] of [["homepage primary action",page.locator(".hero .button-accent").first()]]){
       const ratio=await contrastRatio(control);assert.ok(ratio>=4.5,`${label} text contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1`);

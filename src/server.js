@@ -203,9 +203,7 @@ const STATIC_FILES = new Map([
   ["icons/strata-512.png","icons/strata-512.png"],
   ["icons/strata-maskable-512.png","icons/strata-maskable-512.png"],
   ["icons/apple-touch-icon.png","icons/apple-touch-icon.png"],
-  ["images/strata-layers.jpg","images/strata-layers.jpg"],
   ["images/hero-training.jpg","images/hero-training.jpg"],
-  ["images/training-story.jpg","images/training-story.jpg"],
   ["fonts/manrope-latin.woff2","fonts/manrope-latin.woff2"],
   ["fonts/dm-mono-400-latin.woff2","fonts/dm-mono-400-latin.woff2"],
   ["fonts/dm-mono-500-latin.woff2","fonts/dm-mono-500-latin.woff2"]

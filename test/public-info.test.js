@@ -36,16 +36,14 @@ test("homepage exposes pricing, contact, and the public policy directory without
   assert.doesNotMatch(text("index.html"),/lifetime|one[- ]time|never a subscription/i);
 });
 
-test("the 7.8.1 editorial homepage and four-destination product identity remain canonical",()=>{
+test("the editorial homepage and four-destination product identity remain canonical",()=>{
   const home=read("index.html"),discover=read("discover.html"),planner=read("planner.html"),workout=read("workout.html");
   assert.match(home,/<section class="hero"[^>]*aria-labelledby="hero-title"/);
   assert.match(home,/<div class="hero-media" role="img" aria-label="Athlete performing a pull-up in a gym">/);
   assert.match(home,/<h1 id="hero-title">Your next<br \/>workout\.<br \/><em>Ready\.<\/em><\/h1>/);
   assert.ok(home.indexOf('class="hero"')<home.indexOf('id="rankings"'),"The editorial hero must lead instead of opening on the exercise catalog");
-  assert.match(home,/src="\/images\/strata-layers\.jpg"/);
-  assert.match(home,/src="\/images\/training-story\.jpg"/);
-  assert.match(home,/<section class="editorial-section">/);
   assert.doesNotMatch(home,/<title>Exercises\b/i,"The rejected Exercises-first shell must not replace the STRATA homepage");
+  for(const removed of ["start-directory","class=\"ticker\"","system-section","editorial-section","discovery-offer"])assert.doesNotMatch(home,new RegExp(removed),`${removed} was cut in Build 9; the homepage is hero, free preview, rankings, method, sources`);
 
   const expected=["Exercises","Strata+","Plan","Train"];
   assert.deepEqual(navLabels(home,"desktop-nav"),expected);

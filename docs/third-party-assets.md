@@ -3,8 +3,6 @@
 ## Photographs
 
 - `public/images/hero-training.jpg` — photo by [Corey Young](https://unsplash.com/photos/a-man-doing-a-pull-up-on-a-bar-in-a-gym-ThLzcgVeU5I) on Unsplash. The homepage retains visible attribution.
-- `public/images/training-story.jpg` — photo by [HamZa NOUASRIA](https://unsplash.com/photos/a-woman-lifting-a-barbell-in-a-gym-t7SyUNppIeA) on Unsplash. The homepage retains visible attribution.
-- `public/images/strata-layers.jpg` — original STRATA visual asset.
 
 The two Unsplash files are self-hosted so rendering the homepage does not send a visitor's request metadata to Unsplash. Review the current [Unsplash license](https://unsplash.com/license) before redistributing the photos separately from this application.
 

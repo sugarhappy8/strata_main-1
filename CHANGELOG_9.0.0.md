@@ -102,6 +102,13 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   `archive_community_weekly_plans` (reversible for one release) and drops its index.
   Community *ratings* are a different feature and stay. Templates and import/export remain
   the two ways to reuse a week.
+- **Homepage trimmed to hero → free week preview → rankings → method → sources.** The
+  "What would you like to do?" directory cards (the navigation already says it), the
+  Rank→Plan→Train→Review ticker, the "From question to working set" demo console, the
+  editorial story block, and the Strata+ offer block are gone, with their styles and the two
+  photographs only they used. Price and renewal terms plus the contact address move to a
+  short footer line; the pricing page remains the one place that sells Strata+. The
+  research "receipts" section stays: it is trust content that the footer links to.
 
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
