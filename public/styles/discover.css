@@ -1703,6 +1703,14 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
 /* Recovery (Build 8.8.6): the Overview card and the Recovery destination, from the member's own Polar data. */
 .today-support-grid:not(:has(#todayAlternativeWorkout:not([hidden]))) .today-recovery-card { grid-column:1/-1; }
 .today-recovery-card [hidden] { display:none; }
+.today-brief-card { display:grid; gap:10px; align-content:start; }
+.today-brief-card[hidden] { display:none; }
+.today-brief-card h2 { margin:0; }
+.today-brief-card [hidden] { display:none; }
+.today-brief-adjustments { display:grid; gap:8px; margin:0; padding:0; list-style:none; }
+.today-brief-adjustments li { display:grid; gap:2px; padding:10px 12px; border:1px solid #33392c; border-radius:10px; }
+.today-brief-care { padding:10px 12px; border-left:3px solid #9a6800; background:rgba(154,104,0,.12); border-radius:6px; }
+.today-brief-card a { display:inline-flex; align-items:center; min-height:44px; font-weight:700; }
 .plan-readiness { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin:0 0 22px; padding:12px 16px; border:1px solid var(--line); border-left:4px solid #327a31; border-radius:10px; background:var(--white); font-size:14px; }
 .plan-readiness[hidden] { display:none; }
 .plan-readiness[data-tone="mid"] { border-left-color:#9a6800; }

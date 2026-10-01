@@ -11,6 +11,7 @@ const {createLocalAccessControlMethods,createTursoAccessControlMethods}=require(
 const {coachingDeletionBatch,createLocalCoachingMethods,createTursoCoachingMethods,deleteLocalCoachingData}=require("./coaching-store");
 const {createLocalDeviceMethods,createTursoDeviceMethods}=require("./devices-store");
 const {createLocalDataLayerMethods,createTursoDataLayerMethods,dataLayerDeletionBatch,deleteLocalDataLayerData}=require("./data-layer-store");
+const {aiDeletionBatch,createLocalAiMethods,createTursoAiMethods,deleteLocalAiData}=require("./ai-store");
 const {migrateLocalSchema,migrateTursoSchema}=require("./migrations");
 function plainValue(value) {
   return typeof value === "bigint" ? Number(value) : value;
@@ -166,9 +167,9 @@ function localStore(root) {
   const trainingMethods=createLocalTrainingMethods({db,statements,plainRow});
   const accountSelfServiceMethods=createLocalAccountSelfServiceMethods({db,statements,plainRow});
   const billingMethods=createLocalBillingMethods({db,statements,plainRow});
-  const coachingMethods=createLocalCoachingMethods({statements,plainRow}),deviceMethods=createLocalDeviceMethods({db,statements,plainRow}),dataLayerMethods=createLocalDataLayerMethods({statements,plainRow});
+  const coachingMethods=createLocalCoachingMethods({statements,plainRow}),deviceMethods=createLocalDeviceMethods({db,statements,plainRow}),dataLayerMethods=createLocalDataLayerMethods({statements,plainRow}),aiMethods=createLocalAiMethods({statements,plainRow});
   return defineStore("local",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,
     ...createLocalAccessControlMethods({db,statements,plainRow}),
     async ping() { return probeConnection(() => statements.ping.get()); },
     async userByEmail(email) { return plainRow(statements.userByEmail.get(email)); },
@@ -418,6 +419,7 @@ function localStore(root) {
         deleteLocalTrainingData(statements,user.id);
         deleteLocalCoachingData(statements,user.id);
         deleteLocalDataLayerData(statements,user.id);
+        deleteLocalAiData(statements,user.id);
         statements.deleteWorkoutsForDeletedUser.run(user.id,user.id);
         statements.deleteCheckoutClaimsForDeletedUser.all(user.id,user.id);
         statements.deleteVerificationSendsForDeletedUser.run(user.id,user.email,user.id);
@@ -608,6 +610,7 @@ function localStore(root) {
         deleteLocalTrainingData(statements,user.id);
         deleteLocalCoachingData(statements,user.id);
         deleteLocalDataLayerData(statements,user.id);
+        deleteLocalAiData(statements,user.id);
         statements.deleteWorkoutsForDeletedUser.run(user.id,user.id);
         statements.deleteCheckoutClaimsForDeletedUser.all(user.id,user.id);
         statements.deleteVerificationSendsForDeletedUser.run(user.id,targetEmail,user.id);
@@ -709,10 +712,10 @@ async function tursoStore(url,authToken,tursoClientFactory) {
   const trainingMethods=createTursoTrainingMethods({client,first,run,plainRow});
   const accountSelfServiceMethods=createTursoAccountSelfServiceMethods({client,first,run,all,plainRow});
   const billingMethods=createTursoBillingMethods({client,first,run,all,plainRow});
-  const coachingMethods=createTursoCoachingMethods({first,all}),deviceMethods=createTursoDeviceMethods({client,first,all,run,plainRow}),dataLayerMethods=createTursoDataLayerMethods({first,all,run});
+  const coachingMethods=createTursoCoachingMethods({first,all}),deviceMethods=createTursoDeviceMethods({client,first,all,run,plainRow}),dataLayerMethods=createTursoDataLayerMethods({first,all,run}),aiMethods=createTursoAiMethods({first,all,run});
 
   return defineStore("turso",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,
     ...createTursoAccessControlMethods({client,first,plainRow,SQL}),
     // A successful query is the health signal. Some Turso-compatible row
     // implementations expose selected values only by numeric index, so the
@@ -889,6 +892,7 @@ async function tursoStore(url,authToken,tursoClientFactory) {
         ...trainingDeletionBatch(action.user_id),
         ...coachingDeletionBatch(action.user_id),
         ...dataLayerDeletionBatch(action.user_id),
+        ...aiDeletionBatch(action.user_id),
         {sql:SQL.deleteWorkoutsForDeletedUser,args:[action.user_id,action.user_id]},
         {sql:SQL.deleteCheckoutClaimsForDeletedUser,args:[action.user_id,action.user_id]},
         {sql:SQL.deleteVerificationSendsForDeletedUser,args:[action.user_id,action.email,action.user_id]},
@@ -1013,6 +1017,7 @@ async function tursoStore(url,authToken,tursoClientFactory) {
         ...trainingDeletionBatch(userId),
         ...coachingDeletionBatch(userId),
         ...dataLayerDeletionBatch(userId),
+        ...aiDeletionBatch(userId),
         {sql:SQL.deleteWorkoutsForDeletedUser,args:[userId,userId]},
         {sql:SQL.deleteCheckoutClaimsForDeletedUser,args:[userId,userId]},
         {sql:SQL.deleteVerificationSendsForDeletedUser,args:[userId,targetEmail,userId]},

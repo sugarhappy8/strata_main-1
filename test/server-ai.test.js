@@ -4,6 +4,7 @@ const test=require("node:test"),assert=require("node:assert/strict");
 const http=require("node:http");
 const {spawn}=require("node:child_process"),{mkdirSync,mkdtempSync,rmSync}=require("node:fs"),{join}=require("node:path");
 const {grantStrataPlus}=require("./support/strata-plus-access");
+const {DatabaseSync}=require("node:sqlite");
 const ROOT=join(__dirname,"..");
 let server,directory,base,fake,fakeBase;
 
@@ -34,7 +35,7 @@ async function startFakeModel(){
 async function launch(){
   await startFakeModel();
   mkdirSync(join(ROOT,"test-runtime"),{recursive:true});directory=mkdtempSync(join(ROOT,"test-runtime","ai-http-"));
-  server=spawn(process.execPath,["server.js"],{cwd:ROOT,env:{...process.env,HOST:"127.0.0.1",PORT:"0",NODE_ENV:"test",ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS:"true",STRATA_DATA_DIR:directory,TURSO_DATABASE_URL:"",TURSO_AUTH_TOKEN:"",EMAIL_VERIFICATION_ENABLED:"false",PADDLE_CHECKOUT_ENABLED:"false",PADDLE_CLIENT_TOKEN:"",PADDLE_API_KEY:"",PADDLE_WEBHOOK_SECRET:"",PADDLE_PRICE_ID:"",PADDLE_PRODUCT_ID:"",AI_BASE_URL:fakeBase,AI_API_KEY:"test-key",AI_MODEL:"test-model",AI_MAX_CONCURRENT:"1",AI_MAX_QUEUE:"1",AI_DAILY_LIMIT:"6",AI_TIMEOUT_MS:"5000"},stdio:["ignore","pipe","pipe"]});
+  server=spawn(process.execPath,["server.js"],{cwd:ROOT,env:{...process.env,HOST:"127.0.0.1",PORT:"0",NODE_ENV:"test",ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS:"true",STRATA_DATA_DIR:directory,TURSO_DATABASE_URL:"",TURSO_AUTH_TOKEN:"",EMAIL_VERIFICATION_ENABLED:"false",PADDLE_CHECKOUT_ENABLED:"false",PADDLE_CLIENT_TOKEN:"",PADDLE_API_KEY:"",PADDLE_WEBHOOK_SECRET:"",PADDLE_PRICE_ID:"",PADDLE_PRODUCT_ID:"",STRATA_AI_BASE_URL:fakeBase,GROQ_API_KEY:"test-key",STRATA_AI_MODEL:"test-model",STRATA_AI_MAX_CONCURRENT:"1",STRATA_AI_MAX_QUEUE:"1",STRATA_AI_USER_DAILY_LIMIT:"6",STRATA_AI_TIMEOUT_MS:"5000",STRATA_AI_REQUESTS_PER_MINUTE:"10000"},stdio:["ignore","pipe","pipe"]});
   base=await new Promise((resolve,reject)=>{let output="",errors="";const timer=setTimeout(()=>reject(new Error(`AI server startup timed out: ${errors}`)),6000);server.stdout.on("data",(chunk)=>{output=(output+chunk).slice(-4096);const match=output.match(/Strata running at http:\/\/127\.0\.0\.1:(\d+)/);if(match){clearTimeout(timer);resolve(`http://127.0.0.1:${match[1]}`);}});server.stderr.on("data",(chunk)=>{errors=(errors+chunk).slice(-4096);});server.once("error",reject);server.once("exit",(code)=>reject(new Error(`AI server exited ${code}: ${errors}`)));});
 }
 async function stop(){
@@ -47,10 +48,11 @@ async function request(path,account=null,method="GET",body,headers={}){
   const type=response.headers.get("content-type")||"";
   return {status:response.status,location:response.headers.get("location"),data:type.includes("json")?await response.json():await response.text(),cookie:response.headers.get("set-cookie")?.split(";")[0]||""};
 }
-async function account(suffix,{plus=true}={}){
+async function account(suffix,{plus=true,consent=plus}={}){
   const signup=await request("/api/signup",null,"POST",{name:`AI ${suffix}`,email:`ai-${suffix}@example.test`,password:"strong-ai-password-123"});assert.equal(signup.status,201);
   const me=await request("/api/me",{cookie:signup.cookie,csrf:""});const result={cookie:signup.cookie,csrf:me.data.csrfToken,id:me.data.user.id,email:`ai-${suffix}@example.test`};
   if(plus)grantStrataPlus(directory,result.id);
+  if(consent)assert.equal((await request("/api/ai/settings",result,"PUT",{consent:true})).status,200);
   return result;
 }
 function profile(overrides={}){
@@ -123,7 +125,7 @@ test("ordinary questions return a conversation reply without proposing account c
   model.replies.push({reply:"Pain needs an appropriate health professional before changing your plan.",week:week([{day:"Monday",name:"Unsafe",exercises:[["CH1",3,"8-12"],["BK1",3,"8-12"]]}]),nutrition:null,suggestions:[],search:[]});
   const safety=await settle(member,(await ask(member,{message:"My shoulder hurts, make my sessions longer",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
   assert.equal(safety.data.request.status,"done");assert.equal(safety.data.request.result.week,null);assert.match(safety.data.request.result.reply,/health professional/);
-  assert.deepEqual(model.requests[2].response_format.schema.properties.week,{const:null});
+  assert.deepEqual(model.requests[2].response_format.json_schema.schema.properties.week,{const:null});assert.equal(model.requests[2].response_format.json_schema.strict,true);
 });
 
 test("a week proposal uses only real exercises and saves through the normal plan endpoint",async()=>{
@@ -302,4 +304,27 @@ test("the model can search all 320 exercises once and use what it finds",async()
   const none=await settle(member,(await ask(member,{message:"Add underwater basket weaving"})).data.request.id);
   assert.equal(none.data.request.status,"done");assert.match(none.data.request.result.reply,/no exercise like that/);
   assert.equal(model.requests.length,2,"the model cannot search twice");assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: STRATA found no library exercises for: underwater basket weaving/);
+});
+
+test("Strata AI asks for consent first, and members can withdraw it and delete stored notes",async()=>{
+  const member=await account("consent",{consent:false});
+  const status=await request("/api/ai/status",member);assert.equal(status.data.consent,false);assert.equal(status.data.dailyBrief,true);assert.equal(status.data.resting,false);
+  const blocked=await ask(member);assert.equal(blocked.status,409);assert.equal(blocked.data.code,"AI_CONSENT_REQUIRED");
+  const requestsBefore=model.requests.length;
+  for(const body of [{consent:"yes"},{consent:true,extra:1},{consent:true,dailyBrief:"no"}])assert.equal((await request("/api/ai/settings",member,"PUT",body)).status,400);
+  assert.equal((await request("/api/ai/settings",member,"PUT",{consent:true},{"X-CSRF-Token":"wrong"})).status,403);
+  const allowed=await request("/api/ai/settings",member,"PUT",{consent:true,dailyBrief:false});
+  assert.equal(allowed.status,200);assert.deepEqual({consent:allowed.data.settings.consent,dailyBrief:allowed.data.settings.dailyBrief},{consent:true,dailyBrief:false});
+  assert.equal((await request("/api/ai/status",member)).data.consent,true);
+  const database=new DatabaseSync(join(directory,"strata.sqlite"),{timeout:5000});
+  try{
+    database.prepare("INSERT INTO daily_snapshots(user_id,snapshot_date,snapshot_json,brief_json,brief_generated_at,updated_at) VALUES(?,?,?,?,?,?)").run(member.id,"2026-09-30",JSON.stringify({version:1,date:"2026-09-30"}),JSON.stringify({version:1,insight:"note"}),1,1);
+    assert.equal((await request("/api/ai/notes",member,"DELETE",{})).data.deleted,true);
+    assert.equal(database.prepare("SELECT brief_json FROM daily_snapshots WHERE user_id=?").get(member.id).brief_json,null,"stored AI notes are deleted, the day's facts stay");
+  }finally{database.close();}
+  const withdrawn=await request("/api/ai/settings",member,"PUT",{consent:false});assert.equal(withdrawn.data.settings.consent,false);
+  assert.equal((await ask(member)).data.code,"AI_CONSENT_REQUIRED");assert.equal(model.requests.length,requestsBefore,"nothing reached the provider without consent");
+  const free=await account("consent-free",{plus:false});assert.equal((await request("/api/ai/settings",free)).status,200,"withdrawing and deleting never need Strata+");
+  assert.equal((await request("/api/ai/usage")).status,401);assert.equal((await request("/api/ai/usage",member)).status,403,"usage is for the owner");
+  assert.equal((await request("/api/ai/settings",member,"POST",{})).status,405);
 });

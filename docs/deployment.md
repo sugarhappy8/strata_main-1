@@ -93,29 +93,22 @@ Permanent deletion retains one explicit destructive review dialog but no typed c
 
 ## Strata AI
 
-Strata AI is off until `AI_BASE_URL` and `AI_MODEL` are set. It works with any OpenAI-compatible chat server; the pilot runs a local model in Atomic Chat on the owner's PC.
+Strata AI runs on **Groq**'s OpenAI-compatible API and is off until `GROQ_API_KEY` and `STRATA_AI_MODEL` are set. `STRATA_AI.md` describes the prompts, schemas, context, quota, and costs.
 
-1. In Atomic Chat, load the model and keep the local server bound to `127.0.0.1` with LAN access off.
-2. Turn on remote access with an API key. Copy the public `https://…/v1` address and the key.
-3. In Render, set `AI_BASE_URL` to that address, `AI_API_KEY` to the key, and `AI_MODEL` to the exact model ID that `GET /v1/models` lists. Never commit these values or paste the key into chat, tickets, or logs.
-4. Deploy, sign in with a Strata+ account, open `/ai`, and confirm the status reads "Strata AI is ready".
-
-Choosing a model:
-
-- Use an official instruction-tuned model that ships with its chat template. On a 12 GB GPU, Qwen2.5-14B-Instruct at Q4_K_M (about 9 GB) fits with a 16,384-token context and writes a week in roughly 10–20 seconds. Qwen2.5-7B-Instruct at Q5_K_M or Q6_K answers about twice as fast with slightly simpler plans.
-- Avoid community merges and "upscaled" models (for example an 8B model stretched to 14B). They can loop on one phrase and never produce the JSON STRATA needs, which shows as "Strata AI's answer could not be read" and an `ai.unreadable_answer` warning in the logs.
-- Avoid reasoning ("thinking") models unless the server honors `enable_thinking: false`; otherwise the thinking uses up the answer budget.
-- Each request needs about 4,000 tokens of context (a prompt of up to about 2,800 tokens plus an answer of up to 900). The server's context is shared by its parallel slots, so 16,384 tokens supports 3–4 slots.
-- After changing models, set `AI_MODEL` to the exact ID the server lists and redeploy.
+1. In the Groq console, create an API key and turn on **Zero Data Retention** under Data Controls. The privacy policy says STRATA's account uses it.
+2. Call `GET https://api.groq.com/openai/v1/models` with the key and confirm both models are listed as active production models: `openai/gpt-oss-120b` (primary) and `openai/gpt-oss-20b` (fallback) at the time of writing. If either is retired, pick the closest production model that supports strict JSON-schema structured outputs.
+3. In Render, set `GROQ_API_KEY`, `STRATA_AI_MODEL`, and `STRATA_AI_FALLBACK_MODEL`. Never commit these values or paste the key into chat, tickets, or logs.
+4. Deploy, then check the log line `ai.models`: `primaryListed` and `fallbackListed` should both be `true`. Sign in with a Strata+ account, open `/ai`, allow Strata AI, and confirm the status reads "Strata AI is ready".
 
 Operational notes:
 
-- A Cloudflare quick tunnel gets a new address each time it restarts. Update `AI_BASE_URL` in Render when that happens, or use a named tunnel for a stable address. If the endpoint sits behind Cloudflare Access, set `AI_ACCESS_CLIENT_ID` and `AI_ACCESS_CLIENT_SECRET` to a service token.
-- In production a plain `http://` address other than this machine is ignored, so the key never travels unencrypted. The server logs `ai.insecure_base_url_ignored` when that happens.
-- Requests wait in an in-memory queue: `AI_MAX_CONCURRENT` (default 3) run at once and `AI_MAX_QUEUE` (default 20) can wait. Match `AI_MAX_CONCURRENT` to the model server's parallel slots. Each member gets `AI_DAILY_LIMIT` requests per UTC day (default 30). `AI_TIMEOUT_MS` (default 120000) bounds each model call.
-- The queue, results, and daily counts live in one process's memory and reset on restart. Answers are kept for 10 minutes so the page can collect them.
-- The model receives the member's saved plan, personal setup, and summaries of recent workouts and nutrition logs. It never receives the member's name, email, or account ID. Logs record request kind, outcome code, and duration only; they never include messages or answers.
-- When the PC is off or the tunnel is down, `/ai` shows that Strata AI may be offline, and every other STRATA feature keeps working.
+- **Budget.** The free tier is a budget for the whole organization. `STRATA_AI_DAILY_REQUESTS` (default 900) caps a UTC day, `STRATA_AI_REQUESTS_PER_MINUTE` (default 25) caps bursts, and `STRATA_AI_BRIEF_SHARE` (default 0.4) keeps that share of the day for Daily Briefs before chat can use it. When chat's share is spent, `/ai` says Strata AI is resting until tomorrow and the Daily Brief stays on the Overview. Counts persist in `ai_usage_days`, so a restart never resets the day. Moving to a paid Groq tier is a config change: raise these numbers.
+- **Rate limits.** A `429` from Groq rests that model until its `retry-after` and the fallback model answers (it has its own quota at Groq). If both are resting, members see a short "resting for a moment" message.
+- **Daily Brief.** Runs each member's morning (`STRATA_AI_BRIEF_HOUR`, default 5 local time), after last night's Polar sync when Polar is connected, a few members per minute. Turn it off with `STRATA_AI_DAILY_BRIEF=false`.
+- **Usage.** The owner can read today's requests and tokens, in total and for the heaviest members, at `GET /api/ai/usage`.
+- **Privacy.** Nothing is sent without the member's consent. The model receives a compact summary built from the shared data layer, never the member's name, email, account ID, or Polar tokens. Logs record request kind, outcome code, duration, and token counts only.
+- In production a plain `http://` base URL other than this machine is ignored, so the key never travels unencrypted (`ai.insecure_base_url_ignored`).
+- When Groq is unreachable, `/ai` says Strata AI may be offline, and every other STRATA feature keeps working.
 
 ## Polar connected devices
 

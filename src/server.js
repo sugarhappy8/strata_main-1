@@ -15,6 +15,9 @@ const { createCoachingService } = require("./coaching");
 const { createDevicesService,devicesSettings } = require("./devices");
 const { createAiService } = require("./ai");
 const { aiSettings,createAiProvider } = require("./ai-provider");
+const {createAiQuota}=require("./ai-quota");
+const {createAiSettingsService}=require("./ai-settings");
+const {createDailyBriefJob}=require("./ai-daily-brief");
 const { createSetupService } = require("./setup");
 const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
@@ -180,7 +183,7 @@ const STATIC_FILES = new Map([
   ["discover-program.js","scripts/discover-program.js"],
   ["discover-coaching-meals.js","scripts/discover-coaching-meals.js"],
   ["discover.js","scripts/discover.js"],
-  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["discover-recovery.js","scripts/discover-recovery.js"],["workout-recovery.js","scripts/workout-recovery.js"],
+  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["discover-recovery.js","scripts/discover-recovery.js"],["discover-brief.js","scripts/discover-brief.js"],["workout-recovery.js","scripts/workout-recovery.js"],
   ["install.js","scripts/install.js"],
   ["offline.js","scripts/offline.js"],
   ["pricing-logic.js","scripts/pricing-logic.js"],
@@ -249,7 +252,7 @@ let workouts;
 let training;
 let coaching;
 let devices;
-let ai;
+let ai,aiSettingsService,briefJob;
 let setup;
 let productSignals;
 let billing;
@@ -420,6 +423,7 @@ async function handleApi(req,res,url) {
   if (await support.handleApi(req,res,url)) return;
   if (await auth.handleApi(req,res,url)) return;
   if (await admin.handleApi(req,res,url)) return;
+  if (await aiSettingsService.handleApi(req,res,url)) return;
   if (await ai.handleApi(req,res,url)) return;
   if (await dataService.handleApi(req,res,url)) return;
   if (await training.handleApi(req,res,url)) return;
@@ -639,7 +643,13 @@ async function start() {
   coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events,getPlan:planFor});
   devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation,events});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
-  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
+  const aiProvider=createAiProvider(AI_SETTINGS.provider),aiQuota=createAiQuota({store,limits:AI_SETTINGS.limits});
+  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:aiProvider,getPlanSnapshot:planSnapshotFor,quota:aiQuota,dataService,logger:LOGGER,config:AI_SETTINGS.limits});
+  aiSettingsService=createAiSettingsService({store,auth,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},quota:aiQuota,admin});
+  // The Daily Brief runs through the night's queue; tests turn it on explicitly.
+  briefJob=createDailyBriefJob({store,dataService,provider:aiProvider,quota:aiQuota,hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,settings:{hour:AI_SETTINGS.brief.hour}});briefJob.subscribe(events);
+  if (AI_SETTINGS.brief.enabled&&aiProvider.configured&&(process.env.NODE_ENV!=="test"||process.env.STRATA_AI_DAILY_BRIEF==="true")) briefJob.start();
+  if (aiProvider.configured&&process.env.NODE_ENV!=="test") void aiProvider.health().then((health)=>LOGGER.info("ai.models",{primaryListed:health.modelListed,fallbackListed:health.fallbackListed})).catch((error)=>LOGGER.warn("ai.models_unchecked",{code:error?.code||"AI_FAILED"}));
   setup=createSetupService({
     store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,
     getPlanSnapshot:planSnapshotFor,getPreferencesSnapshot:preferencesSnapshotFor,getUserPayload:userPayload,
@@ -658,6 +668,7 @@ async function start() {
     void support.cleanup().catch((error)=>LOGGER.error("cleanup.support_failed",{error}));
     void productSignals.cleanup().catch((error)=>LOGGER.error("cleanup.product_signals_failed",{error}));
     void dataService.cleanup().catch((error)=>LOGGER.error("cleanup.data_layer_failed",{error}));
+    void aiQuota.cleanup(90).catch((error)=>LOGGER.error("cleanup.ai_usage_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
   },60*60*1000);
   cleanup.unref();
@@ -672,6 +683,7 @@ function shutdown() {
   shuttingDown=true;
   if (cleanup) clearInterval(cleanup);
   devices?.stop();
+  briefJob?.stop();
   const deadline=setTimeout(()=>{
     console.error("Shutdown deadline reached; closing remaining connections.");
     server.closeAllConnections();

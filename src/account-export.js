@@ -48,6 +48,10 @@ function exportPayload(rows,now){
       snapshots:(rows.dailySnapshots||[]).map((row)=>({date:String(row.snapshot_date),data:storedJson(row.snapshot_json),brief:row.brief_json==null?null:storedJson(row.brief_json),briefGeneratedAt:optionalNumber(row.brief_generated_at),updatedAt:Number(row.updated_at)})),
       planChanges:(rows.planChanges||[]).map((row)=>({planUpdatedAt:Number(row.plan_updated_at),source:String(row.source),detail:String(row.detail),createdAt:Number(row.created_at)})),
       trainingLinks:(rows.trainingLinks||[]).map((row)=>({provider:String(row.provider),externalId:String(row.external_id),workoutId:String(row.workout_id),method:String(row.method),linkedAt:Number(row.linked_at)}))
+    },
+    strataAi:{
+      settings:rows.aiSettings?{consentedAt:optionalNumber(rows.aiSettings.consent_at),consentVersion:Number(rows.aiSettings.consent_version),dailyBrief:Number(rows.aiSettings.daily_brief)===1,updatedAt:Number(rows.aiSettings.updated_at)}:null,
+      usage:(rows.aiUsage||[]).map((row)=>({date:String(row.usage_date),kind:String(row.kind),requests:Number(row.requests),tokens:Number(row.tokens)}))
     }
   };
 }

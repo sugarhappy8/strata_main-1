@@ -73,6 +73,15 @@
 
         </div>
       </section>
+      <details class="ai-settings" id="aiSettings" hidden>
+        <summary>Strata AI settings</summary>
+        <div class="ai-settings-body">
+          <label class="ai-settings-toggle"><input type="checkbox" id="aiDailyBrief" /><span><strong>Daily Brief each morning</strong><small>A short note on your Overview: readiness, today’s recommendation, and one insight.</small></span></label>
+          <p>Strata AI sends Groq a short summary of your plan, workouts, recovery, and diary to answer. It never sends your name, email, or Polar login. <a href="/privacy#strata-ai">How Strata AI uses your data</a></p>
+          <div class="ai-settings-actions"><button class="ai-button" id="aiDeleteNotes" type="button">Delete stored AI notes</button><button class="ai-button" id="aiWithdraw" type="button">Turn off Strata AI</button></div>
+          <p class="ai-settings-status" id="aiSettingsStatus" role="status" aria-live="polite"></p>
+        </div>
+      </details>
     </main>
 
     <footer class="build-footer">STRATA · Build 8.9.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>

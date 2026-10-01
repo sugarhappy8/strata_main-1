@@ -29,9 +29,12 @@ const ACCOUNT_EXPORT_QUERIES=Object.freeze({
   // Derived data-layer rows: daily snapshots (with any stored Strata AI brief), plan history, and Polar-to-workout links.
   dailySnapshots:"SELECT snapshot_date,snapshot_json,brief_json,brief_generated_at,updated_at FROM daily_snapshots WHERE user_id=? ORDER BY snapshot_date",
   planChanges:"SELECT plan_updated_at,source,detail,created_at FROM plan_changes WHERE user_id=? ORDER BY plan_updated_at",
-  trainingLinks:"SELECT provider,external_id,workout_id,method,linked_at FROM training_links WHERE user_id=? ORDER BY linked_at,external_id"
+  trainingLinks:"SELECT provider,external_id,workout_id,method,linked_at FROM training_links WHERE user_id=? ORDER BY linked_at,external_id",
+  // Strata AI consent and the member's own daily request and token counts.
+  aiSettings:"SELECT consent_at,consent_version,daily_brief,updated_at FROM ai_settings WHERE user_id=?",
+  aiUsage:"SELECT usage_date,kind,requests,tokens FROM ai_usage_days WHERE scope=? ORDER BY usage_date,kind"
 });
-const ACCOUNT_EXPORT_SINGLE_ROWS=new Set(["profile","weeklyPlan","monthlyPlan","preferences","trainingBlock","coachingProfile"]);
+const ACCOUNT_EXPORT_SINGLE_ROWS=new Set(["profile","weeklyPlan","monthlyPlan","preferences","trainingBlock","coachingProfile","aiSettings"]);
 const ACCOUNT_EXPORT_WORKOUTS_QUERY="SELECT id,workout_json,summary_json,started_at,revision,updated_at FROM workouts WHERE user_id=? AND (started_at>? OR (started_at=? AND id>?)) ORDER BY started_at,id LIMIT ?";
 const ACCOUNT_SELF_SERVICE_SQL=Object.freeze({
   accountSessions:"SELECT s.token_hash,s.created_at,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id AND u.auth_version=s.auth_version AND u.suspended_at IS NULL WHERE s.user_id=? AND s.expires_at>? ORDER BY CASE WHEN s.token_hash=? THEN 0 ELSE 1 END,s.created_at DESC,s.token_hash",

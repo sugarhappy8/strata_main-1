@@ -7,7 +7,7 @@ const {join}=require("node:path");
 
 const PROJECT_ROOT=join(__dirname,"..");
 const read=(...parts)=>readFileSync(join(PROJECT_ROOT,"public",...parts),"utf8");
-const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-session.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover.js"];
+const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-session.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover-brief.js","discover.js"];
 const discoverScript=()=>discoverModules.map(name=>read("scripts",name)).join("\n");
 
 test("Strata+ progressively enhances four primary destinations and focused supporting tools",()=>{

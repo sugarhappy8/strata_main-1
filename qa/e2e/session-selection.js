@@ -54,6 +54,7 @@ async function fixture(t,{plan=fixtureWeek(),workouts=focusHistory(),historyAvai
     if(path==="/api/workouts")return historyAvailable?json({workouts,hasMore,csrfToken:CSRF}):json({error:"History temporarily unavailable"},503);
     if(path==="/api/training")return json({user:USER,csrfToken:CSRF,block:null,adaptation:null});
     if(path==="/api/training-log")return json({from:"",to:"",entries:[]});
+    if(path==="/api/snapshots")return json({from:"",to:"",snapshots:[]});
     if(path==="/api/plan"){
       if(request.method()==="PUT"){
         const payload=request.postDataJSON();writes.push({payload,csrf:request.headers()["x-csrf-token"]});

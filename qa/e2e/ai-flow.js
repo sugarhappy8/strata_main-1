@@ -61,7 +61,7 @@ async function startApp(){
   const modelBase=await startModel(),port=await unusedPort();baseUrl=`http://127.0.0.1:${port}`;runtimeDir=mkdtempSync(join(tmpdir(),"strata-ai-e2e-"));
   app=spawn(process.execPath,["server.js"],{
     cwd:ROOT,
-    env:{...process.env,HOST:"127.0.0.1",PORT:String(port),NODE_ENV:"test",TZ:"UTC",TRUST_PROXY:"true",SECURE_COOKIES:"false",ADMIN_EMAIL:"",TURSO_DATABASE_URL:"",TURSO_AUTH_TOKEN:"",STRATA_DATA_DIR:runtimeDir,ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS:"true",EMAIL_VERIFICATION_ENABLED:"false",PADDLE_CHECKOUT_ENABLED:"false",AI_BASE_URL:modelBase,AI_API_KEY:"e2e-key",AI_MODEL:"e2e-model",AI_TIMEOUT_MS:"10000"},
+    env:{...process.env,HOST:"127.0.0.1",PORT:String(port),NODE_ENV:"test",TZ:"UTC",TRUST_PROXY:"true",SECURE_COOKIES:"false",ADMIN_EMAIL:"",TURSO_DATABASE_URL:"",TURSO_AUTH_TOKEN:"",STRATA_DATA_DIR:runtimeDir,ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS:"true",EMAIL_VERIFICATION_ENABLED:"false",PADDLE_CHECKOUT_ENABLED:"false",STRATA_AI_BASE_URL:modelBase,GROQ_API_KEY:"e2e-key",STRATA_AI_MODEL:"e2e-model",STRATA_AI_TIMEOUT_MS:"10000",STRATA_AI_REQUESTS_PER_MINUTE:"10000"},
     stdio:["ignore","pipe","pipe"]
   });
   for(const stream of [app.stdout,app.stderr])stream.on("data",(chunk)=>{serverLogs=(serverLogs+chunk.toString()).slice(-16_384);});
@@ -151,6 +151,10 @@ test("members without Strata+ are sent to pricing, and Strata AI lives in its St
     await panel.waitFor({state:"visible"});
     assert.equal(await launcher.getAttribute("aria-expanded"),"true");
     assert.equal(await page.evaluate(()=>document.activeElement?.id),"aiChatMessage","focus starts in the message box");
+    // Nothing is sent to the AI provider until the member allows it.
+    await page.waitForFunction(()=>document.querySelector("#aiChatStatus")?.dataset.tone==="consent");
+    assert.equal(await page.locator("#aiChatSend").isDisabled(),true);assert.equal(await page.locator("#aiChatForm a[href='/privacy#strata-ai']").count(),1);
+    await page.locator("#aiChatForm .ai-consent-allow").click();
     await page.waitForFunction(()=>document.querySelector("#aiChatStatus")?.dataset.tone==="online");
     assert.match(await page.locator("#aiChatStatusDetail").textContent(),/30 of 30 requests left today/);
     assert.equal(await page.locator("#aiChatStarters button").count(),4);
@@ -212,6 +216,7 @@ test("on a phone the Strata AI chat fills the screen and closes back to the laun
     assert.equal(await page.evaluate(()=>document.activeElement?.id),"aiChatPanel","the keyboard stays down until the member taps the message box");
     assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).overflow),"hidden","the page behind the chat does not scroll");
     assert.equal(await page.locator(".ai-launcher-tip").isVisible(),false,"a tap opens the chat without stopping at the label");
+    await page.waitForFunction(()=>document.querySelector("#aiChatStatus")?.dataset.tone==="consent");await page.locator("#aiChatForm .ai-consent-allow").tap();
     await page.waitForFunction(()=>document.querySelector("#aiChatStatus")?.dataset.tone==="online");
     await page.locator("#aiChatStarters button").nth(3).tap();
     await page.locator("#aiChatConversation .ai-turn-assistant").first().waitFor({state:"visible"});
@@ -232,7 +237,11 @@ test("a Strata+ member plans a week, adds nutrition, applies a suggestion, and p
     await page.emulateMedia({reducedMotion:"reduce"});
     await signup(context,"member");await activatePlus(context);
     await page.goto("/ai",{waitUntil:"domcontentloaded"});
+    await page.waitForFunction(()=>document.querySelector("#aiStatus")?.dataset.tone==="consent");
+    assert.equal(await page.locator("#aiSettings").isVisible(),false,"settings appear once the member has agreed");
+    await page.locator("#aiForm .ai-consent-allow").click();
     await page.waitForFunction(()=>document.querySelector("#aiStatus")?.dataset.tone==="online");
+    assert.equal(await page.locator("#aiSettings").isVisible(),true);assert.equal(await page.locator("#aiDailyBrief").isChecked(),true);
     assert.equal(await page.locator("#userName").textContent(),"AI member");
     assert.match(await page.locator("#aiStatusDetail").textContent(),/30 of 30 requests left today/);
     assert.equal(await page.locator("#aiStarters button").count(),4);

@@ -8,7 +8,7 @@
 const {DAYS,EXERCISES,sanitizePlan}=require("./plans");
 const {currentWeekStart,generateCoachingWeek,sanitizeCoachingProfile}=require("./coaching-core");
 const {allowedByLimits,exerciseByName}=require("./ai-catalog");
-const LIMITS=Object.freeze({messageChars:1200,historyTurns:6,replyChars:900,suggestions:3,textChars:240,minExercises:2,maxExercises:8,maxSets:6,maxDaySets:36,promptChars:10500,searchTerms:6});
+const LIMITS=Object.freeze({messageChars:1200,historyTurns:6,replyChars:900,suggestions:3,textChars:240,minExercises:2,maxExercises:8,maxSets:6,maxDaySets:36,promptChars:16000,searchTerms:6});
 const SESSION_MINUTES=Object.freeze([30,45,60,75,90]);
 const CHOICES=Object.freeze({focus:["balanced","strength","hypertrophy"],goal:["fat_loss","maintenance","muscle_gain"],pace:["gentle","moderate"],pattern:["steady","zigzag","flexible_day"],macros:["balanced","higher_protein"]});
 /** @type {Map<string,any>} */

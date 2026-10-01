@@ -35,7 +35,10 @@
         "src/support.js",
         "src/training.js",
         "src/workouts.js",
-        "src/data-service.js"
+        "src/data-service.js",
+        "src/ai-quota.js",
+        "src/ai-settings.js",
+        "src/ai-daily-brief.js"
       ]
     },
     "src/service-composition.js": {
@@ -160,7 +163,8 @@
         "src/schema.js",
         "src/store-contract.js",
         "src/training-loop-store.js",
-        "src/data-layer-store.js"
+        "src/data-layer-store.js",
+        "src/ai-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -186,7 +190,8 @@
         "src/devices-schema.js",
         "src/product-signals-schema.js",
         "src/training-loop-schema.js",
-        "src/data-layer-schema.js"
+        "src/data-layer-schema.js",
+        "src/ai-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
@@ -408,7 +413,9 @@
         "src/coaching-core.js",
         "src/coaching-evidence.js",
         "src/coaching.js",
-        "src/workouts.js"
+        "src/workouts.js",
+        "src/ai-context.js",
+        "src/ai-settings.js"
       ]
     },
     "src/ai-core.js": {
@@ -436,8 +443,8 @@
       ]
     },
     "src/ai-provider.js": {
-      "role": "OpenAI-compatible model client and Strata AI settings",
-      "maxLines": 90,
+      "role": "Provider-neutral Strata AI client: Groq by default, structured outputs, and model fallback",
+      "maxLines": 130,
       "allowedDependencies": [
         "src/ai-response-schema.js"
       ]
@@ -563,6 +570,42 @@
         "src/daily-snapshot.js",
         "src/training-log.js"
       ]
+    },
+    "src/ai-schema.js": {
+      "role": "Strata AI consent and daily usage storage schema",
+      "maxLines": 50,
+      "allowedDependencies": []
+    },
+    "src/ai-store.js": {
+      "role": "SQLite and Turso Strata AI storage parity",
+      "maxLines": 70,
+      "allowedDependencies": [
+        "src/ai-schema.js"
+      ]
+    },
+    "src/ai-quota.js": {
+      "role": "Organization-wide AI budget: brief reserve, per-minute cap, and per-member limits",
+      "maxLines": 90,
+      "allowedDependencies": []
+    },
+    "src/ai-context.js": {
+      "role": "Compact Strata AI context and care flags from the shared data layer",
+      "maxLines": 90,
+      "allowedDependencies": [
+        "src/plans.js"
+      ]
+    },
+    "src/ai-daily-brief.js": {
+      "role": "Daily Brief schema, validation, and the throttled morning job",
+      "maxLines": 160,
+      "allowedDependencies": [
+        "src/ai-context.js"
+      ]
+    },
+    "src/ai-settings.js": {
+      "role": "Strata AI consent, Daily Brief choice, note deletion, and the owner's usage view",
+      "maxLines": 70,
+      "allowedDependencies": []
     }
   }
 }

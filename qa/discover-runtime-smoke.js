@@ -80,7 +80,7 @@ vm.runInContext(readPublic("scripts","personal-training-ui-core.js"),context,{fi
 vm.runInContext(readPublic("scripts","personal-training-diary-ui.js"),context,{filename:"personal-training-diary-ui.js"});
 vm.runInContext(readPublic("scripts","personal-training-meals-ui-core.js"),context,{filename:"personal-training-meals-ui-core.js"});
 for(const name of ["entitlements.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-catalog.js","discover-detail.js","discover-session.js","discover-events.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
-for(const name of ["discover-coaching-render.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
+for(const name of ["discover-coaching-render.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover-brief.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
 vm.runInContext(readPublic("scripts","discover.js"),context,{filename:"discover.js"});
 assert.equal(vm.runInContext("state.activeFeature",context),"today","feature navigation must initialize before discovery data resolves");
 assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>featureNavigation.featurePanel(name).hidden).length',context),11,"only the default workspace should remain visible during discovery loading");

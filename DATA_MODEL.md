@@ -96,7 +96,7 @@ from.
 | `coaching.log_saved` | `PUT /api/coaching/logs/:date` | `userId`, `date` | Daily Snapshot rebuilds that day |
 | `polar.sync.finished` | `devices-sync.js` after a successful import | `userId`, `provider`, `from`, `to` | Training Log relinks; Daily Snapshot rebuilds the synced days |
 | `polar.data_deleted` | Polar disconnect, or a reconnect that clears the old account's rows | `userId`, `provider` | Training links and snapshots are deleted |
-| `snapshot.ready` | Daily Snapshot after each stored day | `userId`, `date` | — (Phase 5: Daily Brief) |
+| `snapshot.ready` | Daily Snapshot after each stored day | `userId`, `date` | Daily Brief job moves that member to the front of its queue |
 
 Handlers run in order and are awaited before the route answers; a failing handler is logged
 and never fails the request that caused it.
@@ -112,7 +112,9 @@ always the source of truth once a member signs in.
 ## Privacy
 
 Every data-layer table is in the account export (`dataLayer.snapshots`, `planChanges`,
-`trainingLinks`) and is deleted with the account, on both SQLite and Turso.
+`trainingLinks`) and is deleted with the account, on both SQLite and Turso. Strata AI's consent
+(`ai_settings`) and the member's daily request and token counts (`ai_usage_days`) are exported
+under `strataAi`; the organization-wide totals keep no member identifiers.
 
 ## Archived tables
 

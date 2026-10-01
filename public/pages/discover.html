@@ -85,6 +85,7 @@
           </nav>
         </section>
         <div class="studio-container today-support-grid">
+          <article class="today-context-card today-brief-card" id="todayBrief" aria-labelledby="todayBriefTitle" hidden><p class="kicker">Daily Brief · Strata AI · <span id="todayBriefLevel"></span></p><h2 id="todayBriefTitle"></h2><p id="todayBriefReadiness"></p><p id="todayBriefDetail"></p><ul class="today-brief-adjustments" id="todayBriefAdjustments" hidden></ul><p id="todayBriefInsight"></p><p class="today-brief-care" id="todayBriefCare" hidden></p><small>Suggestions only. Your plan changes only when you edit it. <a href="/ai">Ask Strata AI</a></small></article>
           <aside class="today-context-card today-recovery-card" id="todayRecovery" aria-labelledby="todayRecoveryTitle" hidden><p class="kicker">Recovery · Polar</p><h2 id="todayRecoveryTitle">Last night</h2><p id="todayRecoveryDetail" role="status" aria-live="polite"></p><dl class="today-recovery-metrics" id="todayRecoveryMetrics"></dl><a class="small-button" id="todayRecoveryAction" href="#recoveryWorkspace" data-feature-target="recovery">Open Recovery <span aria-hidden="true">→</span></a><a class="small-button" id="todayRecoveryConnect" href="/account.html#connectedDevices" hidden>Connect Polar <span aria-hidden="true">→</span></a></aside>
 
           <aside class="today-context-card" id="todayAlternativeWorkout" aria-labelledby="todayContextTitle" hidden><p class="kicker">Alternative session</p><h2 id="todayContextTitle">Need a different workout?</h2><p>Build an alternative when time or equipment changes. Nothing is saved until you review and approve it.</p><a class="small-button" id="todayAlternativeAction" href="#sessionBuilder" data-feature-target="session">Create a different workout <span aria-hidden="true">→</span></a></aside>
@@ -691,6 +692,7 @@
     <script src="discover-coaching.js?v=8.9.0"></script>
     <script src="discover-program.js?v=8.9.0"></script>
     <script src="discover-recovery.js?v=8.9.0"></script>
+    <script src="discover-brief.js?v=8.9.0"></script>
     <script src="/ai-logic.js?v=8.9.0"></script>
     <script src="/ai-state.js?v=8.9.0"></script>
     <script src="/ai-api.js?v=8.9.0"></script>

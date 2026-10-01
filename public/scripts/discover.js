@@ -58,14 +58,14 @@ const toastController=NavigationCore.createToastController(el("toast"));
 function showToast(message){toastController.show(message);}
 function hideToast(){toastController.hide();}
 const coachingMeals=CoachingMealsCore.createController({document,element:el,api,state,ui:CoachingMealsUi,assertAccountResponse:ApiCore.assertAccountResponse,onAccountError:redirectedOrChangedAccount});
-const coaching=CoachingCore.createController({document,element:el,api,state,ui:CoachingUi,diaryUi:CoachingDiaryUi,meals:coachingMeals,assertAccountResponse:ApiCore.assertAccountResponse,renderFactory:CoachingRender.createRenderer,saveRetryMessage,showToast,onAccountError:redirectedOrChangedAccount,navigate:(name,options)=>activateFeature(name,options)});const recovery=globalThis.StrataDiscoverRecovery.createController({element:el,api,state,core:globalThis.StrataDevicesCore,getGeneration:()=>workspaceGeneration});
+const coaching=CoachingCore.createController({document,element:el,api,state,ui:CoachingUi,diaryUi:CoachingDiaryUi,meals:coachingMeals,assertAccountResponse:ApiCore.assertAccountResponse,renderFactory:CoachingRender.createRenderer,saveRetryMessage,showToast,onAccountError:redirectedOrChangedAccount,navigate:(name,options)=>activateFeature(name,options)});const recovery=globalThis.StrataDiscoverRecovery.createController({element:el,api,state,core:globalThis.StrataDevicesCore,getGeneration:()=>workspaceGeneration});const brief=globalThis.StrataDiscoverBrief.createController({element:el,api,state,core:globalThis.StrataDevicesCore,getGeneration:()=>workspaceGeneration});
 const featureNavigation=NavigationCore.createFeatureNavigation({
   config:FEATURE_CONFIG,defaultFeature:FEATURE_DEFAULT,state,document,window,scrollAnchorId:"featureHub",
   onDestinationChange:(name,previous)=>{hideToast();if(name==="coaching")coaching.setReturnFeature(previous);},
   onActivate:(name)=>{
     const scoreGuide=el("scoreGuide"),showScoreGuide=["recommendations","library","battle"].includes(name);if(scoreGuide)scoreGuide.hidden=!showScoreGuide;if(!showScoreGuide&&el("scoreGuideDetails"))el("scoreGuideDetails").open=false;
     if(state.user&&["recommendations","library","battle"].includes(name))void refreshCommunityRatings().catch(()=>{});
-    if(state.user&&["coaching","plan","nutrition"].includes(name))void coaching.ensureLoaded();recovery.activate(name);
+    if(state.user&&["coaching","plan","nutrition"].includes(name))void coaching.ensureLoaded();recovery.activate(name);brief.activate(name);
   }
 });
 function featureName(value){return featureNavigation.featureName(value);}
@@ -291,7 +291,7 @@ function renderProgression(){
   el("progressionAccept").disabled=suggestion.applied;el("progressionAccept").textContent=suggestion.applied?"Change accepted":"Accept change";el("progressionDismiss").hidden=suggestion.applied;el("progressionStatus").textContent=suggestion.applied?"Saved. Your weekly Plan was updated; this edit remains until you change Plan again.":"Nothing changes unless you accept.";
 }
 function clearPrivateWorkspace(){
-  workspaceGeneration+=1;workspaceReady=false;coachingPlanStamp=null;state.deviceCompletedDays=[];coaching.reset();program.reset();recovery.reset();
+  workspaceGeneration+=1;workspaceReady=false;coachingPlanStamp=null;state.deviceCompletedDays=[];coaching.reset();program.reset();recovery.reset();brief.reset();
   state.exercises=[];state.methodology=null;state.sources=[];state.limited=new Set();state.preferences=null;state.user=null;state.csrfToken="";state.aggregate=new Map();state.userRatings=new Map();state.ratingsRefreshedAt=0;state.ratingsRefreshPromise=null;state.ratingSaving=new Set();state.compare=[];state.shortlist=[];state.collection="all";state.query="";state.group="all";state.equipment="all";state.pattern="all";state.level="all";state.sort="personal";state.recommendations=[];state.activeExercise=null;state.explorerLimit=EXPLORER_DESKTOP_PAGE_SIZE;
   state.weeklyPlan=null;state.weeklyPlanUpdatedAt=0;state.workouts=[];state.workoutHistoryAvailable=false;state.workoutHistoryHasMore=false;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.trainingBlock=null;state.trainingBlockRevision=0;state.trainingBlockAction=null;state.progressionSuggestion=null;state.session=null;state.sessionSaving=false;state.sessionDayInitialized=false;state.monthlyPlan=null;state.monthlyPlanUpdatedAt=0;state.monthlySchedule=null;state.monthlySource="muscle-schedule";
   const main=document.querySelector("main");if(main){main.hidden=true;main.inert=true;main.setAttribute("aria-busy","true");}

@@ -108,6 +108,7 @@ const PRECACHE_URLS=[
   "/devices-core.js?v=8.9.0",
   "/account-devices.js?v=8.9.0",
   "/discover-recovery.js?v=8.9.0",
+  "/discover-brief.js?v=8.9.0",
   "/workout-recovery.js?v=8.9.0",
   "/training-block-core.js?v=8.9.0",
   "/ai.css?v=8.9.0",

@@ -74,6 +74,12 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/training-log.js` | Training Log read model: logged workouts, Polar sessions, and this week's planned days in one schema, with source tags and Polar-to-workout links. |
 | `src/daily-snapshot.js` | Daily Snapshot read model: one stored row per member per day, rebuilt from sleep, recovery, training, and diary events. |
 | `src/data-layer-schema.js`, `src/data-layer-store.js` | Storage for `training_links`, `daily_snapshots`, and `plan_changes`, with SQLite and Turso parity, export, and deletion. |
+| `src/ai-provider.js` | Provider-neutral Strata AI client: Groq by default, strict structured outputs, primary-to-fallback model on rate limits. |
+| `src/ai-quota.js` | The organization's daily AI budget: a Daily Brief reserve, a per-minute cap, and per-member chat allowances, persisted per day. |
+| `src/ai-context.js` | Compact Strata AI context and care flags built from the shared data layer. |
+| `src/ai-daily-brief.js` | Daily Brief schema, validation, and the throttled morning job. |
+| `src/ai-settings.js` | Strata AI consent, the Daily Brief choice, deleting stored notes, and the owner's usage view. |
+| `src/ai-schema.js`, `src/ai-store.js` | Storage for `ai_settings` and `ai_usage_days`, with SQLite and Turso parity, export, and deletion. |
 | `src/entitlements.js` | Feature tiers and the `can(user, feature)` capability map that `/api/me` carries and every route guard reads. |
 | `src/billing.js` | Checkout, entitlement, subscription, portal, webhook, and reconciliation-service composition, plus the retired trial route. |
 | `src/checkout-reconciliation.js` | Validated unfinished-checkout closure, settlement recovery, and deletion-safety reconciliation. |

@@ -7,6 +7,7 @@ const {ACCOUNT_SELF_SERVICE_SQL}=require("./account-self-service-schema");
 const {COACHING_SCHEMA,COACHING_SQL}=require("./coaching-schema");
 const {DEVICE_SCHEMA,DEVICE_SQL}=require("./devices-schema");
 const {DATA_LAYER_SCHEMA,DATA_LAYER_SQL}=require("./data-layer-schema");
+const {AI_SCHEMA,AI_SQL}=require("./ai-schema");
 
 // Central catalog shared by the local SQLite and Turso adapters.
 const WORKOUT_ACTIVE_INDEX="CREATE UNIQUE INDEX IF NOT EXISTS workouts_one_active_per_user ON workouts(user_id) WHERE CASE WHEN json_valid(workout_json) THEN json_extract(workout_json,'$.status') END='active'";
@@ -119,6 +120,7 @@ const SCHEMA = [
   ...COACHING_SCHEMA,
   ...DEVICE_SCHEMA,
   ...DATA_LAYER_SCHEMA,
+  ...AI_SCHEMA,
   `CREATE TABLE IF NOT EXISTS plans (
     user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
     plan_json TEXT NOT NULL,
@@ -312,7 +314,8 @@ const SQL = {
   ...TRAINING_LOOP_SQL,
   ...COACHING_SQL,
   ...DEVICE_SQL,
-  ...DATA_LAYER_SQL
+  ...DATA_LAYER_SQL,
+  ...AI_SQL
 };
 
 // Installed after the base schema so an existing database can reconcile the

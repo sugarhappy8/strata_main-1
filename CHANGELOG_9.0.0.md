@@ -191,6 +191,37 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   were not reachable from the build environment. Polling (first import, Sync now, daily pull
   with a three-day re-check) stays the sync model until then.
 
+## Phase 5 — Strata AI on Groq
+
+- **Groq replaces the local PC endpoint.** The provider adapter talks to Groq's
+  OpenAI-compatible API by default (`GROQ_API_KEY`, `STRATA_AI_MODEL`,
+  `STRATA_AI_FALLBACK_MODEL`; models are never hard-coded). Every structured task uses a strict
+  JSON schema. A rate-limited or retired model rests for its `retry-after` while the fallback
+  model answers. The Cloudflare Access headers and local-server options are gone, and the old
+  `AI_*` settings are no longer read.
+- **Consent first.** Nothing is sent to the provider until the member taps "Allow Strata AI".
+  The `/ai` page has settings to turn the Daily Brief off, delete stored AI notes, or turn
+  Strata AI off. The privacy policy has a new section 8 on Strata AI and Groq.
+- **A shared budget that survives restarts.** Requests and tokens are counted per day in
+  `ai_usage_days`; the quota keeps a share of the day for Daily Briefs, caps bursts per minute,
+  and keeps each member's chat allowance. When chat's share is spent, the chat says it is
+  resting until tomorrow instead of failing. The owner can read today's usage at
+  `GET /api/ai/usage`.
+- **Context from the data layer.** Chat and the brief read compact lines from Daily Snapshots,
+  the Training Log, Rankings Signals, and plan history. STRATA computes care flags itself
+  (resting heart rate, stress signals, or very short sleep three days running) and the AI adds
+  a gentle "consider a health professional" note only then.
+- **Daily Brief.** Each morning, after last night's Polar sync, Strata AI writes readiness,
+  today's recommendation, up to two suggested plan adjustments, and one insight. It is stored
+  on the day's snapshot, shown on the Overview, exported, and deletable.
+- **Kept on purpose:** the deterministic explanations (nutrition "Behind the numbers", the
+  training-block review, previous comparable performance, recovery stress signals) stay on
+  their screens for members who don't use Strata AI; the brief explains the same facts.
+- `STRATA_AI.md` documents prompts, schemas, context fields, token budgets, the quota, and the
+  cost per member.
+- **Not verified from the build environment:** Groq's model list and docs were unreachable, so
+  confirming both models and turning on Zero Data Retention are deployment steps.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).

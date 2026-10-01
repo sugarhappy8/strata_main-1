@@ -448,7 +448,7 @@ export interface ProductSignalsStore {
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -515,6 +515,8 @@ export interface AccountExportStoreRows {
   dailySnapshots:JsonObject[];
   planChanges:JsonObject[];
   trainingLinks:JsonObject[];
+  aiSettings:JsonObject|null;
+  aiUsage:JsonObject[];
 }
 
 export interface AccountSelfServiceStore {
@@ -821,6 +823,18 @@ export type CoachingProfilePayload=CoachingProfile&{revision:number;updatedAt:nu
 export interface CoachingWeekRecord {userId:string;weekStart:string;planKey:string;profileRevision:number;snapshotJson:string;generatedAt:number;}
 export interface CoachingDailyLogRecord {userId:string;logDate:string;calories:number;proteinG:number|null;carbsG:number|null;fatG:number|null;morningWeightKg:number|null;complete:boolean|null;updatedAt:number;}
 export interface CoachingDailyLogRow extends JsonObject {log_date:string;calories:number;protein_g:number|null;carbs_g:number|null;fat_g:number|null;morning_weight_kg:number|null;intake_complete:0|1|null;revision:number;updated_at:number;}
+/** Strata AI consent and the organization's daily provider budget. */
+export interface AiStore {
+  aiSettings(userId:string):Promise<JsonObject|null>;
+  upsertAiSettings(userId:string,settings:{consentAt:number|null,consentVersion:number,dailyBrief:boolean,updatedAt:number}):Promise<JsonObject|null>;
+  briefCandidates(limit:number,offset:number):Promise<JsonObject[]>;
+  aiUsage(date:string,scope:string):Promise<JsonObject[]>;
+  addAiUsage(date:string,scope:string,kind:"chat"|"brief",requests:number,tokens:number):Promise<void>;
+  refundAiUsage(date:string,scope:string,kind:"chat"|"brief"):Promise<void>;
+  aiUsageTotals(date:string):Promise<JsonObject[]>;
+  aiUsageTop(date:string,limit:number):Promise<JsonObject[]>;
+  deleteOldAiUsage(beforeDate:string):Promise<void>;
+}
 /** Shared data layer: Polar-to-workout links, Daily Snapshots, and where each saved week came from. */
 export interface DataLayerStore {
   trainingLinks(userId:string):Promise<JsonObject[]>;
