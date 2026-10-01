@@ -25,9 +25,9 @@ function footer(parts){
 const render=(parent)=>parent.childNodes.map((node)=>node.nodeType===3?node.textContent:`[${node.text}]`).join("");
 
 function harness({userAgent=IOS_UA,pathname="/",readyState="loading",footers=[]}={}){
-  const listeners={},replaced=[],root={dataset:{}};
+  const listeners={},replaced=[],written=[],root={dataset:{}};
   const document={
-    readyState,documentElement:root,
+    readyState,documentElement:root,write:(markup)=>written.push(markup),
     addEventListener(type,handler){(listeners[type]||=[]).push(handler);},
     querySelectorAll(selector){
       assert.equal(selector,'a[href^="/install"]');
@@ -38,7 +38,7 @@ function harness({userAgent=IOS_UA,pathname="/",readyState="loading",footers=[]}
   const context={window,document,navigator:{userAgent},location:{pathname,replace:(url)=>replaced.push(url)},Node:{TEXT_NODE:3}};
   vm.createContext(context);
   vm.runInContext(SOURCE,context,{filename:"app-shell.js"});
-  return {window,root,listeners,replaced,ready(){for(const handler of listeners.DOMContentLoaded||[])handler();}};
+  return {window,root,listeners,replaced,written,ready(){for(const handler of listeners.DOMContentLoaded||[])handler();}};
 }
 
 test("app shell leaves the website untouched in browsers",()=>{
@@ -48,6 +48,16 @@ test("app shell leaves the website untouched in browsers",()=>{
   assert.equal(page.window.StrataApp,undefined);
   assert.equal(page.listeners.DOMContentLoaded,undefined);
   assert.equal(render(site),"STRATA · [Pricing] · [Install]");
+  assert.deepEqual(page.written,[],"browsers never load the app's chrome");
+});
+
+test("inside the iOS app the app's stylesheet and chrome script are written into the head, render-blocking and in order",()=>{
+  const page=harness();
+  assert.deepEqual(page.written,['<link rel="stylesheet" href="/app-mode.css?v=9.1.0" /><script src="/app-mode.js?v=9.1.0"></script>']);
+  assert.deepEqual(harness({pathname:"/install"}).written,[],"the install page leaves before anything loads");
+  assert.match(read("src/server.js"),/\["app-mode\.js","scripts\/app-mode\.js"\],\["app-mode\.css","styles\/app-mode\.css"\],\["app-paywall\.js","scripts\/app-paywall\.js"\]/);
+  for(const asset of ["/app-mode.js","/app-mode.css","/app-paywall.js"])assert.match(read("public/service-worker.js"),new RegExp(`"${asset.replace(/[.]/g,"\\.")}\\?v=9\\.1\\.0"`));
+  assert.match(read("scripts/release-version.js"),/"public\/scripts\/app-mode\.js",\n {4}"public\/scripts\/app-shell\.js",/,"a release bump updates the injected asset versions");
 });
 
 test("inside the iOS app the page is marked before paint and install links leave with their separators",()=>{

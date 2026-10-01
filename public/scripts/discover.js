@@ -528,10 +528,16 @@ async function shareMonthlyPlan(){
     downloadTextFile(text,"strata-31-day-plan.txt");showToast("Share file downloaded.");
   }catch(error){if(error?.name!=="AbortError"){downloadTextFile(text,"strata-31-day-plan.txt");showToast("Sharing was unavailable, so a plan file was downloaded.");}}
 }
-function printMonthlyPlan(){
+async function printMonthlyPlan(){
   if(!state.monthlyPlan)return;
   document.body.classList.add("print-monthly-plan");
   const finish=()=>document.body.classList.remove("print-monthly-plan");
+  // window.print does nothing in the iOS app's web view; the app prints the page natively and resolves when done.
+  if(globalThis.StrataApp){
+    try{if(!await globalThis.StrataAppMode?.print?.({jobName:state.monthlyPlan.title||"STRATA 31-day plan"}))showToast("Update STRATA from the App Store to print or save a PDF.");}
+    catch{showToast("Printing is unavailable right now.");}finally{finish();}
+    return;
+  }
   window.addEventListener?.("afterprint",finish,{once:true});window.print?.();setTimeout(finish,750);
 }
 
@@ -622,7 +628,7 @@ el("monthlyFileInput").addEventListener("change",async(event)=>{
   }catch(error){setMonthlyValidation(error.message);showToast(error.message);}
   finally{event.target.value="";}
 });
-el("monthlyPdfButton").addEventListener("click",printMonthlyPlan);
+el("monthlyPdfButton").addEventListener("click",()=>void printMonthlyPlan());
 el("monthlyShareButton").addEventListener("click",()=>void shareMonthlyPlan());
 el("monthlyEditButton").addEventListener("click",()=>{monthlyPlanForm.scrollIntoView?.({behavior:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches?"auto":"smooth",block:"start"});el("monthlyTitle").focus?.({preventScroll:true});});
 

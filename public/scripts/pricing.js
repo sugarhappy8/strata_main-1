@@ -1,6 +1,9 @@
 "use strict";
 
 (() => {
+  // Inside the iOS app Strata+ is sold through the App Store (app-paywall.js); Paddle never loads or opens there.
+  if(globalThis.StrataApp)return;
+  const PADDLE_SCRIPT="https://cdn.paddle.com/paddle/v2/paddle.js";
   const logic=globalThis.StrataPricingLogic;
   const state=globalThis.StrataPricingState.createState();
   const requestJson=globalThis.StrataPricingApi.createRequestJson();
@@ -18,6 +21,18 @@
     if(!state.checkoutOpen)return;
     try{globalThis.Paddle?.Checkout?.close?.();}catch{/* The local view still locks if Paddle cannot close cleanly. */}
     state.checkoutOpen=false;
+  }
+
+  // Paddle.js is requested by this page on the website only, alongside the account and billing checks.
+  function loadPaddle(){
+    if(globalThis.StrataApp)return Promise.reject(new Error("Checkout is not available in the STRATA app."));
+    if(globalThis.Paddle)return Promise.resolve();
+    return new Promise((resolve,reject)=>{
+      const script=document.createElement("script");
+      script.src=PADDLE_SCRIPT;script.onload=()=>resolve();
+      script.onerror=()=>reject(new Error("Secure Paddle checkout could not load. Check your connection and try again."));
+      document.head.append(script);
+    });
   }
 
   function initializePaddle(){
@@ -68,7 +83,7 @@
 
   async function loadPageState(){
     state.busy=true;renderPurchaseState();
-    const[accountResult,configResult]=await Promise.allSettled([readAccount(),requestJson("/api/billing/config")]);
+    const[accountResult,configResult,paddleResult]=await Promise.allSettled([readAccount(),requestJson("/api/billing/config"),loadPaddle()]);
     if(accountResult.status==="rejected"){
       state.user=null;state.csrfToken="";
       state.configError="Your account status could not be checked. Refresh this page and try again.";
@@ -77,6 +92,7 @@
       try{
         state.config=logic.normalizedConfig(configResult.value);
         logic.validateConfig(state.config);
+        if(paddleResult.status==="rejected")throw paddleResult.reason;
         initializePaddle();
       }catch(error){state.configError=error.message;}
     }else state.configError=configResult.reason?.message||"Secure checkout is temporarily unavailable.";
@@ -84,7 +100,7 @@
   }
 
   async function openCheckout(){
-    if(state.busy||state.awaitingAccess)return;
+    if(globalThis.StrataApp||state.busy||state.awaitingAccess)return;
     if(!state.user?.id){location.assign("/account.html?mode=signup&next=pricing");return;}
     const checkoutUserId=String(state.user.id),checkoutEmail=String(state.user.email||"");
     const subscription=logic.subscriptionFor(state.user);

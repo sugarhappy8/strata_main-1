@@ -38,6 +38,29 @@ test("account pure logic explains every grant, subscription, and legacy access s
   assert.equal(logic.accountAccessSummary(discovery({active:false}),true).state,"Pending");
 });
 
+test("account pure logic explains App Store subscriptions and keeps Paddle read-only inside the app",()=>{
+  const expiresAt=Date.parse("2026-11-01T12:00:00Z"),apple=(value,extra={})=>({discovery:{active:value.active===true,accessType:value.active?"apple":null,apple:{productId:"online.stratafitness.app.plus.monthly",expiresAt,autoRenew:true,inGracePeriod:false,revoked:false,environment:"Production",...value},...extra}});
+  assert.equal(logic.appleSubscriptionFor({discovery:{apple:null}}),null);
+  assert.deepEqual(logic.accountAccessSummary(apple({active:true})),{state:"Active",detail:"App Store · renews Nov 1, 2026",message:"Your Strata+ subscription is billed to your Apple Account and renews on Nov 1, 2026. Manage or cancel it in Settings › Apple Account › Subscriptions on your iPhone."});
+  assert.doesNotMatch(logic.accountAccessSummary(apple({active:true}),false,{app:true}).message,/on your iPhone/);
+  assert.equal(logic.accountAccessSummary(apple({active:true,inGracePeriod:true})).state,"Billing issue");
+  assert.equal(logic.accountAccessSummary(apple({active:true,autoRenew:false})).detail,"Access through Nov 1, 2026");
+  assert.equal(logic.accountAccessSummary(apple({active:true,expiresAt:null})).detail,"App Store subscription");
+  assert.equal(logic.accountAccessSummary(apple({active:false,revoked:true})).detail,"Refunded or revoked");
+  assert.equal(logic.accountAccessSummary(apple({active:false})).state,"Ended");
+  assert.match(logic.accountAccessSummary(apple({active:true},{adminGrant:{active:true,expiresAt:null}})).message,/App Store subscription remains separate/);
+  // A Paddle subscription that pays for Strata+ wins; a lapsed one does not hide an active App Store subscription.
+  assert.equal(logic.accountAccessSummary(apple({active:true},{subscription:{id:"sub_1",status:"active",active:true,currentPeriodEndsAt:expiresAt}})).detail,"Monthly · renews Nov 1, 2026");
+  assert.equal(logic.accountAccessSummary(apple({active:true},{subscription:{id:"sub_1",status:"canceled",active:false}})).detail,"App Store · renews Nov 1, 2026");
+  const paddle=(subscription)=>({discovery:{active:subscription.active===true,accessType:"paid",subscription:{id:"sub_1",...subscription}}});
+  for(const subscription of [{status:"paused",active:false},{status:"active",active:false},{status:"past_due",active:true,pastDue:true},{status:"unknown",active:"maybe"}]){
+    const web=logic.accountAccessSummary(paddle(subscription)),app=logic.accountAccessSummary(paddle(subscription),false,{app:true});
+    assert.match(web.message,/Paddle/,subscription.status);assert.doesNotMatch(app.message,/Paddle/,subscription.status);assert.match(app.message,/stratafitness\.online/,subscription.status);
+  }
+  assert.equal(logic.accountAccessSummary({discovery:{active:false}},true,{app:true}).detail,"Started on the website");
+  assert.doesNotMatch(logic.accountAccessSummary({discovery:{active:false}},false,{app:true}).message,/\$|USD/);
+});
+
 test("account pure logic covers safe handoffs, useful errors, plan timing, and comparable records",()=>{
   for(const [input,expected] of [["pricing","/pricing"],["discover","/discover.html"],["admin","/admin"],["workout","/workout.html"],["onboarding","/onboarding.html"]]){
     assert.equal(logic.safeNext(input),expected);

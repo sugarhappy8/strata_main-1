@@ -55,7 +55,9 @@
             <button id="accountManageSubscription" type="button">Manage in Paddle <span aria-hidden="true">↗</span></button>
             <button id="accountUpdatePayment" type="button" hidden>Update payment method <span aria-hidden="true">↗</span></button>
             <button id="accountCancelSubscription" type="button" hidden>Cancel subscription <span aria-hidden="true">↗</span></button>
+            <button id="accountManageApple" type="button" hidden>Manage subscription</button>
           </div>
+          <p class="account-billing-web" id="accountBillingWebNote" hidden>Billed on stratafitness.online.</p>
           <p class="account-billing-status" id="accountBillingStatus" role="status" aria-live="polite" tabindex="-1"></p>
         </section>
         <section class="account-devices" id="connectedDevices" aria-labelledby="devicesTitle" tabindex="-1" hidden>
@@ -107,7 +109,7 @@
         <section class="account-security" aria-labelledby="accountSecurityTitle">
           <p class="panel-index">Account controls</p>
           <h3 id="accountSecurityTitle">Account security</h3>
-          <p>Reset your password through a secure link sent to your registered email. Completing a reset signs out every device. Account deletion does not cancel a Paddle subscription or refund a charge; manage those billing actions above before deleting your account.</p>
+          <p>Reset your password through a secure link sent to your registered email. Completing a reset signs out every device. <span class="web-only">Account deletion does not cancel a Paddle subscription or refund a charge; manage those billing actions above before deleting your account.</span><span class="app-only" hidden>Deleting your account does not cancel a subscription or refund a charge. An App Store subscription keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions.</span></p>
           <div class="security-actions">
             <button id="accountPasswordReset" type="button"><span class="button-idle">Email password-reset link</span><span class="button-busy">Sending reset link…</span><span aria-hidden="true">→</span></button>
             <button class="danger-action" id="accountDeleteRequest" type="button"><span class="button-idle">Delete account</span><span class="button-busy">Sending deletion link…</span><span aria-hidden="true">→</span></button>

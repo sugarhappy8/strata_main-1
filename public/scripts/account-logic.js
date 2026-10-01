@@ -95,26 +95,50 @@
     return Number.isFinite(timestamp)&&timestamp>0&&!Number.isNaN(date.getTime())?new Intl.DateTimeFormat(undefined,{dateStyle:"medium"}).format(date):"the date Paddle shows";
   }
 
-  function accountAccessSummary(user,pending=false){
-    const discovery=user?.discovery||{},subscription=subscriptionFor(user),status=String(subscription?.status||"");
+  // The App Store subscription STRATA verified for this account (bought in the iOS app), or null.
+  function appleSubscriptionFor(user){
+    const apple=user?.discovery?.apple;
+    return apple&&typeof apple==="object"?apple:null;
+  }
+
+  // Inside the iOS app, Paddle billing is read-only: it is named as billed on the website, never linked or managed.
+  const APPLE_SETTINGS="Settings › Apple Account › Subscriptions";
+  function appleAccessSummary(apple,app){
+    const date=billingDate(apple.expiresAt),known=Number(apple.expiresAt)>0;
+    if(apple.active!==true)return apple.revoked===true
+      ?{state:"Inactive",detail:"Refunded or revoked",message:"Your App Store subscription was refunded or revoked, so Strata+ is off. Your free Rankings and weekly Plan remain available."}
+      :{state:"Ended",detail:"App Store · no renewal",message:"Your App Store subscription has ended. Your free Rankings and weekly Plan remain available."};
+    if(apple.inGracePeriod===true)return{state:"Billing issue",detail:"Update payment in Settings",message:`The App Store could not collect the latest payment. Update your Apple Account’s payment method in ${APPLE_SETTINGS} to keep Strata+.`};
+    if(apple.autoRenew===false&&known)return{state:"Canceling",detail:`Access through ${date}`,message:`Your App Store subscription is cancelled and ends on ${date}. Strata+ stays active until then.`};
+    return{state:"Active",detail:known?`App Store · renews ${date}`:"App Store subscription",message:`Your Strata+ subscription is billed to your Apple Account${known?` and renews on ${date}`:""}. Manage or cancel it in ${APPLE_SETTINGS}${app?"":" on your iPhone"}.`};
+  }
+
+  function accountAccessSummary(user,pending=false,{app=false}={}){
+    const discovery=user?.discovery||{},subscription=subscriptionFor(user),status=String(subscription?.status||""),apple=appleSubscriptionFor(user);
     if(discovery.adminGrant?.active===true){
       const grant=discovery.adminGrant;
-      const coexistence=subscription?"Your existing monthly subscription remains separate and is not canceled by this grant; review its billing state below.":grandfatheredAccess(user)?"Your grandfathered lifetime access remains separate and does not renew.":"It did not create a paid subscription.";
+      const coexistence=subscription?"Your existing monthly subscription remains separate and is not canceled by this grant; review its billing state below.":apple?.active===true?`Your App Store subscription remains separate and is not cancelled by this grant; manage it in ${APPLE_SETTINGS}.`:grandfatheredAccess(user)?"Your grandfathered lifetime access remains separate and does not renew.":"It did not create a paid subscription.";
       return{state:"Complimentary",detail:grant.expiresAt==null?"Until revoked":`Until ${billingDate(grant.expiresAt)}`,message:`An administrator granted you free Strata+ access. This grant never renews or charges you. ${coexistence}`};
     }
+    if(apple?.active===true&&subscription?.active!==true)return appleAccessSummary(apple,app);
     if(subscription){
-      if(status==="paused")return{state:"Paused",detail:"Paid access inactive",message:"Your monthly subscription is paused and Strata+ paid access is inactive. Manage it in Paddle to review the available next steps."};
+      const web="It is billed on stratafitness.online.";
+      if(status==="paused")return{state:"Paused",detail:"Paid access inactive",message:`Your monthly subscription is paused and Strata+ paid access is inactive. ${app?web:"Manage it in Paddle to review the available next steps."}`};
       if(status==="canceled")return{state:"Canceled",detail:"No future renewals",message:"Your monthly subscription is canceled and will not renew. Your free Rankings and weekly Plan remain available."};
-      if(subscription.active!==true)return{state:"Inactive",detail:"Paid access inactive",message:"The last verified billing period or scheduled access window has ended. Open Paddle to review the subscription state."};
+      if(subscription.active!==true)return{state:"Inactive",detail:"Paid access inactive",message:`The last verified billing period or scheduled access window has ended. ${app?web:"Open Paddle to review the subscription state."}`};
       if(subscription.scheduledChange?.action==="cancel")return{state:"Canceling",detail:`Access through ${billingDate(subscription.scheduledChange.effectiveAt)}`,message:`Your monthly subscription is scheduled to cancel on ${billingDate(subscription.scheduledChange.effectiveAt)}. Access remains active until then and will not renew afterward.`};
       if(subscription.scheduledChange?.action==="pause")return{state:"Pausing",detail:`Access through ${billingDate(subscription.scheduledChange.effectiveAt)}`,message:`Your monthly subscription is scheduled to pause on ${billingDate(subscription.scheduledChange.effectiveAt)}. Access remains active until then and stops when the pause takes effect.`};
-      if(subscription.pastDue===true||status==="past_due")return{state:"Past due",detail:"Update payment method",message:"Your monthly payment is past due. Strata+ remains available for now; update payment in Paddle to avoid interruption."};
+      if(subscription.pastDue===true||status==="past_due")return{state:"Past due",detail:app?"Billed on the website":"Update payment method",message:`Your monthly payment is past due. Strata+ remains available for now; ${app?"this subscription is billed on stratafitness.online.":"update payment in Paddle to avoid interruption."}`};
       if(subscription.active===true)return{state:"Active",detail:`Monthly · renews ${billingDate(subscription.currentPeriodEndsAt)}`,message:`Your monthly subscription is active and renews on ${billingDate(subscription.currentPeriodEndsAt)} unless canceled.`};
-      return{state:"Inactive",detail:"Review billing status",message:"Your monthly subscription is not providing paid access. Open Paddle to review its current state."};
+      return{state:"Inactive",detail:"Review billing status",message:`Your monthly subscription is not providing paid access. ${app?web:"Open Paddle to review its current state."}`};
     }
+    if(apple)return appleAccessSummary(apple,app);
     if(grandfatheredAccess(user))return{state:"Lifetime",detail:"Grandfathered · no renewal",message:"Your prior lifetime Strata+ purchase is grandfathered. It stays active without a monthly subscription or recurring charge."};
-    if(pending)return{state:"Pending",detail:"Checkout needs attention",message:"A Strata+ subscription checkout is pending. Open Pricing to finish checkout or check confirmation."};
-    return{state:"Free",detail:"Rankings and Plan included",message:"The exercise index and weekly planner are free. Strata+ is available as a $2.99 USD monthly subscription."};
+    if(pending)return app
+      ?{state:"Pending",detail:"Started on the website",message:"A Strata+ checkout started on stratafitness.online is still being confirmed."}
+      :{state:"Pending",detail:"Checkout needs attention",message:"A Strata+ subscription checkout is pending. Open Pricing to finish checkout or check confirmation."};
+    // The app shows the App Store's price for the viewer's storefront on the paywall, never a fixed USD amount.
+    return{state:"Free",detail:"Rankings and Plan included",message:app?"The exercise index and weekly planner are free. Strata+ is available as a monthly subscription.":"The exercise index and weekly planner are free. Strata+ is available as a $2.99 USD monthly subscription."};
   }
 
   function accountBoundaryChanged(error){return error?.status===401||error?.status===403||error?.code==="account-changed";}
@@ -159,6 +183,6 @@
 
   return{hasPlus,
     WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,
-    subscriptionFor,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError
+    subscriptionFor,appleSubscriptionFor,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError
   };
 });

@@ -181,6 +181,13 @@ async function openBillingPortal(kind,event){
   finally{if(state.isCurrentPrivateOperation(operation))buttons.forEach((control)=>{control.disabled=false;});}
 }
 
+// Inside the iOS app an App Store subscription is managed on Apple's own sheet.
+async function manageAppleSubscription(){
+  const status=el("accountBillingStatus");status.textContent="";status.classList.remove("bad");
+  try{const native=globalThis.StrataAppMode?.plugin?.();if(typeof native?.manageSubscriptions!=="function")throw new Error("unavailable");await native.manageSubscriptions();}
+  catch{status.textContent="Open Settings › Apple Account › Subscriptions to manage Strata+.";status.classList.add("bad");}
+}
+
 async function requestSecurityEmail(kind,event){
   const button=event.currentTarget;if(button.disabled)return;
   const operation=state.beginPrivateOperation();
@@ -189,7 +196,7 @@ async function requestSecurityEmail(kind,event){
   try{
     const result=kind==="delete"?await api.requestDeletion():await api.requestPasswordReset();
     if(!await confirmPrivateOperation(operation))return;
-    renderer.showSecurityStatus(kind==="delete"?`A deletion confirmation link was sent to ${result.maskedEmail||"your registered email"}. Nothing is deleted until you open it and type DELETE. Deletion does not cancel a Paddle subscription or refund a charge.`:`A password-reset link was sent to ${result.maskedEmail||"your registered email"}. The link expires after 30 minutes.`);
+    renderer.showSecurityStatus(kind==="delete"?`A deletion confirmation link was sent to ${result.maskedEmail||"your registered email"}. Nothing is deleted until you open it and type DELETE. ${globalThis.StrataApp?"Deletion does not cancel a subscription or refund a charge; an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions.":"Deletion does not cancel a Paddle subscription or refund a charge."}`:`A password-reset link was sent to ${result.maskedEmail||"your registered email"}. The link expires after 30 minutes.`);
     if(kind==="delete")el("accountDeleteCancel").hidden=false;
   }catch(error){if(!state.isCurrentPrivateOperation(operation))return;if(logic.accountBoundaryChanged(error)){showChangedAccount();return;}renderer.showSecurityStatus(logic.securityError(error),{error:true});}
   finally{if(state.isCurrentPrivateOperation(operation)){button.disabled=false;renderer.setButtonBusy(button,false);}}
@@ -222,4 +229,5 @@ StrataAccountEvents.bind({
   enhanceAuth:typeof globalThis.fetch==="function"&&typeof globalThis.FormData==="function"
 });
 
+el("accountManageApple").addEventListener("click",()=>void manageAppleSubscription());
 initialize();

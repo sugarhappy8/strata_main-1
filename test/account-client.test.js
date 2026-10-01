@@ -44,7 +44,7 @@ function exportResponse(data){
 }
 function deferred(){let resolve;const promise=new Promise((done)=>{resolve=done;});return{promise,resolve};}
 
-function createPage({search="",route}){
+function createPage({search="",route,app=null}){
   const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map((match)=>match[1]);
   const elements=new Map(ids.map((id)=>[id,new Element(id)]));
   elements.get("accountLoading").hidden=true;
@@ -74,6 +74,8 @@ function createPage({search="",route}){
     addEventListener:(type,handler)=>{(windowListeners[type]||=[]).push(handler);},
     fetch:async(path,options={})=>{requests.push({path,options});return route(path,options,requests);}
   };
+  // Inside the iOS app (app-shell.js and app-mode.js): the shell marker and the native plugin bridge.
+  if(app){context.StrataApp=Object.freeze({platform:"ios",shellVersion:1});context.StrataAppMode={plugin:()=>app.plugin||null};}
   context.globalThis=context;
   vm.createContext(context);
   for(const moduleScript of moduleScripts)vm.runInContext(moduleScript.source,context,{filename:`${moduleScript.name}.js`});
@@ -562,4 +564,67 @@ test("enhanced login and verification preserve only exact workout and onboarding
     await form.emit("submit",{preventDefault(){}});
     assert.deepEqual(page.navigations,[verify?`/verify-email.html?${new URLSearchParams({next:destination.includes("?")?destination:destination.slice(1,-5),purpose:"login"})}`:destination]);
   }
+});
+
+function accountRoutes(user){
+  return async(path)=>{
+    if(path==="/api/status")return jsonResponse(200,{persistent:true});
+    if(path==="/healthz")return jsonResponse(200,{ok:true});
+    if(path==="/api/me")return jsonResponse(200,{csrfToken:"app-csrf",user});
+    if(path==="/api/plan")return jsonResponse(200,{csrfToken:"app-csrf",user,plan:planFixture({Monday:1}),planUpdatedAt:10});
+    if(path==="/api/workouts?limit=100&offset=0")return jsonResponse(200,{workouts:[],hasMore:false,csrfToken:"app-csrf"});
+    if(path==="/api/account/sessions")return jsonResponse(200,{userId:user.id,sessions:[]});
+    if(path==="/api/account/delete/request")return jsonResponse(200,{maskedEmail:"a***@example.test"});
+    throw new Error(`Unexpected route ${path}`);
+  };
+}
+const APPLE_ACTIVE={active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt:Date.parse("2026-11-01T12:00:00Z"),autoRenew:true,inGracePeriod:false,environment:"Production",revoked:false};
+
+test("in the app, an App Store subscriber manages Strata+ on Apple's own sheet",async()=>{
+  const calls=[],user=memberFixture({discovery:{active:true,accessType:"apple",pendingPurchaseCount:0,apple:APPLE_ACTIVE,subscription:null}});
+  const page=createPage({route:accountRoutes(user),app:{plugin:{manageSubscriptions:async()=>{calls.push("manage");return {};}}}});
+  await settle();
+  assert.equal(page.elements.get("accountBilling").hidden,false);
+  assert.equal(page.elements.get("accountBillingTitle").textContent,"App Store subscription");assert.equal(page.elements.get("accountBillingBadge").textContent,"Active");
+  assert.match(page.elements.get("accountBillingDetail").textContent,/^Billed to your Apple Account through the App Store\. It renews Nov 1, 2026 unless cancelled at least 24 hours before\.$/);
+  for(const id of ["accountManageSubscription","accountUpdatePayment","accountCancelSubscription","accountBillingWebNote"])assert.equal(page.elements.get(id).hidden,true,id);
+  assert.equal(page.elements.get("accountManageApple").hidden,false);
+  assert.equal(page.elements.get("accountAccessState").textContent,"Active");assert.match(page.elements.get("accountAccessDetail").textContent,/^App Store · renews Nov 1, 2026$/);
+  await page.elements.get("accountManageApple").emit("click");await settle();
+  assert.deepEqual(calls,["manage"]);assert.equal(page.elements.get("accountBillingStatus").textContent,"");
+  const oldBuild=createPage({route:accountRoutes(user),app:{plugin:null}});await settle();
+  await oldBuild.elements.get("accountManageApple").emit("click");await settle();
+  assert.match(oldBuild.elements.get("accountBillingStatus").textContent,/Settings › Apple Account › Subscriptions/);
+});
+
+test("in the app, Paddle billing is read-only and the deletion copy names the App Store",async()=>{
+  const user=memberFixture({discovery:{active:true,accessType:"paid",pendingPurchaseCount:0,subscription:{id:"sub-web",status:"past_due",active:true,pastDue:true,scheduledChange:null,currentPeriodEndsAt:Date.now()+86_400_000}}});
+  const page=createPage({route:accountRoutes(user),app:{plugin:{}}});
+  await settle();
+  for(const id of ["accountManageSubscription","accountUpdatePayment","accountCancelSubscription","accountManageApple"])assert.equal(page.elements.get(id).hidden,true,id);
+  assert.equal(page.elements.get("accountBillingWebNote").hidden,false);
+  assert.doesNotMatch(`${page.elements.get("accountBillingDetail").textContent} ${page.elements.get("accountDiscoveryStatus").textContent}`,/Paddle/);
+  assert.match(page.elements.get("accountDiscoveryStatus").textContent,/billed on stratafitness\.online/);
+  await page.elements.get("accountDeleteRequest").emit("click",{currentTarget:page.elements.get("accountDeleteRequest")});await settle();
+  assert.match(page.elements.get("accountSecurityStatus").textContent,/an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions\.$/);
+  assert.match(html,/<span class="web-only">Account deletion does not cancel a Paddle subscription[^<]*<\/span><span class="app-only" hidden>[^<]*App Store subscription keeps billing your Apple Account until you cancel it in Settings/);
+  const free=createPage({route:accountRoutes(memberFixture({discovery:{active:false,accessType:null,pendingPurchaseCount:0}})),app:{plugin:{}}});
+  await settle();
+  assert.equal(free.elements.get("accountDiscoveryStatus").textContent,"The exercise index and weekly planner are free. Strata+ is available as a monthly subscription.","no fixed USD price in the app");
+});
+
+test("on the website an App Store subscriber is pointed to the iPhone's Settings, and Paddle members see no change",async()=>{
+  const apple=createPage({route:accountRoutes(memberFixture({discovery:{active:true,accessType:"apple",pendingPurchaseCount:0,apple:{...APPLE_ACTIVE,autoRenew:false}}}))});
+  await settle();
+  assert.equal(apple.elements.get("accountBillingBadge").textContent,"Canceling");
+  assert.match(apple.elements.get("accountBillingDetail").textContent,/It ends Nov 1, 2026 and will not renew\. Manage it in Settings › Apple Account › Subscriptions on your iPhone\.$/);
+  assert.equal(apple.elements.get("accountManageApple").hidden,true);assert.equal(apple.elements.get("accountManageSubscription").hidden,true);
+  assert.equal(apple.elements.get("accountAccessState").textContent,"Canceling");
+  const paddle=createPage({route:accountRoutes(memberFixture({discovery:{active:true,accessType:"paid",pendingPurchaseCount:0,subscription:{id:"sub-web",status:"past_due",active:true,pastDue:true,scheduledChange:null,currentPeriodEndsAt:Date.now()+86_400_000}}}))});
+  await settle();
+  assert.equal(paddle.elements.get("accountManageSubscription").hidden,false);assert.equal(paddle.elements.get("accountUpdatePayment").hidden,false);
+  assert.equal(paddle.elements.get("accountBillingWebNote").hidden,true);
+  assert.match(paddle.elements.get("accountBillingDetail").textContent,/Paddle could not collect/);
+  await paddle.elements.get("accountDeleteRequest").emit("click",{currentTarget:paddle.elements.get("accountDeleteRequest")});await settle();
+  assert.match(paddle.elements.get("accountSecurityStatus").textContent,/Deletion does not cancel a Paddle subscription or refund a charge\.$/);
 });

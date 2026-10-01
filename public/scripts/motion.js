@@ -1,7 +1,8 @@
-/* Optional progressive enhancement: no content depends on animation. */
+/* Optional progressive enhancement: no content depends on animation. The iOS app has no scroll reveals or scroll
+   progress bar; its screens arrive through view transitions instead (app-mode.css). */
 (() => {
   "use strict";
-  if (!window.matchMedia || !("IntersectionObserver" in window)) return;
+  if (window.StrataApp || !window.matchMedia || !("IntersectionObserver" in window)) return;
   const preference = window.matchMedia("(prefers-reduced-motion: reduce)");
   const selector = [
     "[data-reveal]",
