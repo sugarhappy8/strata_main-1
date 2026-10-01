@@ -58,6 +58,8 @@
       requestPasswordReset:()=>mutation("/api/account/password-reset/request"),
       requestDeletion:()=>mutation("/api/account/delete/request"),
       cancelDeletion:()=>mutation("/api/account/delete/cancel"),
+      // In the iOS app: delete now with the password. X-Strata-User pins the request to the account on screen.
+      deleteNow:({password,confirmation},userId="")=>requestJson("/api/account/delete/now",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":getCsrfToken(),...(userId?{"X-Strata-User":String(userId)}:{})},body:JSON.stringify({password,confirmation})}),
       exportAccount,
       devices:()=>requestJson("/api/devices",{cache:"no-store"}),
       deviceRequest:(path,method="POST",body={})=>requestJson(path,{method,headers:{"Content-Type":"application/json","X-CSRF-Token":getCsrfToken()},body:JSON.stringify(body)})

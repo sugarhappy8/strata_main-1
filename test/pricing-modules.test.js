@@ -29,6 +29,15 @@ test("pricing API normalizes transport failures and rejects malformed success bo
   await assert.rejects(denied("/api/me"),error=>error.status===403&&error.code==="CSRF");
 });
 
+test("pricing names App Store access only for a member whose Strata+ comes from Apple",()=>{
+  const apple={active:true,expiresAt:Date.parse("2026-11-01T12:00:00Z"),autoRenew:true,inGracePeriod:false,revoked:false};
+  assert.equal(Logic.appleAccess({discovery:{active:true,accessType:"apple",apple}}),apple);
+  for(const user of [{discovery:{active:true,accessType:"paid",apple}},{discovery:{active:true,accessType:"apple",apple:null}},null])assert.equal(Logic.appleAccess(user),null);
+  assert.equal(Logic.appleStatus(apple).tone,"good");assert.equal(Logic.appleStatus({...apple,autoRenew:false}).tone,"warn");
+  assert.doesNotMatch(Logic.appleStatus({...apple,expiresAt:null}).message,/Paddle|undefined|renews on/,"no invented or Paddle date");
+  assert.equal(Logic.APPLE_MANAGE_URL,"https://apps.apple.com/account/subscriptions");
+});
+
 test("pricing rendering gives a member without Strata+ a single subscribe action",()=>{
   const makeNode=()=>({hidden:false,disabled:false,textContent:"",attrs:{},classList:{toggle(){}},setAttribute(name,value){this.attrs[name]=value;},focus(){}});
   const nodes={panel:makeNode(),statusNode:makeNode(),signupLink:makeNode(),loginLink:makeNode(),buyButton:makeNode(),openLink:makeNode(),manageLink:makeNode(),checkButton:makeNode()};

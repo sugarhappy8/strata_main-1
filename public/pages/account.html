@@ -13,13 +13,14 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=9.1.0" />
-    <link rel="stylesheet" href="/tokens.css?v=9.1.0" />
-    <link rel="stylesheet" href="account.css?v=9.1.0" />
-    <link rel="stylesheet" href="/product-nav.css?v=9.1.0" />
-    <link rel="stylesheet" href="/experience.css?v=9.1.0" />
-    <script src="/motion.js?v=9.1.0"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=9.1.0" />
+    <link rel="stylesheet" href="/fonts.css?v=9.2.0" />
+    <link rel="stylesheet" href="/tokens.css?v=9.2.0" />
+    <link rel="stylesheet" href="account.css?v=9.2.0" />
+    <link rel="stylesheet" href="/product-nav.css?v=9.2.0" />
+    <link rel="stylesheet" href="/experience.css?v=9.2.0" />
+    <script src="/app-shell.js?v=9.2.0"></script>
+    <script src="/motion.js?v=9.2.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=9.2.0" />
   </head>
   <body class="account-page-shell">
     <a class="skip-link" href="#accountPage">Skip to account</a>
@@ -54,7 +55,9 @@
             <button id="accountManageSubscription" type="button">Manage in Paddle <span aria-hidden="true">↗</span></button>
             <button id="accountUpdatePayment" type="button" hidden>Update payment method <span aria-hidden="true">↗</span></button>
             <button id="accountCancelSubscription" type="button" hidden>Cancel subscription <span aria-hidden="true">↗</span></button>
+            <a id="accountManageApple" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage subscription <span aria-hidden="true">↗</span></a>
           </div>
+          <p class="account-billing-web" id="accountBillingWebNote" hidden>Billed on stratafitness.online.</p>
           <p class="account-billing-status" id="accountBillingStatus" role="status" aria-live="polite" tabindex="-1"></p>
         </section>
         <section class="account-devices" id="connectedDevices" aria-labelledby="devicesTitle" tabindex="-1" hidden>
@@ -106,13 +109,14 @@
         <section class="account-security" aria-labelledby="accountSecurityTitle">
           <p class="panel-index">Account controls</p>
           <h3 id="accountSecurityTitle">Account security</h3>
-          <p>Reset your password through a secure link sent to your registered email. Completing a reset signs out every device. Account deletion does not cancel a Paddle subscription or refund a charge; manage those billing actions above before deleting your account.</p>
+          <p>Reset your password through a secure link sent to your registered email. Completing a reset signs out every device. <span class="web-only">Account deletion does not cancel a Paddle subscription or refund a charge; manage those billing actions above before deleting your account.</span><span class="app-only" hidden>Deleting your account does not cancel a subscription or refund a charge. An App Store subscription keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions.</span></p>
           <div class="security-actions">
             <button id="accountPasswordReset" type="button"><span class="button-idle">Email password-reset link</span><span class="button-busy">Sending reset link…</span><span aria-hidden="true">→</span></button>
             <button class="danger-action" id="accountDeleteRequest" type="button"><span class="button-idle">Delete account</span><span class="button-busy">Sending deletion link…</span><span aria-hidden="true">→</span></button>
             <button class="verification-secondary" id="accountDeleteCancel" type="button" hidden><span class="button-idle">Cancel deletion request</span><span class="button-busy">Canceling request…</span><span aria-hidden="true">×</span></button>
           </div>
           <p class="security-status" id="accountSecurityStatus" role="status" aria-live="polite"></p>
+          <a class="security-apple-link" id="accountSecurityAppleLink" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage your App Store subscription <span aria-hidden="true">↗</span></a>
         </section>
       </section>
 
@@ -163,18 +167,48 @@
       </section>
     </main>
     <dialog class="account-devices-dialog" id="devicesDisconnectDialog" aria-labelledby="devicesDisconnectTitle" aria-describedby="devicesDisconnectDetail"><form method="dialog"><h2 id="devicesDisconnectTitle">Disconnect Polar?</h2><p id="devicesDisconnectDetail">STRATA deletes the recovery, sleep, heart-rate, and workout data it imported from Polar, and tells Polar to stop sharing. Your STRATA workouts and plans stay.</p><div class="account-devices-dialog-actions"><button value="cancel" autofocus>Keep Polar connected</button><button class="danger-action" value="disconnect">Disconnect and delete Polar data</button></div></form></dialog>
-    <footer class="build-footer"><span>About STRATA · Build 9.1.0</span> · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
-    <script src="/pwa.js?v=9.1.0"></script>
-    <script src="/entitlements.js?v=9.1.0"></script>
-    <script src="/activation-core.js?v=9.1.0"></script>
-    <script src="/activation-handoff.js?v=9.1.0"></script>
-    <script src="devices-core.js?v=9.1.0"></script>
-    <script src="account-logic.js?v=9.1.0"></script>
-    <script src="account-state.js?v=9.1.0"></script>
-    <script src="account-api.js?v=9.1.0"></script>
-    <script src="account-render.js?v=9.1.0"></script>
-    <script src="account-events.js?v=9.1.0"></script>
-    <script src="account-devices.js?v=9.1.0"></script>
-    <script src="account.js?v=9.1.0"></script>
+    <!-- In the iOS app, Delete account opens this dialog and deletes the account here; browsers keep the emailed link. -->
+    <dialog class="account-delete-dialog" id="accountDeleteDialog" aria-labelledby="accountDeleteTitle" aria-describedby="accountDeleteLede">
+      <form class="account-delete-form" id="accountDeleteForm" novalidate>
+        <h2 id="accountDeleteTitle" tabindex="-1">Delete your account?</h2>
+        <p id="accountDeleteLede">This permanently deletes your STRATA account now. It cannot be undone. Deleting removes:</p>
+        <ul class="account-delete-list"><li>Your account and every signed-in session</li><li>Your weekly and monthly plans, workouts, profile, and preferences</li><li>Your ratings and their contribution to community scores</li><li>Your Strata+ access and connected Polar data</li></ul>
+        <div class="account-delete-apple" id="accountDeleteApple" hidden>
+          <p><strong>Deleting your account does not cancel your App Store subscription.</strong> Apple keeps billing your Apple Account until you cancel it.</p>
+          <a class="account-delete-manage" id="accountDeleteManage" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer">Manage subscription</a>
+        </div>
+        <p class="account-delete-note">Deleting is not cancellation and is not a refund.</p>
+        <label for="accountDeletePassword">Your STRATA password</label>
+        <input id="accountDeletePassword" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" maxlength="128" required />
+        <label for="accountDeleteConfirmation">Type DELETE to confirm</label>
+        <input id="accountDeleteConfirmation" name="confirmation" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="6" required />
+        <p class="account-delete-error" id="accountDeleteError" role="alert" aria-live="assertive"></p>
+        <div class="account-delete-actions">
+          <button class="account-delete-submit" id="accountDeleteSubmit" type="submit" disabled><span class="button-idle">Delete account</span><span class="button-busy">Deleting account…</span></button>
+          <button class="account-delete-cancel" id="accountDeleteDismiss" type="button">Cancel</button>
+        </div>
+        <button class="account-delete-email" id="accountDeleteEmail" type="button">Email me a deletion link instead</button>
+      </form>
+      <div class="account-delete-done" id="accountDeleteDone" role="status" aria-live="polite" tabindex="-1" hidden>
+        <h2>Account deleted</h2>
+        <p id="accountDeleteDoneMessage"></p>
+        <a class="account-delete-manage" id="accountDeleteDoneManage" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage subscription</a>
+        <button class="account-delete-cancel" id="accountDeleteDoneContinue" type="button">Continue</button>
+      </div>
+    </dialog>
+    <footer class="build-footer"><span>About STRATA · Build 9.2.0</span> · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <script src="/pwa.js?v=9.2.0"></script>
+    <script src="/entitlements.js?v=9.2.0"></script>
+    <script src="/activation-core.js?v=9.2.0"></script>
+    <script src="/activation-handoff.js?v=9.2.0"></script>
+    <script src="devices-core.js?v=9.2.0"></script>
+    <script src="account-logic.js?v=9.2.0"></script>
+    <script src="account-state.js?v=9.2.0"></script>
+    <script src="account-api.js?v=9.2.0"></script>
+    <script src="account-render.js?v=9.2.0"></script>
+    <script src="account-events.js?v=9.2.0"></script>
+    <script src="account-devices.js?v=9.2.0"></script>
+    <script src="account-delete-dialog.js?v=9.2.0"></script>
+    <script src="account.js?v=9.2.0"></script>
   </body>
 </html>

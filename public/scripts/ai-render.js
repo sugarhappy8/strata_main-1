@@ -133,7 +133,7 @@
       nodes.status.dataset.tone=view.tone;nodes.statusTitle.textContent=view.title;nodes.statusDetail.textContent=view.detail;
       // The consent prompt sits above the composer, where the member was about to type.
       const consent=nodes.form.querySelector?.(".ai-consent-actions");if(!view.needsConsent)consent?.remove();
-      else if(!consent&&nodes.form.prepend)nodes.form.prepend(el("p",{className:"ai-consent-actions"},[el("span",{text:"Strata AI needs your permission to read a short summary of your training."}),el("button",{className:"ai-consent-allow",text:"Allow Strata AI",attrs:{type:"button","data-action":"consent"}}),el("a",{text:"What is sent",attrs:{href:"/privacy#strata-ai"}})]));
+      else if(!consent&&nodes.form.prepend)nodes.form.prepend(el("p",{className:"ai-consent-actions"},[el("span",{text:"Strata AI uses Groq, an outside AI company. Nothing is sent until you allow it."}),el("button",{className:"ai-consent-allow",text:"Allow and share with Groq",attrs:{type:"button","data-action":"consent"}}),el("a",{text:"What is sent",attrs:{href:"/privacy#strata-ai"}})]));
       return view;
     }
     function renderComposer(state){

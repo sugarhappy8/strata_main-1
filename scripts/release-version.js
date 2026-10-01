@@ -47,6 +47,8 @@ const DEFAULT_MANIFEST=Object.freeze({
     "public/pages/terms.html",
     "public/pages/verify-email.html",
     "public/scripts/app.js",
+    "public/scripts/app-mode.js",
+    "public/scripts/app-shell.js",
     "public/scripts/planner.js",
     "public/scripts/onboarding.js",
     "public/scripts/workout-offline.js",

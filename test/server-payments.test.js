@@ -907,6 +907,25 @@ test("an ordered renewal extends access and a later terminal cancellation ends i
   db.close();
 });
 
+test("a member with Strata+ from Apple is not offered a second Paddle subscription",async()=>{
+  const account=await signup({name:"Apple Subscriber",email:"apple-subscriber@example.test",password:"apple-subscriber-password-123"});
+  const now=Date.now(),db=database();
+  try{
+    db.prepare("INSERT INTO apple_subscriptions(original_transaction_id,user_id,product_id,environment,latest_transaction_id,purchased_at,original_purchased_at,expires_at,revoked_at,revocation_reason,auto_renew,grace_period_expires_at,last_signed_at,latest_signed_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,NULL,NULL,1,NULL,?,?,?,?)")
+      .run("4000000000",account.user.id,"online.stratafitness.app.plus.monthly","Production","4000000001",now-1000,now-1000,now+30*24*60*60*1000,now,now,now,now);
+  }finally{db.close();}
+  const before=paddleRequests.length,refused=await checkout(account);
+  assert.equal(refused.response.status,409);
+  assert.deepEqual(refused.data,{error:"You already have Strata+ through the App Store.",code:"ALREADY_ENTITLED_APP_STORE"});
+  assert.equal(paddleRequests.length,before,"no Paddle transaction is created");
+  const portal=await request("/api/billing/portal",{method:"POST",headers:{Cookie:account.cookie,Origin:BASE,"X-CSRF-Token":account.csrfToken,"Content-Type":"application/json"},body:"{}"});
+  assert.equal(portal.response.status,409);assert.equal(portal.data.code,"APP_STORE_MANAGED");
+  assert.equal(portal.data.manageUrl,"https://apps.apple.com/account/subscriptions");
+  assert.equal(paddleRequests.length,before,"Paddle's portal is not asked about an App Store subscription");
+  const me=await request("/api/me",{headers:{Cookie:account.cookie}});
+  assert.equal(me.data.user.discovery.accessType,"apple");assert.equal(me.data.user.discovery.subscription,null);
+});
+
 test("concurrent checkout requests create only one Paddle transaction",async() => {
   const account=await signup({
     name:"Concurrent Checkout Tester",

@@ -14,6 +14,8 @@ const TRAINED_WINDOW_DAYS=56;
 
 /** @param {number} time */
 const isoDate=(time)=>new Date(time).toISOString().slice(0,10);
+/** The calendar date at `time` in an IANA time zone; throws for an unknown zone. @param {number} time @param {string} timeZone */
+const zonedDate=(time,timeZone)=>{const parts=new Intl.DateTimeFormat("en-CA",{timeZone,year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(time));return ["year","month","day"].map((type)=>parts.find((part)=>part.type===type)?.value).join("-");};
 /** @param {any} value */
 const parsed=(value)=>{try{return JSON.parse(String(value));}catch{return null;}};
 
@@ -22,7 +24,15 @@ const parsed=(value)=>{try{return JSON.parse(String(value));}catch{return null;}
  *   requireSession:(req:any,res:any)=>Promise<any>,requireFeature:(feature:string)=>(req:any,res:any)=>Promise<any>,http:{json:Function},logger?:any,now?:()=>number}} dependencies
  */
 function createDataService({store,events,getPlan,coachingProfile,requireSession,requireFeature,http,logger=null,now=Date.now}){
-  const {json}=http,todayFor=()=>isoDate(now());
+  const {json}=http;
+  // "Today" is the member's own calendar date (the time zone in their coaching profile), else UTC. A UTC-only today
+  // dropped the current day for members east of UTC between their midnight and UTC midnight.
+  /** @param {string} userId @returns {Promise<string>} */
+  async function todayFor(userId){
+    const zone=await coachingProfile(userId).then((payload)=>String(payload?.timeZone||""),()=>"");
+    if(zone){try{return zonedDate(now(),zone);}catch{/* an unknown zone falls back to UTC */}}
+    return isoDate(now());
+  }
   const athleteProfile=createAthleteProfileSync({store,logger,now});
   const trainingLog=createTrainingLog({store,getPlan,logger,now});
   const snapshots=createDailySnapshots({store,trainingLog,events,logger,now});
@@ -55,9 +65,9 @@ function createDataService({store,events,getPlan,coachingProfile,requireSession,
     return {lens:parsed(preferencesRow?.preferences_json),ratings:ratingRows.map((/** @type {any} */ row)=>({exerciseId:String(row.exercise_id),overall:Number(row.overall)||null,updatedAt:Number(row.updated_at)})),
       trained:[...trained.values()].sort((a,b)=>b.sessions-a.sessions||b.lastDate.localeCompare(a.lastDate)||a.exerciseId.localeCompare(b.exerciseId)),windowDays:TRAINED_WINDOW_DAYS};
   }
-  /** @param {URL} url @param {number} days */
-  function range(url,days){
-    const today=todayFor(),to=String(url.searchParams.get("to")||today),from=String(url.searchParams.get("from")||addDays(isDate(to)?to:today,-(days-1)));
+  /** @param {URL} url @param {number} days @param {string} userId */
+  async function range(url,days,userId){
+    const today=await todayFor(userId),to=String(url.searchParams.get("to")||today),from=String(url.searchParams.get("from")||addDays(isDate(to)?to:today,-(days-1)));
     return {from,to,today};
   }
   /** @param {any} res @param {any} error */
@@ -76,11 +86,11 @@ function createDataService({store,events,getPlan,coachingProfile,requireSession,
     }
     if(url.pathname==="/api/training-log"){
       const session=await requireFeature("plus.train")(req,res);if(!session)return true;
-      try{const window=range(url,28);json(res,200,{from:window.from,to:window.to,entries:await trainingLog.read(session.id,window)},headers);}catch(error){failed(res,error);}
+      try{const window=await range(url,28,session.id);json(res,200,{from:window.from,to:window.to,entries:await trainingLog.read(session.id,window)},headers);}catch(error){failed(res,error);}
       return true;
     }
     const session=await requireFeature("plus.progress")(req,res);if(!session)return true;
-    try{const window=range(url,7);json(res,200,{from:window.from,to:window.to,snapshots:await snapshots.read(session.id,window)},headers);}catch(error){failed(res,error);}
+    try{const window=await range(url,7,session.id);json(res,200,{from:window.from,to:window.to,snapshots:await snapshots.read(session.id,window)},headers);}catch(error){failed(res,error);}
     return true;
   }
 

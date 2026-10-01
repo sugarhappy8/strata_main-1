@@ -185,8 +185,8 @@ function downloadWeeklyPlan(){
   const blob=new Blob([JSON.stringify(exported,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob),link=document.createElement("a");
   link.href=url;link.download=`strata-weekly-plan-${new Date().toISOString().slice(0,10)}.json`;link.hidden=true;
-  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  showToast("Weekly plan downloaded. Import it from Week templates or in Strata+.");
+  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60_000);
+  showToast(globalThis.StrataApp?"Weekly plan ready. Choose where to save it. Import it from Week templates or in Strata+.":"Weekly plan downloaded. Import it from Week templates or in Strata+.");
 }
 
 function planMovementCount(plan=state.plan){
@@ -633,7 +633,7 @@ async function init({guestOnly=false}={}){
   el("weekSummary").innerHTML="";
   el("weekBoard").innerHTML='<div class="planner-load-state">Loading your weekly plan…</div>';
   try{
-    const exercises=await api("/exercises.json?v=9.1.0");
+    const exercises=await api("/exercises.json?v=9.2.0");
     if(!Array.isArray(exercises))throw new Error("STRATA returned an incomplete exercise library.");
     state.exercises=exercises;
     let result;

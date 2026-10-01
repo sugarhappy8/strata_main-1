@@ -37,12 +37,16 @@
       const canSubscribe=signedIn&&!active&&!paused;
       const checkoutBlocked=state.user?.discovery?.checkoutBlocked===true;
       const checkoutAccountChanged=Boolean(state.currentCheckoutUserId)&&String(state.user?.id||"")!==state.currentCheckoutUserId;
+      // An App Store member manages Strata+ on Apple's page, never with Paddle (and is active, so no checkout shows).
+      const apple=active?logic.appleAccess(state.user):null;
 
       signupLink.hidden=signedIn;
       loginLink.hidden=signedIn;
       buyButton.hidden=!canSubscribe;
       openLink.hidden=!signedIn||!active;
-      manageLink.hidden=!signedIn||!subscription;
+      manageLink.hidden=!signedIn||!subscription&&!apple;
+      if(apple){manageLink.href=logic.APPLE_MANAGE_URL;manageLink.target="_blank";manageLink.rel="noopener noreferrer";}
+      else if(manageLink.target){manageLink.href="/account.html#accountBilling";manageLink.removeAttribute("target");manageLink.removeAttribute("rel");}
       checkButton.hidden=!signedIn||logic.paidAccessReady(state.user)||!state.awaitingAccess;
       buyButton.disabled=state.busy||state.awaitingAccess||state.checkoutOpen||!checkoutReady||checkoutBlocked;
       checkButton.disabled=state.busy;
@@ -63,12 +67,15 @@
           const grant=state.user.discovery.adminGrant;
           const coexistence=subscription
             ?"Your existing monthly subscription remains separate and is not canceled by this grant; manage it from Profile."
-            :grandfathered
+            :apple
+              ?"Your App Store subscription remains separate and is not canceled by this grant; manage it with your App Store subscriptions."
+              :grandfathered
               ?"Your grandfathered lifetime access remains separate and does not renew."
               :"It did not create a paid subscription.";
           setStatus(`You have complimentary Strata+ ${grant?.expiresAt==null?"until an administrator revokes it":`until ${new Date(grant.expiresAt).toLocaleString([], {dateStyle:"medium",timeStyle:"short"})}`}. This grant never charges you. ${coexistence}`,"good");return;
         }
-        if(grandfathered)setStatus("Your prior lifetime Strata+ purchase is grandfathered. It stays active with no monthly renewal or recurring charge.","good");
+        if(apple){const status=logic.appleStatus(apple);setStatus(status.message,status.tone);}
+        else if(grandfathered)setStatus("Your prior lifetime Strata+ purchase is grandfathered. It stays active with no monthly renewal or recurring charge.","good");
         else if(subscription?.scheduledChange?.action==="cancel")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its cancellation takes effect. It will not renew after that date.`,"warn");
         else if(subscription?.scheduledChange?.action==="pause")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its scheduled pause takes effect and paid access stops.`,"warn");
         else if(subscription?.pastDue||subscriptionStatus==="past_due")setStatus("Your monthly subscription is past due. Strata+ remains available for now; update your payment method from Profile to avoid interruption.","warn");

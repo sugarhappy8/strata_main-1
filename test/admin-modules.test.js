@@ -89,3 +89,35 @@ test("admin renderer purges hidden account, support, action, and status data",()
   for(const id of ["userQuery","ticketNote","ticketResponse"])assert.equal(node(id).value,"",id);
   for(const id of ["userResults","supportResults","auditResults","productSignalRows","userFacts","supportFacts"])assert.deepEqual(node(id).children,[],id);
 });
+
+test("admin shows a member's App Store subscription beside the Paddle facts",()=>{
+  const stateModule=require("../public/scripts/admin-state"),logic=require("../public/scripts/admin-logic"),{createRenderer}=require("../public/scripts/admin-render");
+  const expiresAt=Date.parse("2026-11-01T12:00:00Z"),summary={active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt,autoRenew:true,inGracePeriod:false,environment:"Sandbox",revoked:false};
+  const facts=(apple)=>Object.fromEntries(logic.appleFacts({discovery:{apple}}));
+  assert.deepEqual(facts({activeCount:1,expiresAt,subscription:summary}),{"App Store subscription":"Active","App Store environment":"Sandbox (test purchase)","App Store expiry":logic.formatDate(expiresAt),"App Store auto-renew":"On","App Store revoked":"No"});
+  const revoked=facts({subscription:{...summary,active:false,revoked:true,autoRenew:null,environment:"Production"}});
+  assert.equal(revoked["App Store subscription"],"Revoked (refunded or Family Sharing removed)");assert.equal(revoked["App Store auto-renew"],"Unknown");
+  assert.equal(revoked["App Store environment"],"Production");assert.equal(revoked["App Store revoked"],"Yes");
+  assert.equal(facts({subscription:{...summary,inGracePeriod:true,expiresAt:expiresAt-86_400_000}})["App Store subscription"],"Active · billing grace period");
+  assert.equal(facts({subscription:{...summary,active:false,autoRenew:false}})["App Store subscription"],"Expired");
+  assert.equal(facts({subscription:{...summary,active:false,autoRenew:false}})["App Store auto-renew"],"Off");
+  assert.deepEqual(logic.appleFacts({discovery:{apple:{activeCount:0,expiresAt:null,subscription:null}}}),[["App Store subscription","None"]]);
+  // The list row (before details load) has only a count and the latest expiry.
+  assert.deepEqual(logic.appleFacts({discovery:{apple:{activeCount:1,expiresAt}}}),[["App Store subscription",`Active · expires ${logic.formatDate(expiresAt)}`]]);
+  assert.deepEqual(logic.appleFacts({discovery:{apple:{activeCount:0,expiresAt}}}),[["App Store subscription",`Expired ${logic.formatDate(expiresAt)}`]]);
+  assert.deepEqual(logic.appleFacts({discovery:{}}),[["App Store subscription","None"]]);assert.deepEqual(logic.appleFacts(null),[["App Store subscription","None"]]);
+
+  const nodes=new Map();
+  function node(id=""){
+    if(!nodes.has(id))nodes.set(id,{id,value:"",hidden:false,required:false,textContent:"",className:"",open:false,children:[],dataset:{},classList:{toggle(){},add(){},remove(){}},replaceChildren(...children){this.children=children;},append(...children){this.children.push(...children);},setAttribute(){},focus(){},showModal(){this.open=true;},close(){this.open=false;}});
+    return nodes.get(id);
+  }
+  let created=0;
+  const document={getElementById:node,createElement:()=>node(`created-${created++}`),createDocumentFragment:()=>node(`fragment-${created++}`),querySelectorAll:()=>[],querySelector:()=>null,contains:()=>true,body:{classList:{toggle(){}}}};
+  const state=stateModule.createState(),renderer=createRenderer({document,state,logic,productSignalLabels:stateModule.PRODUCT_SIGNAL_LABELS,supportStates:stateModule.SUPPORT_STATES,requestFrame:(callback)=>callback()});
+  renderer.renderUserDetails({id:"member-one",name:"Member",email:"member@example.test",createdAt:1,verifiedAt:1,discovery:{active:true,adminGrant:{active:false},apple:{activeCount:1,expiresAt,subscription:summary}}});
+  const labels=node("userFacts").children.map((wrapper)=>wrapper.children[0].textContent),rendered=Object.fromEntries(node("userFacts").children.map((wrapper)=>[wrapper.children[0].textContent,wrapper.children[1].textContent]));
+  assert.equal(rendered["Strata+"],"Unlocked");assert.equal(rendered["App Store subscription"],"Active");assert.equal(rendered["App Store environment"],"Sandbox (test purchase)");
+  assert.equal(rendered["App Store auto-renew"],"On");assert.equal(rendered["App Store revoked"],"No");assert.equal(rendered["App Store expiry"],logic.formatDate(expiresAt));
+  assert.ok(labels.indexOf("Latest purchase activity")<labels.indexOf("App Store subscription"),"App Store facts follow the Paddle purchase facts");
+});

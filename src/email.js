@@ -189,11 +189,11 @@ async function sendVerificationEmail(config,message,fetchImpl=globalThis.fetch) 
     `Your STRATA ${action} code is ${code}.`,
     `It expires in ${expiresInMinutes} minutes.`,
     "",
-    `Return to the browser where you started ${purpose==="login"?"signing in":"signup"} and enter this code. If you did not request this, you can ignore this email.`,
+    `Return to the STRATA app or the browser where you started ${purpose==="login"?"signing in":"signup"} and enter this code. If you did not request this, you can ignore this email.`,
     verificationUrl
   ].join("\n");
   const heading=purpose==="login"?"Verify your STRATA sign-in":"Verify your STRATA email";
-  const html=`<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ec;color:#10110f;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;background:#fff;padding:32px;border:1px solid #bbb"><p>Hi ${escapeHtml(name)},</p><h1 style="font-size:24px">${heading}</h1><p>Your six-digit verification code is:</p><p style="font-size:36px;font-weight:700;letter-spacing:8px">${escapeHtml(code)}</p><p>It expires in ${expiresInMinutes} minutes.</p><p>Enter it on the STRATA verification page. If you did not request this, you can ignore this email.</p><p><a href="${escapeHtml(verificationUrl)}">Open email verification</a></p></main></body></html>`;
+  const html=`<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ec;color:#10110f;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;background:#fff;padding:32px;border:1px solid #bbb"><p>Hi ${escapeHtml(name)},</p><h1 style="font-size:24px">${heading}</h1><p>Your six-digit verification code is:</p><p style="font-size:36px;font-weight:700;letter-spacing:8px">${escapeHtml(code)}</p><p>It expires in ${expiresInMinutes} minutes.</p><p>Enter it in the STRATA app or on the STRATA verification page where you started. If you did not request this, you can ignore this email.</p><p><a href="${escapeHtml(verificationUrl)}">Open email verification</a></p></main></body></html>`;
   const idempotencyDigest=digestParts(requireVerificationSecret(config),"verification-delivery-v1",[challengeId,generation]);
   const body={from:config.from,to:[to],subject,text,html};
   if (config.replyTo) body.reply_to=config.replyTo;
@@ -251,17 +251,22 @@ async function sendAccountActionEmail(config,message,fetchImpl=globalThis.fetch)
     ? "If you did not request account deletion, ignore this email and your account will remain unchanged."
     : "If you did not request a password reset, ignore this email and your password will remain unchanged.";
   const buttonText=isDeletion?"Review account deletion":"Reset password";
+  // Apple bills an in-app subscription until the member cancels it with Apple; deleting STRATA does not stop it.
+  const appleText=isDeletion&&message?.appleSubscription===true
+    ? "Your Strata+ subscription was bought through Apple. Deleting your STRATA account does not cancel it: Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions (https://apps.apple.com/account/subscriptions)."
+    : "";
   const text=[
     `Hi ${name},`,
     "",
     actionText,
+    ...(appleText?["",appleText]:[]),
     `This link expires in ${expiresInMinutes} minutes and works once.`,
     "",
     actionUrl,
     "",
     ignoreText
   ].join("\n");
-  const html=`<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ec;color:#10110f;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;background:#fff;padding:32px;border:1px solid #bbb"><p>Hi ${escapeHtml(name)},</p><h1 style="font-size:24px">${heading}</h1><p>${escapeHtml(actionText)}</p><p>This link expires in ${expiresInMinutes} minutes and works once.</p><p style="margin:28px 0"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:14px 20px;background:#10110f;color:#fff;text-decoration:none;font-weight:700">${buttonText}</a></p><p>${escapeHtml(ignoreText)}</p></main></body></html>`;
+  const html=`<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ec;color:#10110f;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;background:#fff;padding:32px;border:1px solid #bbb"><p>Hi ${escapeHtml(name)},</p><h1 style="font-size:24px">${heading}</h1><p>${escapeHtml(actionText)}</p>${appleText?`<p>${escapeHtml(appleText)}</p>`:""}<p>This link expires in ${expiresInMinutes} minutes and works once.</p><p style="margin:28px 0"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:14px 20px;background:#10110f;color:#fff;text-decoration:none;font-weight:700">${buttonText}</a></p><p>${escapeHtml(ignoreText)}</p></main></body></html>`;
   const idempotencyDigest=digestParts(requireVerificationSecret(config),"account-action-delivery-v1",[requestId,purpose]);
   const body={from:config.from,to:[to],subject,text,html};
   if (config.replyTo) body.reply_to=config.replyTo;

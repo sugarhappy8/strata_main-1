@@ -38,6 +38,33 @@ test("account pure logic explains every grant, subscription, and legacy access s
   assert.equal(logic.accountAccessSummary(discovery({active:false}),true).state,"Pending");
 });
 
+test("account pure logic explains App Store subscriptions and keeps Paddle read-only inside the app",()=>{
+  const expiresAt=Date.parse("2026-11-01T12:00:00Z"),apple=(value,extra={})=>({discovery:{active:value.active===true,accessType:value.active?"apple":null,apple:{productId:"online.stratafitness.app.plus.monthly",expiresAt,autoRenew:true,inGracePeriod:false,revoked:false,environment:"Production",...value},...extra}});
+  assert.equal(logic.appleSubscriptionFor({discovery:{apple:null}}),null);
+  assert.equal(logic.safeAppleManageUrl("https://apps.apple.com/account/subscriptions"),"https://apps.apple.com/account/subscriptions");
+  for(const unsafe of ["javascript:alert(1)","http://apps.apple.com/account/subscriptions","https://apps.apple.com.evil.test/","https://user:pass@apps.apple.com/","",null])assert.equal(logic.safeAppleManageUrl(unsafe),logic.APPLE_MANAGE_URL,String(unsafe));
+  assert.deepEqual(logic.appleDeletionNotice({appleBilling:{message:" Apple keeps billing. ",manageUrl:"javascript:alert(1)"}}),{message:"Apple keeps billing.",manageUrl:"https://apps.apple.com/account/subscriptions"});
+  for(const result of [{},{appleBilling:null},{appleBilling:{message:""}},{appleBilling:{message:42}},null])assert.equal(logic.appleDeletionNotice(result),null);
+  assert.deepEqual(logic.accountAccessSummary(apple({active:true})),{state:"Active",detail:"App Store · renews Nov 1, 2026",message:"Your Strata+ subscription is billed to your Apple Account and renews on Nov 1, 2026. Manage or cancel it in Settings › Apple Account › Subscriptions on your iPhone."});
+  assert.doesNotMatch(logic.accountAccessSummary(apple({active:true}),false,{app:true}).message,/on your iPhone/);
+  assert.equal(logic.accountAccessSummary(apple({active:true,inGracePeriod:true})).state,"Billing issue");
+  assert.equal(logic.accountAccessSummary(apple({active:true,autoRenew:false})).detail,"Access through Nov 1, 2026");
+  assert.equal(logic.accountAccessSummary(apple({active:true,expiresAt:null})).detail,"App Store subscription");
+  assert.equal(logic.accountAccessSummary(apple({active:false,revoked:true})).detail,"Refunded or revoked");
+  assert.equal(logic.accountAccessSummary(apple({active:false})).state,"Ended");
+  assert.match(logic.accountAccessSummary(apple({active:true},{adminGrant:{active:true,expiresAt:null}})).message,/App Store subscription remains separate/);
+  // A Paddle subscription that pays for Strata+ wins; a lapsed one does not hide an active App Store subscription.
+  assert.equal(logic.accountAccessSummary(apple({active:true},{subscription:{id:"sub_1",status:"active",active:true,currentPeriodEndsAt:expiresAt}})).detail,"Monthly · renews Nov 1, 2026");
+  assert.equal(logic.accountAccessSummary(apple({active:true},{subscription:{id:"sub_1",status:"canceled",active:false}})).detail,"App Store · renews Nov 1, 2026");
+  const paddle=(subscription)=>({discovery:{active:subscription.active===true,accessType:"paid",subscription:{id:"sub_1",...subscription}}});
+  for(const subscription of [{status:"paused",active:false},{status:"active",active:false},{status:"past_due",active:true,pastDue:true},{status:"unknown",active:"maybe"}]){
+    const web=logic.accountAccessSummary(paddle(subscription)),app=logic.accountAccessSummary(paddle(subscription),false,{app:true});
+    assert.match(web.message,/Paddle/,subscription.status);assert.doesNotMatch(app.message,/Paddle/,subscription.status);assert.match(app.message,/stratafitness\.online/,subscription.status);
+  }
+  assert.equal(logic.accountAccessSummary({discovery:{active:false}},true,{app:true}).detail,"Started on the website");
+  assert.doesNotMatch(logic.accountAccessSummary({discovery:{active:false}},false,{app:true}).message,/\$|USD/);
+});
+
 test("account pure logic covers safe handoffs, useful errors, plan timing, and comparable records",()=>{
   for(const [input,expected] of [["pricing","/pricing"],["discover","/discover.html"],["admin","/admin"],["workout","/workout.html"],["onboarding","/onboarding.html"]]){
     assert.equal(logic.safeNext(input),expected);
@@ -86,6 +113,32 @@ test("account API owns endpoint details and attaches current CSRF",async()=>{
   assert.equal(calls[0].options.headers["X-CSRF-Token"],"csrf-current");
   assert.equal(calls[0].options.body,JSON.stringify({sessionId:"session-2"}));
   assert.equal(calls[1].options.body,"{}");
+  await client.deleteNow({password:"secret-password",confirmation:"DELETE",extra:"dropped"},"member-7");
+  assert.equal(calls[2].path,"/api/account/delete/now");
+  assert.equal(calls[2].options.method,"POST");
+  assert.equal(calls[2].options.headers["X-CSRF-Token"],"csrf-current");
+  assert.equal(calls[2].options.headers["X-Strata-User"],"member-7","the request is pinned to the account on screen");
+  assert.equal(calls[2].options.body,JSON.stringify({password:"secret-password",confirmation:"DELETE"}));
+});
+
+test("in-app deletion logic names Apple billing and turns every refusal into a short inline message",()=>{
+  assert.equal(logic.appleMayBill({discovery:{accessType:"apple",apple:null}}),true);
+  assert.equal(logic.appleMayBill({discovery:{accessType:"grant",apple:{active:true}}}),true);
+  assert.equal(logic.appleMayBill({discovery:{accessType:null,apple:{active:false,autoRenew:true}}}),true,"a lapsed subscription set to renew can still bill");
+  assert.equal(logic.appleMayBill({discovery:{accessType:"paid",apple:{active:false,autoRenew:false}}}),false);
+  assert.equal(logic.appleMayBill(null),false);
+  const cases=[
+    [{code:"network"},/^Could not reach STRATA\..*Nothing was deleted\.$/],
+    [{status:401,code:"PASSWORD_INCORRECT",message:"ignored"},/^That password is incorrect\.$/],
+    [{status:400,code:"DELETE_CONFIRMATION_REQUIRED"},/^Type DELETE exactly to confirm\.$/],
+    [{status:429,code:"ACCOUNT_DELETE_RATE_LIMIT"},/^Too many deletion attempts\. Wait 15 minutes/],
+    [{status:409,code:"ADMIN_ACCOUNT_PROTECTED",message:"The primary administrator account cannot be deleted while it owns site management."},/^The primary administrator account cannot be deleted/],
+    [{status:401},/^Your session expired\./],
+    [{status:403,code:"INVALID_CSRF"},/^The security check expired\./],
+    [{status:503,message:"database detail"},/^STRATA is temporarily unavailable\. Nothing was deleted/],
+    [{},/^Your account could not be deleted\. Please try again\.$/]
+  ];
+  for(const [error,expected] of cases)assert.match(logic.deleteNowError(error),expected,JSON.stringify(error));
 });
 
 test("account event module binds controls without owning business logic",async()=>{
@@ -103,7 +156,7 @@ test("account event module binds controls without owning business logic",async()
 
 test("account page loads modules in dependency order before its coordinator",()=>{
   const html=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
-  const expected=["devices-core.js","account-logic.js","account-state.js","account-api.js","account-render.js","account-events.js","account-devices.js","account.js"];
+  const expected=["devices-core.js","account-logic.js","account-state.js","account-api.js","account-render.js","account-events.js","account-devices.js","account-delete-dialog.js","account.js"];
   const positions=expected.map((asset)=>html.indexOf(`src="${asset}`));
   assert.ok(positions.every((position)=>position>=0));
   assert.deepEqual(positions,positions.slice().sort((a,b)=>a-b));

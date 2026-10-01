@@ -5,7 +5,8 @@
   let installed = false;
 
   function isStandalone() {
-    return installed || window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true;
+    // Inside the STRATA iOS app (app-shell.js) the site is already installed.
+    return installed || Boolean(window.StrataApp) || window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true;
   }
 
   function announce() {

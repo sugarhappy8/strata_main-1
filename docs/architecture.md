@@ -263,6 +263,8 @@ Signup creates a short-lived pending verification challenge, reserves a send slo
 
 Password-reset and account-deletion links put the random bearer value in the URL fragment, keeping it out of ordinary server access logs and referrer paths. The browser posts it explicitly to a status or completion endpoint. Tokens expire, are purpose-bound, and are consumed once. Provider errors never silently turn an unverified or incomplete action into success.
 
+In the iOS app, account deletion has no email step: `POST /api/account/delete/now` takes the account password (sign-in's constant-time check) and DELETE from a signed-in session with CSRF and a trusted Origin, limited per account and per network. `src/account-deletion.js` holds the protections both deletion paths share, and the store removes the account through the emailed link's path by consuming an internal `account_delete` action (inside the SQLite transaction; just before the Turso batch, reusing a live emailed link rather than replacing it).
+
 ## PWA architecture
 
 The manifest supplies the full-scope install metadata, icons, theme, and shortcuts. `public/scripts/pwa.js` registers the worker with `updateViaCache: "none"` and owns the deferred browser install prompt.

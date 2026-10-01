@@ -513,7 +513,7 @@ function populateMonthlyBuilder(plan=null){
 }
 function downloadTextFile(text,filename,type="text/plain"){
   const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),link=document.createElement("a");
-  link.href=url;link.download=filename;link.hidden=true;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  link.href=url;link.download=filename;link.hidden=true;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60_000);
 }
 async function shareMonthlyPlan(){
   if(!state.monthlyPlan)return;
@@ -525,13 +525,19 @@ async function shareMonthlyPlan(){
       await navigator.share({title,text});showToast("Plan shared.");return;
     }
     if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);showToast("Plan copied to your clipboard.");return;}
-    downloadTextFile(text,"strata-31-day-plan.txt");showToast("Share file downloaded.");
-  }catch(error){if(error?.name!=="AbortError"){downloadTextFile(text,"strata-31-day-plan.txt");showToast("Sharing was unavailable, so a plan file was downloaded.");}}
+    downloadTextFile(text,"strata-31-day-plan.txt");showToast(globalThis.StrataApp?"Plan file ready. Choose where to save it.":"Share file downloaded.");
+  }catch(error){if(error?.name!=="AbortError"){downloadTextFile(text,"strata-31-day-plan.txt");showToast(globalThis.StrataApp?"Sharing was unavailable, so your plan is ready as a file. Choose where to save it.":"Sharing was unavailable, so a plan file was downloaded.");}}
 }
-function printMonthlyPlan(){
+async function printMonthlyPlan(){
   if(!state.monthlyPlan)return;
   document.body.classList.add("print-monthly-plan");
   const finish=()=>document.body.classList.remove("print-monthly-plan");
+  // window.print does nothing in the iOS app's web view; the app prints the page natively and resolves when done.
+  if(globalThis.StrataApp){
+    try{if(!await globalThis.StrataAppMode?.print?.({jobName:state.monthlyPlan.title||"STRATA 31-day plan"}))showToast("Update STRATA from the App Store to print or save a PDF.");}
+    catch{showToast("Printing is unavailable right now.");}finally{finish();}
+    return;
+  }
   window.addEventListener?.("afterprint",finish,{once:true});window.print?.();setTimeout(finish,750);
 }
 
@@ -622,7 +628,7 @@ el("monthlyFileInput").addEventListener("change",async(event)=>{
   }catch(error){setMonthlyValidation(error.message);showToast(error.message);}
   finally{event.target.value="";}
 });
-el("monthlyPdfButton").addEventListener("click",printMonthlyPlan);
+el("monthlyPdfButton").addEventListener("click",()=>void printMonthlyPlan());
 el("monthlyShareButton").addEventListener("click",()=>void shareMonthlyPlan());
 el("monthlyEditButton").addEventListener("click",()=>{monthlyPlanForm.scrollIntoView?.({behavior:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches?"auto":"smooth",block:"start"});el("monthlyTitle").focus?.({preventScroll:true});});
 

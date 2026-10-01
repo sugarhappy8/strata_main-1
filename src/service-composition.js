@@ -12,7 +12,7 @@
 function composeServices({
   store,emailConfig,paymentConfig,adminEmail,enforcePaddleIps,exerciseIds,
   trustedAuthOrigin,rateAllowed,requestAddress,http,getUserPayload,
-  reconcileCheckoutCreationBeforeDeletion,reconcileUnsettledPurchases,isUniqueViolation,
+  reconcileCheckoutCreationBeforeDeletion,reconcileUnsettledPurchases,isUniqueViolation,appleDeletionNotice,
   createAuthService,createAdminService,createSupportService
 }){
   /** @type {import("./domain-types").AdminService|undefined} */
@@ -23,7 +23,8 @@ function composeServices({
     getUserPayload,
     claimAdminForLogin:async(user)=>admin?admin.maybeClaimAdminForLogin(user):user,
     reconcileCheckoutCreationBeforeDeletion,
-    reconcileUnsettledPurchases
+    reconcileUnsettledPurchases,
+    ...(appleDeletionNotice?{appleDeletionNotice}:{})
   });
   admin=createAdminService({
     store,adminEmail,auth,emailConfig,paymentConfig,enforcePaddleIps,

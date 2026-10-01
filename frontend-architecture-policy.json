@@ -604,6 +604,12 @@
           "maxLines": 160
         },
         {
+          "file": "public/scripts/account-delete-dialog.js",
+          "role": "events",
+          "global": "StrataAccountDeleteDialog",
+          "maxLines": 130
+        },
+        {
           "file": "public/scripts/account.js",
           "role": "entry",
           "maxLines": 280

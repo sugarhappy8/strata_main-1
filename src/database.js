@@ -12,6 +12,7 @@ const {coachingDeletionBatch,createLocalCoachingMethods,createTursoCoachingMetho
 const {createLocalDeviceMethods,createTursoDeviceMethods}=require("./devices-store");
 const {createLocalDataLayerMethods,createTursoDataLayerMethods,dataLayerDeletionBatch,deleteLocalDataLayerData}=require("./data-layer-store");
 const {aiDeletionBatch,createLocalAiMethods,createTursoAiMethods,deleteLocalAiData}=require("./ai-store");
+const {appleDeletionBatch,createLocalAppleBillingMethods,createTursoAppleBillingMethods,deleteLocalAppleData}=require("./apple-billing-store");
 const {migrateLocalSchema,migrateTursoSchema}=require("./migrations");
 function plainValue(value) {
   return typeof value === "bigint" ? Number(value) : value;
@@ -105,6 +106,12 @@ function accountActionArgs(action) {
   ];
 }
 
+// In-app deletion has no emailed token. The store records a short-lived internal account_delete action and consumes
+// it through the same deletion path an emailed link takes, so there is one deletion path for both.
+function internalDeleteAction(userId,tokenHash,at) {
+  return {requestId:`in-app-${String(tokenHash).slice(0,40)}`,userId,purpose:"account_delete",tokenHash,expiresAt:Number(at)+60_000,deliveryState:"sent",createdAt:Number(at),updatedAt:Number(at)};
+}
+
 function stagedAccountActionArgs(action) {
   if (action.purpose!=="password_reset"&&action.purpose!=="account_delete") {
     throw new TypeError("Account action purpose must be password_reset or account_delete.");
@@ -168,8 +175,57 @@ function localStore(root) {
   const accountSelfServiceMethods=createLocalAccountSelfServiceMethods({db,statements,plainRow});
   const billingMethods=createLocalBillingMethods({db,statements,plainRow});
   const coachingMethods=createLocalCoachingMethods({statements,plainRow}),deviceMethods=createLocalDeviceMethods({db,statements,plainRow}),dataLayerMethods=createLocalDataLayerMethods({statements,plainRow}),aiMethods=createLocalAiMethods({statements,plainRow});
+  // The emailed link and the in-app route both delete here. An in-app request first records its internal action
+  // inside the same transaction, so a refused deletion rolls back to exactly the previous state.
+  function deleteAccountLocal(tokenHash,deletedAt,emailHash,internalAction=null) {
+    let transactionOpen=false;
+    try {
+      db.exec("BEGIN IMMEDIATE");
+      transactionOpen=true;
+      if (internalAction) statements.upsertAccountAction.get(...accountActionArgs(internalAction));
+      const action=plainRow(statements.accountActionByTokenHash.get(tokenHash));
+      if (!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=deletedAt) {
+        db.exec("ROLLBACK");
+        transactionOpen=false;
+        return {status:"invalid"};
+      }
+      if (Number(plainRow(statements.pendingPurchasesForUser.get(action.user_id))?.pending_count||0)>0) {
+        db.exec("ROLLBACK");
+        transactionOpen=false;
+        return {status:"purchase_pending"};
+      }
+      if (plainRow(statements.activeCheckoutCreationForUser.get(action.user_id,deletedAt))) {
+        db.exec("ROLLBACK");
+        transactionOpen=false;
+        return {status:"checkout_pending"};
+      }
+      const user=plainRow(statements.deleteUserWithAction.get(tokenHash,deletedAt,deletedAt));
+      if (!user) throw new Error("Account deletion did not remove the requested user.");
+      // Keep deletion complete even if a future database connection loses
+      // its per-session foreign-key PRAGMA state.
+      statements.deleteAdminControlsForDeletedUser.run(user.id,user.id);
+      deleteLocalTrainingData(statements,user.id);
+      deleteLocalCoachingData(statements,user.id);
+      deleteLocalDataLayerData(statements,user.id);
+      deleteLocalAiData(statements,user.id);
+      deleteLocalAppleData(statements,user.id);
+      statements.deleteWorkoutsForDeletedUser.run(user.id,user.id);
+      statements.deleteCheckoutClaimsForDeletedUser.all(user.id,user.id);
+      statements.deleteVerificationSendsForDeletedUser.run(user.id,user.email,user.id);
+      statements.deleteVerificationsForDeletedUser.run(user.id,user.email,user.id);
+      statements.deleteActionSendsForDeletedUser.run(emailHash,user.id);
+      db.exec("COMMIT");
+      transactionOpen=false;
+      return {status:"deleted",user};
+    } catch(error) {
+      if (transactionOpen) {
+        try { db.exec("ROLLBACK"); } catch { /* Preserve the original transaction error. */ }
+      }
+      throw error;
+    }
+  }
   return defineStore("local",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createLocalAppleBillingMethods({statements,plainRow}),
     ...createLocalAccessControlMethods({db,statements,plainRow}),
     async ping() { return probeConnection(() => statements.ping.get()); },
     async userByEmail(email) { return plainRow(statements.userByEmail.get(email)); },
@@ -180,6 +236,7 @@ function localStore(root) {
       return Boolean(plainRow(statements.insertSession.get(session.tokenHash,session.csrfToken,session.expiresAt,session.createdAt,session.userId,Number(session.authVersion??1))));
     },
     async session(tokenHash,now) { return plainRow(statements.session.get(tokenHash,now)); },
+    async renewSession(tokenHash,expiresAt,now) { return Boolean(plainRow(statements.renewSession.get(expiresAt,tokenHash,now,expiresAt))); },
     async deleteSession(tokenHash) { statements.deleteSession.run(tokenHash); },
     async deleteExpired(now) { statements.deleteExpired.run(now); },
     ...accountSelfServiceMethods,
@@ -390,51 +447,8 @@ function localStore(root) {
       }
     },
     async activeCheckoutCreationForUser(userId,now) { return plainRow(statements.activeCheckoutCreationForUser.get(userId,now)); },
-    async deleteAccount(tokenHash,deletedAt,emailHash) {
-      let transactionOpen=false;
-      try {
-        db.exec("BEGIN IMMEDIATE");
-        transactionOpen=true;
-        const action=plainRow(statements.accountActionByTokenHash.get(tokenHash));
-        if (!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=deletedAt) {
-          db.exec("ROLLBACK");
-          transactionOpen=false;
-          return {status:"invalid"};
-        }
-        if (Number(plainRow(statements.pendingPurchasesForUser.get(action.user_id))?.pending_count||0)>0) {
-          db.exec("ROLLBACK");
-          transactionOpen=false;
-          return {status:"purchase_pending"};
-        }
-        if (plainRow(statements.activeCheckoutCreationForUser.get(action.user_id,deletedAt))) {
-          db.exec("ROLLBACK");
-          transactionOpen=false;
-          return {status:"checkout_pending"};
-        }
-        const user=plainRow(statements.deleteUserWithAction.get(tokenHash,deletedAt,deletedAt));
-        if (!user) throw new Error("Account deletion did not remove the requested user.");
-        // Keep deletion complete even if a future database connection loses
-        // its per-session foreign-key PRAGMA state.
-        statements.deleteAdminControlsForDeletedUser.run(user.id,user.id);
-        deleteLocalTrainingData(statements,user.id);
-        deleteLocalCoachingData(statements,user.id);
-        deleteLocalDataLayerData(statements,user.id);
-        deleteLocalAiData(statements,user.id);
-        statements.deleteWorkoutsForDeletedUser.run(user.id,user.id);
-        statements.deleteCheckoutClaimsForDeletedUser.all(user.id,user.id);
-        statements.deleteVerificationSendsForDeletedUser.run(user.id,user.email,user.id);
-        statements.deleteVerificationsForDeletedUser.run(user.id,user.email,user.id);
-        statements.deleteActionSendsForDeletedUser.run(emailHash,user.id);
-        db.exec("COMMIT");
-        transactionOpen=false;
-        return {status:"deleted",user};
-      } catch(error) {
-        if (transactionOpen) {
-          try { db.exec("ROLLBACK"); } catch { /* Preserve the original transaction error. */ }
-        }
-        throw error;
-      }
-    },
+    async deleteAccount(tokenHash,deletedAt,emailHash) { return deleteAccountLocal(tokenHash,deletedAt,emailHash); },
+    async deleteAccountForUser(userId,tokenHash,deletedAt,emailHash) { return deleteAccountLocal(tokenHash,deletedAt,emailHash,internalDeleteAction(userId,tokenHash,deletedAt)); },
     async deleteOldAccountActionData(now,sendBefore=now-VERIFICATION_SEND_RETENTION_MS) {
       const consumedBefore=now-CONSUMED_VERIFICATION_RETENTION_MS;
       const actions=affectedRows(statements.deleteOldAccountActions.run(now,consumedBefore));
@@ -611,6 +625,7 @@ function localStore(root) {
         deleteLocalCoachingData(statements,user.id);
         deleteLocalDataLayerData(statements,user.id);
         deleteLocalAiData(statements,user.id);
+        deleteLocalAppleData(statements,user.id);
         statements.deleteWorkoutsForDeletedUser.run(user.id,user.id);
         statements.deleteCheckoutClaimsForDeletedUser.all(user.id,user.id);
         statements.deleteVerificationSendsForDeletedUser.run(user.id,targetEmail,user.id);
@@ -714,8 +729,37 @@ async function tursoStore(url,authToken,tursoClientFactory) {
   const billingMethods=createTursoBillingMethods({client,first,run,all,plainRow});
   const coachingMethods=createTursoCoachingMethods({first,all}),deviceMethods=createTursoDeviceMethods({client,first,all,run,plainRow}),dataLayerMethods=createTursoDataLayerMethods({first,all,run}),aiMethods=createTursoAiMethods({first,all,run});
 
+  // The emailed link and the in-app route both delete here.
+  async function deleteAccountTurso(tokenHash,deletedAt,emailHash) {
+    const action=await first(SQL.accountActionByTokenHash,[tokenHash]);
+    if (!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=deletedAt) return {status:"invalid"};
+    if (Number((await first(SQL.pendingPurchasesForUser,[action.user_id]))?.pending_count||0)>0) return {status:"purchase_pending"};
+    if (await first(SQL.activeCheckoutCreationForUser,[action.user_id,deletedAt])) return {status:"checkout_pending"};
+    const results=await client.batch([
+      {sql:SQL.deleteUserWithAction,args:[tokenHash,deletedAt,deletedAt]},
+      // This conditional cleanup is intentionally explicit. Turso PRAGMA
+      // state is connection-scoped, so account privacy must not depend only
+      // on ON DELETE CASCADE surviving a renewed serverless session.
+      {sql:SQL.deleteAdminControlsForDeletedUser,args:[action.user_id,action.user_id]},
+      ...trainingDeletionBatch(action.user_id),
+      ...coachingDeletionBatch(action.user_id),
+      ...dataLayerDeletionBatch(action.user_id),
+      ...aiDeletionBatch(action.user_id),
+      ...appleDeletionBatch(action.user_id),
+      {sql:SQL.deleteWorkoutsForDeletedUser,args:[action.user_id,action.user_id]},
+      {sql:SQL.deleteCheckoutClaimsForDeletedUser,args:[action.user_id,action.user_id]},
+      {sql:SQL.deleteVerificationSendsForDeletedUser,args:[action.user_id,action.email,action.user_id]},
+      {sql:SQL.deleteVerificationsForDeletedUser,args:[action.user_id,action.email,action.user_id]},
+      {sql:SQL.deleteActionSendsForDeletedUser,args:[emailHash,action.user_id]}
+    ],"write");
+    const user=plainRow(results[0]?.rows?.[0],results[0]?.columns);
+    if (user) return {status:"deleted",user};
+    if (Number((await first(SQL.pendingPurchasesForUser,[action.user_id]))?.pending_count||0)>0) return {status:"purchase_pending"};
+    if (await first(SQL.activeCheckoutCreationForUser,[action.user_id,deletedAt])) return {status:"checkout_pending"};
+    return {status:"invalid"};
+  }
   return defineStore("turso",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createTursoAppleBillingMethods({first,all,run}),
     ...createTursoAccessControlMethods({client,first,plainRow,SQL}),
     // A successful query is the health signal. Some Turso-compatible row
     // implementations expose selected values only by numeric index, so the
@@ -732,6 +776,7 @@ async function tursoStore(url,authToken,tursoClientFactory) {
       return Boolean(plainRow(result.rows?.[0],result.columns));
     },
     session:(tokenHash,now) => first(SQL.session,[tokenHash,now]),
+    async renewSession(tokenHash,expiresAt,now) { return Boolean(await first(SQL.renewSession,[expiresAt,tokenHash,now,expiresAt])); },
     async deleteSession(tokenHash) { await run(SQL.deleteSession,[tokenHash]); },
     async deleteExpired(now) { await run(SQL.deleteExpired,[now]); },
     ...accountSelfServiceMethods,
@@ -878,32 +923,16 @@ async function tursoStore(url,authToken,tursoClientFactory) {
       return user;
     },
     activeCheckoutCreationForUser:(userId,now) => first(SQL.activeCheckoutCreationForUser,[userId,now]),
-    async deleteAccount(tokenHash,deletedAt,emailHash) {
-      const action=await first(SQL.accountActionByTokenHash,[tokenHash]);
-      if (!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=deletedAt) return {status:"invalid"};
-      if (Number((await first(SQL.pendingPurchasesForUser,[action.user_id]))?.pending_count||0)>0) return {status:"purchase_pending"};
-      if (await first(SQL.activeCheckoutCreationForUser,[action.user_id,deletedAt])) return {status:"checkout_pending"};
-      const results=await client.batch([
-        {sql:SQL.deleteUserWithAction,args:[tokenHash,deletedAt,deletedAt]},
-        // This conditional cleanup is intentionally explicit. Turso PRAGMA
-        // state is connection-scoped, so account privacy must not depend only
-        // on ON DELETE CASCADE surviving a renewed serverless session.
-        {sql:SQL.deleteAdminControlsForDeletedUser,args:[action.user_id,action.user_id]},
-        ...trainingDeletionBatch(action.user_id),
-        ...coachingDeletionBatch(action.user_id),
-        ...dataLayerDeletionBatch(action.user_id),
-        ...aiDeletionBatch(action.user_id),
-        {sql:SQL.deleteWorkoutsForDeletedUser,args:[action.user_id,action.user_id]},
-        {sql:SQL.deleteCheckoutClaimsForDeletedUser,args:[action.user_id,action.user_id]},
-        {sql:SQL.deleteVerificationSendsForDeletedUser,args:[action.user_id,action.email,action.user_id]},
-        {sql:SQL.deleteVerificationsForDeletedUser,args:[action.user_id,action.email,action.user_id]},
-        {sql:SQL.deleteActionSendsForDeletedUser,args:[emailHash,action.user_id]}
-      ],"write");
-      const user=plainRow(results[0]?.rows?.[0],results[0]?.columns);
-      if (user) return {status:"deleted",user};
-      if (Number((await first(SQL.pendingPurchasesForUser,[action.user_id]))?.pending_count||0)>0) return {status:"purchase_pending"};
-      if (await first(SQL.activeCheckoutCreationForUser,[action.user_id,deletedAt])) return {status:"checkout_pending"};
-      return {status:"invalid"};
+    deleteAccount:(tokenHash,deletedAt,emailHash) => deleteAccountTurso(tokenHash,deletedAt,emailHash),
+    async deleteAccountForUser(userId,tokenHash,deletedAt,emailHash) {
+      // A Turso batch cannot read between its writes, so the internal action is written just before the same
+      // deletion path consumes it. A live emailed link is consumed instead of being overwritten, and the internal
+      // action never outlives the request (it also expires within a minute if this process stops mid-way).
+      const pending=await first(SQL.accountActionForUser,[userId,"account_delete"]);
+      if (pending&&pending.delivery_state==="sent"&&pending.consumed_at==null&&Number(pending.expires_at)>deletedAt) return deleteAccountTurso(pending.token_hash,deletedAt,emailHash);
+      await run(SQL.upsertAccountAction,accountActionArgs(internalDeleteAction(userId,tokenHash,deletedAt)));
+      try { return await deleteAccountTurso(tokenHash,deletedAt,emailHash); }
+      finally { await run(SQL.discardAccountAction,[tokenHash]).catch(() => {}); }
     },
     async deleteOldAccountActionData(now,sendBefore=now-VERIFICATION_SEND_RETENTION_MS) {
       const consumedBefore=now-CONSUMED_VERIFICATION_RETENTION_MS;
@@ -1018,6 +1047,7 @@ async function tursoStore(url,authToken,tursoClientFactory) {
         ...coachingDeletionBatch(userId),
         ...dataLayerDeletionBatch(userId),
         ...aiDeletionBatch(userId),
+        ...appleDeletionBatch(userId),
         {sql:SQL.deleteWorkoutsForDeletedUser,args:[userId,userId]},
         {sql:SQL.deleteCheckoutClaimsForDeletedUser,args:[userId,userId]},
         {sql:SQL.deleteVerificationSendsForDeletedUser,args:[userId,targetEmail,userId]},

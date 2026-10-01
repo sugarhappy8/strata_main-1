@@ -14,6 +14,8 @@ const {
 }=require("./email");
 const {cleanText}=require("./plans");
 const {createAccountSelfService}=require("./account-self-service");
+const {createAccountDeletion,deletedMessage}=require("./account-deletion");
+const {queueResponseCookie,renewedSessionExpiry}=require("./session-renewal");
 
 const scryptAsync=promisify(scrypt);
 const SESSION_SECONDS=60*60*24*7;
@@ -37,7 +39,7 @@ const PASSWORD_RESET_RESPONSE="If an account uses that email, a password-reset l
 const API_ROUTES=new Set([
   "/api/signup","/api/login","/api/verification-status","/api/verify-email","/api/resend-verification",
   "/api/password-reset/request","/api/account/password-reset/request","/api/password-reset/status","/api/password-reset/complete",
-  "/api/account/delete/request","/api/account/delete/cancel","/api/account/delete/status","/api/account/delete/complete",
+  "/api/account/delete/request","/api/account/delete/cancel","/api/account/delete/status","/api/account/delete/complete","/api/account/delete/now",
   "/api/account/sessions","/api/account/sessions/revoke","/api/account/sessions/revoke-others","/api/account/export",
   "/api/me","/api/logout"
 ]);
@@ -70,6 +72,7 @@ function createAuthService({
   claimAdminForLogin=async(user)=>user,
   reconcileCheckoutCreationBeforeDeletion=async()=>0,
   reconcileUnsettledPurchases=async()=>0,
+  appleDeletionNotice=async()=>null,
   logger=console
 }){
   if(!store||!emailConfig||typeof trustedAuthOrigin!=="function"||typeof rateAllowed!=="function"||!http||typeof getUserPayload!=="function"){
@@ -106,7 +109,7 @@ function createAuthService({
 
   function authAudit(event,{purpose="",email=""}={}){
     const entry={event:String(event),at:new Date().toISOString()};
-    if(["signup","login","password_reset","account_delete"].includes(purpose))entry.purpose=purpose;
+    if(["signup","login","password_reset","account_delete","account_delete_in_app"].includes(purpose))entry.purpose=purpose;
     if(email)entry.email=maskEmail(email);
     logger.info(`Auth audit ${JSON.stringify(entry)}`);
   }
@@ -128,10 +131,22 @@ function createAuthService({
   async function sessionFor(req){
     const token=cookieMap(req.headers.cookie)[SESSION_COOKIE];
     if(!token||token.length>200)return null;
-    const session=await store.session(hashToken(token),Date.now())||null;
+    const now=Date.now(),session=await store.session(hashToken(token),now)||null;
     // Once verification is requested, a provider misconfiguration must fail closed.
     if(session&&emailConfig.requestedEnabled&&!Number(session.email_verified_at))return null;
+    if(session)await slideSession(req,token,session,now);
     return session;
+  }
+
+  // Every authenticated request passes through sessionFor, so this is where an active session slides forward.
+  async function slideSession(req,token,session,now){
+    const expiresAt=renewedSessionExpiry(session,{now,sessionMs:SESSION_SECONDS*1000});
+    if(!expiresAt)return;
+    try{
+      if(!await store.renewSession(session.token_hash,expiresAt,now))return;
+      session.expires_at=expiresAt;
+      queueResponseCookie(req,sessionCookie(token,Math.floor((expiresAt-now)/1000)));
+    }catch(error){logger.error("Session renewal failed:",error);}
   }
 
   function secureCookie(name,token,maxAge){
@@ -176,6 +191,7 @@ function createAuthService({
     return (expectedUser===undefined||expectedUser===String(session?.id))&&safeTokenEqual(req.headers["x-csrf-token"],session?.csrf_token);
   }
   const accountSelfService=createAccountSelfService({store,http:{json,bodyJson,securityHeaders},requireSession,validCsrf,rateAllowed,logger});
+  const accountDeletion=createAccountDeletion({store,http:{json,bodyJson},requireSession,validCsrf,trustedAuthOrigin,rateAllowed,passwordMatches,accountEmailHash,accountActionError,storageUnavailable:accountStorageUnavailable,audit:authAudit,clearCookies:()=>[sessionCookie("",0),signupCookie("",0)],reconcileCheckoutCreationBeforeDeletion,reconcileUnsettledPurchases,appleDeletionNotice});
 
   function validateRegistration(input){
     const name=cleanText(input.name,40),email=normalizeEmail(input.email),password=String(input.password||"");
@@ -407,16 +423,16 @@ function createAuthService({
     return {claimed,emailHash};
   }
 
-  async function createAndDeliverAccountAction(user,purpose){
+  async function createAndDeliverAccountAction(user,purpose,appleBilling=null){
     const token=randomBytes(32).toString("base64url"),now=Date.now();
     const staged=await store.stageAccountAction({requestId:randomUUID(),userId:user.id,purpose,tokenHash:hashToken(token),expiresAt:now+ACCOUNT_ACTION_MS,createdAt:now});
     if(!staged)throw new Error("Account action could not be staged.");
     try{
-      await sendAccountActionEmail(emailConfig,{to:user.email,name:user.name,token,requestId:staged.request_id,purpose,expiresInMinutes:Math.ceil(ACCOUNT_ACTION_MS/60000)});
+      await sendAccountActionEmail(emailConfig,{to:user.email,name:user.name,token,requestId:staged.request_id,purpose,expiresInMinutes:Math.ceil(ACCOUNT_ACTION_MS/60000),appleSubscription:Boolean(appleBilling)});
       const action=await store.activateAccountAction(staged.request_id,staged.token_hash,Date.now());
       if(!action)throw new Error("Delivered account action could not be activated.");
       authAudit("account_action_sent",{purpose,email:user.email});
-      return {expiresAt:Number(action.expires_at),maskedEmail:maskEmail(user.email)};
+      return {expiresAt:Number(action.expires_at),maskedEmail:maskEmail(user.email),...(appleBilling?{appleBilling}:{})};
     }catch(error){
       try{await store.discardStagedAccountAction(staged.request_id,staged.token_hash);}
       catch(discardError){logger.error("Staged account-action cleanup failed:",discardError);}
@@ -451,7 +467,7 @@ function createAuthService({
       if(principal?.user_id===session.id)throw accountActionError("The primary administrator account cannot be deleted while it owns site management.",409,"ADMIN_ACCOUNT_PROTECTED");
       const reservation=await claimAccountActionSend(session.email,purpose);
       if(!reservation.claimed)throw accountActionError("Too many account emails were requested. Please wait and try again.",429,"ACCOUNT_EMAIL_LIMIT");
-      return await createAndDeliverAccountAction(session,purpose);
+      return await createAndDeliverAccountAction(session,purpose,purpose==="account_delete"?await appleDeletionNotice(session.id):null);
     }catch(error){
       if(error.status)throw error;
       throw accountStorageUnavailable(error);
@@ -464,7 +480,9 @@ function createAuthService({
     try{
       const row=await store.accountActionByTokenHash(hashToken(token));
       const active=Boolean(row&&row.purpose===expectedPurpose&&row.delivery_state==="sent"&&row.consumed_at==null&&Number(row.expires_at)>Date.now());
-      return active?{active:true,expiresAt:Number(row.expires_at),maskedEmail:maskEmail(row.email)}:{active:false};
+      if(!active)return {active:false};
+      const appleBilling=expectedPurpose==="account_delete"?await appleDeletionNotice(row.user_id):null;
+      return {active:true,expiresAt:Number(row.expires_at),maskedEmail:maskEmail(row.email),...(appleBilling?{appleBilling}:{})};
     }catch(error){throw accountStorageUnavailable(error);}
   }
 
@@ -493,17 +511,10 @@ function createAuthService({
     if(String(input?.confirmation||"").trim()!=="DELETE")throw accountActionError("Type DELETE exactly to confirm permanent account deletion.",400,"DELETE_CONFIRMATION_REQUIRED");
     try{
       const action=await store.accountActionByTokenHash(hashToken(token));
-      if(!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=Date.now())throw accountActionError("This deletion link is invalid or expired. Request a new one from your account.",400,"INVALID_DELETE_LINK");
-      const principal=await store.adminPrincipal();
-      if(principal?.user_id===action.user_id)throw accountActionError("The primary administrator account cannot be deleted while it owns site management.",409,"ADMIN_ACCOUNT_PROTECTED");
-      if(await reconcileCheckoutCreationBeforeDeletion(action.user_id)>0)throw accountActionError("A Strata+ checkout is still being prepared. Nothing was deleted; please try again later.",409,"CHECKOUT_PREPARING");
-      if(await reconcileUnsettledPurchases(action.user_id)>0)throw accountActionError("A Strata+ payment is still being processed. Nothing was deleted; please try again later.",409,"PURCHASE_PENDING");
-      const result=await store.deleteAccount(hashToken(token),Date.now(),accountEmailHash(action.email));
-      if(result.status==="purchase_pending")throw accountActionError("A Strata+ payment is still being processed. Nothing was deleted; please try again later.",409,"PURCHASE_PENDING");
-      if(result.status==="checkout_pending")throw accountActionError("A Strata+ checkout is still being prepared. Nothing was deleted; please try again later.",409,"CHECKOUT_PREPARING");
-      if(result.status!=="deleted")throw accountActionError("This deletion link is invalid or expired. Request a new one from your account.",400,"INVALID_DELETE_LINK");
-      authAudit("account_deleted",{purpose:"account_delete",email:action.email});
-      return result.user;
+      const invalid=()=>accountActionError("This deletion link is invalid or expired. Request a new one from your account.",400,"INVALID_DELETE_LINK");
+      if(!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=Date.now())throw invalid();
+      // The in-app route (account-deletion.js) runs the same protections and the same store deletion.
+      return await accountDeletion.deleteProtectedAccount({userId:action.user_id,email:action.email,purpose:"account_delete",remove:(deletedAt,emailHash)=>store.deleteAccount(hashToken(token),deletedAt,emailHash),invalid});
     }catch(error){
       if(error.status)throw error;
       throw accountStorageUnavailable(error);
@@ -680,7 +691,7 @@ function createAuthService({
 
   async function handleApi(req,res,url){
     if(!API_ROUTES.has(url.pathname))return false;
-    if(await accountSelfService.handleApi(req,res,url))return true;
+    if(await accountSelfService.handleApi(req,res,url)||await accountDeletion.handleApi(req,res,url))return true;
     if(url.pathname==="/api/signup"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
       try{
@@ -779,7 +790,10 @@ function createAuthService({
     if(url.pathname==="/api/account/delete/complete"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
       if(!rateAllowed(req,"account-delete-complete",10)){json(res,429,{error:"Too many attempts. Try again later.",code:"ACCOUNT_DELETE_RATE_LIMIT"});return true;}
-      try{await deleteAccountWithToken(await bodyJson(req));json(res,200,{ok:true,message:"Your STRATA account was permanently deleted."},{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});}
+      try{
+        const {appleBilling}=await deleteAccountWithToken(await bodyJson(req));
+        json(res,200,{ok:true,message:deletedMessage(appleBilling),...(appleBilling?{appleBilling}:{})},{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});
+      }
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"ACCOUNT_DELETE_FAILED"});}
       return true;
     }

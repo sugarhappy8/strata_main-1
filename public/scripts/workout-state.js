@@ -27,7 +27,7 @@
       offset:0,hasMore:false,historyBusy:false,historyLoaded:false,historyLoadError:"",memoryHistory:[],memoryExhausted:false,memoryBusy:false,
       memoryReady:false,memoryError:"",detailBusy:false,loading:false,toastTimer:null,checkInBusy:false,
       adaptation:null,swapEntryId:"",swapCandidateId:"",swapProposal:null,swapBusy:false,swapTrigger:null,
-      offlineAccessUntil:0
+      offlineAccessUntil:0,pageHidden:false
     };
   }
 

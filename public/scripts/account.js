@@ -1,4 +1,4 @@
-/* global StrataAccountApi, StrataAccountDevices, StrataAccountEvents, StrataAccountLogic, StrataAccountRender, StrataAccountState, StrataDevicesCore */
+/* global StrataAccountApi, StrataAccountDeleteDialog, StrataAccountDevices, StrataAccountEvents, StrataAccountLogic, StrataAccountRender, StrataAccountState, StrataDevicesCore */
 "use strict";
 
 const logic=StrataAccountLogic;
@@ -16,7 +16,7 @@ const devices=StrataAccountDevices.createController({element:el,api,core:StrataD
 const authForms={signup:el("signupForm"),login:el("loginForm")};
 const authButtons={signup:el("signupSubmit"),login:el("loginSubmit")};
 const preferredPanel=el(mode==="login"?"loginPanel":"signupPanel");
-let foregroundRecheck=null;
+let foregroundRecheck=null,signedInUser=null;
 
 preferredPanel.classList.add("active");
 if(mode==="login")document.querySelector(".auth-grid").prepend(preferredPanel);
@@ -87,7 +87,7 @@ async function loadAccountSessions(user){
 }
 
 function showSignedIn(user,csrfToken=""){
-  state.setPrivateUser(user?.id);state.setCsrfToken(csrfToken);renderer.showSignedIn(user);
+  signedInUser=user||null;state.setPrivateUser(user?.id);state.setCsrfToken(csrfToken);renderer.showSignedIn(user);
   void loadAccountSessions(user);void devices.load(user);
 }
 
@@ -158,7 +158,7 @@ async function downloadExport(event){
     const result=await api.exportAccount();if(!await confirmPrivateOperation(operation))return;
     const href=URL.createObjectURL(result.blob),link=document.createElement("a");
     const filename=result.contentDisposition.match(/filename="(strata-account-export-\d{4}-\d{2}-\d{2}\.json)"/)?.[1]||"strata-account-export-download.json";
-    link.href=href;link.download=filename;link.hidden=true;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(href),0);renderer.showAccountControlStatus("accountExportStatus","Your JSON export was downloaded.");
+    link.href=href;link.download=filename;link.hidden=true;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(href),60_000);renderer.showAccountControlStatus("accountExportStatus",globalThis.StrataApp?"Your JSON export is ready. Choose where to save it.":"Your JSON export was downloaded.");
   }catch(error){
     if(!state.isCurrentPrivateOperation(operation))return;
     if(logic.accountBoundaryChanged(error)){showChangedAccount();return;}
@@ -181,6 +181,16 @@ async function openBillingPortal(kind,event){
   finally{if(state.isCurrentPrivateOperation(operation))buttons.forEach((control)=>{control.disabled=false;});}
 }
 
+// Inside the iOS app an App Store subscription is managed on Apple's own sheet; an app build without it, or a sheet
+// that fails to open, goes to Apple's subscriptions page instead. On the website the link opens that page itself.
+async function manageAppleSubscription(event,href=logic.APPLE_MANAGE_URL){
+  if(!globalThis.StrataApp)return;
+  event?.preventDefault?.();
+  const status=el("accountBillingStatus");status.textContent="";status.classList.remove("bad");
+  try{const native=globalThis.StrataAppMode?.plugin?.();if(typeof native?.manageSubscriptions!=="function")throw new Error("unavailable");await native.manageSubscriptions();}
+  catch{location.assign(logic.safeAppleManageUrl(href));}
+}
+
 async function requestSecurityEmail(kind,event){
   const button=event.currentTarget;if(button.disabled)return;
   const operation=state.beginPrivateOperation();
@@ -189,7 +199,8 @@ async function requestSecurityEmail(kind,event){
   try{
     const result=kind==="delete"?await api.requestDeletion():await api.requestPasswordReset();
     if(!await confirmPrivateOperation(operation))return;
-    renderer.showSecurityStatus(kind==="delete"?`A deletion confirmation link was sent to ${result.maskedEmail||"your registered email"}. Nothing is deleted until you open it and type DELETE. Deletion does not cancel a Paddle subscription or refund a charge.`:`A password-reset link was sent to ${result.maskedEmail||"your registered email"}. The link expires after 30 minutes.`);
+    const apple=kind==="delete"?logic.appleDeletionNotice(result):null;
+    renderer.showSecurityStatus(kind==="delete"?`A deletion confirmation link was sent to ${result.maskedEmail||"your registered email"}. Nothing is deleted until you open it and type DELETE. ${apple?`Deletion does not cancel a subscription or refund a charge. ${apple.message}`:globalThis.StrataApp?"Deletion does not cancel a subscription or refund a charge; an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions.":"Deletion does not cancel a Paddle subscription or refund a charge."}`:`A password-reset link was sent to ${result.maskedEmail||"your registered email"}. The link expires after 30 minutes.`,{appleLink:apple?.manageUrl||""});
     if(kind==="delete")el("accountDeleteCancel").hidden=false;
   }catch(error){if(!state.isCurrentPrivateOperation(operation))return;if(logic.accountBoundaryChanged(error)){showChangedAccount();return;}renderer.showSecurityStatus(logic.securityError(error),{error:true});}
   finally{if(state.isCurrentPrivateOperation(operation)){button.disabled=false;renderer.setButtonBusy(button,false);}}
@@ -212,14 +223,29 @@ async function logout(event){
   }
 }
 
+// In the iOS app, Delete account opens the in-app deletion dialog; browsers (and an app web view without <dialog>)
+// keep the emailed deletion link, which the dialog also offers.
+const deleteDialog=StrataAccountDeleteDialog.createController({
+  element:el,api,logic,getUser:()=>signedInUser,
+  emailInstead:()=>requestSecurityEmail("delete",{currentTarget:el("accountDeleteRequest")}),
+  manageApple:(event,href)=>void manageAppleSubscription(event,href),
+  onDeleted:()=>{state.setNavigating();clearPrivateView();}
+});
+function requestSecurityAction(kind,event){
+  if(kind==="delete"&&deleteDialog.open(event?.currentTarget||null))return;
+  return requestSecurityEmail(kind,event);
+}
+
 StrataAccountEvents.bind({
   nodes:{
     passwordReset:el("accountPasswordReset"),deleteRequest:el("accountDeleteRequest"),manageSubscription:el("accountManageSubscription"),updatePayment:el("accountUpdatePayment"),cancelSubscription:el("accountCancelSubscription"),
     sessionList:el("accountSessionList"),revokeOtherSessions:el("accountRevokeOtherSessions"),exportData:el("accountExportData"),deleteCancel:el("accountDeleteCancel"),reload:el("accountReload"),logout:el("accountLogout"),
     signupPassword:el("signupPassword"),signupPasswordToggle:el("signupPasswordToggle"),loginPassword:el("loginPassword"),loginPasswordToggle:el("loginPasswordToggle")
   },
-  actions:{requestSecurityEmail,openBillingPortal,revokeSession,revokeOtherSessions,downloadExport,cancelDeletion,reload:()=>location.reload(),logout,enhanceForm,handleForeground,handlePageShow},
+  actions:{requestSecurityEmail:requestSecurityAction,openBillingPortal,revokeSession,revokeOtherSessions,downloadExport,cancelDeletion,reload:()=>location.reload(),logout,enhanceForm,handleForeground,handlePageShow},
   enhanceAuth:typeof globalThis.fetch==="function"&&typeof globalThis.FormData==="function"
 });
 
+el("accountManageApple").addEventListener("click",(event)=>void manageAppleSubscription(event));
+el("accountSecurityAppleLink").addEventListener("click",(event)=>void manageAppleSubscription(event,el("accountSecurityAppleLink").href));
 initialize();

@@ -91,7 +91,7 @@
     ready=false;$("setupFields").disabled=true;$("retrySetup").hidden=true;$("previewSummary").hidden=true;status("Loading your starting point…");
     try{
       if(!exercises.length){
-        const response=await fetch("/exercises.json?v=9.1.0");if(!response.ok)throw new Error("The exercise library is unavailable. Reconnect and retry.");exercises=await response.json();
+        const response=await fetch("/exercises.json?v=9.2.0");if(!response.ok)throw new Error("The exercise library is unavailable. Reconnect and retry.");exercises=await response.json();
       }
       const account=await request("/api/setup",{cache:"no-store"});requirePlus(account);
       if(!account.csrfToken)throw new Error("Your account could not be verified. Retry before editing.");
@@ -107,7 +107,8 @@
     $("replaceNotice").textContent=hasItems(original)?"You already have a saved week. Saving this preview replaces it; download a copy of your current week first.":"Your first week is ready. Save it, then adjust any movement, sets, or reps in the planner.";
     const oldLink=document.getElementById("previousWeek");if(oldLink)oldLink.remove();
     if(hasItems(original)){
-      if(previousDownload)URL.revokeObjectURL(previousDownload);
+      // A download the iOS app is still handing to its share sheet keeps its file for a minute.
+      if(previousDownload){const stale=previousDownload;setTimeout(()=>URL.revokeObjectURL(stale),60_000);}
       previousDownload=URL.createObjectURL(new Blob([JSON.stringify({format:"strata-weekly-plan",version:1,exportedAt:new Date().toISOString(),plan:original},null,2)],{type:"application/json"}));
       const link=document.createElement("a");link.id="previousWeek";link.href=previousDownload;link.download="strata-previous-week.json";link.textContent="Download my current week";$("replaceNotice").after(link);
     }

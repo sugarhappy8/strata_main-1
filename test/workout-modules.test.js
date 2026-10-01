@@ -65,6 +65,36 @@ test("weekly calendar files fold long lines to 75 octets",()=>{
   assert.ok(schedule.ics.split("\r\n").every((line)=>Buffer.byteLength(line)<=75));
 });
 
+test("the iOS app's Calendar sheet gets the same weekly schedule with Calendar's Sunday-first weekday numbers",()=>{
+  assert.deepEqual(DAYS.map((day)=>Calendar.calendarWeekday(day,DAYS)),[2,3,4,5,6,7,1],"Monday is 2 and Sunday is 1");
+  assert.equal(Calendar.calendarWeekday("Someday",DAYS),0);
+  const plan=emptyWeek();plan.days.Monday=[{exerciseId:"squat",sets:3}];plan.days.Wednesday=[{exerciseId:"row",sets:2}];plan.days.Sunday=[{exerciseId:"press",sets:1}];
+  assert.deepEqual(Calendar.nativeWeekly(plan,DAYS,{time:"07:05",alarmMinutes:15}),{title:"STRATA workout",notes:"Planned training days: Monday, Wednesday, Sunday. Open STRATA to start.",weekdays:[2,4,1],hour:7,minute:5,durationMinutes:60,alarmMinutesBefore:15});
+  assert.deepEqual(Calendar.weeklySchedule(plan,DAYS,{time:"07:05"}).days,["Monday","Wednesday","Sunday"],"the file and the sheet cover the same days");
+  assert.equal(Calendar.nativeWeekly(plan,DAYS,{time:"18:00",alarmMinutes:0}).alarmMinutesBefore,null,"No reminder adds no alarm");
+  assert.equal(Calendar.nativeWeekly(plan,DAYS,{time:"23:59",alarmMinutes:60,durationMinutes:45}).durationMinutes,45);
+  const saturday=emptyWeek();saturday.days.Saturday=[{exerciseId:"row",sets:2}];
+  assert.deepEqual(Calendar.nativeWeekly(saturday,DAYS).weekdays,[7]);
+  assert.equal(Calendar.nativeWeekly(plan,DAYS,{time:"7:05"}),null);assert.equal(Calendar.nativeWeekly(plan,DAYS,{time:"24:00"}),null);
+  assert.equal(Calendar.nativeWeekly(emptyWeek(),DAYS),null);assert.equal(Calendar.nativeWeekly(null,DAYS),null);
+});
+
+test("in the iOS app a workout keeps the screen awake, schedules its rest alert, and opens Calendar's sheet",()=>{
+  const main=readFileSync(join(ROOT,"public/scripts/workout.js"),"utf8"),events=readFileSync(join(ROOT,"public/scripts/workout-events.js"),"utf8");
+  assert.match(main,/globalThis\.StrataAppMode\?\.createWorkoutBridge\?\.\(\{title:"Rest is over",body:"Time for your next set\."\}\)\|\|null/);
+  assert.match(main,/appBridge\.sync\(\{keepAwake:active&&!state\.pageHidden&&document\.visibilityState!=="hidden",restEndsAt:active\?state\.workout\.restEndsAt:0\}\)/,"only an active workout on screen keeps the screen awake");
+  assert.match(main,/function tick\(\)\{\n {4}syncApp\(\);/,"every timer tick (pause, reset, finish, replace) reconciles the native state");
+  assert.match(main,/state\.pausedSeconds=null;syncApp\(\);guidance\.reset\(\)/,"closing a session releases the screen at once");
+  assert.equal((main.match(/persistDraft\(\);syncApp\(\);/g)||[]).length,2,"a blocked session or ended access releases the screen and the alert");
+  assert.match(main,/Date\.now\(\)-workout\.restEndsAt<5000\)globalThis\.StrataAppMode\?\.haptic\("success"\)/,"a rest ending on screen taps once; a rest that ended long ago does not");
+  assert.match(main,/addWeeklyToCalendar\(options\)\)\?\.added===true\)toast\("Added to your calendar\."\);\}\n {4}catch\{const link=document\.createElement\("a"\);link\.href=\$\("calendarWeeklyLink"\)\.href;link\.download=/,"a refused sheet falls back to the .ics file");
+  assert.match(events,/\$\("calendarWeeklyLink"\)\?\.addEventListener\("click",\(event\)=>\{void actions\.addWeeklyToCalendar\?\.\(event\);\}\)/);
+  assert.match(events,/windowLike\.addEventListener\("pagehide",\(\)=>\{state\.pageHidden=true;tick\(\);\}\)/);
+  // A rest alert the online page scheduled must not fire after the workout is finished on the offline page.
+  const offline=readFileSync(join(ROOT,"public/scripts/workout-offline.js"),"utf8");
+  assert.match(offline,/workout\.restEndsAt=null;const stored=persist\(\);render\(\);globalThis\.StrataAppMode\?\.cancelRestAlert\?\.\(\);/,"finishing offline cancels the rest alert");
+});
+
 test("workout renderer keeps the training essentials visible and nests configuration under More",()=>{
   const catalog=[{id:"press",name:"Standing Press",equipment:"Barbell / Smith",reps:"8–12",group:"Shoulders",sub:"Front Delts",score:90,metrics:{stability:8}}];
   const plan=emptyWeek();plan.days.Monday=[{instanceId:"press-one",exerciseId:"press",sets:2,reps:"8–12"}];

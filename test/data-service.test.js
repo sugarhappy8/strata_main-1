@@ -50,3 +50,14 @@ test("plan saves record their source, and Polar deletion removes derived rows",a
     ["deleteUserDailySnapshots","member"]
   ]);
 });
+
+test("a diary day is rebuilt on the member's own date, not UTC's, around midnight east of UTC",async()=>{
+  // 22:00 UTC on 1 October is already 02:00 on 2 October in Dubai.
+  const late=Date.parse("2026-10-01T22:00:00Z"),built=[];
+  const store=fakeStore({coachingDailyLogs:async(userId,from,to)=>{built.push([userId,from,to]);return [];},wellnessNights:async()=>[],wellnessDays:async()=>[]});
+  const make=(timeZone)=>{const events=createEventBus();createDataService({store,events,getPlan:async()=>null,coachingProfile:async()=>timeZone?{timeZone}:null,requireSession:async()=>null,requireFeature:()=>async()=>null,http:{json(){}},now:()=>late});return events;};
+  await make("Asia/Dubai").emit("coaching.log_saved",{userId:"dubai",date:"2026-10-02"});
+  await make(null).emit("coaching.log_saved",{userId:"utc",date:"2026-10-02"});
+  await make("Not/AZone").emit("coaching.log_saved",{userId:"unknown-zone",date:"2026-10-02"});
+  assert.deepEqual(built,[["dubai","2026-10-02","2026-10-02"]],"Dubai's 2 October is today; for UTC (and an unknown zone) it is still tomorrow");
+});

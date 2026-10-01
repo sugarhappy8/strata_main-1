@@ -27,6 +27,8 @@ const {createEventBus}=require("./events");
 const {createDataService}=require("./data-service");
 const {profilePayload:coachingProfilePayload}=require("./coaching");
 const { createBillingService } = require("./billing");
+const {appleBillingSettings,createAppleBillingService}=require("./apple-billing");
+const {deliverQueuedCookies}=require("./session-renewal");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
 const { createLogger,observeRequest } = require("./observability");
@@ -63,6 +65,7 @@ const EMAIL_CONFIG = getEmailVerificationConfig(process.env);
 const ADMIN_EMAIL = configuredAdminEmail(process.env.ADMIN_EMAIL);
 const ENFORCE_PADDLE_IPS=String(process.env.PADDLE_ENFORCE_IP_ALLOWLIST||"").toLowerCase()==="true";
 const AI_SETTINGS=aiSettings(process.env);
+const APPLE_SETTINGS=appleBillingSettings(process.env);
 const ENTITLEMENTS=entitlementSettings(process.env);
 const LOGGER=createLogger();
 // Browser URLs deliberately remain stable even though files are grouped by
@@ -186,7 +189,7 @@ const STATIC_FILES = new Map([
   ["discover-program.js","scripts/discover-program.js"],
   ["discover-coaching-meals.js","scripts/discover-coaching-meals.js"],
   ["discover.js","scripts/discover.js"],
-  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["discover-recovery.js","scripts/discover-recovery.js"],["discover-brief.js","scripts/discover-brief.js"],["workout-recovery.js","scripts/workout-recovery.js"],
+  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["account-delete-dialog.js","scripts/account-delete-dialog.js"],["discover-recovery.js","scripts/discover-recovery.js"],["discover-brief.js","scripts/discover-brief.js"],["workout-recovery.js","scripts/workout-recovery.js"],
   ["install.js","scripts/install.js"],
   ["offline.js","scripts/offline.js"],
   ["pricing-logic.js","scripts/pricing-logic.js"],
@@ -204,6 +207,8 @@ const STATIC_FILES = new Map([
   ["admin-events.js","scripts/admin-events.js"],
   ["admin.js","scripts/admin.js"],
   ["pwa.js","scripts/pwa.js"],
+  ["app-shell.js","scripts/app-shell.js"],
+  ["app-mode.js","scripts/app-mode.js"],["app-mode.css","styles/app-mode.css"],["app-paywall.js","scripts/app-paywall.js"],
   ["service-worker.js","service-worker.js"],
   ["manifest.webmanifest","manifest.webmanifest"],
   ["exercises.json","data/exercises.json"],
@@ -270,7 +275,7 @@ let devices;
 let ai,aiSettingsService,briefJob;
 let setup;
 let productSignals;
-let billing;
+let billing,appleBilling;
 
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g,(char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char])); }
 
@@ -309,10 +314,11 @@ async function hasCurrentDiscoveryAccess(userId,now=Date.now()) {
 
 async function userPayload(session) {
   const now=Date.now();
-  const [plan,paidDiscovery,subscription,deletion,adminState,controls]=await Promise.all([
+  const [plan,paidDiscovery,subscription,apple,deletion,adminState,controls]=await Promise.all([
     planFor(session.id),
     billing.accessSummaryForUser(session.id),
     billing.subscriptionForUser(session.id),
+    appleBilling.subscriptionForUser(session.id),
     store.activeAccountDeletion(session.id,now),
     admin.adminIdentity(session),
     store.adminControls(session.id)
@@ -320,12 +326,13 @@ async function userPayload(session) {
   const adminGrant=adminGrantState(controls,now);
   const discovery={
     ...paidDiscovery,
-    active:paidDiscovery.active||adminGrant.active,
-    // "paid" covers a subscription or a legacy lifetime purchase; the
+    active:paidDiscovery.active||Boolean(apple?.active)||adminGrant.active,
+    // "paid" covers a Paddle subscription or a legacy lifetime purchase; the
     // nullable subscription snapshot tells the two apart for the client.
-    accessType:paidDiscovery.active?"paid":adminGrant.active?"grant":null,
+    // "apple" is Strata+ bought in the iOS app; precedence is paid > apple > grant.
+    accessType:paidDiscovery.active?"paid":apple?.active?"apple":adminGrant.active?"grant":null,
     adminGrant,checkoutBlocked:Boolean(controls?.checkout_blocked_at),
-    subscription
+    subscription,apple
   };
   return {
     id:session.id,
@@ -433,6 +440,7 @@ function handleLiveness(req,res) {
 
 async function handleApi(req,res,url) {
   if (url.pathname==="/api/paddle/webhook") { await billing.handleWebhook(req,res); return; }
+  if (url.pathname==="/api/billing/apple/notifications") { await appleBilling.handleNotification(req,res); return; }
   if (["POST","PUT","PATCH","DELETE"].includes(req.method) && !sameOrigin(req)) { json(res,403,{error:"Cross-origin request rejected."}); return; }
   if (await productSignals.handleApi(req,res,url)) return;
   if (await support.handleApi(req,res,url)) return;
@@ -447,8 +455,9 @@ async function handleApi(req,res,url) {
   if (await workouts.handleApi(req,res,url)) return;
   if (await setup.handleApi(req,res,url)) return;
   if (await billing.handleApi(req,res,url)) return;
+  if (await appleBilling.handleApi(req,res,url)) return;
   if (url.pathname === "/api/status" && req.method === "GET") {
-    json(res,200,{ok:true,build:BUILD_NUMBER,storage:store.kind,persistent:store.kind==="turso"||process.env.NODE_ENV!=="production",paymentsConfigured:PAYMENT_CONFIG.configured,checkoutEnabled:PAYMENT_CONFIG.enabled,webhookIpAllowlist:ENFORCE_PADDLE_IPS,emailVerificationEnabled:EMAIL_CONFIG.enabled,emailVerificationConfigured:EMAIL_CONFIG.configured,passwordResetEnabled:EMAIL_CONFIG.enabled,accountDeletionEnabled:EMAIL_CONFIG.enabled,adminConfigured:Boolean(ADMIN_EMAIL)}); return;
+    json(res,200,{ok:true,build:BUILD_NUMBER,storage:store.kind,persistent:store.kind==="turso"||process.env.NODE_ENV!=="production",paymentsConfigured:PAYMENT_CONFIG.configured,checkoutEnabled:PAYMENT_CONFIG.enabled,appStoreConfigured:APPLE_SETTINGS.configured,webhookIpAllowlist:ENFORCE_PADDLE_IPS,emailVerificationEnabled:EMAIL_CONFIG.enabled,emailVerificationConfigured:EMAIL_CONFIG.configured,passwordResetEnabled:EMAIL_CONFIG.enabled,accountDeletionEnabled:EMAIL_CONFIG.enabled,adminConfigured:Boolean(ADMIN_EMAIL)}); return;
   }
   if (url.pathname === "/api/plan" && req.method === "GET") {
     const session=await auth.requireSession(req,res); if (!session) return;
@@ -619,6 +628,7 @@ async function serveStatic(req,res,url) {
 
 const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keepAliveTimeout:5_000},async(req,res) => {
   observeRequest(req,res,LOGGER);
+  deliverQueuedCookies(req,res);
   try {
     const url=new URL(req.url,`http://${req.headers.host || "localhost"}`);
     if (url.pathname==="/livez") handleLiveness(req,res);
@@ -652,13 +662,14 @@ async function start() {
     requestAddress,rateAllowed,isUniqueViolation,getAuth:()=>auth,getUserPayload:userPayload,
     http:{json,bodyJson},logger:LOGGER
   });
+  appleBilling=createAppleBillingService({store,settings:APPLE_SETTINGS,getAuth:()=>auth,getUserPayload:userPayload,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json},logger:LOGGER});
   ({auth,admin,support}=composeServices({
     store,emailConfig:EMAIL_CONFIG,paymentConfig:PAYMENT_CONFIG,
     adminEmail:ADMIN_EMAIL,enforcePaddleIps:ENFORCE_PADDLE_IPS,
     exerciseIds:EXERCISE_IDS,trustedAuthOrigin,rateAllowed,requestAddress,
     http:{json,bodyJson,bodyForm,redirect,securityHeaders},getUserPayload:userPayload,
     reconcileCheckoutCreationBeforeDeletion:billing.reconcileCheckoutCreationBeforeDeletion,
-    reconcileUnsettledPurchases:billing.reconcileUnsettledPurchases,isUniqueViolation,
+    reconcileUnsettledPurchases:billing.reconcileUnsettledPurchases,isUniqueViolation,appleDeletionNotice:appleBilling.deletionNotice,
     createAuthService,createAdminService,createSupportService
   }));
   dataService=createDataService({store,events,getPlan:planFor,coachingProfile:async(userId)=>coachingProfilePayload(await store.coachingProfile(userId)),requireSession:(req,res)=>auth.requireSession(req,res),requireFeature,http:{json},logger:LOGGER});
@@ -686,6 +697,7 @@ async function start() {
   await support.cleanup();
   await productSignals.cleanup();
   await dataService.cleanup();
+  await appleBilling.cleanup();
   if (ENFORCE_PADDLE_IPS) void billing.warmProviderTrust().catch((error)=>LOGGER.error("billing.webhook_allowlist_warm_failed",{error}));
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
@@ -694,6 +706,7 @@ async function start() {
     void productSignals.cleanup().catch((error)=>LOGGER.error("cleanup.product_signals_failed",{error}));
     void dataService.cleanup().catch((error)=>LOGGER.error("cleanup.data_layer_failed",{error}));
     void aiQuota.cleanup(90).catch((error)=>LOGGER.error("cleanup.ai_usage_failed",{error}));
+    void appleBilling.cleanup().catch((error)=>LOGGER.error("cleanup.apple_notifications_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
   },60*60*1000);
   cleanup.unref();

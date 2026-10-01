@@ -192,7 +192,7 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       if([...jobs.values()].some((job)=>job.userId===String(session.id)&&(job.status==="queued"||job.status==="running")))throw aiError("AI_REQUEST_IN_PROGRESS","Strata AI is still working on your last request.",409);
       if(queue.length>=maxQueue)throw aiError("AI_BUSY","Strata AI is busy with other members. Try again in a minute.",503);
       // Nothing reaches the provider without the member's consent; the shared daily budget is claimed last.
-      if(!settingsPayload(await store.aiSettings(String(session.id))).consent)throw aiError("AI_CONSENT_REQUIRED","Allow Strata AI to read your training summary first.",409);
+      if(!settingsPayload(await store.aiSettings(String(session.id))).consent)throw aiError("AI_CONSENT_REQUIRED","Allow Strata AI to share your training summary with Groq first.",409);
       const claim=await quota.reserve("chat",String(session.id));
       if(!claim.ok)throw claim.code==="AI_DAILY_LIMIT"?aiError("AI_DAILY_LIMIT",`You have used today's ${quota.limits.userDaily} Strata AI requests. They reset at midnight UTC.`,429):claim.code==="AI_RESTING"?aiError("AI_RESTING","Strata AI is resting for today and will be back tomorrow. Your Daily Brief is still on the Overview.",503):aiError("AI_BUSY","Strata AI is busy right now. Try again in a minute.",503);
       const job={id:randomUUID(),userId:String(session.id),kind,message,history,draftPlan,draftPlanUpdatedAt,usageDate:String(claim.date),tokens:0,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};

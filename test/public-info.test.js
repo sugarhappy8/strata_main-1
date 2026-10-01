@@ -92,7 +92,7 @@ test("core footers use the policy directory instead of repeating every legal pag
 });
 
 test("published Strata+ price and refund promise are exact and consistent",()=>{
-  assert.equal(BUILD,"9.1.0");
+  assert.equal(BUILD,"9.2.0");
   const pricingHtml=read("pricing.html"),pricing=text("pricing.html"),refunds=text("refunds.html"),terms=text("terms.html");
   assert.match(pricing,/Strata\+/);
   assert.match(pricing,/\$2\.99 USD/i);
@@ -111,7 +111,9 @@ test("published Strata+ price and refund promise are exact and consistent",()=>{
   assert.doesNotMatch(pricingHtml,/id="trialDiscovery"/);
   assert.match(pricingHtml,/href="\/refunds"/);
   assert.match(pricingHtml,/id="buyDiscovery"/);
-  assert.match(pricingHtml,/src="https:\/\/cdn\.paddle\.com\/paddle\/v2\/paddle\.js"/);
+  // Paddle.js is requested by pricing.js on the website only, never inside the iOS app.
+  assert.doesNotMatch(pricingHtml,/cdn\.paddle\.com/);
+  assert.match(read("../scripts/pricing.js"),/"https:\/\/cdn\.paddle\.com\/paddle\/v2\/paddle\.js"/);
   assert.match(pricingHtml,new RegExp(`src="/pricing\\.js\\?v=${BUILD.replace(/\./g,"\\.")}"`));
   assert.match(pricing,/Paddle is the merchant of record/i);
   assert.match(pricing,/unlocks after STRATA securely confirms the subscription/i);

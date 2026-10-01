@@ -78,6 +78,19 @@ test("planner guidance requires a fresh entitlement and schedules boundaries, pe
   state.entitlementStatus="unavailable";
   assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),false,"network uncertainty must not retain gated guidance");
   assert.deepEqual([1,2,3,4,20].map(PlannerState.entitlementRetryDelay),[15_000,60_000,300_000,900_000,900_000],"temporary failures must use bounded retry backoff");
+
+  const appleExpiry=now+20*60*1000,apple=(value)=>({id:"member-1",capabilities:{"plus.studio":true},discovery:{active:true,accessType:"apple",subscription:null,apple:{active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt:appleExpiry,autoRenew:true,inGracePeriod:false,environment:"Production",revoked:false,...value}}});
+  state.entitlementStatus="ready";state.user=apple({});
+  assert.equal(PlannerState.entitlementBoundary(state.user),appleExpiry,"App Store access ends at its verified expiry");
+  assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),true);assert.equal(PlannerState.hasConfirmedPlusAccess(state,appleExpiry),false);
+  assert.equal(PlannerState.entitlementRefreshDelay(state.user,now),PlannerState.ENTITLEMENT_RECHECK_MAX_DELAY,"a later expiry still rechecks within the periodic window");
+  state.user=apple({expiresAt:now+60_000});assert.equal(PlannerState.entitlementRefreshDelay(state.user,now),60_050);
+  state.user=apple({inGracePeriod:true,expiresAt:now-60_000});
+  assert.equal(PlannerState.entitlementBoundary(state.user),0,"Apple's billing grace period has no client-known end");
+  assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),true);assert.equal(PlannerState.entitlementRefreshDelay(state.user,now),PlannerState.ENTITLEMENT_RECHECK_MAX_DELAY);
+  for(const value of [{revoked:true},{active:false},{expiresAt:null}]){state.user=apple(value);assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),false,JSON.stringify(value));}
+  state.user={...apple({}),discovery:{active:true,accessType:"apple",apple:null,subscription:null}};
+  assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),false,"a missing App Store summary fails closed instead of reading as lifetime access");
 });
 
 test("planner rendering names the destination and safely escapes catalog content",()=>{

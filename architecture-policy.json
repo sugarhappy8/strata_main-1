@@ -38,7 +38,9 @@
         "src/data-service.js",
         "src/ai-quota.js",
         "src/ai-settings.js",
-        "src/ai-daily-brief.js"
+        "src/ai-daily-brief.js",
+        "src/apple-billing.js",
+        "src/session-renewal.js"
       ]
     },
     "src/service-composition.js": {
@@ -103,9 +105,11 @@
       "role": "Authentication and account lifecycle",
       "maxLines": 840,
       "allowedDependencies": [
+        "src/account-deletion.js",
         "src/account-self-service.js",
         "src/email.js",
-        "src/plans.js"
+        "src/plans.js",
+        "src/session-renewal.js"
       ]
     },
     "src/admin.js": {
@@ -115,7 +119,8 @@
         "src/access-controls.js",
         "src/admin-user-actions.js",
         "src/email.js",
-        "src/plans.js"
+        "src/plans.js",
+        "src/apple-billing.js"
       ]
     },
     "src/support.js": {
@@ -132,6 +137,11 @@
       "allowedDependencies": [
         "src/account-export.js"
       ]
+    },
+    "src/account-deletion.js": {
+      "role": "In-app account deletion by password and the protections shared with the emailed link",
+      "maxLines": 110,
+      "allowedDependencies": []
     },
     "src/account-export.js": {
       "role": "Bounded streaming account export serialization",
@@ -164,7 +174,8 @@
         "src/store-contract.js",
         "src/training-loop-store.js",
         "src/data-layer-store.js",
-        "src/ai-store.js"
+        "src/ai-store.js",
+        "src/apple-billing-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -191,7 +202,8 @@
         "src/product-signals-schema.js",
         "src/training-loop-schema.js",
         "src/data-layer-schema.js",
-        "src/ai-schema.js"
+        "src/ai-schema.js",
+        "src/apple-billing-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
@@ -234,6 +246,7 @@
       "maxLines": 720,
       "allowedDependencies": [
         "src/access-controls.js",
+        "src/apple-billing.js",
         "src/checkout-reconciliation.js",
         "src/http.js",
         "src/legacy-checkout.js",
@@ -604,6 +617,36 @@
     },
     "src/ai-settings.js": {
       "role": "Strata AI consent, Daily Brief choice, note deletion, and the owner's usage view",
+      "maxLines": 70,
+      "allowedDependencies": []
+    },
+    "src/apple-jws.js": {
+      "role": "App Store JWS verification: Apple Root CA - G3 chain, marker extensions, ES256",
+      "maxLines": 100,
+      "allowedDependencies": []
+    },
+    "src/apple-billing.js": {
+      "role": "Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state",
+      "maxLines": 360,
+      "allowedDependencies": [
+        "src/apple-jws.js",
+        "src/http.js"
+      ]
+    },
+    "src/apple-billing-schema.js": {
+      "role": "Apple subscription and notification-ledger schema",
+      "maxLines": 70,
+      "allowedDependencies": []
+    },
+    "src/apple-billing-store.js": {
+      "role": "SQLite and Turso Apple subscription storage parity",
+      "maxLines": 70,
+      "allowedDependencies": [
+        "src/apple-billing-schema.js"
+      ]
+    },
+    "src/session-renewal.js": {
+      "role": "Sliding session renewal and the response cookie choke point",
       "maxLines": 70,
       "allowedDependencies": []
     }

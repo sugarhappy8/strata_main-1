@@ -74,12 +74,12 @@ function createDailySnapshots({store,trainingLog,events=null,logger=null,now=Dat
   const rebuild=(userId,from,to,today)=>build(userId,from,to,today).catch((error)=>{logger?.warn?.("snapshot.build_failed",{error});return [];});
   return {
     build,read,
-    /** @param {import("./domain-types").EventBus} bus @param {(userId:string)=>string} todayFor */
+    /** @param {import("./domain-types").EventBus} bus @param {(userId:string)=>string|Promise<string>} todayFor */
     subscribe(bus,todayFor){
-      bus.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),today=todayFor(userId);await rebuild(userId,String(payload.from),String(payload.to),today);});
-      bus.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await rebuild(userId,date,date,todayFor(userId));});
-      bus.on("coaching.log_saved",async(payload)=>{const userId=String(payload.userId),date=String(payload.date||"");if(isDate(date))await rebuild(userId,date,date,todayFor(userId));});
-      bus.on("plan.updated",async(payload)=>{const userId=String(payload.userId),today=todayFor(userId);await rebuild(userId,mondayOf(today),today,today);});
+      bus.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),today=await todayFor(userId);await rebuild(userId,String(payload.from),String(payload.to),today);});
+      bus.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await rebuild(userId,date,date,await todayFor(userId));});
+      bus.on("coaching.log_saved",async(payload)=>{const userId=String(payload.userId),date=String(payload.date||"");if(isDate(date))await rebuild(userId,date,date,await todayFor(userId));});
+      bus.on("plan.updated",async(payload)=>{const userId=String(payload.userId),today=await todayFor(userId);await rebuild(userId,mondayOf(today),today,today);});
     },
     /** @param {string} beforeDate */
     async cleanup(beforeDate){await store.deleteOldDailySnapshots(beforeDate);}

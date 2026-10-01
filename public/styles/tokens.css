@@ -45,3 +45,8 @@
   /* Motion */
   --strata-ease-out:cubic-bezier(.22,1,.36,1);
 }
+
+/* Inside the STRATA iOS app (app-shell.js sets data-app before first paint) the site is already installed. */
+:root[data-app="ios"] a[href^="/install"] { display:none !important; }
+/* The app's status bar always shows light icons; keep the strip under them dark on every page, light pages included. */
+:root[data-app="ios"] body::before { content:""; position:fixed; z-index:2147483647; top:0; right:0; left:0; height:env(safe-area-inset-top); background:var(--strata-ink); pointer-events:none; }

@@ -19,6 +19,8 @@ const ACCOUNT_EXPORT_QUERIES=Object.freeze({
   grants:"SELECT grant_starts_at,grant_expires_at,grant_revoked_at,checkout_blocked_at FROM admin_account_controls WHERE user_id=?",
   purchases:"SELECT transaction_id,price_id,product_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at FROM paddle_purchases WHERE user_id=? ORDER BY created_at,transaction_id",
   subscriptions:"SELECT subscription_id,transaction_id,status,price_id,product_id,scheduled_change_action,scheduled_change_at,current_period_ends_at,created_at,updated_at FROM paddle_subscriptions WHERE user_id=? ORDER BY created_at,subscription_id",
+  // Strata+ bought through Apple: STRATA's copy of the subscription state, never the signed App Store data itself.
+  appleSubscriptions:"SELECT original_transaction_id,product_id,environment,latest_transaction_id,purchased_at,original_purchased_at,expires_at,revoked_at,revocation_reason,auto_renew,grace_period_expires_at,created_at,updated_at FROM apple_subscriptions WHERE user_id=? ORDER BY created_at,original_transaction_id",
   adjustments:"SELECT a.adjustment_id,a.transaction_id,a.action,a.type,a.status,a.occurred_at,a.updated_at FROM paddle_adjustments a JOIN paddle_purchases p ON p.transaction_id=a.transaction_id WHERE p.user_id=? ORDER BY a.occurred_at,a.adjustment_id",
   supportTickets:"SELECT id,reference,name,email,category,subject,reference_id,message,status,last_response_at,created_at,updated_at FROM support_tickets WHERE user_id=? ORDER BY created_at,id",
   // Connected devices export what STRATA stored about the member, never the sealed token or Polar identifiers.

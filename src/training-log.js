@@ -131,10 +131,10 @@ function createTrainingLog({store,getPlan,logger=null,now=Date.now}){
     /** @param {string} userId @param {{from:string,to:string,today:string}} range */
     async read(userId,{from,to,today}){if(!validRange(from,to))throw Object.assign(new Error("Choose a range of up to 92 days."),{status:400,code:"INVALID_TRAINING_LOG_RANGE"});return load(userId,from,to,today);},
     relink,
-    /** @param {import("./domain-types").EventBus} events @param {(userId:string)=>string} todayFor */
+    /** @param {import("./domain-types").EventBus} events @param {(userId:string)=>string|Promise<string>} todayFor */
     subscribe(events,todayFor){
-      events.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await relink(userId,addDays(date,-1),addDays(date,1),todayFor(userId));});
-      events.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),from=String(payload.from||""),to=String(payload.to||"");if(isDate(from)&&isDate(to))await relink(userId,from,to,todayFor(userId));});
+      events.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await relink(userId,addDays(date,-1),addDays(date,1),await todayFor(userId));});
+      events.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),from=String(payload.from||""),to=String(payload.to||"");if(isDate(from)&&isDate(to))await relink(userId,from,to,await todayFor(userId));});
     }
   };
 }

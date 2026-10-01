@@ -12,7 +12,7 @@ function deferred(){let resolve,reject;const promise=new Promise((yes,no)=>{reso
 function runtime({checkoutFailure=false,configFailure=false,userOverride=null,meResponse=null,checkoutResponse=null,search=""}={}){
   const nodes=new Map(),listeners={},documentListeners={},checkout={};
   const node=id=>{
-    if(!nodes.has(id))nodes.set(id,{hidden:false,disabled:false,textContent:"",innerHTML:"",attrs:{},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v;},focus(){},addEventListener(type,fn){this[type]=fn;}});
+    if(!nodes.has(id))nodes.set(id,{hidden:false,disabled:false,textContent:"",innerHTML:"",attrs:{},classList:{toggle(){}},setAttribute(k,v){this.attrs[k]=v;},removeAttribute(k){delete this.attrs[k];delete this[k];},focus(){},addEventListener(type,fn){this[type]=fn;}});
     return nodes.get(id);
   };
   let accountUser=userOverride||{id:"member",discovery:{active:false,accessType:null,subscription:null}};
@@ -164,6 +164,28 @@ test("lifetime members can see a concurrent complimentary grant",async()=>{
   const r=runtime({userOverride:user});await flush();
   assert.match(r.node("purchaseStatus").textContent,/grandfathered lifetime access remains separate/i);
   assert.equal(r.node("manageSubscription").hidden,true);
+});
+test("on the website an App Store member is told Strata+ is through the App Store, with Apple's link and no checkout",async()=>{
+  const expiresAt=Date.parse("2026-11-01T12:00:00Z"),apple={active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt,autoRenew:true,inGracePeriod:false,environment:"Production",revoked:false};
+  const member=(value={},extra={})=>({id:"member",discovery:{active:true,accessType:"apple",adminGrant:{active:false},subscription:null,apple:{...apple,...value},...extra}});
+  const r=runtime({userOverride:member({},{subscription:{id:"sub_old",status:"canceled",active:false}})});await flush();
+  assert.match(r.node("purchaseStatus").textContent,/^Your Strata\+ is through the App Store and renews on .+\. Apple bills it, so manage or cancel it with your App Store subscriptions\.$/);
+  assert.equal(r.node("buyDiscovery").hidden,true,"no Paddle checkout for an App Store member");assert.equal(r.node("openDiscovery").hidden,false);
+  const manage=r.node("manageSubscription");
+  assert.equal(manage.hidden,false);assert.equal(manage.href,"https://apps.apple.com/account/subscriptions");assert.equal(manage.target,"_blank");assert.equal(manage.rel,"noopener noreferrer");
+  r.node("buyDiscovery").click();await flush();
+  assert.equal(r.checkout.open,undefined,"an active App Store member cannot open Paddle checkout");
+  // A later account on the same tab gets the Paddle billing link back.
+  r.setAccountUser({id:"member-2",discovery:{active:true,accessType:"paid",adminGrant:{active:false},subscription:{id:"sub_active",status:"active",active:true,currentPeriodEndsAt:Date.now()+30*86400000}}});
+  r.emitVisibility("visible");await flush();
+  assert.equal(manage.href,"/account.html#accountBilling");assert.equal(manage.target,undefined);assert.match(r.node("purchaseStatus").textContent,/monthly subscription is active/);
+  const cancelling=runtime({userOverride:member({autoRenew:false})});await flush();
+  assert.match(cancelling.node("purchaseStatus").textContent,/^Your Strata\+ is through the App Store and ends on .+\. It will not renew unless you resubscribe with Apple\.$/);
+  const grace=runtime({userOverride:member({inGracePeriod:true,expiresAt:Date.now()-60_000})});await flush();
+  assert.match(grace.node("purchaseStatus").textContent,/Apple could not collect the latest payment/);
+  const granted=runtime({userOverride:member({},{adminGrant:{active:true,startedAt:Date.now(),expiresAt:null,revokedAt:null}})});await flush();
+  assert.match(granted.node("purchaseStatus").textContent,/complimentary Strata\+[\s\S]*App Store subscription remains separate/);
+  assert.equal(granted.node("manageSubscription").href,"https://apps.apple.com/account/subscriptions");
 });
 test("the reason a member arrived stays visible when checkout is unavailable",async()=>{
   const r=runtime({configFailure:true});await flush();
