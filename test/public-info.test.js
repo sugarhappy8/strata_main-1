@@ -43,7 +43,7 @@ test("the editorial homepage and four-destination product identity remain canoni
   assert.match(home,/<h1 id="hero-title">Your next<br \/>workout\.<br \/><em>Ready\.<\/em><\/h1>/);
   assert.ok(home.indexOf('class="hero"')<home.indexOf('id="rankings"'),"The editorial hero must lead instead of opening on the exercise catalog");
   assert.doesNotMatch(home,/<title>Exercises\b/i,"The rejected Exercises-first shell must not replace the STRATA homepage");
-  for(const removed of ["start-directory","class=\"ticker\"","system-section","editorial-section","discovery-offer"])assert.doesNotMatch(home,new RegExp(removed),`${removed} was cut in Build 9; the homepage is hero, free preview, rankings, method, sources`);
+  for(const removed of ["start-directory","class=\"ticker\"","system-section","editorial-section","discovery-offer"])assert.doesNotMatch(home,new RegExp(removed),`${removed} was cut: the homepage is hero, free preview, rankings, method, sources`);
 
   const expected=["Exercises","Strata+","Plan","Train"];
   assert.deepEqual(navLabels(home,"desktop-nav"),expected);
