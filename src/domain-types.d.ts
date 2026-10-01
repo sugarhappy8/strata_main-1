@@ -985,7 +985,7 @@ export interface SupportServiceDependencies {
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
   rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
   isUniqueViolation?:(error:unknown)=>boolean;
-  http:JsonHttpHelpers;
+  http:Pick<HttpHelpers,"json"|"bodyJson"|"bodyForm"|"redirect">;
   logger?:Pick<Console,"error">;
 }
 
