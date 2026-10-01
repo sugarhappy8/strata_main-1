@@ -64,6 +64,11 @@
       const scope=data?.scope||{},since=cleanString(scope.sinceDay,"the selected start"),through=cleanString(scope.throughDay,"today");
       setSectionStatus("productSignalStatus",`${formatCount(total)} aggregate action ${total===1?"count":"counts"} from ${since} through ${through}. Counts expire within ${formatCount(scope.retentionDays||90)} days.`);
     }
+    // Today's Strata AI requests and tokens against the organization's daily budget; dashes when unavailable.
+    function renderAiUsage(usage){
+      const kind=(name)=>usage?.totals?.find((row)=>row?.kind===name)||{requests:0,tokens:0},chat=kind("chat"),brief=kind("brief"),show=(id,value)=>{el(id).textContent=usage?formatCount(value):"—";};
+      show("aiChatRequestsStat",chat.requests);show("aiBriefRequestsStat",brief.requests);show("aiTokensStat",Number(chat.tokens)+Number(brief.tokens));show("aiRemainingStat",Math.max(0,Number(usage?.dailyRequests)-Number(chat.requests)-Number(brief.requests))||0);
+    }
     function renderOverview(data){
       const stats=normalizedOverview(data),accounts=stats.accounts||stats,discovery=stats.discovery||stats,activation=stats.activation||stats,support=stats.support||stats;
       const values={
@@ -161,7 +166,7 @@
       for(const id of valueIds)el(id).value="";
       for(const id of containerIds)el(id).replaceChildren();
       el("userDetailStatus").className="section-status";el("supportUpdateMessage").className="dialog-message";el("confirmMessage").className="dialog-message";
-      el("supportUpdateMessage").hidden=true;el("confirmMessage").hidden=true;el("globalMessage").hidden=true;
+      el("supportUpdateMessage").hidden=true;el("confirmMessage").hidden=true;el("globalMessage").hidden=true;renderAiUsage(null);
     }
     function updateGrantFields(){
       const active=state.pendingAction==="grant-plus",unit=el("grantUnit").value,dated=unit==="until",unlimited=unit==="indefinite";
@@ -182,7 +187,7 @@
       el("supportDialog").showModal();syncDialogLock();requestFrame(()=>el("supportDialogTitle").focus({preventScroll:true}));
     }
 
-    return{addFact,clearPrivateData,closeDialog,create,el,openActionConfirmation,openSupportDialog,renderAudit,renderOverview,renderProductSignals,renderSupport,renderUserDetails,renderUsers,setActionAvailability,setBusy,setLastUpdated,setSectionStatus,showGlobal,syncDialogLock,updateGrantFields,updateSupportSubmitLabel};
+    return{addFact,clearPrivateData,closeDialog,create,el,openActionConfirmation,openSupportDialog,renderAiUsage,renderAudit,renderOverview,renderProductSignals,renderSupport,renderUserDetails,renderUsers,setActionAvailability,setBusy,setLastUpdated,setSectionStatus,showGlobal,syncDialogLock,updateGrantFields,updateSupportSubmitLabel};
   }
 
   return{createRenderer};

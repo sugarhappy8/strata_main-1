@@ -75,12 +75,15 @@ test("serves rankings and gates private account pages",async()=>{
   assert.match(home.data,/Your next<br \/>workout/);
   assert.match(home.data,/id="signupButton"[^>]*>Sign up/);
   assert.match(home.data,/id="accountButton"[^>]*>Log in/);
-  assert.match(home.data,BUILD_LABEL);
+  assert.doesNotMatch(home.data,BUILD_LABEL,"the build number lives on Profile, not the homepage");
+  const shareImage=await fetch(`${BASE}/images/strata-og.jpg`);
+  assert.equal(shareImage.status,200,"the share image named by the public pages is served");
+  assert.equal(shareImage.headers.get("content-type"),"image/jpeg");await shareImage.arrayBuffer();
   const account=await request("/account.html");
   assert.equal(account.response.status,200);
   assert.match(account.data,/action="\/auth\/signup"/);
   assert.match(account.data,/action="\/auth\/login"/);
-  assert.match(account.data,BUILD_LABEL);
+  assert.match(account.data,BUILD_LABEL,"Profile's About line shows the build");
   const status=await request("/api/status");
   assert.equal(status.response.status,200);
   assert.equal(status.data.ok,true);
@@ -129,7 +132,7 @@ test("serves public pricing, contact, and policy pages at friendly routes",async
       assert.equal(page.response.headers.get("cache-control"),"no-cache",`${path} cache policy`);
       assert.doesNotMatch(page.response.headers.get("vary")||"",/Cookie/i,`${path} must not vary by account`);
       assert.match(page.data,marker,`${path} page marker`);
-      assert.match(page.data,BUILD_LABEL,`${path} build label`);
+      assert.doesNotMatch(page.data,BUILD_LABEL,`${path} keeps the build number out of the main UI`);
     }
   }
 });
@@ -143,7 +146,7 @@ test("serves recovery pages at friendly private routes",async()=>{
       assert.equal(page.response.headers.get("cache-control"),"private, no-store",path);
       assert.match(page.response.headers.get("vary"),/Cookie/i,path);
       assert.match(page.data,marker,path);
-      assert.match(page.data,BUILD_LABEL,path);
+      assert.doesNotMatch(page.data,BUILD_LABEL,path);
     }
   }
 });
@@ -177,7 +180,7 @@ test("creates an account with a private default plan",async()=>{
   assert.equal(plannerPage.response.status,200);
   assert.equal(plannerPage.response.headers.get("cache-control"),"no-cache");
   assert.match(plannerPage.data,/Build your/);
-  assert.match(plannerPage.data,BUILD_LABEL);
+  assert.doesNotMatch(plannerPage.data,BUILD_LABEL);
 
   const discoverPage=await request("/discover.html",{headers:{Cookie:signup.cookie},redirect:"manual"});
   assert.equal(discoverPage.response.status,302);

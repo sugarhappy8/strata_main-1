@@ -60,8 +60,8 @@ not reachable from the build environment. The Daily Snapshot already has an `act
   window per member so connections do not all sync at once. Each pull re-reads at least the
   last 3 days so late Polar uploads are caught (the daily reconciliation).
 - **Sync now**: `POST /api/devices/polar/sync`, with a five-minute cooldown.
-- **Webhooks**: none today. The client keeps to V4 polling, as recorded in
-  `strata-polar-plan.txt`. If Polar's current docs confirm V4 push notifications, the handler
+- **Webhooks**: none today. The client keeps to V4 polling (see Known limits). If Polar's
+  current docs confirm V4 push notifications, the handler
   should verify the signature and only mark the member's connection due
   (`store.markDeviceConnectionDue`), so every update still flows through the same idempotent
   sync path.
@@ -114,6 +114,21 @@ Polar rows and snapshots older than 400 days are removed by the hourly cleanup, 
 | Strata+ ended | `PLUS_INACTIVE` | Paused, checked daily, resumes on renewal |
 | Two syncs for one connection | — | The second returns "busy"; nothing runs twice |
 | A provider record outside STRATA's bounds | — | That record is skipped; the rest of the window imports |
+
+## Known limits
+
+- **No stable Polar identity.** AccessLink V4 does not expose a documented, stable Polar account
+  id through this flow. STRATA keeps a random local connection id and allows one active Polar
+  connection per STRATA account, but cannot recognize the same Polar account connected to two
+  STRATA accounts.
+- **Field units need a live check.** The tests use synthetic V4 fixtures. A redacted fixture
+  from a real, authorized account is still needed to confirm provider field meanings, especially
+  that `meanNightlyRecoveryRri` and `meanNightlyRecoveryRespirationInterval` are intervals that
+  STRATA converts to per-minute rates with `60000 / interval`.
+- **Consent at Polar stays with the member.** Disconnecting deletes STRATA's credential and
+  imported data; the member removes STRATA's consent at https://account.polar.com/ if they want.
+- The original Build 8.8.6 plan (AccessLink V3, webhooks, long-lived tokens) is superseded and
+  lives only in Git history (`strata-polar-plan.txt`, removed in 9.0.0).
 
 ## Configuration
 

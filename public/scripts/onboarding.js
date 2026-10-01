@@ -76,7 +76,7 @@
     link.rel=conflict?"noopener":"";
     link.hidden=hidden;
     $("savedActions").hidden=hidden;
-    if(conflict)$("startFirstWorkout").hidden=true;
+    if(conflict){$("startFirstWorkout").hidden=true;$("connectPolarOptional").hidden=true;}
   }
   function requirePlus(account){
     if(!account?.user?.id)throw new Error("Sign in to use Strata+ weekly setup. Your free Plan remains available without an account.");
@@ -133,7 +133,7 @@
       revision=saved.planUpdatedAt;preferenceRevision=saved.preferencesUpdatedAt;original=saved.plan||preview.plan;savedPreferenceTags=[...(saved.preferences?.preferences||preview.preferences.preferences)];
       try{if(activationCandidate)globalThis.StrataActivation?.acknowledge?.(localStorage,{userId:user.id,accountRevision:revision,accountPlan:original,candidate:activationCandidate,decision:"claimed"});}catch{}
       const firstDay=core.DAYS.find(day=>saved.plan?.days?.[day]?.length)||core.DAYS.find(day=>preview.plan?.days?.[day]?.length);
-      $("startFirstWorkout").href=`/workout.html?day=${encodeURIComponent(firstDay||"Monday")}`;$("startFirstWorkout").hidden=false;
+      $("startFirstWorkout").href=`/workout.html?day=${encodeURIComponent(firstDay||"Monday")}`;$("startFirstWorkout").hidden=false;$("connectPolarOptional").hidden=false;
       $("saveControls").hidden=true;setPlannerAction();status("Saved to your account. Your first workout is ready; start now or adjust the week first.",{tone:"good"});signal("onboarding_saved");$("startFirstWorkout").focus();
     }catch(error){
       if(error.status===409){setPlannerAction({conflict:true});status("Your saved week changed in another tab or device. Your preview is safe here. Open the planner in a new tab to compare both before replacing anything.",{tone:"error"});$("openPlanner").focus();}

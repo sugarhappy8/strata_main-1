@@ -243,6 +243,41 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
 - **Not verified from the build environment:** Groq's model list and docs were unreachable, so
   confirming both models and turning on Zero Data Retention are deployment steps.
 
+## Phase 6 — product polish (first slice)
+
+### Removed "project" giveaways
+- **Build numbers leave the main UI.** Footers on every page dropped "Build 8.9.0". Profile
+  keeps one "About STRATA · Build" line, and the private admin page keeps its own. Asset version
+  markers still drive cache busting, so `npm run release:version` works as before.
+- **One calendar export.** Train's post-workout "Add to calendar" file for the next session
+  duplicated the weekly calendar file, which already repeats every planned day at a chosen time
+  with a reminder. The weekly file stays; the one-off file and its code are gone.
+- **No "coming soon".** With Polar not configured, Recovery says Polar connections are paused
+  and that the plan, training, and nutrition work as usual.
+- **Profile everywhere.** Copy that sent members to "Account" now says Profile (Recovery, Polar,
+  billing, the privacy policy, terms, refunds, and account deletion). The page title is
+  "Profile — STRATA".
+- The archived half of `strata-polar-plan.txt` is gone. Its two open points, the missing stable
+  Polar identity and the live field-unit check, moved to `POLAR_INTEGRATION.md` under Known
+  limits.
+- `qa/calibration-benchmark.js` stays as a documented manual check and gets
+  `npm run benchmark:calibration`. It loads its reference engine from Git history, so it is not
+  part of `npm run check`.
+
+### Product polish
+- **Upgrade lines come from the entitlements module.** `StrataEntitlements.upsell(reason)` holds
+  one sentence per Strata+ entry point (Strata AI, Recovery, Strata+ pages), and the pricing page
+  uses it for signed-in and signed-out visitors.
+- **Share card.** The nine public pages carry Open Graph and large Twitter card tags with a
+  1200×630 image (`/images/strata-og.jpg`, 63 KB) built from the homepage hero.
+- **Onboarding ends with Polar, optionally.** After the week is saved, next to "Review my first
+  workout", members see "Wear a Polar Loop? Connect it in Profile (optional)".
+- **The owner sees Strata AI use.** The admin Overview shows today's chats, Daily Briefs,
+  tokens, and requests left against the daily budget. A failed read shows dashes and never
+  blocks the overview.
+- Server errors without a known cause now read "Something went wrong on our side. Try again in a
+  moment." instead of "Unexpected server error."
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).

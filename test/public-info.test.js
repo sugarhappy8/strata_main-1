@@ -205,3 +205,15 @@ test("Account leaves training progress to Strata+ and keeps its next action and 
   assert.doesNotMatch(account,/Weekly progress|Recent momentum|Training signal|accountWeekProgress|accountWinsList|accountAdaptationTitle/);
   for(const id of ["accountNextTitle","accountPrimaryAction","accountAccessState","accountBilling","connectedDevices","accountSessionList","accountExportData","accountDeleteRequest"])assert.match(account,new RegExp(`id="${id}"`));
 });
+
+test("public pages share one card: title, description, and the STRATA share image",()=>{
+  for(const page of ["index","pricing","contact","policies","privacy","terms","refunds","install","planner"]){
+    const html=read(`${page}.html`),description=html.match(/<meta name="description" content="([^"]+)"/)?.[1];
+    assert.ok(description,`${page} description`);
+    assert.match(html,new RegExp(`<meta property="og:description" content="${description.replace(/[.*+?^${}()|[\]\\$]/g,"\\$&")}" />`),`${page} share description matches the page`);
+    assert.match(html,/<meta property="og:image" content="https:\/\/stratafitness\.online\/images\/strata-og\.jpg" \/>/,`${page} share image`);
+    assert.match(html,/<meta property="og:title" content="[^"]+" \/>/,`${page} share title`);
+    assert.match(html,/<meta name="twitter:card" content="summary_large_image" \/>/,`${page} large card`);
+  }
+  assert.ok(fs.statSync(path.join(PUBLIC_ROOT,"images","strata-og.jpg")).size<150_000,"the share image stays small");
+});

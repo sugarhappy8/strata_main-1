@@ -130,6 +130,7 @@ test("onboarding preview works where crypto.randomUUID is unavailable",async()=>
   assert.equal(fixture.elements.get("savedActions").hidden,false);
   assert.equal(fixture.elements.get("startFirstWorkout").href,"/workout.html?day=Monday");
   assert.equal(fixture.elements.get("startFirstWorkout").focused,true);
+  assert.equal(fixture.elements.get("connectPolarOptional").hidden,false,"after saving, Polar is offered as an optional next step");
 });
 
 test("fresh Strata+ setup starts with a one-choice quick path and honest starter defaults",async()=>{

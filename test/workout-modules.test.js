@@ -33,16 +33,6 @@ test("workout preferences accept only supported rest durations",()=>{
   assert.deepEqual(JSON.parse(State.writePreferences(true,17)),{version:1,autoRest:true,restDuration:90});
 });
 
-test("calendar helper creates a private device calendar file for the next planned day",()=>{
-  const plan=emptyWeek();plan.days.Wednesday=[{exerciseId:"press",sets:3},{exerciseId:"row",sets:2}];
-  const next=Calendar.nextPlannedSession(plan,DAYS,new Date(2026,8,7,9));
-  assert.deepEqual(next,{day:"Wednesday",date:"2026-09-09",movements:2,workingSets:5});
-  const event=Calendar.event(next),ics=decodeURIComponent(event.href.split(",").slice(1).join(","));
-  assert.equal(event.filename,"strata-2026-09-09-wednesday.ics");
-  assert.match(event.href,/^data:text\/calendar;charset=utf-8,/);assert.match(ics,/DTSTART;VALUE=DATE:20260909/);assert.match(ics,/SUMMARY:STRATA · Wednesday workout/);
-  assert.equal(Calendar.nextPlannedSession(emptyWeek(),DAYS,new Date(2026,8,7)),null);
-});
-
 test("weekly calendar file repeats every planned day at the chosen time with an optional reminder",()=>{
   const plan=emptyWeek();plan.days.Monday=[{exerciseId:"squat",sets:3},{exerciseId:"press",sets:4}];plan.days.Friday=[{exerciseId:"row",sets:1}];
   const from=new Date(2026,8,9,9),schedule=Calendar.weeklySchedule(plan,DAYS,{time:"07:30",alarmMinutes:15,from});
@@ -69,10 +59,10 @@ test("weekly calendar file repeats every planned day at the chosen time with an 
   assert.equal(Calendar.weeklySchedule(emptyWeek(),DAYS,{from}),null);
 });
 
-test("single-day calendar files fold long lines to 75 octets",()=>{
-  const event=Calendar.event({day:"Wednesday",date:"2026-09-09",movements:12,workingSets:36}),ics=decodeURIComponent(event.href.split(",").slice(1).join(","));
-  assert.ok(ics.split("\r\n").every((line)=>Buffer.byteLength(line)<=75));
-  assert.match(ics.replace(/\r\n /g,""),/DESCRIPTION:12 planned movements · 36 working sets\. Open STRATA when you are ready to train\./);
+test("weekly calendar files fold long lines to 75 octets",()=>{
+  const plan=emptyWeek();plan.days.Wednesday=Array.from({length:12},(_,index)=>({exerciseId:`move-${index}`,sets:3}));
+  const schedule=Calendar.weeklySchedule(plan,DAYS,{from:new Date(2026,8,7,9)});
+  assert.ok(schedule.ics.split("\r\n").every((line)=>Buffer.byteLength(line)<=75));
 });
 
 test("workout renderer keeps the training essentials visible and nests configuration under More",()=>{

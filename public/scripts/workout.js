@@ -334,20 +334,11 @@
     const counts=W.progress(workout);
     $("celebrationMessage").textContent=`${counts.completed} completed set${counts.completed===1?"":"s"} · ${workout.entries.length} planned movements · ${W.duration(workout.elapsedSeconds)} since start. ${state.mode==="account"?"Saved to your account.":"Saved on this device only."}`;
     guidance.reset();void guidance.load(workout.id);
-    updateCalendarLink();
     toast("Workout complete. Your history is updated.");
     $("celebration").scrollIntoView({block:"center"});
   }
-  function updateCalendarLink(){
-    const event=C.event(C.nextPlannedSession(state.plan,W.DAYS,new Date()));
-    $("calendarNext").hidden=!event;
-    if(!event)return;
-    $("calendarNextTitle").textContent=`Schedule ${event.day}’s workout.`;
-    $("calendarNextSummary").textContent=`${W.displayDate(event.date)} · ${event.movements} movement${event.movements===1?"":"s"} · ${event.workingSets} working set${event.workingSets===1?"":"s"}`;
-    $("calendarLink").href=event.href;$("calendarLink").download=event.filename;
-  }
   function returnToPlan(){
-    progression.reset();state.workout=null;state.draftKey="";state.pausedSeconds=null;guidance.reset();$("calendarNext").hidden=true;$("celebration").hidden=true;$("sessionPanel").hidden=true;$("startPanel").hidden=false;scanDrafts();contextView.focusPrimary();
+    progression.reset();state.workout=null;state.draftKey="";state.pausedSeconds=null;guidance.reset();$("celebration").hidden=true;$("sessionPanel").hidden=true;$("startPanel").hidden=false;scanDrafts();contextView.focusPrimary();
   }
   function exportDraft(){
     if(!state.workout)return;

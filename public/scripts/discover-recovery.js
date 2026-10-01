@@ -17,8 +17,8 @@
     function stateMessage(result){
       const connection=result?.connection;
       if(!result)return {title:"Loading your recovery…",message:"Checking your Polar connection.",connect:false};
-      if(!result.connected)return result.configured?{title:"Connect your Polar Loop",message:"See Polar’s Nightly Recharge, sleep, overnight stress signals, and heart rate here. Connect Polar in Account; it takes about a minute.",connect:true}:{title:"Recovery is coming soon",message:"Polar connections aren’t switched on yet. When they are, you can connect your Polar Loop from Account.",connect:false};
-      if(connection?.status==="reconnect")return {title:"Polar needs you to reconnect",message:core.syncErrorText(connection.lastError||"POLAR_AUTH"),connect:true,label:"Reconnect in Account"};
+      if(!result.connected)return result.configured?{title:"Connect your Polar Loop",message:"See Polar’s Nightly Recharge, sleep, overnight stress signals, and heart rate here. Connect Polar in Profile; it takes about a minute.",connect:true}:{title:"Polar connections are paused",message:"Recovery reads your sleep and Nightly Recharge from Polar, and connecting isn’t available right now. Your plan, training, and nutrition work as usual.",connect:false};
+      if(connection?.status==="reconnect")return {title:"Polar needs you to reconnect",message:core.syncErrorText(connection.lastError||"POLAR_AUTH"),connect:true,label:"Reconnect in Profile"};
       if(connection?.importing)return {title:"Importing from Polar…",message:"STRATA is reading up to 28 days of your Polar history. This page updates when you come back to it.",connect:false};
       if(result.summary?.state==="no-data")return {title:"No nights from Polar yet",message:"Wear your Loop to sleep. Polar’s Nightly Recharge appears here the morning after, once Polar has synced.",connect:false};
       return null;
@@ -45,7 +45,7 @@
       }
       const stress=core.stressView(summary.stress);
       element("todayRecoveryTitle").textContent=summary.recovery?.label?`${summary.recovery.label} recovery`:"Nightly Recharge not ready";
-      element("todayRecoveryDetail").textContent=summary.state==="stale"?`Latest night from Polar: ${core.dateLabel(summary.date)}. Sync Polar in Account if this looks old.`:core.lighterText(summary.lighterSession)||`Overnight stress signals: ${stress.label.toLowerCase()}.`;
+      element("todayRecoveryDetail").textContent=summary.state==="stale"?`Latest night from Polar: ${core.dateLabel(summary.date)}. Sync Polar in Profile if this looks old.`:core.lighterText(summary.lighterSession)||`Overnight stress signals: ${stress.label.toLowerCase()}.`;
       element("todayRecoveryMetrics").innerHTML=[["Sleep",core.durationText(summary.sleep?.asleepSeconds)],["HRV",core.numberText(summary.heart?.hrv,0,"ms")],["Resting HR",core.numberText(summary.heart?.today?.resting??summary.heart?.overnight,0,"bpm")]]
         .map(([label,value])=>`<div><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join("");
     }

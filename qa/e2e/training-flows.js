@@ -342,7 +342,7 @@ test("training journeys use real browser controls and isolated local fixtures",{
     assert.equal(await entry.locator('[data-complete="0"]').getAttribute("aria-pressed"),"true");
     await page.click("#finishWorkout");await page.locator("#finishDialog").waitFor({state:"visible"});await page.click('#finishDialog button[value="finish"]');
     await page.locator("#celebration").waitFor({state:"visible"});
-    await page.locator("#calendarNext").waitFor({state:"visible"});assert.match(await page.locator("#calendarLink").getAttribute("href"),/^data:text\/calendar;charset=utf-8,/);assert.match(await page.locator("#calendarNext").textContent(),/does not request notification access/i);
+    assert.equal(await page.locator("#calendarNext").count(),0,"the weekly calendar file is the one calendar export");
     await page.selectOption('#checkInDifficulty','3');await page.selectOption('#checkInEnergy','4');await page.selectOption('#checkInComfort','4');await page.selectOption('#checkInEnjoyment','5');
     const checkInSaving=page.waitForResponse(response=>new URL(response.url()).pathname===`/api/workouts/${workoutId}/check-in`&&response.request().method()==="POST");
     await page.click('#saveCheckIn');const checkInResponse=await checkInSaving;assert.equal(checkInResponse.status(),200,await checkInResponse.text());

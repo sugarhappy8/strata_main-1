@@ -8,7 +8,9 @@
 
   function createRenderer({state,nodes,logic,navigatorImpl=globalThis.navigator,locationImpl=globalThis.location,frame=globalThis.requestAnimationFrame}){
     const{panel,statusNode,signupLink,loginLink,buyButton,openLink,manageLink,checkButton}=nodes;
-    const pageReason=new URLSearchParams(locationImpl.search).get("reason");
+    const pageReason=new URLSearchParams(locationImpl.search).get("reason"),featureReason=pageReason==="ai"||pageReason==="recovery";
+    // Upgrade lines come from the entitlements module, the same source every page asks about access.
+    const upsell=(/** @type {string|null} */ reason)=>globalThis.StrataEntitlements?.upsell?.(reason)||"";
     // Members sent here from Strata AI return to it after signing up, signing in, or subscribing.
     if(pageReason==="ai"){
       signupLink.href="/account.html?mode=signup&next=ai";loginLink.href="/account.html?mode=login&next=ai";openLink.href="/ai";
@@ -60,7 +62,7 @@
         if(state.user?.discovery?.adminGrant?.active===true){
           const grant=state.user.discovery.adminGrant;
           const coexistence=subscription
-            ?"Your existing monthly subscription remains separate and is not canceled by this grant; manage it from Account."
+            ?"Your existing monthly subscription remains separate and is not canceled by this grant; manage it from Profile."
             :grandfathered
               ?"Your grandfathered lifetime access remains separate and does not renew."
               :"It did not create a paid subscription.";
@@ -69,28 +71,24 @@
         if(grandfathered)setStatus("Your prior lifetime Strata+ purchase is grandfathered. It stays active with no monthly renewal or recurring charge.","good");
         else if(subscription?.scheduledChange?.action==="cancel")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its cancellation takes effect. It will not renew after that date.`,"warn");
         else if(subscription?.scheduledChange?.action==="pause")setStatus(`Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its scheduled pause takes effect and paid access stops.`,"warn");
-        else if(subscription?.pastDue||subscriptionStatus==="past_due")setStatus("Your monthly subscription is past due. Strata+ remains available for now; update your payment method from Account to avoid interruption.","warn");
+        else if(subscription?.pastDue||subscriptionStatus==="past_due")setStatus("Your monthly subscription is past due. Strata+ remains available for now; update your payment method from Profile to avoid interruption.","warn");
         else if(subscription)setStatus(`Your monthly subscription is active and renews on ${logic.billingDate(subscription.currentPeriodEndsAt)} unless canceled.`,"good");
         else setStatus("Strata+ access is active on this account.","good");
         return;
       }
       if(!signedIn){
-        const message=pageReason==="ai"
-          ?"Strata AI is included with Strata+. Create an account or sign in, then subscribe to use it."
-          :pageReason==="access"||pageReason==="discovery-required"
-            ?"That page is part of Strata+. Sign in or create an account, then subscribe to continue."
-            :"Create an account or sign in to subscribe, so access follows you across devices.";
+        const note=upsell(pageReason),message=note?`${note} Create an account or sign in, then subscribe to ${featureReason?"use it":"continue"}.`:"Create an account or sign in to subscribe, so access follows you across devices.";
         setStatus(message);return;
       }
-      if(paused){setStatus("Your monthly subscription is paused and paid access is inactive. Open Account to manage it in Paddle.","warn");return;}
+      if(paused){setStatus("Your monthly subscription is paused and paid access is inactive. Open Profile to manage it in Paddle.","warn");return;}
       if(canceled){setStatus("Your previous monthly subscription is canceled and will not renew. You can explicitly start a new subscription whenever you choose.","warn");return;}
       if(!online){setStatus("You are offline. Reconnect before opening secure checkout.","warn");return;}
       if(checkoutBlocked){setStatus("New payment sessions are disabled for this account. Contact STRATA for help.","warn");return;}
       // Why the member arrived stays visible even when checkout cannot open right now.
-      const reasonNote=pageReason==="ai"?"Strata AI is included with Strata+.":pageReason==="recovery"?"Recovery, with your Polar sleep and Nightly Recharge, is part of Strata+.":pageReason==="access"||pageReason==="discovery-required"?"That page is part of Strata+.":"";
+      const reasonNote=upsell(pageReason);
       if(state.configError){setStatus(`${reasonNote?`${reasonNote} `:""}${state.configError}`,"warn");return;}
       if(pageReason==="access-revoked"){setStatus("Strata+ access is no longer active, usually because a subscription ended or a charge was refunded or reversed. You may subscribe again or contact STRATA if this is unexpected.","warn");return;}
-      if(reasonNote){setStatus(`${reasonNote} Subscribe to ${pageReason==="ai"||pageReason==="recovery"?"use it":"continue"}.`);return;}
+      if(reasonNote){setStatus(`${reasonNote} Subscribe to ${featureReason?"use it":"continue"}.`);return;}
       setStatus("Signed in and ready for secure Paddle checkout.");
     }
 

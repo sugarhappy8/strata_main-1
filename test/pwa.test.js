@@ -106,7 +106,9 @@ test("release version, cache keys, asset URLs, and catalog claims stay aligned",
 
   for(const page of pages){
     const html=read(`pages/${page}`);
-    if(page!=="admin.html")assert.match(html,new RegExp(`Build ${versionPattern}`,"i"),`${page} visible build label`);
+    // The build number is shown in one place, Profile's About line (and the private admin page), never in the main UI.
+    if(page==="account.html")assert.match(html,new RegExp(`About STRATA · Build ${versionPattern}`),"Profile shows the build");
+    else if(page!=="admin.html")assert.doesNotMatch(html,new RegExp(`Build ${versionPattern}`,"i"),`${page} keeps the build number out of the main UI`);
     const localAssets=[...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css)(?:\?[^"]*)?)"/g)]
       .map((match)=>new URL(match[1],"https://strata.test"))
       .filter((url)=>url.origin==="https://strata.test");

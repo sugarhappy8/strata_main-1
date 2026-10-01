@@ -124,8 +124,8 @@ output tokens** (verify current Groq pricing for the chosen model):
 | Chat, 3 requests a day | ~90 × (4,000 in + 600 out) = 360k in, 54k out | ≈ $0.095 |
 | **Total** | | **≈ $0.11** |
 
-The owner sees today's requests and tokens, in total and for the heaviest members, at
-`GET /api/ai/usage`.
+The owner sees today's chat requests, Daily Briefs, tokens, and requests left on the admin
+Overview; `GET /api/ai/usage` also lists the heaviest members.
 
 ## Safety
 
@@ -158,5 +158,5 @@ The owner sees today's requests and tokens, in total and for the heaviest member
 | `POST /api/ai/requests`, `GET /api/ai/requests/:id` | Strata+ with consent | Queue a chat or suggestions request and poll it |
 | `GET`/`PUT /api/ai/settings` | Any signed-in member | Read or change consent and the Daily Brief |
 | `DELETE /api/ai/notes` | Any signed-in member | Delete stored Daily Briefs |
-| `GET /api/ai/usage` | Owner | Today's requests and tokens |
+| `GET /api/ai/usage` | Owner | Today's requests and tokens (shown on the admin Overview) |
 | `GET /api/snapshots` | Strata+ | Daily Snapshots, including the stored brief |

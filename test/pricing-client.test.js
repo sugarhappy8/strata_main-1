@@ -156,7 +156,7 @@ test("grant-only members are not told to manage nonexistent billing",async()=>{
   const user={id:"member",discovery:{active:true,accessType:"grant",adminGrant:{active:true,startedAt:Date.now(),expiresAt:null,revokedAt:null},subscription:null}};
   const r=runtime({userOverride:user});await flush();
   assert.match(r.node("purchaseStatus").textContent,/did not create a paid subscription/i);
-  assert.doesNotMatch(r.node("purchaseStatus").textContent,/manage it from Account/i);
+  assert.doesNotMatch(r.node("purchaseStatus").textContent,/manage it from Profile/i);
   assert.equal(r.node("manageSubscription").hidden,true);
 });
 test("lifetime members can see a concurrent complimentary grant",async()=>{

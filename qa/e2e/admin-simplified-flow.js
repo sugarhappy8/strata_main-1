@@ -49,6 +49,7 @@ test("bound owner uses simplified Admin while non-admins remain blocked",{timeou
       if(path==="/api/admin/session")return json(route,{admin:true,elevated:true,elevatedUntil:null});
       if(path==="/api/admin/overview")return json(route,{overview:{accounts:{total:2,verified:2,suspended:0,activeSessions:3},discovery:{activeUsers:1,pendingPayments:0},support:{open:0,pendingDeletions:0},activation:{}},system:{storage:"sqlite",persistent:true,emailConfigured:true,paymentsConfigured:true,webhookProtection:true}});
       if(path==="/api/admin/product-signals")return json(route,{totals:{},scope:{sinceDay:"2026-09-01",throughDay:"2026-09-11",retentionDays:90}});
+      if(path==="/api/ai/usage")return json(route,{usage:{date:"2026-09-11",dailyRequests:900,chatCap:540,perMinute:25,totals:[{kind:"chat",requests:12,tokens:48000},{kind:"brief",requests:30,tokens:39000}],topUsers:[]}});
       if(path==="/api/admin/users"&&request.method()==="GET")return json(route,{users:[member],total:1});
       if(path==="/api/admin/users/member-1"&&request.method()==="GET")return json(route,{user:member});
       if(path==="/api/admin/users/member-1/actions"&&request.method()==="POST"){
@@ -61,6 +62,8 @@ test("bound owner uses simplified Admin while non-admins remain blocked",{timeou
     await ownerPage.goto(`${server.baseUrl}/admin.html`,{waitUntil:"domcontentloaded"});
     await ownerPage.locator("#dashboard").waitFor({state:"visible"});
     assert.equal(await ownerPage.locator("#adminIdentity").textContent(),"STRATA Owner · owner@example.test");
+    await ownerPage.waitForFunction(()=>globalThis.document.querySelector("#aiChatRequestsStat")?.textContent==="12");
+    assert.deepEqual(await ownerPage.locator(".ai-usage-grid dd").allTextContents(),["12","30","87,000","858"],"the owner sees today's Strata AI use against the daily budget");
     assert.equal(await ownerPage.locator("#elevationPanel,#elevationPassword,#elevationCode").count(),0,"Admin must not render password, code, or elevation UI");
     assert.equal(apiRequests.some((request)=>request.includes("/api/admin/elevate")),false,"Admin must not request either elevation endpoint");
 

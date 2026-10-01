@@ -210,6 +210,7 @@ const STATIC_FILES = new Map([
   ["icons/strata-maskable-512.png","icons/strata-maskable-512.png"],
   ["icons/apple-touch-icon.png","icons/apple-touch-icon.png"],
   ["images/hero-training.jpg","images/hero-training.jpg"],
+  ["images/strata-og.jpg","images/strata-og.jpg"],
   ["fonts/manrope-latin.woff2","fonts/manrope-latin.woff2"],
   ["fonts/dm-mono-400-latin.woff2","fonts/dm-mono-400-latin.woff2"],
   ["fonts/dm-mono-500-latin.woff2","fonts/dm-mono-500-latin.woff2"]
@@ -618,7 +619,7 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
     else json(res,405,{error:"Method not allowed."},{Allow:"GET, HEAD"});
   } catch(error) {
     if (!res.headersSent) {
-      const payload={error:error.status?error.message:"Unexpected server error."};
+      const payload={error:error.status?error.message:"Something went wrong on our side. Try again in a moment."};
       if (error.status&&/^[A-Z][A-Z0-9_]{2,63}$/.test(String(error.code||""))) payload.code=String(error.code);
       json(res,error.status||500,payload);
     }

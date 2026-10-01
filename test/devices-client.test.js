@@ -268,7 +268,7 @@ test("the Overview card and Recovery destination show today's night and the chos
 test("Recovery explains every state before data exists and retries after a failure",async()=>{
   const cases=[
     [{configured:true,connected:false,connection:null},/Connect your Polar Loop/,true],
-    [{configured:false,connected:false,connection:null},/coming soon/,false],
+    [{configured:false,connected:false,connection:null},/Polar connections are paused/,false],
     [wellnessToday({connection:activeConnection({status:"reconnect",lastError:"POLAR_AUTH"})}),/needs you to reconnect/,true],
     [wellnessToday({connection:activeConnection({importing:true,lastSyncAt:null})}),/Importing from Polar/,false],
     [wellnessToday({summary:{state:"no-data",lighterSession:{offer:false}}}),/No nights from Polar yet/,false]

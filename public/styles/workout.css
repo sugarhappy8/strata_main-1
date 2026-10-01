@@ -254,9 +254,6 @@
 .set-more[open]>summary{color:var(--lime);border-color:#6d8448}
 .set-more-actions{display:grid;gap:4px;margin-top:5px}
 .set-more-actions .button{min-height:44px;white-space:nowrap}
-.calendar-next{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center;width:min(760px,100%);margin:26px auto;padding:18px;text-align:left;border:1px solid var(--line);border-radius:10px;background:#141611}
-.calendar-next div{min-width:0}.calendar-next span,.calendar-next strong,.calendar-next small{display:block}.calendar-next span{color:var(--lime);font:600 0.75rem/1.4 var(--body,"Manrope",Arial,sans-serif);letter-spacing:0}.calendar-next strong{margin:4px 0}.calendar-next small{color:var(--muted)}
-.calendar-next p{grid-column:1/-1;margin:0;padding-top:13px;border-top:1px solid var(--line);font-size:.72rem!important}.calendar-next .button{white-space:nowrap}
 
 @media(max-width:760px){
   /* Visually hidden, not removed: the page keeps its h1 and the skip link keeps a target. */
@@ -275,7 +272,6 @@
   .plan-preview-details{margin-top:12px}
   .exercise-more>summary{align-items:flex-start;flex-direction:column;justify-content:center;gap:1px}
   .exercise-more>summary small{text-align:left}
-  .calendar-next{grid-template-columns:1fr}.calendar-next .button{width:100%}
 }
 @media(max-width:420px){
   .workout-page .start-panel .start-bottom>p{display:none}

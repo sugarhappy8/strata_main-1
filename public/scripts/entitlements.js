@@ -22,5 +22,9 @@
 
   function hasPlus(user){return can(user,"plus.studio");}
 
-  return Object.freeze({FREE_FEATURES,PLUS_FEATURES,can,hasPlus});
+  // One sentence per Strata+ entry point, so every upgrade prompt describes a feature the same way.
+  const UPSELLS=Object.freeze({ai:"Strata AI is included with Strata+.",recovery:"Recovery, with your Polar sleep and Nightly Recharge, is part of Strata+.",access:"That page is part of Strata+.","discovery-required":"That page is part of Strata+."});
+  function upsell(reason){return Object.hasOwn(UPSELLS,String(reason))?UPSELLS[String(reason)]:"";}
+
+  return Object.freeze({FREE_FEATURES,PLUS_FEATURES,UPSELLS,can,hasPlus,upsell});
 });
