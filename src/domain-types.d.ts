@@ -331,6 +331,7 @@ export type CheckoutRecovery=
 export interface BillingStore {
   adminControls(userId:string):Promise<AdminControlsRow|null>;
   hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
+  appleSubscriptionsForUser(userId:string):Promise<AppleSubscriptionRow[]>;
   hasPaidDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(userId:string,priceId:string,productId:string,now?:number):Promise<boolean>;
   hasEntitledPaidDiscoveryAccess(userId:string,priceIds:readonly string[],productId:string,now?:number):Promise<boolean>;
@@ -364,7 +365,7 @@ export interface BillingStore {
   revokePurchase(transactionId:string,reason:string,revokedAt:number,updatedAt:number):Promise<PurchaseRow|null>;
 }
 
-export type BillingAdapterMethods=Omit<BillingStore,"activeAccountDeletion"|"adminControls"|"hasActiveAppleSubscription">&{
+export type BillingAdapterMethods=Omit<BillingStore,"activeAccountDeletion"|"adminControls"|"hasActiveAppleSubscription"|"appleSubscriptionsForUser">&{
   hasDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   discoveryAccessSummary(userId:string,priceId?:string|null,now?:number):Promise<DiscoveryAccessSummary>;
 };
@@ -1074,6 +1075,7 @@ export interface AppleBillingSettings {
   readonly productIds:readonly string[];
   readonly rootFingerprint:string;
   readonly rootOverrideIgnored:boolean;
+  readonly configured:boolean;
 }
 /** A verified StoreKit 2 transaction for a Strata+ product of this app. */
 export interface AppleTransaction {

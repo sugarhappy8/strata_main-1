@@ -125,13 +125,13 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/ai.js` | Strata AI request queue and review-only proposal API | 211 | 199 | 19.7 KiB | 215 | `src/ai-catalog.js`, `src/ai-context.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/ai-settings.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
 | `src/apple-billing-schema.js` | Apple subscription and notification-ledger schema | 57 | 52 | 4.4 KiB | 70 | — |
 | `src/apple-billing-store.js` | SQLite and Turso Apple subscription storage parity | 58 | 51 | 4.0 KiB | 70 | `src/apple-billing-schema.js` |
-| `src/apple-billing.js` | Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state | 331 | 305 | 21.2 KiB | 360 | `src/apple-jws.js`, `src/http.js` |
+| `src/apple-billing.js` | Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state | 344 | 318 | 22.6 KiB | 360 | `src/apple-jws.js`, `src/http.js` |
 | `src/apple-jws.js` | App Store JWS verification: Apple Root CA - G3 chain, marker extensions, ES256 | 97 | 86 | 5.9 KiB | 100 | — |
 | `src/athlete-profile.js` | Athlete Profile read model and the sync that keeps preferences and the coaching profile in step | 134 | 127 | 7.6 KiB | 150 | `src/plans.js` |
 | `src/auth.js` | Authentication and account lifecycle | 836 | 792 | 55.0 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js`, `src/session-renewal.js` |
 | `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 117 | 111 | 17.0 KiB | 140 | — |
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 231 | 224 | 21.7 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
-| `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 679 | 651 | 42.2 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
+| `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 691 | 662 | 42.9 KiB | 720 | `src/access-controls.js`, `src/apple-billing.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/checkout-reconciliation.js` | Validated checkout closure and settlement reconciliation | 99 | 98 | 8.0 KiB | 130 | `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 136 | 129 | 20.1 KiB | 300 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
 | `src/coaching-evidence.js` | Owner-filtered coaching history and original-target diary assembly | 84 | 78 | 6.9 KiB | 130 | `src/coaching-core.js`, `src/energy-calibration-core.js` |

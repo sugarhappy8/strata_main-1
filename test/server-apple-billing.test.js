@@ -116,6 +116,16 @@ test("an Apple purchase unlocks Strata+ for the buying account only, and the App
   assert.equal(before.active,false);assert.equal(before.accessType,null);assert.equal(before.apple,null);
   assert.equal((await request("/api/discovery",{cookie:buyer.cookie})).response.status,402);
 
+  // Strata+ is not shared through Family Sharing: the app's post is refused and the notification grants nothing.
+  const shared={transactionId:"3000000501",originalTransactionId:"3000000500",inAppOwnershipType:"FAMILY_SHARED"};
+  const refusedShare=await purchase(buyer,[chain.signJws(transaction(buyer,shared))]);
+  assert.equal(refusedShare.response.status,422);
+  assert.deepEqual(refusedShare.data,{error:"Strata+ is not shared through Family Sharing. Subscribe with your own Apple Account to unlock it.",code:"APPLE_FAMILY_SHARED"});
+  const sharedNotice=await notify("SUBSCRIBED",{tx:transaction(buyer,shared),renew:renewal({originalTransactionId:"3000000500"}),signedDate:BASE-6000});
+  assert.equal(sharedNotice.response.status,200);assert.deepEqual(sharedNotice.data,{});
+  assert.equal((await discoveryOf(buyer)).active,false);assert.equal((await discoveryOf(buyer)).apple,null);
+  assert.equal((await request("/api/status")).data.appStoreConfigured,true);
+
   const signed=chain.signJws(transaction(buyer));
   assert.equal((await request("/api/billing/apple/transactions",{method:"POST",cookie:buyer.cookie,body:{signedTransactions:[signed]}})).response.status,403);
   assert.equal((await request("/api/billing/apple/transactions",{method:"POST",body:{signedTransactions:[signed]}})).response.status,401);

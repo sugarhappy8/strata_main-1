@@ -11,6 +11,7 @@ const DEFAULT_BUNDLE_ID="online.stratafitness.app";
 const DEFAULT_PRODUCT_IDS=Object.freeze(["online.stratafitness.app.plus.monthly"]);
 const MANAGE_SUBSCRIPTIONS_URL="https://apps.apple.com/account/subscriptions";
 const DELETION_NOTICE="Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions.";
+const FAMILY_SHARED_MESSAGE="Strata+ is not shared through Family Sharing. Subscribe with your own Apple Account to unlock it.";
 const MAX_TRANSACTIONS=20;
 const TRANSACTION_REQUESTS_PER_WINDOW=30;
 const NOTIFICATIONS_PER_WINDOW=600;
@@ -47,7 +48,9 @@ function appleBillingSettings(environment=process.env){
   if(!STORE_IDENTIFIER.test(bundleId)||productIds.some((id)=>!STORE_IDENTIFIER.test(id)))throw new TypeError("APPLE_BUNDLE_ID and APPLE_IAP_PRODUCT_IDS must be App Store identifiers.");
   const override=String(environment.APPLE_ROOT_FINGERPRINT||"").trim().toUpperCase();
   const testRoot=environment.NODE_ENV==="test"&&FINGERPRINT.test(override);
-  return Object.freeze({bundleId,productIds:Object.freeze(productIds),rootFingerprint:testRoot?override:APPLE_ROOT_CA_G3_FINGERPRINT,rootOverrideIgnored:Boolean(override)&&!testRoot});
+  const rootFingerprint=testRoot?override:APPLE_ROOT_CA_G3_FINGERPRINT;
+  // Configured: signed App Store data can be verified against a pinned root for this bundle and at least one product.
+  return Object.freeze({bundleId,productIds:Object.freeze(productIds),rootFingerprint,rootOverrideIgnored:Boolean(override)&&!testRoot,configured:productIds.length>0&&FINGERPRINT.test(rootFingerprint)});
 }
 
 /**
@@ -61,6 +64,8 @@ function validateAppleTransaction(payload,settings){
   if(typeof payload.productId!=="string"||!settings.productIds.includes(payload.productId))return {ok:false,reason:"product"};
   if(!ENVIRONMENTS.has(payload.environment))return {ok:false,reason:"environment"};
   if(payload.type!==undefined&&payload.type!=="Auto-Renewable Subscription")return {ok:false,reason:"type"};
+  // Strata+ is not shared through Family Sharing: a family member's copy of a purchase never grants access.
+  if(payload.inAppOwnershipType==="FAMILY_SHARED")return {ok:false,reason:"family-shared"};
   const transactionId=identifier(payload.transactionId),originalTransactionId=identifier(payload.originalTransactionId);
   if(!transactionId||!originalTransactionId)return {ok:false,reason:"identifier"};
   const purchaseDate=time(payload.purchaseDate),expiresDate=time(payload.expiresDate),signedDate=time(payload.signedDate);
@@ -103,22 +108,25 @@ function revocationReason(reason,type){
  * The stored state after applying one signed transaction (and its renewal info, when a notification carries it).
  * Returns null when the data is older than what is already stored. A transaction for an earlier billing period
  * (for example a refund of last month) updates the signing clock and renewal state but not the current period.
+ * The one exception to the clock is a later billing period the App Store signed earlier but delivered late (a retried
+ * DID_RENEW that arrives after a refund of an older period): it moves the period forward and keeps the newer renewal state.
  * @param {import("./domain-types").AppleSubscriptionRow|null} existing
  * @param {{userId:string,transaction:import("./domain-types").AppleTransaction,renewal?:import("./domain-types").AppleRenewal|null,type?:string|null,subtype?:string|null,signedAt:number,now:number}} input
  * @returns {import("./domain-types").AppleSubscriptionWrite|null}
  */
 function nextAppleState(existing,{userId,transaction,renewal=null,type=null,subtype=null,signedAt,now}){
-  if(existing&&signedAt<Number(existing.last_signed_at))return null;
   const storedExpiry=existing?Number(existing.expires_at||0):0;
+  const late=existing!==null&&signedAt<Number(existing.last_signed_at);
+  if(late&&(transaction.transactionId===existing.latest_transaction_id||transaction.expiresDate<=storedExpiry))return null;
   const current=!existing||transaction.transactionId===existing.latest_transaction_id||transaction.expiresDate>=storedExpiry;
   const renewed=Boolean(existing)&&current&&transaction.expiresDate>storedExpiry;
   let revokedAt=current?transaction.revocationDate:existing?.revoked_at??null;
   let reason=current?transaction.revocationDate?revocationReason(transaction.revocationReason,type):null:existing?.revocation_reason??null;
   if(current&&revokedAt===null&&(type==="REFUND"||type==="REVOKE")){revokedAt=signedAt;reason=revocationReason(transaction.revocationReason,type);}
-  let grace=renewal?renewal.gracePeriodExpiresAt:renewed?null:existing?.grace_period_expires_at??null;
-  if(type&&GRACE_ENDING_NOTIFICATIONS.has(type))grace=null;
-  if(type==="DID_FAIL_TO_RENEW"&&subtype!=="GRACE_PERIOD")grace=null;
-  const autoRenew=renewal&&renewal.autoRenew!==null?renewal.autoRenew:existing?.auto_renew==null?null:Number(existing.auto_renew)===1;
+  let grace=late?existing?.grace_period_expires_at??null:renewal?renewal.gracePeriodExpiresAt:renewed?null:existing?.grace_period_expires_at??null;
+  if(!late&&type&&GRACE_ENDING_NOTIFICATIONS.has(type))grace=null;
+  if(!late&&type==="DID_FAIL_TO_RENEW"&&subtype!=="GRACE_PERIOD")grace=null;
+  const autoRenew=!late&&renewal&&renewal.autoRenew!==null?renewal.autoRenew:existing?.auto_renew==null?null:Number(existing.auto_renew)===1;
   return {
     originalTransactionId:transaction.originalTransactionId,userId,
     productId:current?transaction.productId:String(existing?.product_id),
@@ -224,13 +232,17 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
       throw appleError(`Send between 1 and ${MAX_TRANSACTIONS} signed App Store transactions.`,400,"APPLE_TRANSACTION_INVALID");
     }
     const accountToken=String(session.id).toLowerCase(),transactions=[];
+    let familyShared=0;
     for(const token of tokens){
       const result=validateAppleTransaction(verifySigned(token),settings);
+      // A family member's shared copy is skipped, so the member's own purchase in the same post still counts.
+      if(!result.ok&&result.reason==="family-shared"){familyShared+=1;continue;}
       if(!result.ok)throw appleError("This App Store purchase is not a Strata+ subscription for this app.",400,"APPLE_TRANSACTION_INVALID");
       if(!result.transaction.appAccountToken)throw appleError("This App Store purchase is not linked to a STRATA account.",400,"APPLE_TRANSACTION_INVALID");
       if(result.transaction.appAccountToken!==accountToken)throw appleError("This App Store purchase belongs to a different STRATA account.",403,"APPLE_ACCOUNT_MISMATCH");
       transactions.push(result.transaction);
     }
+    if(familyShared&&!transactions.length)throw appleError(FAMILY_SHARED_MESSAGE,422,"APPLE_FAMILY_SHARED");
     transactions.sort((a,b)=>a.signedDate-b.signedDate);
     for(const transaction of transactions){
       if(!ownership(await store.appleSubscription(transaction.originalTransactionId),session.id,transaction).allowed){
@@ -312,10 +324,11 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
   }
 
   // Apple bills until the member cancels with Apple, so deletion says so while a subscription is live or set to renew.
+  // Apple's renewal status decides even after a refund, because a refund alone does not turn renewal off.
   /** @param {string} userId @returns {Promise<import("./domain-types").AppleDeletionNotice|null>} */
   async function deletionNotice(userId){
     const timestamp=now(),rows=await store.appleSubscriptionsForUser(userId);
-    const billing=rows.some((row)=>row.revoked_at==null&&(Number(row.auto_renew)===1||appleRowActive(row,timestamp)));
+    const billing=rows.some((row)=>Number(row.auto_renew)===1||appleRowActive(row,timestamp));
     return billing?{message:DELETION_NOTICE,manageUrl:MANAGE_SUBSCRIPTIONS_URL}:null;
   }
 
@@ -325,7 +338,7 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
 }
 
 module.exports={
-  DEFAULT_BUNDLE_ID,DEFAULT_PRODUCT_IDS,DELETION_NOTICE,MANAGE_SUBSCRIPTIONS_URL,
+  DEFAULT_BUNDLE_ID,DEFAULT_PRODUCT_IDS,DELETION_NOTICE,FAMILY_SHARED_MESSAGE,MANAGE_SUBSCRIPTIONS_URL,
   appleBillingSettings,appleRowActive,appleSubscriptionSummary,createAppleBillingService,
   nextAppleState,validateAppleRenewal,validateAppleTransaction
 };
