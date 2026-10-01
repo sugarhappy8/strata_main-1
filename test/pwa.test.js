@@ -97,12 +97,15 @@ test("release version, cache keys, asset URLs, and catalog claims stay aligned",
   const serviceWorker=read("service-worker.js");
   const pages=["index.html","account.html","verify-email.html","forgot-password.html","reset-password.html","delete-account.html","admin.html","planner.html","discover.html","onboarding.html","workout.html","workout-offline.html","install.html","offline.html","pricing.html","contact.html","policies.html","terms.html","privacy.html","refunds.html"];
 
-  assert.equal(version,"8.9.0");
+  assert.equal(version,"9.0.0");
   assert.match(serviceWorker,new RegExp(`const BUILD="${versionPattern}";`));
   assert.match(serviceWorker,/const CACHE_PREFIX="strata-static-";/);
   assert.match(serviceWorker,/const STATIC_CACHE=`\$\{CACHE_PREFIX\}\$\{BUILD\}`;/);
   assert.match(serviceWorker,new RegExp(`"/exercises\\.json\\?v=${versionPattern}"`));
   assert.doesNotMatch(serviceWorker,/"\/exercises\.json"/);
+  // Offline, the My Week section opens the cached planner with the week kept on the device.
+  assert.match(serviceWorker,/\["\/my-week","\/planner\.html"\]/);
+  assert.match(serviceWorker,/"\/planner\.html",/,"the planner is precached for the offline My Week");
 
   for(const page of pages){
     const html=read(`pages/${page}`);

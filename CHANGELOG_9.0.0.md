@@ -1,9 +1,29 @@
-# Build 9.0.0 — cut and integrate (in progress)
+# Build 9.0.0 — cut and integrate
 
-Build 9 reduces STRATA to one coherent product. This file is the running record for
-the release; it moves into `CHANGELOG.md` as the `## 9.0.0` entry when the version is
-bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
-`PROPOSALS.md`.
+Build 9 turns STRATA from a collection of features into one product. It adds no new features:
+it cuts what was duplicated or unfinished, puts every screen on one shared data layer, finishes
+the Polar integration that could be verified, moves Strata AI to Groq behind consent and a
+shared budget, and polishes what a first-time visitor sees. Subscription and pricing are
+unchanged.
+
+**At a glance**
+- One navigation on every page: **Rankings · My Week · Train · Recovery · Profile**.
+- One entitlements module (`can(user, feature)`) behind every page and route.
+- One data layer: Athlete Profile, Training Log, Daily Snapshot, Rankings Signals, and plan
+  history, kept in step by events (`DATA_MODEL.md`).
+- Polar data in the Training Log and Daily Snapshot, a readiness badge on My Week, and planned
+  days completed by Polar sessions (`POLAR_INTEGRATION.md`).
+- Strata AI on Groq: consent first, a shared daily budget, context from the data layer, and a
+  Daily Brief (`STRATA_AI.md`).
+- No build numbers, "coming soon", or duplicate exports in the main UI; a share card; an owner
+  view of AI use.
+
+**Release documents**
+- Audit and verdicts: `AUDIT_BUILD9.md`. Parked ideas: `PROPOSALS.md`.
+- Data model: `DATA_MODEL.md`. Polar: `POLAR_INTEGRATION.md`. Strata AI: `STRATA_AI.md`.
+- Regression checklist: `REGRESSION_CHECKLIST.md`. Stranger test:
+  `docs/stranger-test-9.0.0.md`. Security audit: `docs/security-audit-9.0.0.md`.
+- Release guide and deployment steps: `docs/release-9.0.0.md`.
 
 ## Phase 2a — dead code, legacy trial, giveaway copy
 
@@ -46,6 +66,9 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
 ### Kept on purpose (audit items reconsidered during implementation)
 - **Build label in every footer.** `test/pwa.test.js` and the deploy smoke use it to
   detect stale service-worker caches, which caused the 8.8.8 broken Overview. It stays.
+  *Revisited in Phase 6:* stale caches are caught by the asset version on every page and the
+  service-worker cache name, and the deploy smoke reads the build from `/api/status`, so the
+  visible label moved to Profile's About line as the plan asks.
 - **Privacy page "Inspect the exact local summary" / "Copy summary".** This shows a member
   exactly what the browser stores; it is transparency, not a developer tool.
 - **Test-only store probes** `hasPaidDiscoveryAccess`, `hasDiscoveryAccess`,
@@ -91,6 +114,9 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
 ### Deferred from Phase 2c (recorded, not dropped)
 - Merging the three exercise-detail dialogs (homepage, studio, Train history) into one
   module is a code-level duplication members never see at once; it moves to Phase 6.
+  *Outcome:* still deferred, and parked as proposal 10. Members see one dialog per page, and
+  merging three pages' dialogs in the release that rebuilt navigation would put Rankings at
+  risk for no visible gain.
 - The Nutrition "Behind the numbers" panel folds into Strata AI in Phase 5.
 
 ## Phase 2d — Plan consolidation (first slice)
@@ -291,9 +317,83 @@ The first-time walk is written up in `docs/stranger-test-9.0.0.md`. What changed
 - `PROPOSALS.md` marks what Build 9 delivered and parks merging the studio's view switcher into
   the site navigation (proposal 9).
 
+## Phase 7 — QA and release
+
+- **Tests for the areas the plan names.** Entitlements (`test/entitlements.test.js`, now with
+  upgrade lines), the data layer (`training-log`, `daily-snapshot`, `data-service`,
+  `server-data-layer`), Polar backfill (`devices-sync`: first import, re-checks, gaps), dedupe
+  (`training-log`: overlap and same-day linking, each side once), the AI context builder
+  (`ai-context`), AI output validation (`ai-daily-brief`, `ai-response-schema`), and migrations
+  (`database-migrations`, including a test that runs this release's rollback statements).
+  Polar webhooks have no tests because there are no webhooks; see `POLAR_INTEGRATION.md`.
+- **Regression checklist** for Rankings and Plan your week: `REGRESSION_CHECKLIST.md`, each
+  behavior mapped to the test that pins it. All pass.
+- **Stranger test** as a new free user and then a new Strata+ member, on phone and desktop:
+  `docs/stranger-test-9.0.0.md`. Everything it found is fixed or parked with a reason.
+- **Security audit:** `docs/security-audit-9.0.0.md`. No secrets in the repository, Polar
+  tokens sealed with AES-256-GCM, Paddle webhooks signed and time-checked, rate limits on every
+  write, and `npm audit` clean. HSTS was missing and is now sent in production.
+
+### Performance, 8.9.0 → 9.0.0
+
+Same machine, same Chromium, cold loads at phone size, median of 7 (page weight counts every
+same-origin byte, uncompressed); API medians from `npm run performance` with 150 samples, two
+runs each.
+
+| Page | Weight 8.9.0 | Weight 9.0.0 | Load 8.9.0 | Load 9.0.0 |
+|---|---|---|---|---|
+| Home `/` | 1,118.5 KB | 1,092.8 KB | 179 ms | 149 ms |
+| Planner | 635.6 KB | 615.8 KB | 113 ms | 109 ms |
+| Pricing | 133.7 KB | 134.3 KB | 281 ms | 303 ms |
+| Studio | 1,115.6 KB | 1,093.2 KB | 226 ms | 227 ms |
+| Train | 628.8 KB | 623.0 KB | 77 ms | 81 ms |
+| Profile | 191.5 KB | 190.7 KB | 76 ms | 75 ms |
+
+| Endpoint | 8.9.0 median | 9.0.0 median | Budget |
+|---|---|---|---|
+| Health | 1.1 ms | 1.0–1.2 ms | 20 ms |
+| Status | 0.9 ms | 0.9–1.0 ms | 20 ms |
+| Read the weekly plan | 1.2 ms | 1.6–1.7 ms | 35 ms |
+| Save the weekly plan | 1.8–2.1 ms | 4.1–4.2 ms | 35 ms |
+
+- Pages got lighter where Build 9 cut things (home, planner, studio). Pricing's load time
+  includes Paddle's script, which the build environment blocks, so its timing is noise.
+- **Saving the plan costs about 2 ms more**, by design: the save now records plan history and
+  rebuilds this week's Daily Snapshots before it answers, so the next read is consistent.
+  Reading the plan costs about 0.4 ms more for the entitlement map in the account payload. Both
+  stay far inside the budgets.
+
 ## Rollback
-Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
-discovery_trials` restores the rows (the code that read them is in Build 8.9.0).
-Migration 007's drop and the product-signal rebuild lose nothing a member can see.
-Migration 009 is reversible the same way: `ALTER TABLE archive_community_weekly_plans RENAME
-TO community_weekly_plans` restores the listings (the routes that served them are in 8.9.0).
+
+Build 9.0.0 is safe to roll back to 8.9.0 by redeploying the `8.9.0` commit
+(`21dc429`). The database stays compatible both ways. Do the steps in this order.
+
+1. **If the retired features must return with their data, rename the archives back first**,
+   while 9.0.0 is still running (it never reads these tables). A test runs these statements:
+   ```sql
+   ALTER TABLE archive_discovery_trials RENAME TO discovery_trials;
+   ALTER TABLE archive_community_weekly_plans RENAME TO community_weekly_plans;
+   ```
+   Order matters: 8.9.0 creates empty tables with those names when it starts. If it already
+   has, drop the empty table, then rename.
+2. **Restore the old Strata AI settings.** 8.9.0 reads `AI_BASE_URL`, `AI_API_KEY`,
+   `AI_MODEL`, the `AI_*` limits, and `AI_ACCESS_CLIENT_ID` / `AI_ACCESS_CLIENT_SECRET` when
+   the endpoint sits behind Cloudflare Access. It ignores `GROQ_API_KEY` and `STRATA_AI_*`.
+   Without the old names, 8.9.0's Strata AI shows as unavailable; nothing else breaks.
+3. **Redeploy 8.9.0.** Every asset URL and the offline cache name change with the version, so
+   installed apps pick up the old files on their next visit.
+
+What stays harmless:
+- Build 9's new tables (`training_links`, `daily_snapshots`, `plan_changes`, `ai_settings`,
+  `ai_usage_days`) are additive; 8.9.0 never reads them. The first four cascade when 8.9.0
+  deletes an account. `ai_usage_days` has no foreign key, so an account deleted while 8.9.0
+  runs leaves its daily AI request counts behind (counts only, no content): delete those rows
+  by user id, or drop the table once the rollback is final. Drop the others only then too,
+  because rolling forward again rebuilds snapshots but cannot recreate plan history or consent.
+- 8.9.0's migration runner ignores ledger entries it does not know (`008`, `009`).
+- Migration 007 dropped queued V3 Polar deregistrations, which V4 cannot use anyway.
+- The product-signal table rebuilt by migration 008 no longer accepts `trial_started`. On 8.9.0,
+  that one anonymous count fails with an error the browser ignores; every other count works.
+
+Rolling forward again after a rollback is the normal deploy: migrations `008` and `009` are
+already recorded, and the archive renames above are the only step to undo first.
