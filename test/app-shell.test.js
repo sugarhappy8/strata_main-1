@@ -87,6 +87,8 @@ test("every page loads the app shell first in its head, and the server and offli
   assert.match(read("src/server.js"),/\["app-shell\.js","scripts\/app-shell\.js"\]/);
   assert.match(read("public/service-worker.js"),/"\/app-shell\.js\?v=9\.1\.0"/);
   assert.match(read("public/styles/tokens.css"),/:root\[data-app="ios"\] a\[href\^="\/install"\] \{ display:none !important; \}/);
+  // The app shows light status bar icons, so the area under them stays dark even on light pages.
+  assert.match(read("public/styles/tokens.css"),/:root\[data-app="ios"\] body::before \{[^}]*position:fixed;[^}]*height:env\(safe-area-inset-top\);[^}]*background:var\(--strata-ink\);[^}]*pointer-events:none;/);
 });
 
 test("inside the iOS app the PWA helper reports the site as installed",()=>{
@@ -101,8 +103,8 @@ test("inside the iOS app the PWA helper reports the site as installed",()=>{
 });
 
 test("the iOS app's user agent token is the one the website recognizes",()=>{
-  const config=JSON.parse(read("mobile/capacitor.config.json"));
-  const match=/\bStrataApp\/(\d+)\b/.exec(`Mozilla/5.0 (iPhone) Mobile/15E148 ${config.appendUserAgent}`);
-  assert.ok(match,"appendUserAgent must carry StrataApp/<shell version>");
-  assert.ok(SOURCE.includes(String.raw`/\bStrataApp\/(\d+)\b/`));
+  // The iOS app (repository sugarhappy8/strata-fitness-ios) appends this token in its capacitor.config.json.
+  const appUserAgent="Mozilla/5.0 (iPhone; CPU iPhone OS 26_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 StrataApp/1";
+  assert.equal(harness({userAgent:appUserAgent}).root.dataset.app,"ios");
+  assert.equal(harness({userAgent:appUserAgent.replace("StrataApp/1","StrataApplication/1")}).root.dataset.app,undefined);
 });

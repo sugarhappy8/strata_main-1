@@ -25,7 +25,7 @@ const correctnessRules={
 
 export default [
   {
-    ignores:["node_modules/**","coverage/**","data/**","test-runtime/**","mobile/ios/App/App/public/**"]
+    ignores:["node_modules/**","coverage/**","data/**","test-runtime/**"]
   },
   js.configs.recommended,
   {
@@ -35,7 +35,7 @@ export default [
     rules:correctnessRules
   },
   {
-    files:["server.js","src/**/*.js","scripts/**/*.js","test/**/*.js","qa/**/*.js","mobile/scripts/**/*.js"],
+    files:["server.js","src/**/*.js","scripts/**/*.js","test/**/*.js","qa/**/*.js"],
     languageOptions:{
       sourceType:"commonjs",
       globals:{...globals.node}
