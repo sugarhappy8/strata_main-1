@@ -123,6 +123,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/ai-settings.js` | Strata AI consent, Daily Brief choice, note deletion, and the owner's usage view | 56 | 51 | 4.1 KiB | 70 | — |
 | `src/ai-store.js` | SQLite and Turso Strata AI storage parity | 51 | 45 | 3.2 KiB | 70 | `src/ai-schema.js` |
 | `src/ai.js` | Strata AI request queue and review-only proposal API | 211 | 199 | 19.7 KiB | 215 | `src/ai-catalog.js`, `src/ai-context.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/ai-settings.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
+| `src/apple-jws.js` | App Store JWS verification: Apple Root CA - G3 chain, marker extensions, ES256 | 97 | 86 | 5.9 KiB | 100 | — |
 | `src/athlete-profile.js` | Athlete Profile read model and the sync that keeps preferences and the coaching profile in step | 134 | 127 | 7.6 KiB | 150 | `src/plans.js` |
 | `src/auth.js` | Authentication and account lifecycle | 815 | 772 | 53.6 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |
 | `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 117 | 111 | 17.0 KiB | 140 | — |
