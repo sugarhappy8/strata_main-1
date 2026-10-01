@@ -189,3 +189,18 @@ test("updates advance only explicit release files and preserve excluded trees",t
   for(const relative of excluded)assert.equal(fs.readFileSync(path.join(root,relative),"utf8"),"private 1.2.3\n");
   assert.doesNotThrow(()=>auditRelease(root,"1.2.4",FIXTURE_MANIFEST));
 });
+
+test("a changelog entry for a build the version markers do not carry fails the release check until the bump",t=>{
+  const root=makeFixture();
+  t.after(()=>fs.rmSync(root,{recursive:true,force:true}));
+  const manifest={...FIXTURE_MANIFEST,changelog:"CHANGELOG.md"};
+  assert.equal(DEFAULT_MANIFEST.changelog,"CHANGELOG.md");
+  write(root,"CHANGELOG.md","# Changelog\n\n## 1.2.3 — Current\n\n- Shipped.\n");
+  assert.equal(auditRelease(root,"1.2.3",manifest).filesChecked,5);
+  write(root,"CHANGELOG.md","# Changelog\n\n## Unreleased\n\n## 1.2.4 — Next\n\n- Written before the bump.\n\n## 1.2.3 — Current\n");
+  assert.throws(()=>runRelease({root,check:true,manifest,logger:{log(){}}}),/CHANGELOG\.md describes 1\.2\.4 as the newest build, but package\.json is 1\.2\.3; run the release version tool for 1\.2\.4/);
+  runRelease({root,target:"1.2.4",manifest,logger:{log(){}}});
+  assert.doesNotThrow(()=>runRelease({root,check:true,manifest,logger:{log(){}}}),"the bump that carries the entry passes");
+  write(root,"CHANGELOG.md","# Changelog\n");
+  assert.throws(()=>auditRelease(root,"1.2.4",manifest),/describes no release as the newest build/);
+});

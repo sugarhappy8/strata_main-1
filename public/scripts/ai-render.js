@@ -8,8 +8,11 @@
 
   const WEEK=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
 
-  /** Every piece of model or member text is set with textContent; nothing here parses HTML. */
-  function createRenderer({documentImpl=globalThis.document,nodes,logic,energy}){
+  /**
+   * Every piece of model or member text is set with textContent; nothing here parses HTML.
+   * A `scroller` keeps new messages scrolling inside a panel (the Strata+ chat) instead of the page.
+   */
+  function createRenderer({documentImpl=globalThis.document,nodes,logic,energy,scroller=null}){
     const doc=documentImpl;
     let current={applying:""};
     function el(tag,options={},children=[]){
@@ -133,17 +136,21 @@
     function renderComposer(state){
       const view=logic.statusView(state.status),blocked=!view.canAsk||Boolean(state.pending)||state.busy;
       nodes.send.disabled=blocked;nodes.suggest.disabled=blocked;
-      nodes.send.textContent=state.pending?"Working…":"Ask Strata AI";
+      (nodes.sendLabel||nodes.send).textContent=state.pending?"Working…":"Ask Strata AI";
       const length=nodes.message.value.length;
       nodes.count.textContent=`${length.toLocaleString("en-US")} / ${logic.LIMITS.messageChars.toLocaleString("en-US")}`;
       nodes.count.dataset.over=String(length>logic.LIMITS.messageChars);
       for(const starter of nodes.starters)starter.disabled=blocked;
     }
+    const motion=()=>globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches?"auto":"smooth";
     /** Brings a new answer into view from its first line, so long proposals read from the top. */
     function reveal(id){
-      const node=rendered.get(id)?.node,still=globalThis.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-      node?.scrollIntoView?.({block:"start",behavior:still?"auto":"smooth"});
+      const node=rendered.get(id)?.node;
+      if(node&&scroller)scroller.scrollTo?.({top:Math.max(0,node.getBoundingClientRect().top-scroller.getBoundingClientRect().top+scroller.scrollTop-12),behavior:motion()});
+      else node?.scrollIntoView?.({block:"start",behavior:motion()});
     }
+    /** In a panel, follows the conversation to its newest line after the member sends something. */
+    function revealEnd(){scroller?.scrollTo?.({top:scroller.scrollHeight,behavior:motion()});}
     function setFormError(text){nodes.formError.textContent=text||"";nodes.formError.hidden=!text;}
     function announce(text){nodes.announce.textContent="";if(text)setTimeout(()=>{nodes.announce.textContent=text;},60);}
     function renderStarters(){
@@ -151,7 +158,7 @@
       nodes.starters=[...nodes.starterList.querySelectorAll("button")];
     }
 
-    return Object.freeze({announce,renderComposer,renderConversation,renderStarters,renderStatus,reveal,setFormError});
+    return Object.freeze({announce,renderComposer,renderConversation,renderStarters,renderStatus,reveal,revealEnd,setFormError});
   }
 
   return Object.freeze({createRenderer});

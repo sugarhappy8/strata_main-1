@@ -45,6 +45,13 @@
         {"file":"public/scripts/discover-coaching.js","role":"events","global":"StrataDiscoverCoaching","maxLines":100},
         {"file":"public/scripts/discover-program.js","role":"events","global":"StrataDiscoverProgram","maxLines":100},
         {"file":"public/scripts/discover-recovery.js","role":"events","global":"StrataDiscoverRecovery","maxLines":140},
+        {"file":"public/scripts/ai-logic.js","role":"logic","global":"StrataAiLogic","maxLines":150},
+        {"file":"public/scripts/ai-state.js","role":"state","global":"StrataAiState","maxLines":50},
+        {"file":"public/scripts/ai-api.js","role":"api","global":"StrataAiApi","maxLines":50},
+        {"file":"public/scripts/ai-render.js","role":"render","global":"StrataAiRender","maxLines":170},
+        {"file":"public/scripts/ai-events.js","role":"events","global":"StrataAiEvents","maxLines":50},
+        {"file":"public/scripts/ai-conversation.js","role":"events","global":"StrataAiConversation","maxLines":150},
+        {"file":"public/scripts/ai-widget.js","role":"events","global":"StrataAiWidget","maxLines":110},
         {"file":"public/scripts/discover.js","role":"entry","maxLines":730}
       ]
     },
@@ -105,7 +112,8 @@
         {"file":"public/scripts/ai-api.js","role":"api","global":"StrataAiApi","maxLines":50},
         {"file":"public/scripts/ai-render.js","role":"render","global":"StrataAiRender","maxLines":170},
         {"file":"public/scripts/ai-events.js","role":"events","global":"StrataAiEvents","maxLines":50},
-        {"file":"public/scripts/ai.js","role":"entry","maxLines":180}
+        {"file":"public/scripts/ai-conversation.js","role":"events","global":"StrataAiConversation","maxLines":150},
+        {"file":"public/scripts/ai.js","role":"entry","maxLines":80}
       ]
     },
     "account": {

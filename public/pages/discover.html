@@ -13,13 +13,15 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=8.8.8" />
-    <link rel="stylesheet" href="/experience.css?v=8.8.8" />
-    <link rel="stylesheet" href="discover.css?v=8.8.8" />
-    <link rel="stylesheet" href="discover-coaching-meals.css?v=8.8.8" />
-    <link rel="stylesheet" href="/product-signals.css?v=8.8.8" />
-    <script src="/motion.js?v=8.8.8"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=8.8.8" />
+    <link rel="stylesheet" href="/fonts.css?v=8.9.0" />
+    <link rel="stylesheet" href="/experience.css?v=8.9.0" />
+    <link rel="stylesheet" href="discover.css?v=8.9.0" />
+    <link rel="stylesheet" href="discover-coaching-meals.css?v=8.9.0" />
+    <link rel="stylesheet" href="/product-signals.css?v=8.9.0" />
+    <link rel="stylesheet" href="/ai.css?v=8.9.0" />
+    <link rel="stylesheet" href="/ai-chat.css?v=8.9.0" />
+    <script src="/motion.js?v=8.9.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=8.9.0" />
   </head>
   <body class="plus-studio">
     <a class="skip-link" id="activeWorkspaceSkip" href="#todayTitle">Skip to active Strata+ workspace</a>
@@ -58,7 +60,7 @@
             <p class="eyebrow"><span></span> Overview · Strata+</p>
             <h2 class="studio-hero-title" id="todayTitle" tabindex="-1">Your next step.<br /><em>Ready when you are.</em></h2>
             <p id="todayIntro">Loading the workout that belongs next in your saved week.</p>
-            <div class="hero-actions"><a class="button button-accent" id="plusStartWorkout" href="/workout.html">Start working out <span aria-hidden="true">↗</span></a><a class="button plus-secondary" id="plusAskAi" href="/ai">Ask Strata AI to plan <span aria-hidden="true">→</span></a></div>
+            <div class="hero-actions"><a class="button button-accent" id="plusStartWorkout" href="/workout.html">Start working out <span aria-hidden="true">↗</span></a><a class="button plus-secondary" data-ai-chat-open id="plusAskAi" href="/ai">Ask Strata AI to plan <span aria-hidden="true">→</span></a></div>
           </div>
           <aside class="weekly-pulse today-brief" id="weeklyPulse" aria-labelledby="weeklyPulseTitle">
             <div class="weekly-pulse-top"><p id="weeklyPulseEyebrow">Next in your week</p><span><i aria-hidden="true"></i> Your training brief</span></div>
@@ -622,11 +624,54 @@
 
     </main>
 
-    <a class="ai-bubble" id="strataAiBubble" href="/ai" aria-label="Strata AI" aria-describedby="strataAiBubbleTip">
-      <svg class="ai-bubble-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false"><path d="M10 7h28a7 7 0 0 1 7 7v15a7 7 0 0 1-7 7H23l-9 8v-8h-4a7 7 0 0 1-7-7V14a7 7 0 0 1 7-7Z"/><text x="24" y="26.5" text-anchor="middle">AI</text></svg>
-      <span class="ai-bubble-tip" id="strataAiBubbleTip" role="tooltip"><strong>This is Strata AI</strong> Press it to describe your week and let Strata AI plan it for you.</span>
-    </a>
-    <footer class="build-footer">STRATA · Build 8.8.8 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
+    <section class="ai-panel" id="aiChatPanel" role="dialog" aria-labelledby="aiChatTitle" tabindex="-1" hidden>
+      <div class="ai-panel-head">
+        <span class="ai-panel-avatar" aria-hidden="true"><svg class="ai-bot" viewBox="0 0 32 32" focusable="false"><circle cx="16" cy="4.6" r="2.3"/><rect x="15" y="6" width="2" height="5" rx="1"/><rect x="1.8" y="15" width="3.6" height="6.4" rx="1.8"/><rect x="26.6" y="15" width="3.6" height="6.4" rx="1.8"/><path fill-rule="evenodd" d="M11.8 10h8.4a6.8 6.8 0 0 1 6.8 6.8v2.4a6.8 6.8 0 0 1-6.8 6.8h-8.4A6.8 6.8 0 0 1 5 19.2v-2.4A6.8 6.8 0 0 1 11.8 10Zm.4 5.6a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0-4.4Zm7.6 0a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0-4.4Z"/></svg></span>
+        <div class="ai-panel-title">
+          <h2 id="aiChatTitle">Strata AI</h2>
+          <p class="ai-panel-status" id="aiChatStatus" data-tone="checking"><span class="ai-panel-dot" aria-hidden="true"></span><span id="aiChatStatusTitle">Checking Strata AI…</span></p>
+        </div>
+        <div class="ai-panel-tools">
+          <button class="ai-panel-icon" id="aiChatReset" type="button" aria-label="New conversation" title="New conversation" hidden><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6"/><path d="M4 3.6v5h5"/></svg></button>
+          <a class="ai-panel-icon" href="/ai" aria-label="Open Strata AI full screen" title="Open full screen"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></a>
+          <button class="ai-panel-icon" id="aiChatClose" type="button" aria-label="Close Strata AI chat" title="Close"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+        </div>
+      </div>
+      <div class="ai-panel-scroll" id="aiChatScroll">
+        <div class="ai-panel-welcome" id="aiChatEmpty">
+          <div class="ai-panel-greeting">
+            <span class="ai-avatar" aria-hidden="true">AI</span>
+            <p><strong>Hi, I’m Strata AI.</strong> Ask me about training or nutrition, or tell me the week you want and I’ll plan it from STRATA’s 320 exercises. Nothing changes until you apply it.</p>
+          </div>
+          <ul class="ai-panel-starters" id="aiChatStarters" aria-label="Example questions and requests"></ul>
+        </div>
+        <ol class="ai-thread" id="aiChatConversation" aria-label="Messages"></ol>
+      </div>
+      <form class="ai-panel-composer" id="aiChatForm" novalidate>
+        <div class="ai-panel-quick"><button class="ai-panel-chip" id="aiChatSuggest" type="button" disabled>Review my plan</button><span class="ai-panel-detail" id="aiChatStatusDetail"></span></div>
+        <label class="sr-only" for="aiChatMessage">Message to Strata AI</label>
+        <div class="ai-panel-input">
+          <textarea id="aiChatMessage" name="message" rows="1" maxlength="1200" placeholder="Ask about training, food, or your week…" aria-describedby="aiChatHint aiChatError"></textarea>
+          <button class="ai-panel-send" id="aiChatSend" type="submit" disabled><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg><span class="sr-only" id="aiChatSendLabel">Ask Strata AI</span></button>
+        </div>
+        <p class="ai-form-error" id="aiChatError" role="alert" hidden></p>
+        <p class="ai-panel-hint" id="aiChatHint"><span>Strata AI can make mistakes.<span class="ai-panel-keys"> Enter to send.</span></span> <span id="aiChatCount">0 / 1,200</span></p>
+      </form>
+      <p class="sr-only" id="aiChatAnnounce" role="status" aria-live="polite"></p>
+    </section>
+    <button class="ai-launcher" id="aiChatLauncher" type="button" aria-label="Strata AI chat" aria-controls="aiChatPanel" aria-expanded="false">
+      <span class="ai-launcher-face"><svg class="ai-bot" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="16" cy="4.6" r="2.3"/><rect x="15" y="6" width="2" height="5" rx="1"/><rect x="1.8" y="15" width="3.6" height="6.4" rx="1.8"/><rect x="26.6" y="15" width="3.6" height="6.4" rx="1.8"/><path fill-rule="evenodd" d="M11.8 10h8.4a6.8 6.8 0 0 1 6.8 6.8v2.4a6.8 6.8 0 0 1-6.8 6.8h-8.4A6.8 6.8 0 0 1 5 19.2v-2.4A6.8 6.8 0 0 1 11.8 10Zm.4 5.6a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0-4.4Zm7.6 0a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0-4.4Z"/></svg><svg class="ai-launcher-close" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M6 9.5 12 15.5l6-6"/></svg></span>
+      <span class="ai-launcher-tip" aria-hidden="true">Strata AI chat</span>
+      <span class="ai-launcher-badge" aria-hidden="true"></span>
+    </button>
+    <dialog class="ai-dialog" id="aiChatConfirm" aria-labelledby="aiChatConfirmTitle" aria-describedby="aiChatConfirmText">
+      <form method="dialog">
+        <h2 id="aiChatConfirmTitle">Replace your weekly plan?</h2>
+        <p id="aiChatConfirmText"></p>
+        <div class="ai-actions"><button class="ai-button" value="cancel">Keep my plan</button><button class="ai-button ai-button-primary" value="replace">Replace plan</button></div>
+      </form>
+    </dialog>
+    <footer class="build-footer">STRATA · Build 8.9.0 · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
 
     <aside class="compare-tray" id="compareTray" hidden aria-label="Exercise comparison tray">
       <div><span>Exercise battle</span><p id="compareNames">Choose 2–4 exercises</p></div>
@@ -663,34 +708,41 @@
     </dialog>
     <noscript><div class="no-script-note" role="status"><strong>Strata+ needs JavaScript for personalized tools.</strong> The page content remains available, but saving, filtering, comparing, and plan building require JavaScript.</div></noscript>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="/pwa.js?v=8.8.8"></script>
-    <script src="/product-signals.js?v=8.8.8"></script>
-    <script src="session-selection-core.js?v=8.8.8"></script>
-    <script src="discovery-core.js?v=8.8.8"></script>
-    <script src="monthly-plan-core.js?v=8.8.8"></script>
-    <script src="training-block-core.js?v=8.8.8"></script>
-    <script src="devices-core.js?v=8.8.8"></script>
-    <script src="personal-training-energy-ui-core.js?v=8.8.8"></script>
-    <script src="personal-training-ui-core.js?v=8.8.8"></script>
-    <script src="personal-training-diary-ui.js?v=8.8.8"></script>
-    <script src="personal-training-meals-ui-core.js?v=8.8.8"></script>
-    <script src="discover-state.js?v=8.8.8"></script>
-    <script src="discover-api.js?v=8.8.8"></script>
-    <script src="discover-navigation.js?v=8.8.8"></script>
-    <script src="discover-progress.js?v=8.8.8"></script>
-    <script src="discover-render.js?v=8.8.8"></script>
-    <script src="discover-coaching-render.js?v=8.8.8"></script>
-    <script src="discover-coaching-trend.js?v=8.8.8"></script>
-    <script src="discover-catalog.js?v=8.8.8"></script>
-    <script src="discover-detail.js?v=8.8.8"></script>
-    <script src="discover-community.js?v=8.8.8"></script>
-    <script src="discover-session.js?v=8.8.8"></script>
-    <script src="discover-sharing.js?v=8.8.8"></script>
-    <script src="discover-events.js?v=8.8.8"></script>
-    <script src="discover-coaching-meals.js?v=8.8.8"></script>
-    <script src="discover-coaching.js?v=8.8.8"></script>
-    <script src="discover-program.js?v=8.8.8"></script>
-    <script src="discover-recovery.js?v=8.8.8"></script>
-    <script src="discover.js?v=8.8.8"></script>
+    <script src="/pwa.js?v=8.9.0"></script>
+    <script src="/product-signals.js?v=8.9.0"></script>
+    <script src="session-selection-core.js?v=8.9.0"></script>
+    <script src="discovery-core.js?v=8.9.0"></script>
+    <script src="monthly-plan-core.js?v=8.9.0"></script>
+    <script src="training-block-core.js?v=8.9.0"></script>
+    <script src="devices-core.js?v=8.9.0"></script>
+    <script src="personal-training-energy-ui-core.js?v=8.9.0"></script>
+    <script src="personal-training-ui-core.js?v=8.9.0"></script>
+    <script src="personal-training-diary-ui.js?v=8.9.0"></script>
+    <script src="personal-training-meals-ui-core.js?v=8.9.0"></script>
+    <script src="discover-state.js?v=8.9.0"></script>
+    <script src="discover-api.js?v=8.9.0"></script>
+    <script src="discover-navigation.js?v=8.9.0"></script>
+    <script src="discover-progress.js?v=8.9.0"></script>
+    <script src="discover-render.js?v=8.9.0"></script>
+    <script src="discover-coaching-render.js?v=8.9.0"></script>
+    <script src="discover-coaching-trend.js?v=8.9.0"></script>
+    <script src="discover-catalog.js?v=8.9.0"></script>
+    <script src="discover-detail.js?v=8.9.0"></script>
+    <script src="discover-community.js?v=8.9.0"></script>
+    <script src="discover-session.js?v=8.9.0"></script>
+    <script src="discover-sharing.js?v=8.9.0"></script>
+    <script src="discover-events.js?v=8.9.0"></script>
+    <script src="discover-coaching-meals.js?v=8.9.0"></script>
+    <script src="discover-coaching.js?v=8.9.0"></script>
+    <script src="discover-program.js?v=8.9.0"></script>
+    <script src="discover-recovery.js?v=8.9.0"></script>
+    <script src="/ai-logic.js?v=8.9.0"></script>
+    <script src="/ai-state.js?v=8.9.0"></script>
+    <script src="/ai-api.js?v=8.9.0"></script>
+    <script src="/ai-render.js?v=8.9.0"></script>
+    <script src="/ai-events.js?v=8.9.0"></script>
+    <script src="/ai-conversation.js?v=8.9.0"></script>
+    <script src="/ai-widget.js?v=8.9.0"></script>
+    <script src="discover.js?v=8.9.0"></script>
   </body>
 </html>

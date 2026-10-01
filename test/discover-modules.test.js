@@ -90,6 +90,24 @@ test("Discover navigation scrolls the destination switcher, not the panel, so th
   }finally{globalThis.requestAnimationFrame=previousFrame;}
 });
 
+test("Discover navigation never takes back focus that moved before its deferred focus and scroll",()=>{
+  const scrolled=[],focused=[],frames=[],heading=(id)=>{const node=element(id);node.focus=()=>{document.activeElement=node;focused.push(id);};return node;};
+  const nodes=new Map([...Object.values(State.FEATURE_CONFIG).map(({panelId,headingId})=>[[panelId,element(panelId)],[headingId,heading(headingId)]]).flat()]);
+  for(const node of nodes.values())node.scrollIntoView=()=>scrolled.push(node.id);
+  const link=element("overviewLink"),card=element("nutritionCard"),document={body:element("body"),activeElement:link,getElementById:id=>nodes.get(id)||null,querySelectorAll:()=>[]};
+  const previousFrame=globalThis.requestAnimationFrame;globalThis.requestAnimationFrame=callback=>frames.push(callback);
+  try{
+    const navigation=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state:State.createState(),document,window:{matchMedia:()=>({matches:true})}});
+    navigation.activate("today",{focus:true,scroll:true});
+    document.activeElement=card;frames.shift()();
+    assert.deepEqual([focused,scrolled],[[],[]],"a card focused right after Overview opens keeps focus, so Enter opens it");
+    navigation.activate("progress",{focus:true,scroll:true});frames.shift()();
+    assert.deepEqual([focused,scrolled],[["progressWorkspaceTitle"],["progressWorkspace"]]);
+    navigation.activate("explore",{focus:true});document.activeElement=document.body;frames.shift()();
+    assert.equal(focused.at(-1),"exploreWorkspaceTitle","focus lost to the page still lands on the new heading");
+  }finally{globalThis.requestAnimationFrame=previousFrame;}
+});
+
 test("Discover toast can be cleared immediately when a destination changes",()=>{
   const toast=element("toast");toast.textContent="";let queued;
   const controller=Navigation.createToastController(toast,{setTimer:callback=>{queued=callback;return 1;},clearTimer:()=>{}});

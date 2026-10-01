@@ -3,8 +3,9 @@
 ## 8.9.0 — Subscription-only Strata+ and a simpler studio
 
 - Retire the free Strata+ trial. Pricing, the homepage, Account, Terms, and Privacy no longer offer it; `POST /api/discovery/trial` answers `410 TRIAL_RETIRED`; a trial started earlier runs to its recorded end.
-- Move Strata AI off the homepage into an “AI” speech bubble that stays on every Strata+ view and explains itself on hover or keyboard focus.
-- Reduce the Strata+ tabs to Overview, Recovery, Progress, and Exercises. Overview keeps everything it showed and adds Plan, Train, and Nutrition cards; Plan and Nutrition open their views with a way back, and Train opens the Train page.
+- Move Strata AI off the homepage into a Strata AI chat on every Strata+ view: a round launcher that glows on a slow beat and says “Strata AI chat” on hover or keyboard focus opens a small chat panel (full screen on phones) for asking questions and applying proposed weeks, nutrition targets, and swaps. The chat and the full `/ai` page share one conversation engine and one conversation per tab.
+- Advance every asset version and the offline cache to 8.9.0; the earlier 8.9.0 changes had shipped under the 8.8.8 asset versions, so installed apps showed the new Overview cards and Strata AI button without their styles. `npm run release:check` now fails when the newest changelog entry names a build the version markers do not carry.
+- Reduce the Strata+ tabs to Overview, Recovery, Progress, and Exercises. Overview keeps everything it showed and adds Plan, Train, and Nutrition cards; Plan and Nutrition open their views with a way back, and Train opens the Train page. Switching views no longer takes focus back from a card or control focused before the next frame, so Enter on an Overview card always opens it.
 - State each pricing fact once and drop the repeated trial, comparison, and assurance sections.
 - Remove the Weekly progress, Recent momentum, and Training signal cards from Account.
 - Unlock Strata+ in tests, E2E journeys, and the 100-user load check through a complimentary-grant fixture instead of the trial.
