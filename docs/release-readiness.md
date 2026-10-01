@@ -1,3 +1,5 @@
+> Historical snapshot: these results describe Build 8.0.1 and are kept because older release guides link here. Current gate results come from `npm run check` on the release commit.
+
 # STRATA 8.0.1 readiness
 
 Verification uses Darwin arm64 with supported Node.js 24.20.0, isolated temporary accounts, controlled provider fixtures, and Chromium. Promotion also requires the exact release commit to pass the Node 24 Linux GitHub Actions gate, including configured browser engines and both 100-account load profiles. Linux resource measurements are not claimed from a macOS run.

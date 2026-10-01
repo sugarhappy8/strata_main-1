@@ -85,7 +85,7 @@ test("a swap replaces exactly one planned exercise, or nothing when the plan has
 
 test("status, waiting, and error states read clearly",()=>{
   assert.equal(logic.statusView(null).tone,"checking");
-  assert.deepEqual(logic.statusView({configured:false}),{tone:"offline",title:"Strata AI isn’t switched on yet",detail:"Your plan and nutrition tools work as usual. Check back soon.",canAsk:false});
+  assert.deepEqual(logic.statusView({configured:false}),{tone:"offline",title:"Strata AI is unavailable right now",detail:"Your plan and nutrition tools work as usual.",canAsk:false});
   assert.equal(logic.statusView({configured:true,online:true,remainingToday:0,dailyLimit:30}).canAsk,false);
   assert.deepEqual(logic.statusView({configured:true,online:true,remainingToday:27,dailyLimit:30}),{tone:"online",title:"Strata AI is ready",detail:"27 of 30 requests left today",canAsk:true});
   const offline=logic.statusView({configured:true,online:false,remainingToday:5,dailyLimit:30});assert.equal(offline.tone,"offline");assert.equal(offline.canAsk,true);

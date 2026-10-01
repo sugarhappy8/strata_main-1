@@ -60,7 +60,6 @@ function accountPage(route){
   elements.get("signedInCard").hidden=true;
   elements.get("signupMessage").hidden=true;
   elements.get("loginMessage").hidden=true;
-  elements.get("storageState").statusText=new Element("storageText");
   const authGrid=new Element("authGrid");
   class FakeFormData{constructor(form){this.values=form.values;}get(name){return this.values[name]??null;}}
   const location={search:"?mode=signup&next=pricing",href:"https://strata.test/account.html?mode=signup&next=pricing",assign:(path)=>navigations.push(path),replace:(path)=>navigations.push(path)};

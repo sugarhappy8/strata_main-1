@@ -129,10 +129,9 @@
 
     function showSessionLoading(){const list=el("accountSessionList");list.setAttribute("aria-busy","true");list.innerHTML='<li class="account-session-loading">Checking active sessions…</li>';el("accountRevokeOtherSessions").disabled=true;}
     function showSessionError(){const list=el("accountSessionList");list.setAttribute("aria-busy","false");list.innerHTML='<li class="account-session-loading">Active sessions could not be loaded. Nothing was changed.</li>';showAccountControlStatus("accountSessionStatus","Could not load signed-in sessions. Refresh to try again.",{error:true});}
-    function renderStorageState(node,state,message){node.classList.remove("good","warn","bad");node.classList.add(state);node.querySelector("span").textContent=message;}
     function showInitialLoading(){el("accountPage").setAttribute("aria-busy","true");el("accountAccess").hidden=true;el("signedInCard").hidden=true;el("accountLoading").hidden=false;el("accountLoadingTitle").textContent="CHECKING YOUR ACCOUNT…";el("accountLoadingMessage").textContent="Confirming whether you are already signed in.";el("accountReload").hidden=true;}
 
-    return{el,clearFormError,clearAllFormErrors,clearPrivateData,setButtonBusy,showFormError,showAccess,renderDashboard,renderDashboardUnavailable,renderAccountBilling,showSecurityStatus,showSignedIn,showChangedAccount,showAccountControlStatus,renderAccountSessions,showSessionLoading,showSessionError,renderStorageState,showInitialLoading};
+    return{el,clearFormError,clearAllFormErrors,clearPrivateData,setButtonBusy,showFormError,showAccess,renderDashboard,renderDashboardUnavailable,renderAccountBilling,showSecurityStatus,showSignedIn,showChangedAccount,showAccountControlStatus,renderAccountSessions,showSessionLoading,showSessionError,showInitialLoading};
   }
 
   return{createRenderer};

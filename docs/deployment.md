@@ -196,7 +196,7 @@ After deployment:
 2. Confirm account, protected-page, service-worker, and manifest responses have the expected cache policy.
 3. Complete a signup/login and plan-save round trip.
 4. Exercise provider flows after changing Resend or Paddle configuration.
-5. Run `STRATA_SMOKE_BASE_URL=https://your-host.example STRATA_EXPECTED_BUILD=7.8.7 npm run smoke:deploy` to check status/build/provider flags, durable Turso reporting, storage readiness, the public home and manifest, security headers, and signed-out private-route handling.
+5. Run `STRATA_SMOKE_BASE_URL=https://your-host.example STRATA_EXPECTED_BUILD=$(node -p "require('./package.json').version") npm run smoke:deploy` to check status/build/provider flags, durable Turso reporting, storage readiness, the public home and manifest, security headers, and signed-out private-route handling.
 6. Confirm GitHub Actions is green before tagging or announcing a release.
 
 The deployment smoke is read-only and does not create an account, send email, buy a subscription, process a webhook, or mutate production data. Complete authorized provider-backed smoke separately and record its result; never describe local provider fakes or configuration-shape checks as live credential evidence.
