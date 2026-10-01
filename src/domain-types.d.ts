@@ -331,6 +331,7 @@ export type CheckoutRecovery=
 export interface BillingStore {
   adminControls(userId:string):Promise<AdminControlsRow|null>;
   hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
+  appleSubscriptionsForUser(userId:string):Promise<AppleSubscriptionRow[]>;
   hasPaidDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(userId:string,priceId:string,productId:string,now?:number):Promise<boolean>;
   hasEntitledPaidDiscoveryAccess(userId:string,priceIds:readonly string[],productId:string,now?:number):Promise<boolean>;
@@ -364,7 +365,7 @@ export interface BillingStore {
   revokePurchase(transactionId:string,reason:string,revokedAt:number,updatedAt:number):Promise<PurchaseRow|null>;
 }
 
-export type BillingAdapterMethods=Omit<BillingStore,"activeAccountDeletion"|"adminControls"|"hasActiveAppleSubscription">&{
+export type BillingAdapterMethods=Omit<BillingStore,"activeAccountDeletion"|"adminControls"|"hasActiveAppleSubscription"|"appleSubscriptionsForUser">&{
   hasDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   discoveryAccessSummary(userId:string,priceId?:string|null,now?:number):Promise<DiscoveryAccessSummary>;
 };
@@ -1074,6 +1075,7 @@ export interface AppleBillingSettings {
   readonly productIds:readonly string[];
   readonly rootFingerprint:string;
   readonly rootOverrideIgnored:boolean;
+  readonly configured:boolean;
 }
 /** A verified StoreKit 2 transaction for a Strata+ product of this app. */
 export interface AppleTransaction {
@@ -1085,12 +1087,12 @@ export interface AppleRenewal {autoRenew:boolean|null;gracePeriodExpiresAt:numbe
 export interface AppleSubscriptionRow extends JsonObject {
   original_transaction_id:string;user_id:string;product_id:string;environment:AppleEnvironment;latest_transaction_id:string;
   purchased_at:number|null;original_purchased_at:number|null;expires_at:number|null;revoked_at:number|null;revocation_reason:string|null;
-  auto_renew:0|1|null;grace_period_expires_at:number|null;last_signed_at:number;created_at:number;updated_at:number;
+  auto_renew:0|1|null;grace_period_expires_at:number|null;last_signed_at:number;latest_signed_at:number;created_at:number;updated_at:number;
 }
 export interface AppleSubscriptionWrite {
   originalTransactionId:string;userId:string;productId:string;environment:AppleEnvironment;latestTransactionId:string;
   purchasedAt:number|null;originalPurchasedAt:number|null;expiresAt:number|null;revokedAt:number|null;revocationReason:string|null;
-  autoRenew:boolean|null;gracePeriodExpiresAt:number|null;lastSignedAt:number;createdAt:number;updatedAt:number;
+  autoRenew:boolean|null;gracePeriodExpiresAt:number|null;lastSignedAt:number;latestSignedAt:number;createdAt:number;updatedAt:number;
 }
 export interface AppleNotificationWrite {notificationUuid:string;notificationType:string;subtype:string|null;outcome:string;signedAt:number;processedAt:number;}
 export interface AppleBillingStore {

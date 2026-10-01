@@ -240,6 +240,7 @@
       "maxLines": 720,
       "allowedDependencies": [
         "src/access-controls.js",
+        "src/apple-billing.js",
         "src/checkout-reconciliation.js",
         "src/http.js",
         "src/legacy-checkout.js",

@@ -9,7 +9,7 @@ function upsertArgs(record,replaceOwnerId){
     record.originalTransactionId,record.productId,record.environment,record.latestTransactionId,
     record.purchasedAt,record.originalPurchasedAt,record.expiresAt,record.revokedAt,record.revocationReason,
     record.autoRenew===null?null:record.autoRenew?1:0,record.gracePeriodExpiresAt,record.lastSignedAt,
-    record.createdAt,record.updatedAt,record.userId,replaceOwnerId
+    record.latestSignedAt,record.createdAt,record.updatedAt,record.userId,replaceOwnerId
   ];
 }
 /** @param {import("./domain-types").AppleNotificationWrite} notification */

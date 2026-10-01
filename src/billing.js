@@ -26,6 +26,7 @@ const {
   fullRevocationFromAdjustment
 }=require("./payments");
 const {validateRetiredCompletedTransaction,createLegacyCheckoutPolicy}=require("./legacy-checkout");
+const {MANAGE_SUBSCRIPTIONS_URL}=require("./apple-billing");
 const {cleanText}=require("./plans");
 
 const ABANDONED_CHECKOUT_MS=30*60*1000;
@@ -484,6 +485,13 @@ function createBillingService({
     json(res,410,{error:"The free Strata+ trial is no longer offered. Subscribe to use Strata+.",code:"TRIAL_RETIRED"});
   }
 
+  // Never take a second payment: a member whose Strata+ comes from the App Store is told so.
+  /** @param {import("./domain-types").HttpResponse} res @param {string} userId */
+  async function alreadyEntitled(res,userId) {
+    if(await store.hasActiveAppleSubscription(userId,now()))json(res,409,{error:"You already have Strata+ through the App Store.",code:"ALREADY_ENTITLED_APP_STORE"});
+    else json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});
+  }
+
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
   async function beginCheckout(req,res) {
     const auth=authService();
@@ -501,7 +509,7 @@ function createBillingService({
       json(res,429,{error:"Too many checkout attempts. Try again later."});return;
     }
     if(await hasCurrentAccess(session.id)){
-      json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return;
+      await alreadyEntitled(res,session.id);return;
     }
     /** @param {number} status @param {import("./domain-types").JsonObject} data */
     const sendCheckout=async(status,data)=>{if(await checkoutAllowed())json(res,status,data);};
@@ -509,7 +517,7 @@ function createBillingService({
       if(!await auth.requireSession(req,res))return false;
       const controls=await store.adminControls(session.id);
       if(controls?.checkout_blocked_at!=null){json(res,403,{error:"New payment sessions are disabled for this account. Contact support.",code:"CHECKOUT_BLOCKED"});return false;}
-      if(await hasCurrentAccess(session.id,now(),controls)){json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return false;}
+      if(await hasCurrentAccess(session.id,now(),controls)){await alreadyEntitled(res,session.id);return false;}
       if(await store.activeAccountDeletion(session.id,now())){json(res,409,{error:"Cancel account deletion before starting checkout.",code:"ACCOUNT_DELETION_PENDING"});return false;}
       return true;
     };
@@ -520,7 +528,7 @@ function createBillingService({
         await sendCheckout(200,{transactionId:recovery.transactionId,reused:true,recovered:true});return;
       }
       if(recovery.state==="entitled"){
-        json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return;
+        await alreadyEntitled(res,session.id);return;
       }
       if(recovery.state==="deletion"){
         json(res,409,{error:"Cancel the pending account-deletion request before starting checkout.",code:"ACCOUNT_DELETION_PENDING"});return;
@@ -550,7 +558,7 @@ function createBillingService({
         json(res,409,{error:"Cancel the pending account-deletion request before starting checkout.",code:"ACCOUNT_DELETION_PENDING"});return;
       }
       if(await hasCurrentAccess(session.id)){
-        json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return;
+        await alreadyEntitled(res,session.id);return;
       }
       let pending=await store.pendingPurchaseForUser(session.id,paymentConfig.priceId);
       if(pending&&Number(pending.updated_at)>now()-ABANDONED_CHECKOUT_MS){
@@ -559,7 +567,7 @@ function createBillingService({
       if(await store.pendingPurchasesForUser(session.id)>0){
         await reconcileUnsettledPurchases(session.id,{reuseDraft:true});
         if(await hasCurrentAccess(session.id)){
-          json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return;
+          await alreadyEntitled(res,session.id);return;
         }
         pending=await store.pendingPurchaseForUser(session.id,paymentConfig.priceId);
         if(pending){await sendCheckout(200,{transactionId:pending.transaction_id,reused:true});return;}
@@ -632,6 +640,10 @@ function createBillingService({
     await bodyJson(req);
     const subscription=await store.subscriptionForUser(session.id);
     if(!subscription){
+      // Strata+ bought in the iOS app is managed by Apple; Paddle's portal has nothing to show for it.
+      if((await store.appleSubscriptionsForUser(session.id)).length){
+        json(res,409,{error:"Your Strata+ subscription is managed by the App Store. Manage it in Settings on your iPhone.",code:"APP_STORE_MANAGED",manageUrl:MANAGE_SUBSCRIPTIONS_URL});return;
+      }
       json(res,404,{error:"No Strata+ monthly subscription was found for this account.",code:"SUBSCRIPTION_NOT_FOUND"});return;
     }
     if(!rateAllowed(req,`billing-portal:${session.id}`,10,15*60*1000)){
