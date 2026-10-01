@@ -1,10 +1,13 @@
 # Changelog
 
-## Unreleased
+## 9.1.0 — Dashboard
 
 - Dashboard replaces My Week in the navigation. Strata+ members land on a page with two choices, Plan and the Strata+ dashboard; free accounts and visitors go straight to Plan. `/my-week` still works.
 - The homepage's top bar is now Rankings, Dashboard, and Install. On phones the signed-in name stays in the header so Profile is one tap away.
 - Profile drops the "Your next move" card and button; it no longer fetches the plan and workout history it only used for that card.
+- Advance every asset version and the offline cache to 9.1.0, so installed apps pick up the new navigation and the Dashboard page.
+
+See the [9.1.0 release guide](docs/release-9.1.0.md).
 
 ## 9.0.0 — Cut and integrate
 
