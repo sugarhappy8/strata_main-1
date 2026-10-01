@@ -149,7 +149,7 @@ test("state transitions never move backwards and keep the current period on olde
   const parse=(overrides)=>{const result=validateAppleTransaction(transaction(overrides),settings);assert.ok(result.ok);return result.transaction;};
   const first=nextAppleState(null,{userId,transaction:parse({}),signedAt:now-1000,now});
   assert.ok(first);assert.equal(first.autoRenew,null);assert.equal(first.revokedAt,null);
-  const row={original_transaction_id:first.originalTransactionId,user_id:userId,product_id:first.productId,environment:first.environment,latest_transaction_id:first.latestTransactionId,purchased_at:first.purchasedAt,original_purchased_at:first.originalPurchasedAt,expires_at:first.expiresAt,revoked_at:null,revocation_reason:null,auto_renew:1,grace_period_expires_at:now+DAY,last_signed_at:first.lastSignedAt,created_at:now-5000,updated_at:now-5000};
+  const row={original_transaction_id:first.originalTransactionId,user_id:userId,product_id:first.productId,environment:first.environment,latest_transaction_id:first.latestTransactionId,purchased_at:first.purchasedAt,original_purchased_at:first.originalPurchasedAt,expires_at:first.expiresAt,revoked_at:null,revocation_reason:null,auto_renew:1,grace_period_expires_at:now+DAY,last_signed_at:first.lastSignedAt,latest_signed_at:first.latestSignedAt,created_at:now-5000,updated_at:now-5000};
   assert.equal(nextAppleState(row,{userId,transaction:parse({}),signedAt:now-2000,now}),null);
   const olderPeriod=parse({transactionId:"1999",expiresDate:now-10*DAY,revocationDate:now-100,revocationReason:0});
   const refundOld=nextAppleState(row,{userId,transaction:olderPeriod,type:"REFUND",signedAt:now,now});
@@ -165,21 +165,31 @@ test("state transitions never move backwards and keep the current period on olde
   assert.equal(failed?.gracePeriodExpiresAt,null);
 
   // A later period the App Store signed before a refund of an older period, but delivered after it, still counts.
-  const refundedOld={...row,revoked_at:now-100,revocation_reason:"refund",auto_renew:0,grace_period_expires_at:null,last_signed_at:now};
+  const refundedOld={...row,revoked_at:now-100,revocation_reason:"refund",auto_renew:0,grace_period_expires_at:null,last_signed_at:now,latest_signed_at:now};
   const late=nextAppleState(refundedOld,{userId,transaction:parse({transactionId:"2000000002",expiresDate:now+60*DAY}),renewal:{autoRenew:true,gracePeriodExpiresAt:now+DAY},type:"DID_RENEW",signedAt:now-500,now});
   assert.equal(late?.latestTransactionId,"2000000002");assert.equal(late?.expiresAt,now+60*DAY);
   assert.equal(late?.revokedAt,null);assert.equal(late?.revocationReason,null);
   assert.equal(late?.autoRenew,false,"the newer renewal state is kept");assert.equal(late?.gracePeriodExpiresAt,null);
-  assert.equal(late?.lastSignedAt,now,"the signing clock never moves back");
+  assert.equal(late?.lastSignedAt,now,"the signing clock never moves back");assert.equal(late?.latestSignedAt,now-500,"the new period keeps its own clock");
   assert.equal(nextAppleState(refundedOld,{userId,transaction:parse({revocationDate:null}),signedAt:now-500,now}),null,"late data about the stored period stays ignored");
   assert.equal(nextAppleState(refundedOld,{userId,transaction:parse({transactionId:"1999",expiresDate:now-10*DAY}),signedAt:now-500,now}),null);
   assert.equal(nextAppleState(refundedOld,{userId,transaction:parse({transactionId:"2000000002",expiresDate:Number(row.expires_at)}),signedAt:now-500,now}),null,"a late period must be strictly later");
+
+  // A refund of an older period moves only the renewal clock, so the current period's own refund, signed before it but
+  // delivered after it, still ends access.
+  const olderRefunded={...row,auto_renew:0,grace_period_expires_at:null,last_signed_at:now};
+  const ownRefund=nextAppleState(olderRefunded,{userId,transaction:parse({revocationDate:now-600}),renewal:{autoRenew:true,gracePeriodExpiresAt:null},type:"REFUND",signedAt:now-500,now});
+  assert.equal(ownRefund?.revokedAt,now-600);assert.equal(ownRefund?.revocationReason,"refund");assert.equal(ownRefund?.latestTransactionId,"2000000001");
+  assert.equal(ownRefund?.autoRenew,false,"the newer renewal state is kept");
+  assert.equal(ownRefund?.lastSignedAt,now);assert.equal(ownRefund?.latestSignedAt,now-500);
+  assert.equal(nextAppleState(olderRefunded,{userId,transaction:parse({}),signedAt:Number(row.latest_signed_at)-1,now}),null,"data older than the period's own clock stays ignored");
+  assert.equal(nextAppleState(olderRefunded,{userId,transaction:parse({transactionId:"2000000002"}),signedAt:now-500,now})?.latestTransactionId,"2000000002","another transaction for the same period follows the period's clock");
 });
 
 test("the discovery summary prefers the subscription that gives access",()=>{
   const now=Date.now();
   assert.equal(appleSubscriptionSummary([],now),null);
-  const base={user_id:"u",product_id:PRODUCT,environment:"Sandbox",latest_transaction_id:"1",purchased_at:now-DAY,original_purchased_at:now-DAY,revoked_at:null,revocation_reason:null,auto_renew:0,grace_period_expires_at:null,last_signed_at:now,created_at:now,updated_at:now};
+  const base={user_id:"u",product_id:PRODUCT,environment:"Sandbox",latest_transaction_id:"1",purchased_at:now-DAY,original_purchased_at:now-DAY,revoked_at:null,revocation_reason:null,auto_renew:0,grace_period_expires_at:null,last_signed_at:now,latest_signed_at:now,created_at:now,updated_at:now};
   const expired={...base,original_transaction_id:"a",expires_at:now-DAY,updated_at:now+5};
   const grace={...base,original_transaction_id:"b",expires_at:now-1000,grace_period_expires_at:now+DAY,auto_renew:1,environment:"Production"};
   assert.deepEqual(appleSubscriptionSummary([expired,grace],now),{active:true,productId:PRODUCT,expiresAt:now-1000,autoRenew:true,inGracePeriod:true,environment:"Production",revoked:false});
@@ -254,6 +264,86 @@ for(const kind of ["local","turso"]){
     await store.deleteOldAppleNotifications(Date.now()+1);
     assert.equal(await store.appleNotification(subscribedId),null);
   }));
+
+  test(`${kind}: a refund of the current period ends access even when an older period's refund was signed after it`,async()=>withStore(kind,async(store)=>{
+    const {apple}=service(store);
+    const userId=await addUser(store),now=BASE;
+    const send=(type,original,overrides,signedDate)=>apple.processNotification(notification(type,{
+      tx:transaction({appAccountToken:userId,originalTransactionId:original,...overrides}),renew:renewal({originalTransactionId:original}),signedDate
+    }));
+    const access=async(original)=>{const row=await store.appleSubscription(original);return {latest:row?.latest_transaction_id,revoked:row?.revoked_at!=null,active:Boolean(row)&&row.revoked_at==null&&Number(row.expires_at)>now};};
+    const older={transactionId:"1",expiresDate:now-DAY},current={transactionId:"2",expiresDate:now+29*DAY};
+
+    // Case A: the renewal is stored, Apple's first delivery of its refund fails, and a later-signed refund of the older
+    // period arrives before the retried one.
+    assert.equal(await send("SUBSCRIBED","3000000000",older,now-9000),"applied");
+    assert.equal(await send("DID_RENEW","3000000000",current,now-5000),"applied");
+    assert.equal(await send("REFUND","3000000000",{...older,revocationDate:now-1100},now-1000),"applied");
+    assert.deepEqual(await access("3000000000"),{latest:"2",revoked:false,active:true},"an older refund leaves the current period");
+    assert.equal(await send("REFUND","3000000000",{...current,revocationDate:now-2100},now-2000),"applied");
+    assert.deepEqual(await access("3000000000"),{latest:"2",revoked:true,active:false});
+    assert.equal(await send("DID_RENEW","3000000000",current,now-5000),"stale","the replayed renewal does not undo the refund");
+    let row=await store.appleSubscription("3000000000");
+    assert.equal(Number(row?.last_signed_at),now-1000);assert.equal(Number(row?.latest_signed_at),now-2000);
+
+    // Case B: the older period's refund is stored first, then the delayed renewal, then the delayed refund of that renewal.
+    assert.equal(await send("SUBSCRIBED","3100000000",older,now-9000),"applied");
+    assert.equal(await send("REFUND","3100000000",{...older,revocationDate:now-1100},now-1000),"applied");
+    assert.equal(await send("DID_RENEW","3100000000",current,now-3000),"applied");
+    assert.deepEqual(await access("3100000000"),{latest:"2",revoked:false,active:true});
+    assert.equal(await send("REFUND","3100000000",{...current,revocationDate:now-2100},now-2000),"applied");
+    assert.deepEqual(await access("3100000000"),{latest:"2",revoked:true,active:false});
+    assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+    assert.equal((await apple.subscriptionForUser(userId))?.active,false);
+
+    // Two late writes computed from the same row: the earlier billing period never replaces the later one, whichever
+    // lands last, and older data about the stored period never replaces newer data about it.
+    assert.equal(await send("SUBSCRIBED","3200000000",older,now-9000),"applied");
+    assert.equal(await send("REFUND","3200000000",{transactionId:"0",expiresDate:now-31*DAY,revocationDate:now-1100},now-1000),"applied");
+    const snapshot=await store.appleSubscription("3200000000");
+    const parsed=(overrides)=>{const result=validateAppleTransaction(transaction({appAccountToken:userId,originalTransactionId:"3200000000",...overrides}),settings);assert.ok(result.ok);return result.transaction;};
+    const renewTo=(overrides,signedAt)=>{const record=nextAppleState(snapshot,{userId,transaction:parsed(overrides),type:"DID_RENEW",signedAt,now});assert.ok(record);return record;};
+    const earlier=renewTo(current,now-3000),later=renewTo({transactionId:"3",expiresDate:now+59*DAY},now-2000);
+    assert.equal(earlier.lastSignedAt,later.lastSignedAt,"both carry the stored renewal clock");
+    assert.ok(await store.upsertAppleSubscription(later));
+    assert.equal(await store.upsertAppleSubscription(earlier),null);
+    row=await store.appleSubscription("3200000000");
+    assert.equal(row?.latest_transaction_id,"3");assert.equal(Number(row?.expires_at),now+59*DAY);
+    assert.equal(await store.upsertAppleSubscription({...later,revokedAt:now-2100,revocationReason:"refund",latestSignedAt:now-2100}),null);
+    assert.equal((await store.appleSubscription("3200000000"))?.revoked_at,null);
+    assert.ok(await store.upsertAppleSubscription({...later,revokedAt:now-1900,revocationReason:"refund",latestSignedAt:now-1900}));
+    assert.equal(Number((await store.appleSubscription("3200000000"))?.revoked_at),now-1900);
+  }));
+
+  test(`${kind}: a delivery that loses a race with another one is recomputed from the newer row`,async()=>withStore(kind,async(store)=>{
+    const userId=await addUser(store),now=BASE;
+    const signed=(type,overrides,signedDate,uuid=randomUUID())=>notification(type,{
+      tx:transaction({appAccountToken:userId,originalTransactionId:"3300000000",...overrides}),renew:renewal({originalTransactionId:"3300000000",autoRenewStatus:type==="REFUND"&&overrides.transactionId==="1"?0:1}),signedDate,uuid
+    });
+    const older={transactionId:"1",expiresDate:now-DAY},current={transactionId:"2",expiresDate:now+29*DAY};
+    const {apple}=service(store);
+    assert.equal(await apple.processNotification(signed("SUBSCRIBED",older,now-9000)),"applied");
+    assert.equal(await apple.processNotification(signed("DID_RENEW",current,now-5000)),"applied");
+
+    // The current period's refund reads the row, then the older period's refund (signed later) is written before it.
+    const before=await store.appleSubscription("3300000000");
+    let reads=0;
+    const racing=Object.assign(Object.create(store),{async appleSubscription(original){reads+=1;return reads===1?before:store.appleSubscription(original);}});
+    assert.equal(await apple.processNotification(signed("REFUND",{...older,revocationDate:now-1100},now-1000)),"applied");
+    assert.equal(await service(racing).apple.processNotification(signed("REFUND",{...current,revocationDate:now-2100},now-2000)),"applied");
+    assert.equal(reads,2,"the refused write was recomputed once");
+    const row=await store.appleSubscription("3300000000");
+    assert.equal(row?.latest_transaction_id,"2");assert.equal(Number(row?.revoked_at),now-2100);
+    assert.equal(Number(row?.auto_renew),0,"the newer renewal state from the older period's refund is kept");
+    assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+
+    // A store that keeps refusing the write leaves the notification unrecorded, so Apple delivers it again.
+    let writes=0;
+    const busy=Object.assign(Object.create(store),{async upsertAppleSubscription(){writes+=1;return null;}});
+    const uuid=randomUUID();
+    await assert.rejects(service(busy).apple.processNotification(signed("REFUND_REVERSED",current,now-500,uuid)),(error)=>error.status===503&&error.code==="APPLE_STATE_BUSY");
+    assert.equal(writes,3);assert.equal(await store.appleNotification(uuid),null);
+  }));
 }
 
 test("signed transactions from the app grant access only to the account that bought them",async()=>withStore("local",async(store)=>{
@@ -305,7 +395,7 @@ test("signed transactions from the app grant access only to the account that bou
 
   // Once the first account's subscription is spent, a newer purchase by the same Apple ID for another account moves it.
   const spent=await store.appleSubscription("2000000000");
-  await store.upsertAppleSubscription({originalTransactionId:"2000000000",userId,productId:PRODUCT,environment:"Sandbox",latestTransactionId:"2000000001",purchasedAt:spent?.purchased_at??null,originalPurchasedAt:null,expiresAt:now-DAY,revokedAt:null,revocationReason:null,autoRenew:false,gracePeriodExpiresAt:null,lastSignedAt:now,createdAt:now,updatedAt:now});
+  await store.upsertAppleSubscription({originalTransactionId:"2000000000",userId,productId:PRODUCT,environment:"Sandbox",latestTransactionId:"2000000001",purchasedAt:spent?.purchased_at??null,originalPurchasedAt:null,expiresAt:now-DAY,revokedAt:null,revocationReason:null,autoRenew:false,gracePeriodExpiresAt:null,lastSignedAt:now,latestSignedAt:now,createdAt:now,updatedAt:now});
   const moved=await post({signedTransactions:[chain.signJws(transaction({appAccountToken:otherId,transactionId:"2000000060",purchaseDate:now,signedDate:now+1}))]});
   assert.equal(moved.status,200);assert.equal((await store.appleSubscription("2000000000"))?.user_id,otherId);
   assert.equal(await store.hasActiveAppleSubscription(otherId,now),true);
@@ -333,7 +423,7 @@ test("App Store Server Notifications are verified, rate-limited, and acknowledge
 test("account deletion warns about Apple billing while Apple says the subscription renews, even after a refund",async()=>withStore("local",async(store)=>{
   const {apple}=service(store);
   const userId=await addUser(store),now=Date.now();
-  const write=(overrides)=>store.upsertAppleSubscription({originalTransactionId:"2000000500",userId,productId:PRODUCT,environment:"Production",latestTransactionId:"2000000501",purchasedAt:now-40*DAY,originalPurchasedAt:now-40*DAY,expiresAt:now+20*DAY,revokedAt:now-DAY,revocationReason:"refund",autoRenew:true,gracePeriodExpiresAt:null,lastSignedAt:now,createdAt:now,updatedAt:now,...overrides});
+  const write=(overrides)=>store.upsertAppleSubscription({originalTransactionId:"2000000500",userId,productId:PRODUCT,environment:"Production",latestTransactionId:"2000000501",purchasedAt:now-40*DAY,originalPurchasedAt:now-40*DAY,expiresAt:now+20*DAY,revokedAt:now-DAY,revocationReason:"refund",autoRenew:true,gracePeriodExpiresAt:null,lastSignedAt:now,latestSignedAt:now,createdAt:now,updatedAt:now,...overrides});
   assert.ok(await write({}));
   assert.equal((await apple.subscriptionForUser(userId))?.active,false);
   assert.deepEqual(await apple.deletionNotice(userId),{message:DELETION_NOTICE,manageUrl:MANAGE_SUBSCRIPTIONS_URL});

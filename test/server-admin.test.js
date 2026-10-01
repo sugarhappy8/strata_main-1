@@ -478,8 +478,8 @@ test("admin reads require the bound owner session and return bounded, explicitly
   // Strata+ bought in the iOS app shows beside the Paddle state.
   const appleExpiresAt=Date.now()+30*24*60*60*1000,appleDb=openDatabase();
   try{
-    appleDb.prepare("INSERT INTO apple_subscriptions(original_transaction_id,user_id,product_id,environment,latest_transaction_id,purchased_at,original_purchased_at,expires_at,revoked_at,revocation_reason,auto_renew,grace_period_expires_at,last_signed_at,created_at,updated_at) VALUES('5000000000',?,'online.stratafitness.app.plus.monthly','Production','5000000001',?,?,?,NULL,NULL,1,NULL,?,?,?)")
-      .run(member.user.id,Date.now(),Date.now(),appleExpiresAt,Date.now(),Date.now(),Date.now());
+    appleDb.prepare("INSERT INTO apple_subscriptions(original_transaction_id,user_id,product_id,environment,latest_transaction_id,purchased_at,original_purchased_at,expires_at,revoked_at,revocation_reason,auto_renew,grace_period_expires_at,last_signed_at,latest_signed_at,created_at,updated_at) VALUES('5000000000',?,'online.stratafitness.app.plus.monthly','Production','5000000001',?,?,?,NULL,NULL,1,NULL,?,?,?,?)")
+      .run(member.user.id,Date.now(),Date.now(),appleExpiresAt,Date.now(),Date.now(),Date.now(),Date.now());
   }finally{appleDb.close();}
   const appleDetail=await request(`/api/admin/users/${encodeURIComponent(member.user.id)}`,{headers:{Cookie:admin.cookie}});
   assert.deepEqual(appleDetail.data.user.discovery.apple,{activeCount:1,expiresAt:appleExpiresAt,subscription:{active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt:appleExpiresAt,autoRenew:true,inGracePeriod:false,environment:"Production",revoked:false}});
