@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>STRATA · No connection</title>
+  <style>
+    :root{--ink:#10110f;--text:#f2f3eb;--muted:#b9bdb1;--accent:#d4f578}
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--ink);color:var(--text);font:16px/1.5 -apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+    main{min-height:100vh;display:grid;align-content:center;gap:20px;padding:calc(32px + env(safe-area-inset-top)) max(24px,env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(24px,env(safe-area-inset-left));max-width:520px;margin:0 auto}
+    svg{width:64px;height:64px}
+    h1{margin:0;font-size:32px;line-height:1.1;letter-spacing:-.02em}
+    p{margin:0;color:var(--muted)}
+    button{justify-self:start;min-height:48px;padding:0 24px;border:0;border-radius:999px;background:var(--accent);color:var(--ink);font:700 16px inherit;font-family:inherit}
+    button:focus-visible{outline:3px solid var(--text);outline-offset:3px}
+  </style>
+</head>
+<body>
+  <main>
+    <svg viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="216" fill="#191b17"/><path d="M250 666 330 666 382 438 302 438Z" fill="#faf9f5"/><path d="M410 666 502 666 576 338 484 338Z" fill="#d9ff43"/><path d="M594 666 700 666 798 232 692 232Z" fill="#faf9f5"/><path d="M238 744H786" stroke="#ff5a36" stroke-width="32" stroke-linecap="square"/></svg>
+    <h1>STRATA can't connect.</h1>
+    <p>Check your connection and try again. Once STRATA has opened online, your week and a workout in progress also work offline.</p>
+    <button type="button" id="retry">Try again</button>
+  </main>
+  <script>
+    document.getElementById("retry").addEventListener("click",function(){window.location.replace("https://stratafitness.online/");});
+  </script>
+</body>
+</html>

@@ -45,3 +45,6 @@
   /* Motion */
   --strata-ease-out:cubic-bezier(.22,1,.36,1);
 }
+
+/* Inside the STRATA iOS app (app-shell.js sets data-app before first paint) the site is already installed. */
+:root[data-app="ios"] a[href^="/install"] { display:none !important; }

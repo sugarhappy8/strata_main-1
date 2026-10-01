@@ -204,6 +204,7 @@ const STATIC_FILES = new Map([
   ["admin-events.js","scripts/admin-events.js"],
   ["admin.js","scripts/admin.js"],
   ["pwa.js","scripts/pwa.js"],
+  ["app-shell.js","scripts/app-shell.js"],
   ["service-worker.js","service-worker.js"],
   ["manifest.webmanifest","manifest.webmanifest"],
   ["exercises.json","data/exercises.json"],

@@ -1,0 +1,24 @@
+{
+  "name": "strata-ios",
+  "version": "1.0.0",
+  "private": true,
+  "description": "STRATA's iOS app: a Capacitor shell around stratafitness.online.",
+  "license": "UNLICENSED",
+  "scripts": {
+    "sync": "cap sync ios",
+    "open": "cap open ios"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@capacitor/core": "8.5.2",
+    "@capacitor/ios": "8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.5.2"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

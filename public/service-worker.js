@@ -56,6 +56,7 @@ const PRECACHE_URLS=[
   "/pricing.js?v=9.1.0",
   "/contact.js?v=9.1.0",
   "/pwa.js?v=9.1.0",
+  "/app-shell.js?v=9.1.0",
   "/styles.css?v=9.1.0",
   "/home-logic.js?v=9.1.0",
   "/home-state.js?v=9.1.0",
