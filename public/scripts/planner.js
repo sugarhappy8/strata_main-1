@@ -185,8 +185,8 @@ function downloadWeeklyPlan(){
   const blob=new Blob([JSON.stringify(exported,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob),link=document.createElement("a");
   link.href=url;link.download=`strata-weekly-plan-${new Date().toISOString().slice(0,10)}.json`;link.hidden=true;
-  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
-  showToast("Weekly plan downloaded. Import it from Week templates or in Strata+.");
+  document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60_000);
+  showToast(globalThis.StrataApp?"Weekly plan ready. Choose where to save it. Import it from Week templates or in Strata+.":"Weekly plan downloaded. Import it from Week templates or in Strata+.");
 }
 
 function planMovementCount(plan=state.plan){

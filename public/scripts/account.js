@@ -158,7 +158,7 @@ async function downloadExport(event){
     const result=await api.exportAccount();if(!await confirmPrivateOperation(operation))return;
     const href=URL.createObjectURL(result.blob),link=document.createElement("a");
     const filename=result.contentDisposition.match(/filename="(strata-account-export-\d{4}-\d{2}-\d{2}\.json)"/)?.[1]||"strata-account-export-download.json";
-    link.href=href;link.download=filename;link.hidden=true;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(href),0);renderer.showAccountControlStatus("accountExportStatus","Your JSON export was downloaded.");
+    link.href=href;link.download=filename;link.hidden=true;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(href),60_000);renderer.showAccountControlStatus("accountExportStatus",globalThis.StrataApp?"Your JSON export is ready. Choose where to save it.":"Your JSON export was downloaded.");
   }catch(error){
     if(!state.isCurrentPrivateOperation(operation))return;
     if(logic.accountBoundaryChanged(error)){showChangedAccount();return;}
@@ -181,11 +181,14 @@ async function openBillingPortal(kind,event){
   finally{if(state.isCurrentPrivateOperation(operation))buttons.forEach((control)=>{control.disabled=false;});}
 }
 
-// Inside the iOS app an App Store subscription is managed on Apple's own sheet.
-async function manageAppleSubscription(){
+// Inside the iOS app an App Store subscription is managed on Apple's own sheet; an app build without it, or a sheet
+// that fails to open, goes to Apple's subscriptions page instead. On the website the link opens that page itself.
+async function manageAppleSubscription(event,href=logic.APPLE_MANAGE_URL){
+  if(!globalThis.StrataApp)return;
+  event?.preventDefault?.();
   const status=el("accountBillingStatus");status.textContent="";status.classList.remove("bad");
   try{const native=globalThis.StrataAppMode?.plugin?.();if(typeof native?.manageSubscriptions!=="function")throw new Error("unavailable");await native.manageSubscriptions();}
-  catch{status.textContent="Open Settings › Apple Account › Subscriptions to manage Strata+.";status.classList.add("bad");}
+  catch{location.assign(logic.safeAppleManageUrl(href));}
 }
 
 async function requestSecurityEmail(kind,event){
@@ -196,7 +199,8 @@ async function requestSecurityEmail(kind,event){
   try{
     const result=kind==="delete"?await api.requestDeletion():await api.requestPasswordReset();
     if(!await confirmPrivateOperation(operation))return;
-    renderer.showSecurityStatus(kind==="delete"?`A deletion confirmation link was sent to ${result.maskedEmail||"your registered email"}. Nothing is deleted until you open it and type DELETE. ${globalThis.StrataApp?"Deletion does not cancel a subscription or refund a charge; an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions.":"Deletion does not cancel a Paddle subscription or refund a charge."}`:`A password-reset link was sent to ${result.maskedEmail||"your registered email"}. The link expires after 30 minutes.`);
+    const apple=kind==="delete"?logic.appleDeletionNotice(result):null;
+    renderer.showSecurityStatus(kind==="delete"?`A deletion confirmation link was sent to ${result.maskedEmail||"your registered email"}. Nothing is deleted until you open it and type DELETE. ${apple?`Deletion does not cancel a subscription or refund a charge. ${apple.message}`:globalThis.StrataApp?"Deletion does not cancel a subscription or refund a charge; an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions.":"Deletion does not cancel a Paddle subscription or refund a charge."}`:`A password-reset link was sent to ${result.maskedEmail||"your registered email"}. The link expires after 30 minutes.`,{appleLink:apple?.manageUrl||""});
     if(kind==="delete")el("accountDeleteCancel").hidden=false;
   }catch(error){if(!state.isCurrentPrivateOperation(operation))return;if(logic.accountBoundaryChanged(error)){showChangedAccount();return;}renderer.showSecurityStatus(logic.securityError(error),{error:true});}
   finally{if(state.isCurrentPrivateOperation(operation)){button.disabled=false;renderer.setButtonBusy(button,false);}}
@@ -229,5 +233,6 @@ StrataAccountEvents.bind({
   enhanceAuth:typeof globalThis.fetch==="function"&&typeof globalThis.FormData==="function"
 });
 
-el("accountManageApple").addEventListener("click",()=>void manageAppleSubscription());
+el("accountManageApple").addEventListener("click",(event)=>void manageAppleSubscription(event));
+el("accountSecurityAppleLink").addEventListener("click",(event)=>void manageAppleSubscription(event,el("accountSecurityAppleLink").href));
 initialize();

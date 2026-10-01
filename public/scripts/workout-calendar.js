@@ -10,10 +10,12 @@
   function escapeIcs(value){return String(value||"").replace(/\\/g,"\\\\").replace(/\r?\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;");}
   // RFC 5545 keeps content lines within 75 octets; a longer line continues on lines that start with a space.
   function fold(line){let out="",size=0;for(const character of line){const point=character.codePointAt(0)||0,bytes=point<0x80?1:point<0x800?2:point<0x10000?3:4;if(size+bytes>75){out+="\r\n ";size=1;}out+=character;size+=bytes;}return out;}
+  const TIME=/^([01]\d|2[0-3]):([0-5]\d)$/;
+  function plannedDays(plan,days){return days.filter((day)=>Array.isArray(plan?.days?.[day])&&plan.days[day].length);}
   // One repeating event per planned weekday at a chosen local time, with an optional reminder. Each weekday keeps
   // the same UID and a newer SEQUENCE, so importing a fresh file updates earlier events instead of duplicating them.
   function weeklySchedule(plan,days,{time="18:00",alarmMinutes=30,durationMinutes=60,from=new Date()}={}){
-    const planned=days.filter((day)=>Array.isArray(plan?.days?.[day])&&plan.days[day].length),match=/^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(time));
+    const planned=plannedDays(plan,days),match=TIME.exec(String(time));
     if(!planned.length||!match)return null;
     const codes=["MO","TU","WE","TH","FR","SA","SU"],local=(date)=>`${dateStamp(date)}T${String(date.getHours()).padStart(2,"0")}${String(date.getMinutes()).padStart(2,"0")}00`,stamp=from.toISOString().replace(/[-:]/g,"").replace(/\.\d{3}/,""),sequence=Math.max(0,Math.floor(from.getTime()/60000));
     const events=planned.flatMap((day)=>{
@@ -24,5 +26,13 @@
     const ics=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//STRATA//Weekly Training//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH",...events,"END:VCALENDAR",""].map(fold).join("\r\n");
     return{days:planned,filename:"strata-weekly-training.ics",ics,href:`data:text/calendar;charset=utf-8,${encodeURIComponent(ics)}`};
   }
-  return{weeklySchedule};
+  // Calendar numbers weekdays 1 (Sunday) to 7 (Saturday); STRATA's week runs Monday to Sunday.
+  function calendarWeekday(day,days){const index=days.indexOf(day);return index<0?0:(index+1)%7+1;}
+  // The same schedule as one event repeating on every planned weekday, for the iOS app's Calendar sheet.
+  function nativeWeekly(plan,days,{time="18:00",alarmMinutes=30,durationMinutes=60}={}){
+    const planned=plannedDays(plan,days),match=TIME.exec(String(time)),alarm=Number(alarmMinutes);
+    if(!planned.length||!match)return null;
+    return{title:"STRATA workout",notes:`Planned training days: ${planned.join(", ")}. Open STRATA to start.`,weekdays:planned.map((day)=>calendarWeekday(day,days)),hour:Number(match[1]),minute:Number(match[2]),durationMinutes,alarmMinutesBefore:Number.isFinite(alarm)&&alarm>0?alarm:null};
+  }
+  return{weeklySchedule,calendarWeekday,nativeWeekly};
 });

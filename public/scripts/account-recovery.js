@@ -69,6 +69,26 @@ function bearerToken(){
   return token;
 }
 
+// While a Strata+ subscription bought in the iOS app is live or set to renew, the server's deletion responses carry
+// appleBilling: deleting the account does not stop Apple's billing, so the page says so and links to Apple.
+const APPLE_MANAGE_URL="https://apps.apple.com/account/subscriptions";
+function safeAppleUrl(value){
+  try{const url=new URL(String(value||""));return url.protocol==="https:"&&url.hostname==="apps.apple.com"&&!url.username&&!url.password?url.href:APPLE_MANAGE_URL;}
+  catch{return APPLE_MANAGE_URL;}
+}
+function showAppleBilling(response){
+  const notice=el("deleteAppleBilling"),message=typeof response?.appleBilling?.message==="string"?response.appleBilling.message.trim():"";
+  if(!notice||!message)return;
+  el("deleteAppleBillingMessage").textContent=message;el("deleteAppleBillingLink").href=safeAppleUrl(response.appleBilling.manageUrl);notice.hidden=false;
+}
+// Inside the iOS app the link opens Apple's own subscriptions sheet when the app build has it.
+async function openAppleSubscriptions(event){
+  const native=globalThis.StrataApp?globalThis.StrataAppMode?.plugin?.():null;
+  if(typeof native?.manageSubscriptions!=="function")return;
+  event.preventDefault();
+  try{await native.manageSubscriptions();}catch{location.assign(safeAppleUrl(el("deleteAppleBillingLink").href));}
+}
+
 function errorMessage(error,fallback){
   if(error?.code==="network")return error.message;
   if(error?.status===429)return "Too many attempts. Please wait and try again.";
@@ -170,11 +190,11 @@ async function setupDeleteAccount(){
     return;
   }
   if(!token){unavailableState();return;}
-  el("deleteToken").value=token;
+  el("deleteToken").value=token;el("deleteAppleBillingLink")?.addEventListener("click",(event)=>void openAppleSubscriptions(event));
   try{
     const status=await readJson("/api/account/delete/status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token})});
     if(status.active!==true){unavailableState();return;}
-    form.hidden=false;
+    showAppleBilling(status);form.hidden=false;
     state.classList.add("warn");
     state.querySelector("span").textContent=`Deletion is awaiting confirmation for ${status.maskedEmail||"your account"}.`;
     requestAnimationFrame(()=>confirmation.focus({preventScroll:false}));
@@ -192,8 +212,8 @@ async function setupDeleteAccount(){
     if(confirmation.value!=="DELETE"){showMessage(message,"Type DELETE exactly to confirm permanent account deletion.");confirmation.focus();return;}
     setBusy(form,button,true);
     try{
-      await readJson("/api/account/delete/complete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,confirmation:"DELETE"})});
-      confirmation.value="";el("deleteToken").value="";
+      const result=await readJson("/api/account/delete/complete",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({token,confirmation:"DELETE"})});
+      showAppleBilling(result);confirmation.value="";el("deleteToken").value="";
       form.hidden=true;unavailable.hidden=true;success.hidden=false;
       state.classList.remove("warn","bad");state.classList.add("good");
       state.querySelector("span").textContent="The account was permanently deleted.";

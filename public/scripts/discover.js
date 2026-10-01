@@ -513,7 +513,7 @@ function populateMonthlyBuilder(plan=null){
 }
 function downloadTextFile(text,filename,type="text/plain"){
   const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),link=document.createElement("a");
-  link.href=url;link.download=filename;link.hidden=true;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+  link.href=url;link.download=filename;link.hidden=true;document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60_000);
 }
 async function shareMonthlyPlan(){
   if(!state.monthlyPlan)return;
@@ -525,8 +525,8 @@ async function shareMonthlyPlan(){
       await navigator.share({title,text});showToast("Plan shared.");return;
     }
     if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);showToast("Plan copied to your clipboard.");return;}
-    downloadTextFile(text,"strata-31-day-plan.txt");showToast("Share file downloaded.");
-  }catch(error){if(error?.name!=="AbortError"){downloadTextFile(text,"strata-31-day-plan.txt");showToast("Sharing was unavailable, so a plan file was downloaded.");}}
+    downloadTextFile(text,"strata-31-day-plan.txt");showToast(globalThis.StrataApp?"Plan file ready. Choose where to save it.":"Share file downloaded.");
+  }catch(error){if(error?.name!=="AbortError"){downloadTextFile(text,"strata-31-day-plan.txt");showToast(globalThis.StrataApp?"Sharing was unavailable, so your plan is ready as a file. Choose where to save it.":"Sharing was unavailable, so a plan file was downloaded.");}}
 }
 async function printMonthlyPlan(){
   if(!state.monthlyPlan)return;

@@ -6,9 +6,10 @@
      by app-mode.css;
    - turns the homepage into Rankings / a free-week preview / a welcome screen, and sends signed-in members to Dashboard;
    - marks each navigation as a tab switch, a push, or Back so app-mode.css can pick the matching transition;
-   - talks to the native StrataNative plugin (haptics, printing, App Store transactions) when the app build has it, and
-     keeps Strata+ in sync: every StoreKit transaction update and, once per launch, the current entitlements are sent to
-     STRATA, and a transaction is finished only after STRATA accepted it. */
+   - talks to the native StrataNative plugin (haptics, printing, screen awake, rest alerts, Calendar, App Store
+     transactions) when the app build has it, and keeps Strata+ in sync: every StoreKit transaction update and, once
+     per launch, the current entitlements are sent to STRATA, and a transaction is finished only after STRATA accepted
+     it. */
 (function(root,factory){
   const api=factory(root);
   if(typeof module==="object"&&module.exports)module.exports=api;
@@ -114,6 +115,38 @@
   async function print(options={}){
     const native=plugin();if(typeof native?.print!=="function")return false;
     await native.print(options);return true;
+  }
+  // Newer app builds add methods; has() tells a page whether this build has one. Each wrapper resolves to null (or
+  // false) when it does not, and the niceties (screen awake, rest alerts, info) also swallow a native refusal. The
+  // calendar sheet passes a refusal on, so its caller can fall back to the .ics download.
+  // Capacitor exports each method a build has as an own property of the plugin object.
+  const withMethod=(method)=>{const native=plugin();return native&&Object.hasOwn(native,method)&&typeof native[method]==="function"?native:null;};
+  const has=(method)=>Boolean(withMethod(method));
+  async function call(method,options={},{quiet=true}={}){
+    const native=withMethod(method);if(!native)return null;
+    try{return (await native[method](options))||{};}catch(error){if(quiet)return null;throw error;}
+  }
+  const keepAwake=(enabled)=>call("keepAwake",{enabled:enabled===true}).then(Boolean);
+  const scheduleRestAlert=({endsAt,title="",body=""}={})=>call("scheduleRestAlert",{endsAt:Number(endsAt),title:String(title),body:String(body)});
+  const cancelRestAlert=()=>call("cancelRestAlert").then(Boolean);
+  const addWeeklyToCalendar=(options)=>call("addWeeklyToCalendar",options,{quiet:false});
+  const info=()=>call("info");
+  // Keeps the screen-awake flag and the one pending rest alert in step with what a workout page reports, calling the
+  // app only when that changes, so a page may report as often as it likes (the workout page does every second).
+  // The app lets the screen sleep again whenever it goes to the background, so the first report after a long gap (the
+  // page was suspended) asks again. A rest that has run out cancels its alert, which also clears it once seen.
+  const RESUME_GAP=15_000;
+  function createWorkoutBridge({title="Rest is over",body="Time for your next set."}={}){
+    let awake=false,alertAt=0,reportedAt=0;
+    function sync({keepAwake:wantAwake=false,restEndsAt=0,now=Date.now()}={}){
+      const want=Boolean(wantAwake),resumed=now-reportedAt>RESUME_GAP;reportedAt=now;
+      if(want!==awake||want&&resumed){awake=want;void keepAwake(awake);}
+      const endsAt=Number(restEndsAt)>now?Number(restEndsAt):0;
+      if(endsAt===alertAt)return;
+      alertAt=endsAt;
+      if(endsAt)void scheduleRestAlert({endsAt,title,body});else void cancelRestAlert();
+    }
+    return Object.freeze({sync});
   }
 
   function createBilling({fetchImpl=(...args)=>root.fetch(...args),dispatch=(name,detail)=>root.dispatchEvent?.(new root.CustomEvent(name,{detail})),storage=()=>root.sessionStorage}={}){
@@ -265,6 +298,8 @@
       if(screen.id==="profile"){
         const build=document.querySelector("body > footer > span")?.textContent?.trim()||"";
         document.getElementById("accountPage")?.insertAdjacentHTML("beforeend",moreHtml(build));
+        // Support asks which app build someone runs; newer builds can say.
+        void info().then((app)=>{const line=document.querySelector(".app-more-build");if(line&&app?.appVersion)line.textContent=`${build} · App ${app.appVersion}${app.build?` (${app.build})`:""}`;});
       }
       if(screen.id==="pricing"){
         const script=document.createElement("script");script.src="/app-paywall.js?v=9.1.0";document.head.append(script);
@@ -280,5 +315,5 @@
     else ready();
   }
 
-  return Object.freeze({TABS,SCREENS,ICONS,resolveScreen,tabBarHtml,topBarHtml,welcomeHtml,moreHtml,plugin,haptic,print,createBilling,billing,start,NAV_KEY,SYNC_KEY});
+  return Object.freeze({TABS,SCREENS,ICONS,resolveScreen,tabBarHtml,topBarHtml,welcomeHtml,moreHtml,plugin,haptic,print,has,keepAwake,scheduleRestAlert,cancelRestAlert,addWeeklyToCalendar,info,createWorkoutBridge,createBilling,billing,start,NAV_KEY,SYNC_KEY});
 });

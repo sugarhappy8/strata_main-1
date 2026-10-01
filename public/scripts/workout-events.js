@@ -77,6 +77,7 @@
     $("timerToggle").addEventListener("click",()=>{if(!state.workout||state.workout.status!=="active")return;const remaining=W.remainingSeconds(state.workout.restEndsAt);if(state.workout.restEndsAt&&remaining>0){state.pausedSeconds=remaining;state.workout.restEndsAt=null;markDirty();tick();}else startRest(state.pausedSeconds||Number($("restDuration").value));});
     $("timerReset").addEventListener("click",()=>{if(!state.workout||state.workout.status!=="active")return;state.workout.restEndsAt=null;state.pausedSeconds=null;state.timerAnnounced=false;markDirty();tick();});
     for(const id of ["calendarWeeklyTime","calendarWeeklyAlarm"])$(id)?.addEventListener("change",actions.updateWeeklyCalendar);
+    $("calendarWeeklyLink")?.addEventListener("click",(event)=>{void actions.addWeeklyToCalendar?.(event);});
     $("restDuration").addEventListener("change",()=>{rememberPreferences();tick();});$("autoRest").addEventListener("change",rememberPreferences);$("nextSet").addEventListener("click",focusNextSet);$("saveNow").addEventListener("click",()=>void flushSave());
     $("closeSession").addEventListener("click",async()=>{if(!state.workout||state.workout.status!=="active"||state.conflict||state.blocked)return;const invalid=$("sessionEntries").querySelector("input[aria-invalid=true]");if(invalid){invalid.focus();errorMessage("Correct or clear the highlighted actual value before saving and closing.");return;}if(state.dirty)await flushSave();if(state.dirty||state.saving||state.conflict||state.blocked)return;persistDraft();returnToPlan();toast("Session saved. Resume it from your history whenever you’re ready.");});
     $("exportDraft").addEventListener("click",exportDraft);$("exportConflict").addEventListener("click",exportDraft);
@@ -96,6 +97,8 @@
     windowLike.addEventListener("beforeunload",(event)=>{persistDraft();if(state.dirty||state.checkInBusy||state.swapBusy){event.preventDefault();event.returnValue="";}});
     documentLike.addEventListener("visibilitychange",()=>{if(documentLike.visibilityState==="hidden")persistDraft();else if(state.mode==="account"&&!state.blocked)void assertIdentity().catch((error)=>{if(error.status!==401&&error.code!=="IDENTITY_CHANGED")status(saveError(error),"error");});tick();});
     windowLike.addEventListener("online",()=>{if(state.dirty&&!state.blocked&&!state.conflict)toast("Connection restored. Choose Save now to retry your pending account changes.");});
+    // Leaving the page lets the screen sleep (in the iOS app); coming back from the back/forward cache keeps it awake again.
+    windowLike.addEventListener("pagehide",()=>{state.pageHidden=true;tick();});windowLike.addEventListener("pageshow",()=>{state.pageHidden=false;tick();});
   }
   return{bind};
 });

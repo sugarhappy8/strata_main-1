@@ -5,7 +5,10 @@
   // saveError stays set until a device write succeeds, so no later render or message can report a failed save as saved.
   const state={context:null,record:null,catalog:new Map(),locked:false,saveError:""};
   const esc=(value)=>String(value??"").replace(/[&<>"']/g,(character)=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[character]));
-  function unavailable(message){state.locked=true;$("offlineSession").hidden=true;$("offlineUnavailable").hidden=false;$("offlineUnavailableMessage").textContent=message;$("offlineTitle").focus();}
+  // Inside the iOS app the screen stays awake while an unfinished workout is open here; browsers have no StrataAppMode.
+  const appBridge=globalThis.StrataAppMode?.createWorkoutBridge?.()||null;let leaving=false;
+  function syncApp(){appBridge?.sync({keepAwake:!leaving&&!state.locked&&state.record?.workout.status==="active"&&document.visibilityState!=="hidden"});}
+  function unavailable(message){state.locked=true;syncApp();$("offlineSession").hidden=true;$("offlineUnavailable").hidden=false;$("offlineUnavailableMessage").textContent=message;$("offlineTitle").focus();}
   function error(message=""){const text=[state.saveError,message].filter(Boolean).join(" ");$("offlineError").textContent=text;$("offlineError").hidden=!text;}
   function setStates(sync="Sync pending",kind=""){$("deviceSaveState").textContent=state.saveError?"Couldn't save — Retry":"Saved on device";$("syncState").textContent=sync;$("syncState").className=kind;}
   function timestamp(value){const numeric=Number(value);if(Number.isFinite(numeric))return numeric;const parsed=Date.parse(String(value||""));return Number.isFinite(parsed)?parsed:0;}
@@ -33,7 +36,7 @@
       // Completed sets and finished workouts are read-only; uncheck a set to reopen it for editing.
       return `<article class="offline-entry" data-entry="${esc(entry.id)}"><h3>${esc(movement.name)}</h3><p>${esc(entry.prescribedReps)} planned · ${timed?"time":"reps"}${weighted?` · ${esc(entry.loadType)} load in ${esc(entry.unit)}`:" · bodyweight"}</p><div class="offline-sets">${entry.sets.map((set,index)=>{const locked=set.completed||!active;return `<div class="offline-set${set.completed?" is-complete":""}" data-set="${index}"><span>Set ${index+1}</span>${weighted?input(entry,set,"weight",entry.loadType==="assisted"?`Assist (${entry.unit})`:`Load (${entry.unit})`,locked):""}${timed?input(entry,set,"seconds","Seconds",locked):input(entry,set,"reps","Reps",locked)}${effort?input(entry,set,"effort",entry.effortType.toUpperCase(),locked):""}<label class="offline-complete"><input type="checkbox" data-complete ${set.completed?"checked":""}${active?"":" disabled"} /> Completed</label></div>`;}).join("")}</div><label class="offline-note">Private note<textarea maxlength="500" data-note${active?"":" disabled"}>${esc(entry.note||"")}</textarea></label></article>`;
     }).join("");
-    $("finishOffline").disabled=!active;setStates();
+    $("finishOffline").disabled=!active;setStates();syncApp();
   }
   function entryFor(node){return state.record?.workout.entries.find((entry)=>entry.id===node.closest("[data-entry]")?.dataset.entry);}
   function persist(){
@@ -68,7 +71,7 @@
   }
   function download(){
     if(!state.record)return;const blob=new Blob([JSON.stringify({format:"strata-workout-draft",version:1,workout:state.record.workout,unsaved:true,pausedRestSeconds:state.record.pausedSeconds??null},null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),link=document.createElement("a");
-    link.href=url;link.download=`strata-workout-${state.record.workout.date}-${state.record.workout.id}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    link.href=url;link.download=`strata-workout-${state.record.workout.date}-${state.record.workout.id}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),60_000);
   }
   function repairNotice(repairs){
     const labels={reps:"reps",seconds:"seconds",weight:"load",effort:"effort"};
@@ -107,14 +110,15 @@
       const invalid=row.querySelector("[aria-invalid=true]");if(invalid){event.target.checked=false;invalid.focus();error("Correct this set’s highlighted value before completing it.");return;}
       const message=W.actualError(entry,set);if(message){event.target.checked=false;error(`${exercise(entry.exerciseId).name}: ${message}`);return;}
     }
-    set.completed=event.target.checked;persist();render();
+    set.completed=event.target.checked;persist();render();if(set.completed)globalThis.StrataAppMode?.haptic("light");
     $("offlineEntries").querySelector(`[data-entry="${CSS.escape(entry.id)}"] [data-set="${index}"] [data-complete]`)?.focus();
   });
   $("saveOnDevice").addEventListener("click",()=>persist());$("syncWorkout").addEventListener("click",()=>void sync());$("downloadOfflineDraft").addEventListener("click",download);
   $("finishOffline").addEventListener("click",()=>{if(!finishReady())return;const counts=W.progress(state.record.workout),left=counts.total-counts.completed;$("finishOfflineCounts").textContent=`You’ve completed ${counts.completed} of ${counts.total} sets. ${left?`${left} ${left===1?"set":"sets"} will stay unfinished.`:"Every set is complete."}`;$("finishOfflineDialog").returnValue="cancel";$("finishOfflineDialog").showModal();});
-  $("finishOfflineDialog").addEventListener("close",()=>{if($("finishOfflineDialog").returnValue!=="finish"||!finishReady())return;const workout=state.record.workout;workout.status="completed";workout.completedAt=Date.now();workout.elapsedSeconds=Math.min(604800,Math.max(0,Math.floor((workout.completedAt-workout.startedAt)/1000)));workout.restEndsAt=null;const stored=persist();render();error(stored?"Finished on this device. Reconnect and choose Review & sync to verify the original account and save it to history.":"Finished in this tab, but not stored on the device yet. Choose Save on device to retry.");});
+  $("finishOfflineDialog").addEventListener("close",()=>{if($("finishOfflineDialog").returnValue!=="finish"||!finishReady())return;const workout=state.record.workout;workout.status="completed";workout.completedAt=Date.now();workout.elapsedSeconds=Math.min(604800,Math.max(0,Math.floor((workout.completedAt-workout.startedAt)/1000)));workout.restEndsAt=null;const stored=persist();render();globalThis.StrataAppMode?.haptic("success");error(stored?"Finished on this device. Reconnect and choose Review & sync to verify the original account and save it to history.":"Finished in this tab, but not stored on the device yet. Choose Save on device to retry.");});
   window.addEventListener("online",()=>{if(!state.locked){setStates();error("Connection restored. Choose Review & sync when you are ready.");}});
   // Warn before leaving when the latest changes exist only in this tab.
   window.addEventListener("beforeunload",(event)=>{if(!state.record)return;if(state.locked?state.saveError:!persist()){event.preventDefault();event.returnValue="";}});
-  setInterval(validateAccess,5000);void initialize();
+  document.addEventListener("visibilitychange",syncApp);window.addEventListener("pagehide",()=>{leaving=true;syncApp();});window.addEventListener("pageshow",()=>{leaving=false;syncApp();});
+  setInterval(()=>{validateAccess();syncApp();},5000);void initialize();
 })();

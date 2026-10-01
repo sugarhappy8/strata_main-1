@@ -16,6 +16,10 @@
   const view=R.create({state,workout:W,discovery:G,nextTarget:entry=>progression.targetFor(entry)});
   const {esc,number,exercise,formatLabel,hasActuals,memoryFor}=view;
   const saveError=S.saveError;
+  // Inside the iOS app the screen stays awake while a workout is in progress on screen, and a native alert marks the
+  // end of a rest that runs out while STRATA is in the background. Browsers have no StrataAppMode, so none of this runs.
+  const appBridge=globalThis.StrataAppMode?.createWorkoutBridge?.({title:"Rest is over",body:"Time for your next set."})||null;
+  function syncApp(){if(!appBridge)return;const active=state.workout?.status==="active"&&!state.blocked;appBridge.sync({keepAwake:active&&!state.pageHidden&&document.visibilityState!=="hidden",restEndsAt:active?state.workout.restEndsAt:0});}
   function toast(message){
     $("workoutToast").textContent=message;$("workoutToast").classList.add("is-visible");
     clearTimeout(state.toastTimer);state.toastTimer=setTimeout(()=>$("workoutToast").classList.remove("is-visible"),5000);
@@ -48,7 +52,7 @@
     return client.request(path,options);
   }
   function blockSession(){
-    state.blocked=true;progression.reset();clearTimeout(state.saveTimer);persistDraft();
+    state.blocked=true;progression.reset();clearTimeout(state.saveTimer);persistDraft();syncApp();
     document.body.classList.remove("has-workout-access");
     clearOfflineContext();
     $("trainingRoom").hidden=true;$("historySection").hidden=true;$("recoveryPanel").hidden=true;$("conflictPanel").hidden=true;
@@ -60,7 +64,7 @@
     if($("swapDialog").open)$("swapDialog").close();
   }
   function blockAccess(){
-    state.blocked=true;progression.reset();clearTimeout(state.saveTimer);persistDraft();
+    state.blocked=true;progression.reset();clearTimeout(state.saveTimer);persistDraft();syncApp();
     document.body.classList.remove("has-workout-access");
     clearOfflineContext();
     $("trainingRoom").hidden=true;$("historySection").hidden=true;$("recoveryPanel").hidden=true;$("conflictPanel").hidden=true;$("accessPanel").hidden=false;
@@ -144,8 +148,17 @@
   function renderPlan(){contextView.render();updateWeeklyCalendar();recoveryView.render();}
   function updateWeeklyCalendar(){
     const alarm=Number($("calendarWeeklyAlarm").value)||0,schedule=C.weeklySchedule(state.plan,W.DAYS,{time:$("calendarWeeklyTime").value||"18:00",alarmMinutes:alarm});$("calendarWeekly").hidden=!schedule;if(!schedule)return;
-    const time=new Date(`2026-01-05T${$("calendarWeeklyTime").value||"18:00"}:00`).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}),days=new Intl.ListFormat(undefined,{type:"conjunction"}).format(schedule.days);
-    $("calendarWeeklyLink").href=schedule.href;$("calendarWeeklyLink").download=schedule.filename;$("calendarWeeklySummary").textContent=`${days} at ${time}, every week${alarm?`, with a reminder ${alarm===60?"1 hour":`${alarm} minutes`} before`:""}. Re-download after you change your plan.`;
+    const time=new Date(`2026-01-05T${$("calendarWeeklyTime").value||"18:00"}:00`).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}),days=new Intl.ListFormat(undefined,{type:"conjunction"}).format(schedule.days),native=nativeCalendar();
+    if(native)$("calendarWeeklyLink").textContent="Add to Calendar";
+    $("calendarWeeklyLink").href=schedule.href;$("calendarWeeklyLink").download=schedule.filename;$("calendarWeeklySummary").textContent=`${days} at ${time}, every week${alarm?`, with a reminder ${alarm===60?"1 hour":`${alarm} minutes`} before`:""}.${native?" If your plan changes, edit the event in Calendar.":" Re-download after you change your plan."}`;
+  }
+  // In the iOS app the weekly schedule opens Calendar's own New Event sheet; if the app refuses, the .ics file downloads.
+  function nativeCalendar(){return Boolean(globalThis.StrataAppMode?.has?.("addWeeklyToCalendar"));}
+  async function addWeeklyToCalendar(event){
+    const options=nativeCalendar()&&C.nativeWeekly(state.plan,W.DAYS,{time:$("calendarWeeklyTime").value||"18:00",alarmMinutes:Number($("calendarWeeklyAlarm").value)||0});if(!options)return;
+    event.preventDefault();
+    try{if((await globalThis.StrataAppMode.addWeeklyToCalendar(options))?.added===true)toast("Added to your calendar.");}
+    catch{const link=document.createElement("a");link.href=$("calendarWeeklyLink").href;link.download=$("calendarWeeklyLink").download;link.hidden=true;document.body.append(link);link.click();link.remove();}
   }
   function memoryReadyFor(workout){return !workout||state.memoryExhausted||workout.entries.every((entry)=>memoryFor(entry));}
   function mergeMemory(items){state.memoryHistory=[...new Map([...state.memoryHistory,...items].map((item)=>[item.id,item])).values()].sort((a,b)=>b.startedAt-a.startedAt);}
@@ -338,20 +351,20 @@
     $("celebration").scrollIntoView({block:"center"});
   }
   function returnToPlan(){
-    progression.reset();state.workout=null;state.draftKey="";state.pausedSeconds=null;guidance.reset();$("celebration").hidden=true;$("sessionPanel").hidden=true;$("startPanel").hidden=false;scanDrafts();contextView.focusPrimary();
+    progression.reset();state.workout=null;state.draftKey="";state.pausedSeconds=null;syncApp();guidance.reset();$("celebration").hidden=true;$("sessionPanel").hidden=true;$("startPanel").hidden=false;scanDrafts();contextView.focusPrimary();
   }
   function exportDraft(){
     if(!state.workout)return;
     const blob=new Blob([JSON.stringify({format:"strata-workout-draft",version:1,workout:state.workout,unsaved:state.dirty,pausedRestSeconds:state.pausedSeconds},null,2)],{type:"application/json"});
-    const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`strata-workout-${state.workout.date}-${state.workout.id}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`strata-workout-${state.workout.date}-${state.workout.id}.json`;link.click();setTimeout(()=>URL.revokeObjectURL(url),60_000);
   }
   function tick(){
-    const workout=state.workout;if(!workout||state.blocked)return;
+    syncApp();const workout=state.workout;if(!workout||state.blocked)return;
     $("sessionElapsed").textContent=W.duration(workout.status==="completed"?workout.elapsedSeconds:Math.min(604800,Math.max(0,Math.floor((Date.now()-workout.startedAt)/1000))));
     const remaining=workout.restEndsAt?W.remainingSeconds(workout.restEndsAt):state.pausedSeconds??Number($("restDuration").value);
     $("restClock").textContent=W.duration(remaining);
     $("timerToggle").textContent=workout.restEndsAt&&remaining>0?"Pause":state.pausedSeconds?"Resume":"Start rest";
-    if(workout.restEndsAt&&remaining===0&&!state.timerAnnounced){state.timerAnnounced=true;toast("Rest timer finished. Continue when you’re ready.");}
+    if(workout.restEndsAt&&remaining===0&&!state.timerAnnounced){state.timerAnnounced=true;toast("Rest timer finished. Continue when you’re ready.");if(document.visibilityState!=="hidden"&&Date.now()-workout.restEndsAt<5000)globalThis.StrataAppMode?.haptic("success");}
   }
   function startRest(seconds=Number($("restDuration").value)){
     if(!state.workout||state.workout.status!=="active"||state.blocked)return;
@@ -388,7 +401,7 @@
       $("modeNotice").textContent="The workout room could not load. Your saved sessions and device drafts have been kept.";
     }finally{state.loading=false;}
   }
-  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,updateWeeklyCalendar,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save,prepareWorkout:recoveryView.prepare}});
+  E.bind({$,state,workout:W,number,signal,actions:{initialize,renderPlan,updateWeeklyCalendar,resumeWorkout:contextView.resume,toast,selectWorkout,markDirty,errorMessage,entryFor,addWeeklyToCalendar,hasActuals,exercise,openSwap,toggleSuperset,applyRemembered,renderSession,startRest,tick,rememberPreferences,focusNextSet,flushSave,persistDraft,returnToPlan,exportDraft,recover,removeDraft,scanDrafts,showCompleted,upsertHistory:historyView.upsert,openDetail:historyView.openDetail,loadHistory:historyView.load,renderMetricOptions:historyView.renderMetricOptions,renderChart:historyView.renderChart,closeSwap,renderSwapComparison,applyWorkoutSwap,reviewPlanSwap,approvePlanSwap,assertIdentity,status,saveError,saveCheckIn:guidance.save,prepareWorkout:recoveryView.prepare}});
   setInterval(tick,1000);
   void initialize();
 })();

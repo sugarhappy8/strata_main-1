@@ -1,5 +1,5 @@
 "use strict";
-/* global document, getComputedStyle, innerHeight, innerWidth, window */
+/* global document, getComputedStyle, innerHeight, innerWidth, PageTransitionEvent, window */
 
 // The website inside the STRATA iOS app: a phone-sized page whose user agent carries "StrataApp/1" and whose
 // StrataNative plugin is a recorded mock. Browsers without the token must render and request exactly what they did.
@@ -14,17 +14,21 @@ const APP_UA="Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit
 const ALIASES=new Map([["/","index.html"],["/pricing","pricing.html"],["/dashboard","dashboard.html"],["/policies","policies.html"],["/terms","terms.html"],["/privacy","privacy.html"],["/contact","contact.html"]]);
 const USER_ID="3c9a2f1e-5b6d-4e7f-8a9b-0c1d2e3f4a5b";
 const APPLE={active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt:Date.parse("2026-11-01T12:00:00Z"),autoRenew:true,inGracePeriod:false,environment:"Sandbox",revoked:false};
+const CATALOG=JSON.parse(readFileSync(join(ROOT,"public/data/exercises.json"),"utf8"));
 let browser;
 
 function staticAsset(pathname){
   if(pathname.includes(".."))return null;
+  if(pathname==="/exercises.json")return join(ROOT,"public/data/exercises.json");
   if(ALIASES.has(pathname))return join(ROOT,"public/pages",ALIASES.get(pathname));
   const relative=pathname.replace(/^\//,""),extension=extname(relative),folder=extension===".html"?"pages":extension===".js"?"scripts":extension===".css"?"styles":"";
   return [join(ROOT,"public",relative),...(folder?[join(ROOT,"public",folder,relative)]:[])].find((candidate)=>existsSync(candidate))||null;
 }
 
 // Mirrors StrataNative's contract (getProducts, purchase, finishTransaction, restore, currentEntitlements, haptic,
-// manageSubscriptions, transactionUpdated) and records every call on window.__nativeCalls.
+// manageSubscriptions, print, keepAwake, scheduleRestAlert, cancelRestAlert, addWeeklyToCalendar, info,
+// transactionUpdated) and records every call on window.__nativeCalls. Setting window.__calendarRefuses makes the
+// Calendar sheet reject, as a build without calendar access would.
 function installNativeMock(){
   const calls=[];window.__nativeCalls=calls;
   const record=(name,result)=>async(options)=>{calls.push([name,options??null]);return typeof result==="function"?result(options):result;};
@@ -38,12 +42,17 @@ function installNativeMock(){
       currentEntitlements:record("currentEntitlements",{signedTransactions:[]}),
       manageSubscriptions:record("manageSubscriptions",{}),
       haptic:record("haptic",{}),
-      print:record("print",{})
+      print:record("print",{}),
+      keepAwake:record("keepAwake",{}),
+      scheduleRestAlert:record("scheduleRestAlert",{scheduled:true,permission:"authorized"}),
+      cancelRestAlert:record("cancelRestAlert",{}),
+      addWeeklyToCalendar:record("addWeeklyToCalendar",()=>{if(window.__calendarRefuses)throw Object.assign(new Error("Calendar access was denied."),{code:"permission_denied"});return {added:true};}),
+      info:record("info",{appVersion:"1.0",build:"1",iosVersion:"18.0",canMakePayments:true})
     }}
   };
 }
 
-async function fixture(t,{app=true,signedIn=false,discovery={active:false,accessType:null,apple:null}}={}){
+async function fixture(t,{app=true,signedIn=false,discovery={active:false,accessType:null,apple:null},api=null}={}){
   const context=await browser.newContext({baseURL:ORIGIN,serviceWorkers:"block",viewport:{width:390,height:844},isMobile:true,hasTouch:true,reducedMotion:"reduce",...(app?{userAgent:APP_UA}:{})});
   t.after(()=>context.close());context.setDefaultTimeout(10_000);
   if(app)await context.addInitScript(installNativeMock);
@@ -59,6 +68,9 @@ async function fixture(t,{app=true,signedIn=false,discovery={active:false,access
       state.user={...state.user,discovery:{active:true,accessType:"apple",apple:APPLE}};
       return json({discovery:state.user.discovery,accepted:["2000000555"]});
     }
+    // A journey's own API answers ({body, status}) come first; anything it leaves is outside the journey.
+    const reply=api&&url.pathname.startsWith("/api/")?await api(url,request):null;
+    if(reply)return json(reply.body,reply.status||200);
     if(url.pathname.startsWith("/api/"))return json({error:"Not in this journey."},404);
     const file=staticAsset(url.pathname);
     if(!file){await route.fulfill({status:404,body:"Missing fixture asset"});return;}
@@ -157,6 +169,118 @@ test("in the app, Strata+ is bought through the App Store and Paddle is never re
   assert.ok(calls.includes("addListener"),"StoreKit updates are listened for");
   assert.equal(state.external.filter((url)=>/paddle/i.test(url)).length,0,"Paddle is never requested in the app");
   assert.equal(state.requests.includes("/api/billing/config"),false,"Paddle checkout is never prepared");
+  assert.deepEqual(state.errors,[]);
+});
+
+// A Strata+ member's week and workout saves, enough for the Train screen: Monday and Wednesday hold one bodyweight
+// movement each, and saved workouts echo back with a new revision.
+function workoutApi(){
+  const movement=CATALOG.find((item)=>item.equipment==="Bodyweight"&&!/seconds|sec|min/i.test(item.reps)&&!/assisted/i.test(item.name));
+  const days=Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map((day)=>[day,["Monday","Wednesday"].includes(day)?[{instanceId:`${day.toLowerCase()}-one`,exerciseId:movement.id,sets:2,reps:movement.reps}]:[]]));
+  let revision=0;
+  return async(url,request)=>{
+    if(url.pathname==="/api/plan")return {body:{user:{id:USER_ID},plan:{version:1,restDay:null,restDays:[],days},planUpdatedAt:1}};
+    if(url.pathname==="/api/workouts"&&request.method()==="GET")return {body:{workouts:[],hasMore:false}};
+    if(/^\/api\/workouts(?:\/[^/]+)?$/.test(url.pathname)&&["POST","PUT"].includes(request.method()))return {body:{workout:{...request.postDataJSON().workout,revision:++revision,updatedAt:Date.now()}}};
+    return null;
+  };
+}
+
+test("in the app a workout keeps the screen awake, alerts at the end of a rest, and adds the week to Calendar",{timeout:60_000},async(t)=>{
+  const {page,state}=await fixture(t,{signedIn:true,discovery:{active:true,accessType:"apple",apple:APPLE,subscription:null,adminGrant:{active:false}},api:workoutApi()});
+  const calls=(name)=>page.evaluate((wanted)=>window.__nativeCalls.filter((call)=>call[0]===wanted).map((call)=>call[1]),name);
+  const waitForCalls=(name,count)=>page.waitForFunction(([wanted,total])=>window.__nativeCalls.filter((call)=>call[0]===wanted).length>=total,[name,count]);
+  const downloads=[];page.on("download",(download)=>downloads.push(download.suggestedFilename()));
+  await page.goto("/workout.html?day=Monday",{waitUntil:"domcontentloaded"});
+  const start=page.locator("#startWorkout");await start.waitFor({state:"visible"});
+  await page.waitForFunction(()=>!document.querySelector("#historyList .empty-state")?.textContent?.includes("Loading"));
+  assert.deepEqual(await calls("keepAwake"),[],"nothing keeps the screen awake before a workout starts");
+
+  // Calendar reminders open Calendar's own sheet with one event repeating Monday (2) and Wednesday (4).
+  await page.locator("#calendarWeekly > summary").click();
+  const link=page.locator("#calendarWeeklyLink");
+  assert.equal((await link.textContent()).trim(),"Add to Calendar");
+  assert.match(await page.locator("#calendarWeeklySummary").textContent(),/If your plan changes, edit the event in Calendar\.$/);
+  await page.locator("#calendarWeeklyTime").fill("07:30");await page.locator("#calendarWeeklyTime").dispatchEvent("change");
+  await page.locator("#calendarWeeklyAlarm").selectOption("15");
+  await link.click();
+  await page.locator("#workoutToast").filter({hasText:"Added to your calendar."}).waitFor({state:"visible"});
+  const [calendar]=await calls("addWeeklyToCalendar");
+  assert.deepEqual(calendar,{title:"STRATA workout",notes:"Planned training days: Monday, Wednesday. Open STRATA to start.",weekdays:[2,4],hour:7,minute:30,durationMinutes:60,alarmMinutesBefore:15});
+  assert.deepEqual(downloads,[],"the sheet replaces the .ics download");
+  // A build that cannot reach Calendar falls back to the .ics file.
+  await page.evaluate(()=>{window.__calendarRefuses=true;});
+  const fallback=page.waitForEvent("download");await link.click();
+  assert.equal((await fallback).suggestedFilename(),"strata-weekly-training.ics");
+  assert.equal((await calls("addWeeklyToCalendar")).length,2);
+
+  // Starting the workout keeps the screen awake; each rest schedules its alert and pausing or resetting cancels it.
+  await start.click();
+  await page.locator("#sessionPanel").waitFor({state:"visible"});
+  await waitForCalls("keepAwake",1);
+  assert.deepEqual(await calls("keepAwake"),[{enabled:true}]);
+  const before=Date.now();await page.locator("#timerToggle").click();await waitForCalls("scheduleRestAlert",1);
+  const [alert]=await calls("scheduleRestAlert");
+  assert.equal(alert.title,"Rest is over");assert.equal(alert.body,"Time for your next set.");
+  assert.ok(alert.endsAt>=before+89_000&&alert.endsAt<=Date.now()+91_000,`the alert lands when the 90-second rest ends (${alert.endsAt-before} ms)`);
+  await page.locator("#timerToggle").click();await waitForCalls("cancelRestAlert",1);
+  assert.equal((await page.locator("#timerToggle").textContent()).trim(),"Resume");
+  await page.locator("#timerToggle").click();await waitForCalls("scheduleRestAlert",2);
+  // Leaving the page lets the screen sleep but keeps the alert; coming back keeps the screen awake again.
+  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent("pagehide",{persisted:true})));await waitForCalls("keepAwake",2);
+  await page.evaluate(()=>window.dispatchEvent(new PageTransitionEvent("pageshow",{persisted:true})));await waitForCalls("keepAwake",3);
+  assert.deepEqual(await calls("keepAwake"),[{enabled:true},{enabled:false},{enabled:true}]);
+  await page.locator("#timerReset").click();await waitForCalls("cancelRestAlert",2);
+
+  // Logging a set taps lightly and starts the automatic rest, which schedules its alert again.
+  const row=page.locator("#sessionEntries [data-set='0']").first();
+  await row.locator("input[data-actual='reps']").fill("10");
+  await row.locator("[data-complete='0']").click();
+  await waitForCalls("scheduleRestAlert",3);
+  assert.ok((await calls("haptic")).some((call)=>call.style==="light"),"a logged set taps lightly");
+
+  // Finishing taps success, lets the screen sleep, and cancels the pending alert.
+  await page.locator("#finishWorkout").click();
+  await page.locator("#finishDialog button[value='finish']").click();
+  await page.locator("#celebration").waitFor({state:"visible"});
+  await waitForCalls("cancelRestAlert",3);
+  assert.deepEqual(await calls("keepAwake"),[{enabled:true},{enabled:false},{enabled:true},{enabled:false}]);
+  assert.ok((await calls("haptic")).some((call)=>call.style==="success"),"finishing taps success");
+  const order=await page.evaluate(()=>window.__nativeCalls.map((call)=>call[0]).filter((name)=>["keepAwake","scheduleRestAlert","cancelRestAlert"].includes(name)));
+  assert.deepEqual(order,["keepAwake","scheduleRestAlert","cancelRestAlert","scheduleRestAlert","keepAwake","keepAwake","cancelRestAlert","scheduleRestAlert","keepAwake","cancelRestAlert"]);
+  assert.deepEqual(state.external,[]);assert.deepEqual(state.errors,[]);
+});
+
+test("in a browser the same Train screen keeps its .ics download and asks nothing of a native app",{timeout:40_000},async(t)=>{
+  const {page,state}=await fixture(t,{app:false,signedIn:true,discovery:{active:true,accessType:"grant",adminGrant:{active:true,expiresAt:null},subscription:null,apple:null},api:workoutApi()});
+  await page.goto("/workout.html?day=Monday",{waitUntil:"domcontentloaded"});
+  await page.locator("#startWorkout").waitFor({state:"visible"});
+  await page.locator("#calendarWeekly > summary").click();
+  assert.equal((await page.locator("#calendarWeeklyLink").textContent()).trim(),"Download calendar file");
+  assert.match(await page.locator("#calendarWeeklySummary").textContent(),/Re-download after you change your plan\.$/);
+  const download=page.waitForEvent("download");await page.locator("#calendarWeeklyLink").click();
+  assert.equal((await download).suggestedFilename(),"strata-weekly-training.ics");
+  await page.locator("#startWorkout").click();await page.locator("#sessionPanel").waitFor({state:"visible"});
+  await page.locator("#timerToggle").click();
+  assert.equal(await page.evaluate(()=>Boolean(window.StrataApp||window.StrataAppMode||window.Capacitor)),false);
+  assert.deepEqual(state.requests.filter((request)=>/app-mode|app-paywall/.test(request)),[]);
+  assert.deepEqual(state.external,[]);assert.deepEqual(state.errors,[]);
+});
+
+test("on the website an App Store member sees Strata+ through the App Store, Apple's link, and no Paddle checkout",{timeout:40_000},async(t)=>{
+  const {page,state}=await fixture(t,{app:false,signedIn:true,discovery:{active:true,accessType:"apple",apple:APPLE,subscription:null,adminGrant:{active:false}}});
+  await page.goto("/pricing",{waitUntil:"load"});
+  await page.locator("#purchaseStatus").filter({hasText:"through the App Store"}).waitFor();
+  assert.match(await page.locator("#purchaseStatus").textContent(),/^Your Strata\+ is through the App Store and renews on .+\. Apple bills it, so manage or cancel it with your App Store subscriptions\.$/);
+  assert.equal(await page.locator("#buyDiscovery").isHidden(),true,"no Paddle checkout");
+  const manage=page.locator("#manageSubscription");
+  assert.equal(await manage.isVisible(),true);assert.equal(await manage.getAttribute("href"),"https://apps.apple.com/account/subscriptions");assert.equal(await manage.getAttribute("target"),"_blank");
+  await page.goto("/account.html",{waitUntil:"load"});
+  await page.locator("#accountBilling").waitFor({state:"visible"});
+  assert.equal(await page.locator("#accountBillingTitle").textContent(),"Strata+ through the App Store");
+  const apple=page.getByRole("link",{name:/Manage subscription/});
+  assert.equal(await apple.getAttribute("href"),"https://apps.apple.com/account/subscriptions");
+  for(const id of ["accountManageSubscription","accountUpdatePayment","accountCancelSubscription"])assert.equal(await page.locator(`#${id}`).isHidden(),true,`${id}: never Paddle's portal for an App Store subscription`);
   assert.deepEqual(state.errors,[]);
 });
 

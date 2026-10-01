@@ -9,7 +9,7 @@
   function createRenderer({document,state,logic,productSignalLabels,supportStates,requestFrame=(callback)=>callback()}){
     if(!document||!state||!logic)throw new TypeError("Admin rendering requires document, state, and logic dependencies.");
     const {
-      booleanValue,cleanString,deletionPending,discoveryActive,firstValue,formatCount,formatDate,
+      appleFacts,booleanValue,cleanString,deletionPending,discoveryActive,firstValue,formatCount,formatDate,
       normalizedOverview,numberValue,overviewNumber,planSummary,supportReference,supportState,
       supportStateLabel,userEmail,userId,userName,userSuspended,userVerified
     }=logic;
@@ -125,7 +125,7 @@
       const grant=user?.discovery?.adminGrant;
       addFact(facts,"Complimentary Strata+",grant?.active?(grant.expiresAt==null?"Until revoked":`Until ${formatDate(grant.expiresAt)}`):grant?.revokedAt?"Revoked":grant?.startedAt?"Expired":"None");
       addFact(facts,"New payment sessions",user.checkoutBlocked?"Blocked by admin":"Allowed");addFact(facts,"Purchase records",`${formatCount(firstValue(user?.discovery||{},["purchaseCount","purchase_count"],0))} total · ${formatCount(firstValue(user?.discovery||{},["pendingPurchaseCount","pending_purchase_count"],0))} pending`);
-      addFact(facts,"Latest purchase activity",formatDate(firstValue(user?.discovery||{},["latestPurchaseAt","latest_purchase_at"],null)));addFact(facts,"Weekly plan",planSummary(user));addFact(facts,"Ratings",formatCount(firstValue(user,["ratingCount","rating_count","ratings"],0)));addFact(facts,"Active sessions",formatCount(firstValue(user,["activeSessions","activeSessionCount","active_session_count","sessions"],0)));addFact(facts,"Deletion request",deletionPending(user)?"Pending confirmation":"None");
+      addFact(facts,"Latest purchase activity",formatDate(firstValue(user?.discovery||{},["latestPurchaseAt","latest_purchase_at"],null)));for(const [label,value] of appleFacts(user))addFact(facts,label,value);addFact(facts,"Weekly plan",planSummary(user));addFact(facts,"Ratings",formatCount(firstValue(user,["ratingCount","rating_count","ratings"],0)));addFact(facts,"Active sessions",formatCount(firstValue(user,["activeSessions","activeSessionCount","active_session_count","sessions"],0)));addFact(facts,"Deletion request",deletionPending(user)?"Pending confirmation":"None");
       setActionAvailability(user,{actionsReady});
     }
     function renderSupport(items,total,onOpen){

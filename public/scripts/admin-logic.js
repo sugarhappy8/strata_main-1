@@ -81,6 +81,19 @@
     const exercises=firstValue(user,["planCount","plan_count","exerciseCount"],undefined),days=firstValue(user,["workoutDays","workout_days"],undefined);
     return exercises===undefined&&days===undefined?"—":`${formatCount(exercises??0)} exercises · ${formatCount(days??0)} workout days`;
   }
+  // The member's App Store subscription (Strata+ bought in the iOS app) beside the Paddle facts. The detail view
+  // carries discovery.apple.subscription; the list row only knows how many are active and the latest expiry.
+  function appleFacts(user){
+    const apple=user?.discovery?.apple||{},summary=apple.subscription;
+    if(summary===undefined)return [["App Store subscription",numberValue(apple.activeCount)>0?`Active · expires ${formatDate(apple.expiresAt)}`:apple.expiresAt?`Expired ${formatDate(apple.expiresAt)}`:"None"]];
+    if(!summary||typeof summary!=="object")return [["App Store subscription","None"]];
+    const status=summary.revoked===true?"Revoked (refunded or Family Sharing removed)":summary.inGracePeriod===true?"Active · billing grace period":summary.active===true?"Active":"Expired";
+    return [
+      ["App Store subscription",status],["App Store environment",summary.environment==="Sandbox"?"Sandbox (test purchase)":"Production"],
+      ["App Store expiry",formatDate(summary.expiresAt)],["App Store auto-renew",summary.autoRenew===true?"On":summary.autoRenew===false?"Off":"Unknown"],
+      ["App Store revoked",summary.revoked===true?"Yes":"No"]
+    ];
+  }
   const supportId=(ticket)=>cleanString(firstValue(ticket,["id","ticketId","ticket_id","reference"],""),"");
   const supportReference=(ticket)=>cleanString(firstValue(ticket,["reference","publicReference","public_reference","id"],""),"Help request");
   function supportState(ticket,supportStates=new Set(["new","open","waiting","resolved"])){
@@ -88,5 +101,5 @@
     return value==="waiting-on-user"?"waiting":supportStates.has(value)?value:"new";
   }
   const supportStateLabel=(value)=>({new:"New",open:"Open",waiting:"Waiting on user",resolved:"Resolved"})[value]||"New";
-  return{ACTION_DETAILS,booleanValue,cleanString,deletionPending,discoveryActive,firstValue,formatCount,formatDate,friendlyError,normalizedOverview,numberValue,overviewNumber,planSummary,supportId,supportReference,supportState,supportStateLabel,userEmail,userId,userName,userSuspended,userVerified};
+  return{ACTION_DETAILS,appleFacts,booleanValue,cleanString,deletionPending,discoveryActive,firstValue,formatCount,formatDate,friendlyError,normalizedOverview,numberValue,overviewNumber,planSummary,supportId,supportReference,supportState,supportStateLabel,userEmail,userId,userName,userSuspended,userVerified};
 });
