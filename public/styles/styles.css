@@ -258,6 +258,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .score-badge span { font: 400 11px var(--body,"Manrope",Arial,sans-serif); color: var(--muted); font-variant-numeric:tabular-nums; }
 .score-badge.top { background: var(--accent); }
 .row-actions { display: flex; justify-content: end; gap: 7px; }
+.action-icon { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid var(--line); background: transparent; font-size: 15px; transition:color .15s ease,background-color .15s ease,border-color .15s ease,transform .15s ease; }
+.action-icon:active { transform:translateY(1px); }
+.action-icon:hover, .action-icon:focus-visible, .action-icon.active { border-color: var(--ink); background: var(--ink); color: var(--accent); }
 .youtube-action { color: var(--orange-text); text-decoration: none; font-size: 13px; }
 .youtube-action:hover,.youtube-action:focus-visible { color: var(--white); background: var(--orange-text); border-color: var(--orange-text); }
 .empty-state { text-align: center; padding: 70px 20px; border-bottom: 1px solid var(--line); }
@@ -539,13 +542,13 @@ html { overflow-x: clip; }
   .search-field input,.select-wrap select,.sort-field select { font-size:16px; }
   .filter-chip,.plain-button,.text-link { min-height:44px; display:inline-flex; align-items:center; }
   .plain-button { padding-inline:10px; }
-  .icon-button { min-width:44px; width:44px; height:44px; }
+  .action-icon,.icon-button { min-width:44px; width:44px; height:44px; }
   .section-heading h2,.exercise-title h3,.detail-hero h2 { overflow-wrap:anywhere; }
 }
 
 
 @media (pointer:coarse) {
-  .desktop-nav a,.account-button,.session-button,.filter-chip,.plain-button,.text-link,.reset-filters,.select-wrap select,.sort-field select { min-height:44px; }
+  .desktop-nav a,.account-button,.session-button,.filter-chip,.plain-button,.text-link,.action-icon,.reset-filters,.select-wrap select,.sort-field select { min-height:44px; }
 }
 
 @media (max-width:360px) {

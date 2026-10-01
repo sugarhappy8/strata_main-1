@@ -15,7 +15,7 @@ const blocksWith=(source,declaration)=>[...source.matchAll(/([^{}]+)\{([^{}]*)\}
 test("public layouts let dynamic text shrink and wrap inside cards",()=>{
   const expectations={
     "styles.css":[".exercise-title h3",".results-meta p",".preview-status",".toast"],
-    "account.css":[".account-message",".security-status",".build-footer"],
+    "account.css":[".storage-state span",".account-message",".security-status",".build-footer"],
     "site-info.css":[".policy-content p",".purchase-status",".contact-email",".support-status"],
     "install.css":[".install-status",".device-card li",".offline-options strong",".install-footer"],
     "admin.css":[".global-message",".dialog-message",".record-primary",".admin-footer"]
