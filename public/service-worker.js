@@ -135,7 +135,7 @@ const PRECACHE_URLS=[
   "/icons/apple-touch-icon.png"
 ];
 const PUBLIC_ASSET_URLS=new Set(PRECACHE_URLS.map((entry) => new URL(entry,self.location.origin).href));
-const PRIVATE_HTML_PATHS=new Set(["/","/index.html","/account.html","/verify-email","/verify-email.html","/forgot-password","/forgot-password.html","/reset-password","/reset-password.html","/delete-account","/delete-account.html","/discover.html","/workout.html","/onboarding.html","/ai","/ai.html","/admin","/admin.html"]);
+const PRIVATE_HTML_PATHS=new Set(["/","/index.html","/account.html","/dashboard","/dashboard.html","/verify-email","/verify-email.html","/forgot-password","/forgot-password.html","/reset-password","/reset-password.html","/delete-account","/delete-account.html","/discover.html","/workout.html","/onboarding.html","/ai","/ai.html","/admin","/admin.html"]);
 const PUBLIC_HTML_FALLBACKS=new Map([
   ["/install","/install.html"],
   ["/pricing","/pricing.html"],
@@ -145,7 +145,8 @@ const PUBLIC_HTML_FALLBACKS=new Map([
   ["/privacy","/privacy.html"],
   ["/refunds","/refunds.html"],
   ["/planner","/planner.html"],
-  ["/my-week","/planner.html"]
+  ["/my-week","/planner.html"],
+  ["/dashboard","/planner.html"]
 ]);
 
 function bypassNetwork(pathname) {

@@ -138,7 +138,7 @@ let browser;
 
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const publicHeaderLinks=await page.locator(".desktop-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
-    assert.deepEqual(publicHeaderLinks,[["#rankings","Rankings"],["/my-week","My Week"],["/workout.html","Train"],["/recovery","Recovery"],["/account.html","Profile"]],"Homepage desktop navigation must match the five sections used everywhere else");
+    assert.deepEqual(publicHeaderLinks,[["#rankings","Rankings"],["/dashboard","Dashboard"],["/install.html","Install"]],"The homepage navigation is Rankings, Dashboard, and Install");
     assert.doesNotMatch((await page.locator("main").textContent())||"",/trial|7 days|no card|Strata AI/i,"The homepage neither offers the retired trial nor promotes Strata AI");
     for(const [label,control] of [["homepage primary action",page.locator(".hero .button-accent").first()]]){
       const ratio=await contrastRatio(control);assert.ok(ratio>=4.5,`${label} text contrast is ${ratio.toFixed(2)}:1; expected at least 4.5:1`);
@@ -162,7 +162,7 @@ let browser;
     await page.locator("#signedInCard").waitFor({state:"visible"});
     assert.equal(await page.locator("#accountAdminAction").isHidden(),true,"A non-admin account must not render the administrator action");
     assert.equal(await page.locator("#accountDeleteCancel").isHidden(),true,"An account without a pending deletion must not render its cancellation action");
-    assert.equal(new URL(await page.locator("#accountPrimaryAction").getAttribute("href"),BASE_URL).pathname,"/planner.html","A planless free account should return to the free planner");
+    assert.equal(await page.locator("#accountPrimaryAction").count(),0,"Profile no longer carries a next-workout action");
     await capture(page,"account-signed-in-desktop.png",{fullPage:true});
 
     await page.goto(`${BASE_URL}/planner.html`,{waitUntil:"networkidle"});
@@ -210,7 +210,7 @@ let browser;
     await page.setViewportSize({width:390,height:844});
     await page.goto(`${BASE_URL}/`,{waitUntil:"networkidle"});
     const mobilePublicLinks=await page.locator(".mobile-public-nav a").evaluateAll((nodes)=>nodes.map((node)=>[node.getAttribute("href"),node.textContent.trim()]));
-    assert.deepEqual(mobilePublicLinks,[["#rankings","Rankings"],["/my-week","My Week"],["/workout.html","Train"],["/recovery","Recovery"],["/account.html","Profile"]],"Mobile homepage navigation must keep the five sections");
+    assert.deepEqual(mobilePublicLinks,[["#rankings","Rankings"],["/dashboard","Dashboard"],["/install.html","Install"]],"Mobile homepage navigation is Rankings, Dashboard, and Install");
     assert.equal(await page.locator('.footer-links a[href="/policies"]').count(),1,"Mobile homepage footer must expose one Policies destination");
     assert.equal(await page.locator('.footer-links a:is([href="/terms"],[href="/privacy"],[href="/refunds"])').count(),0,"Homepage footer must not duplicate policy-directory links");
     const smallPublicTargets=await page.locator(".mobile-public-nav a").evaluateAll((nodes)=>nodes.filter((node)=>{const rect=node.getBoundingClientRect();return rect.width<44||rect.height<44;}).map((node)=>node.textContent.trim()));
@@ -468,7 +468,7 @@ let browser;
     await capture(page,"workout-mobile.png",{fullPage:false});
 
     const responsiveRoutes=["/","/account.html","/verify-email.html","/forgot-password","/reset-password","/delete-account","/planner.html","/discover.html",`/workout.html?day=${encodeURIComponent(snapshot.sessionChoices.day.value)}`,"/onboarding.html","/pricing","/contact","/policies","/terms","/privacy","/refunds","/offline.html","/install.html"];
-    const responsiveContainers=".exercise-row,.library-card,.scheduled-card,.recommend-card,.exercise-card,.session-result-card,.progress-metric-grid article,.feature-block,.auth-panel,.signed-in-card,.account-next-card,.account-week-card,.account-insight-card,.price-card,.free-card,.policy-card,.contact-card,.device-card,.today-context-card,.training-block-card,.progression-card,.plan-summary-card,.stat-card";
+    const responsiveContainers=".exercise-row,.library-card,.scheduled-card,.recommend-card,.exercise-card,.session-result-card,.progress-metric-grid article,.feature-block,.auth-panel,.signed-in-card,.account-week-card,.account-insight-card,.price-card,.free-card,.policy-card,.contact-card,.device-card,.today-context-card,.training-block-card,.progression-card,.plan-summary-card,.stat-card";
     snapshot.responsiveLayout={};
     for(const width of [768,700,600,430,390,360,339,320]){
       await page.setViewportSize({width,height:Math.max(700,Math.round(width*1.5))});snapshot.responsiveLayout[width]={routes:responsiveRoutes.length,maxOverflow:0,textIssues:0};

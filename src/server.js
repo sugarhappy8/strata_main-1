@@ -118,6 +118,7 @@ const STATIC_FILES = new Map([
   ["offline.html","pages/offline.html"],
   ["pricing.html","pages/pricing.html"],
   ["contact.html","pages/contact.html"],
+  ["dashboard.html","pages/dashboard.html"],
   ["policies.html","pages/policies.html"],
   ["terms.html","pages/terms.html"],
   ["privacy.html","pages/privacy.html"],
@@ -141,6 +142,7 @@ const STATIC_FILES = new Map([
   ["discover-coaching-meals.css","styles/discover-coaching-meals.css"],
   ["install.css","styles/install.css"],
   ["site-info.css","styles/site-info.css"],
+  ["dashboard.css","styles/dashboard.css"],
   ["admin.css","styles/admin.css"],
   ["home-logic.js","scripts/home-logic.js"],
   ["home-state.js","scripts/home-state.js"],
@@ -230,17 +232,21 @@ const PAGE_ALIASES = new Map([
   ["/reset-password","reset-password.html"],
   ["/delete-account","delete-account.html"],
   ["/admin","admin.html"],
-  ["/ai","ai.html"]
+  ["/ai","ai.html"],
+  ["/dashboard","dashboard.html"]
 ]);
-// The five top-level sections. Rankings, My Week, and Recovery open the Strata+ studio for members; everyone else
-// gets the public rankings, the free planner, and the Strata+ plan that includes Recovery.
+// The member-aware sections. Rankings and Recovery open the Strata+ studio for members; everyone else gets the
+// public rankings and the Strata+ plan that includes Recovery. Dashboard is a two-choice page (Plan or the Strata+
+// dashboard) for members; with only Plan to offer, everyone else goes straight to the planner. A null target
+// serves the page itself.
 const SECTION_ROUTES = new Map([
   ["/rankings",{plus:"/discover.html#exerciseExplorer",member:"/#rankings",visitor:"/#rankings"}],
-  ["/my-week",{plus:"/discover.html#todayWorkspace",member:"/planner.html",visitor:"/planner.html"}],
+  ["/dashboard",{plus:null,member:"/planner.html",visitor:"/planner.html"}],
+  ["/my-week",{plus:"/dashboard",member:"/planner.html",visitor:"/planner.html"}],
   ["/recovery",{plus:"/discover.html#recoveryWorkspace",member:"/pricing?reason=recovery",visitor:"/pricing?reason=recovery"}]
 ]);
 const PROTECTED_HTML = new Set(["discover.html","workout.html","onboarding.html","ai.html"]);
-const PRIVATE_HTML = new Set(["index.html","account.html","verify-email.html","forgot-password.html","reset-password.html","delete-account.html","admin.html",...PROTECTED_HTML]);
+const PRIVATE_HTML = new Set(["index.html","account.html","dashboard.html","verify-email.html","forgot-password.html","reset-password.html","delete-account.html","admin.html",...PROTECTED_HTML]);
 const MIME = {
   ".html":"text/html; charset=utf-8",
   ".css":"text/css; charset=utf-8",
@@ -534,12 +540,15 @@ async function serveStatic(req,res,url) {
     : PAGE_ALIASES.has(aliasPath)
       ? PAGE_ALIASES.get(aliasPath)
       : normalize(url.pathname).replace(/^[/\\]+/,"");
-  const section=SECTION_ROUTES.get(aliasPath);
+  const section=SECTION_ROUTES.get(requested==="dashboard.html"?"/dashboard":aliasPath);
   if (section) {
     const session=await auth.sessionFor(req),plus=Boolean(session&&await hasCurrentDiscoveryAccess(session.id));
-    res.writeHead(302,{...securityHeaders(),Location:plus?section.plus:session?section.member:section.visitor,"Cache-Control":"private, no-store",Vary:"Cookie"});
-    res.end();
-    return;
+    const location=plus?section.plus:session?section.member:section.visitor;
+    if (location) {
+      res.writeHead(302,{...securityHeaders(),Location:location,"Cache-Control":"private, no-store",Vary:"Cookie"});
+      res.end();
+      return;
+    }
   }
   if (!STATIC_FILES.has(requested)) { json(res,404,{error:"Page not found."}); return; }
   const activeSession=(PROTECTED_HTML.has(requested)||requested==="index.html"||requested==="admin.html")?await auth.sessionFor(req):null;

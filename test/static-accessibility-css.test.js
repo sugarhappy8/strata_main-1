@@ -72,9 +72,9 @@ test("plan-saving surfaces use consistent announced states and actionable errors
 test("planner, workout, and the studio share the five-section navigation at mobile widths",()=>{
   const plannerHtml=read("public/pages/planner.html"),workoutHtml=read("public/pages/workout.html"),discoverHtml=read("public/pages/discover.html");
   const plannerCss=read("public/styles/planner.css"),workoutCss=read("public/styles/workout.css");
-  const destinations=/Rankings<\/a><a[^>]*>My Week<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Profile<\/a>/;
+  const destinations=/Rankings<\/a><a[^>]*>Dashboard<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Profile<\/a>/;
   assert.match(plannerHtml,destinations);assert.match(workoutHtml,destinations);assert.match(discoverHtml,destinations);
-  assert.match(plannerHtml,/href="\/my-week" aria-current="page">My Week<\/a>/);
+  assert.match(plannerHtml,/href="\/dashboard" aria-current="page">Dashboard<\/a>/);
   assert.match(workoutHtml,/href="\/workout\.html" aria-current="page">Train<\/a>/);
   for(const [name,html,desktop,user,mobile] of [
     ["Planner",plannerHtml,'class="planner-primary-nav planner-primary-nav-desktop"','class="user-menu"','class="planner-primary-nav planner-primary-nav-mobile"'],

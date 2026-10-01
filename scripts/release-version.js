@@ -28,6 +28,7 @@ const DEFAULT_MANIFEST=Object.freeze({
     "public/pages/ai.html",
     "public/pages/admin.html",
     "public/pages/contact.html",
+    "public/pages/dashboard.html",
     "public/pages/delete-account.html",
     "public/pages/discover.html",
     "public/pages/forgot-password.html",

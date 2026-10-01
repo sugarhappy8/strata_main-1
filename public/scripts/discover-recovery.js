@@ -23,7 +23,7 @@
       if(result.summary?.state==="no-data")return {title:"No nights from Polar yet",message:"Wear your Loop to sleep. Polar’s Nightly Recharge appears here the morning after, once Polar has synced.",connect:false};
       return null;
     }
-    // My Week's readiness badge: last night's Nightly Recharge, with Train's lighter-session offer when it applies.
+    // The Plan view's readiness badge: last night's Nightly Recharge, with Train's lighter-session offer when it applies.
     function renderPlanBadge(){
       const badge=element("planReadiness"),summary=today?.connected?today.summary:null;if(!badge)return;if(!summary||summary.state==="no-data"||!summary.recovery?.label){badge.hidden=true;badge.textContent="";return;}
       const status=Number(summary.recovery.status),when=summary.state==="stale"?`Latest night ${core.dateLabel(summary.date)}`:"Last night";badge.dataset.tone=status<=2?"low":status===3?"mid":"good";

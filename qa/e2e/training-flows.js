@@ -325,10 +325,7 @@ test("training journeys use real browser controls and isolated local fixtures",{
     assert.equal(await page.locator("#timerToggle").textContent(),"Pause");await page.click("#timerToggle");
     await page.waitForFunction(()=>globalThis.document.querySelector("#saveStatus")?.textContent==="Synced");
     await goto(page,"/account.html");await page.locator("#signedInCard").waitFor({state:"visible"});
-    await page.waitForFunction(()=>globalThis.document.querySelector("#accountPrimaryLabel")?.textContent==="Continue workout");
-    assert.match(await page.locator("#accountPrimaryAction").getAttribute("href"),/^\/workout\.html#resume=/);
-    await page.click("#accountPrimaryAction");await page.locator("#sessionPanel").waitFor({state:"visible"});
-    assert.equal(await page.locator("#sessionTitle").evaluate(node=>globalThis.document.activeElement===node),true,"Account’s next action should resume the active session directly");
+    assert.equal(await page.locator("#accountPrimaryAction,#accountNextTitle").count(),0,"Profile is account settings; resuming a workout happens in Train");
     let duplicateStarts=0;page.on("request",request=>{if(new URL(request.url()).pathname==="/api/workouts"&&request.method()==="POST")duplicateStarts++;});
     await goto(page,"/workout.html?day=Monday");const historyResume=page.locator('#historyList [data-history]').first();await historyResume.waitFor({state:"visible"});
     assert.equal(await page.locator('#recoveryList [data-recover]').count(),0,"A clean saved active session must not also appear as recovery");

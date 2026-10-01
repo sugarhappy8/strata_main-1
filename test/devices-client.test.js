@@ -291,7 +291,7 @@ test("Recovery explains every state before data exists and retries after a failu
   const redirecting=DiscoverRecovery.createController({element,api:async()=>{throw Object.assign(new Error("redirect"),{redirecting:true});},state:{user:{id:"m"}},core:Core,getGeneration:()=>1});redirecting.activate("today");await flush();
 });
 
-test("My Week shows last night's recovery as a badge, with Train's lighter session when it applies",async()=>{
+test("the Plan view shows last night's recovery as a badge, with Train's lighter session when it applies",async()=>{
   const {element,elements}=page(DISCOVER_IDS);let answer=wellnessToday();
   const controller=DiscoverRecovery.createController({element,api:async()=>answer,state:{user:{id:"m"}},core:Core,getGeneration:()=>1});
   controller.activate("plan");await flush();

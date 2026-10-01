@@ -191,8 +191,10 @@ test("creates an account with a private default plan",async()=>{
   const section=async(path,cookie)=>{const result=await request(path,{headers:cookie?{Cookie:cookie}:{},redirect:"manual"});assert.equal(result.response.status,302,path);assert.match(result.response.headers.get("cache-control")||"",/no-store/);return result.response.headers.get("location");};
   for(const cookie of [signup.cookie,null]){
     assert.equal(await section("/rankings",cookie),"/#rankings");
-    assert.equal(await section("/my-week",cookie),"/planner.html");
-    assert.equal(await section("/my-week/",cookie),"/planner.html");
+    assert.equal(await section("/dashboard",cookie),"/planner.html");
+    assert.equal(await section("/dashboard/",cookie),"/planner.html");
+    assert.equal(await section("/dashboard.html",cookie),"/planner.html","only Strata+ members get the two-choice dashboard");
+    assert.equal(await section("/my-week",cookie),"/planner.html","old My Week links keep working");
     assert.equal(await section("/recovery",cookie),"/pricing?reason=recovery");
   }
 
@@ -218,7 +220,13 @@ test("creates an account with a private default plan",async()=>{
   assert.equal(grantedDiscovery.response.status,200);
   // Members open the same sections inside the Strata+ studio.
   assert.equal(await section("/rankings",signup.cookie),"/discover.html#exerciseExplorer");
-  assert.equal(await section("/my-week",signup.cookie),"/discover.html#todayWorkspace");
+  // Members get the dashboard itself: Plan or the Strata+ dashboard.
+  const dashboard=await request("/dashboard",{headers:{Cookie:signup.cookie},redirect:"manual"});
+  assert.equal(dashboard.response.status,200);
+  assert.equal(dashboard.response.headers.get("cache-control"),"private, no-store");
+  assert.match(dashboard.data,/<a class="dashboard-choice" href="\/planner\.html">[\s\S]*?Your weekly plan/);
+  assert.match(dashboard.data,/<a class="dashboard-choice dashboard-choice-plus" href="\/discover\.html">[\s\S]*?Strata\+ dashboard/);
+  assert.equal(await section("/my-week",signup.cookie),"/dashboard");
   assert.equal(await section("/recovery",signup.cookie),"/discover.html#recoveryWorkspace");
 
   const profile={version:1,goal:"strength",level:"Intermediate",days:4,equipment:["Dumbbells","Bodyweight"],preferences:["stable"],limitations:[]};
