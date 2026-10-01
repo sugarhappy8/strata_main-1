@@ -55,7 +55,10 @@ const DEFAULT_MANIFEST=Object.freeze({
     "test/server.test.js",
     "test/workout-offline.test.js"
   ]),
-  readmeFiles:Object.freeze(["README.md"])
+  readmeFiles:Object.freeze(["README.md"]),
+  // The newest changelog entry must describe the build the version markers carry. A release written up without
+  // the version bump leaves every cached asset URL unchanged, so installed apps keep serving the previous files.
+  changelog:"CHANGELOG.md"
 });
 
 const STANDARD_MARKERS=Object.freeze([
@@ -134,7 +137,7 @@ function collectMarkers(relative,source,readmeFiles){
   return markers;
 }
 
-function auditRelease(root,current,manifest=DEFAULT_MANIFEST){
+function auditRelease(root,current,manifest=DEFAULT_MANIFEST,{nextRelease=null}={}){
   validateVersion(current,"package.json version");
   const errors=[];
   const readmeFiles=new Set(manifest.readmeFiles||[]);
@@ -179,10 +182,21 @@ function auditRelease(root,current,manifest=DEFAULT_MANIFEST){
     }
   }
 
+  if(manifest.changelog){
+    let changelog="";
+    try{changelog=fs.readFileSync(safeManifestPath(root,manifest.changelog),"utf8");}
+    catch(error){errors.push(`${manifest.changelog} cannot be read: ${error.message}`);}
+    const latest=changelog.match(/^##\s+([0-9]\S*)/m)?.[1]||null;
+    // While a release is being applied, its entry may already be written for the target build.
+    if(changelog&&latest!==current&&(nextRelease===null||latest!==nextRelease)){
+      errors.push(`${manifest.changelog} describes ${latest||"no release"} as the newest build, but package.json is ${current}; run the release version tool for ${latest||"the next build"} so asset URLs and the offline cache change with it.`);
+    }
+  }
+
   if(errors.length){
     throw new ReleaseVersionError(`Release version drift detected:\n- ${errors.join("\n- ")}`);
   }
-  return {filesChecked:2+manifest.textFiles.length};
+  return {filesChecked:2+manifest.textFiles.length+(manifest.changelog?1:0)};
 }
 
 function replaceLiteral(source,current,target){
@@ -243,7 +257,7 @@ function runRelease({root=PROJECT_ROOT,target=null,check=false,dryRun=false,mani
   const packagePath=safeManifestPath(root,"package.json");
   const {value:pkg}=readJson(packagePath);
   const current=packageBuild(pkg);
-  const audit=auditRelease(root,current,manifest);
+  const audit=auditRelease(root,current,manifest,{nextRelease:check?null:target});
 
   if(check){
     if(target!==null||dryRun)throw new ReleaseVersionError("--check cannot be combined with a target version or --dry-run.");

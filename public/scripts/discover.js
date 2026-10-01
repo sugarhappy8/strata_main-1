@@ -719,6 +719,6 @@ EventsCore.bind({
   document,window,el,state,core:Core,movementBoardLimit:MOVEMENT_BOARD_LIMIT,searchDebounceMs:SEARCH_DEBOUNCE_MS,featureNavigation,
   actions:{api,activateFeature,closeDialog,explorerPageSize,featureName,hideToast,init,openComparison,openDetail,readBattleBuilder,renderCompareTray,renderExplorer,renderMovementBoard,renderRecommendations,resetExplorerWindow,resetFilters,restoreDialogFocus,revalidateMemberWorkspaceWhenVisible,saveMovementBoard,setCollectionState,shareCard,showToast,syncDialogState,toggleCompare,toggleMovementBoard}
 });
-initializeFeatureNavigation();
+globalThis.StrataAiWidget?.mount({onApplied:(kind)=>{if(!state.user)return;if(kind==="nutrition"){void coaching.load({force:true});return;}refreshTrainingSnapshot({includePlan:true}).catch((error)=>{if(!redirectedOrChangedAccount(error))showToast("Saved. Reload Strata+ to see the change here.");});}});initializeFeatureNavigation();
 el("progressRetry")?.addEventListener("click",()=>void loadMemberDashboard(workspaceGeneration));
 init();

@@ -48,17 +48,30 @@ test("Strata+ progressively enhances four primary destinations and focused suppo
   assert.doesNotMatch(html,/<details class="(?:explore-advanced-tools|plan-tool-disclosure)"[^>]*\bopen\b/,"secondary tools should start collapsed");
 });
 
-test("the Strata AI bubble stays on every Strata+ view and explains itself on hover or focus",()=>{
-  const html=read("pages","discover.html"),css=read("styles","discover.css");
-  const bubble=html.match(/<a class="ai-bubble"[\s\S]*?<\/a>/)?.[0]||"";
-  assert.match(bubble,/href="\/ai"/);
-  assert.match(bubble,/aria-label="Strata AI"/);
-  assert.match(bubble,/aria-describedby="strataAiBubbleTip"/);
-  assert.match(bubble,/<span class="ai-bubble-tip" id="strataAiBubbleTip" role="tooltip"><strong>This is Strata AI<\/strong> Press it/);
-  assert.ok(html.indexOf(bubble)>html.indexOf("</main>"),"the bubble sits outside every feature panel so it never hides with one");
-  assert.match(css,/\.ai-bubble \{ position:fixed;/);
-  assert.match(css,/\.ai-bubble:hover \.ai-bubble-tip,\.ai-bubble:focus-visible \.ai-bubble-tip \{ opacity:1; visibility:visible;/);
-  assert.match(css,/@media print \{ \.ai-bubble \{ display:none !important; \} \}/);
+test("the Strata AI chat launcher glows on every Strata+ view, names itself on hover or focus, and opens a chat panel",()=>{
+  const html=read("pages","discover.html"),css=read("styles","ai-chat.css"),discoverCss=read("styles","discover.css");
+  const launcher=html.match(/<button class="ai-launcher"[\s\S]*?<\/button>/)?.[0]||"";
+  const panel=html.match(/<section class="ai-panel"[\s\S]*?<\/section>/)?.[0]||"";
+  assert.match(launcher,/id="aiChatLauncher" type="button" aria-label="Strata AI chat" aria-controls="aiChatPanel" aria-expanded="false"/);
+  assert.match(launcher,/<span class="ai-launcher-tip" aria-hidden="true">Strata AI chat<\/span>/);
+  assert.match(panel,/id="aiChatPanel" role="dialog" aria-labelledby="aiChatTitle" tabindex="-1" hidden/);
+  for(const id of ["aiChatTitle","aiChatStatus","aiChatStatusTitle","aiChatStatusDetail","aiChatReset","aiChatClose","aiChatScroll","aiChatEmpty","aiChatStarters","aiChatConversation","aiChatForm","aiChatSuggest","aiChatMessage","aiChatSend","aiChatSendLabel","aiChatError","aiChatCount","aiChatAnnounce"])assert.match(panel,new RegExp(`\\bid="${id}"`),id);
+  assert.match(panel,/<label class="sr-only" for="aiChatMessage">Message to Strata AI<\/label>/);
+  assert.match(panel,/href="\/ai" aria-label="Open Strata AI full screen"/);
+  assert.match(html,/<dialog class="ai-dialog" id="aiChatConfirm"/);
+  assert.ok(html.indexOf(launcher)>html.indexOf("</main>")&&html.indexOf(panel)>html.indexOf("</main>"),"the chat sits outside every feature panel so it never hides with one");
+  assert.match(html,/data-ai-chat-open id="plusAskAi" href="\/ai"/,"Ask Strata AI to plan opens the chat and still links to the full page without JavaScript");
+  assert.doesNotMatch(html+discoverCss,/ai-bubble/,"the old speech bubble is gone");
+  assert.match(css,/\.ai-launcher::before \{[^}]*animation:ai-launcher-glow 2\.8s ease-in-out infinite;/);
+  assert.match(css,/\.ai-launcher::after \{[^}]*animation:ai-launcher-ring 2\.8s [^;]*infinite;/);
+  assert.match(css,/@media \(hover:hover\) and \(pointer:fine\) \{[\s\S]*?\.ai-launcher:hover \.ai-launcher-tip \{ opacity:1; visibility:visible;/,"hover shows the label only where a pointer can hover, so a tap opens the chat");
+  assert.match(css,/\.ai-launcher:focus-visible \.ai-launcher-tip \{ opacity:1; visibility:visible;/);
+  assert.match(css,/@media \(prefers-reduced-motion:reduce\) \{\s*\.ai-launcher::before,\.ai-launcher::after,/);
+  assert.match(css,/\.ai-panel\[hidden\] \{ display:none; \}/);
+  assert.match(css,/@media print \{ \.ai-launcher,\.ai-panel \{ display:none !important; \} \}/);
+  const order=["ai-logic.js","ai-state.js","ai-api.js","ai-render.js","ai-events.js","ai-conversation.js","ai-widget.js","discover.js"].map((name)=>html.indexOf(`${name}?v=`));
+  assert.ok(order.every((index,position)=>index>0&&(position===0||index>order[position-1])),"the chat modules load in dependency order before the Strata+ shell mounts them");
+  assert.match(read("scripts","discover.js"),/globalThis\.StrataAiWidget\?\.mount\(\{onApplied:/);
 });
 
 test("coaching profile setup presents four navigable cards and labels every capability input",()=>{

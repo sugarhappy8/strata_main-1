@@ -1,5 +1,5 @@
 "use strict";
-/* global document */
+/* global document, getComputedStyle */
 
 const assert=require("node:assert/strict");
 const {spawn}=require("node:child_process");
@@ -110,10 +110,10 @@ async function noOverflow(page,label){
   await page.setViewportSize({width:1280,height:900});
 }
 
-test("members without Strata+ are sent to pricing, and Strata AI lives in its Strata+ bubble instead of the homepage",{timeout:60_000},async()=>{
-  const context=await browser.newContext({baseURL:baseUrl,serviceWorkers:"block",viewport:{width:1280,height:900},extraHTTPHeaders:{"X-Forwarded-For":"198.51.100.61"}});
+test("members without Strata+ are sent to pricing, and Strata AI lives in its Strata+ chat instead of the homepage",{timeout:90_000},async()=>{
+  const context=await browser.newContext({baseURL:baseUrl,serviceWorkers:"block",timezoneId:"UTC",viewport:{width:1280,height:900},extraHTTPHeaders:{"X-Forwarded-For":"198.51.100.61"}});
   context.setDefaultTimeout(WAIT_MS);
-  const page=await context.newPage();
+  const page=await context.newPage(),pageErrors=[];page.on("pageerror",(error)=>pageErrors.push(error.message));
   try{
     await page.goto("/",{waitUntil:"domcontentloaded"});
     assert.equal(await page.locator("#strataAi,#aiOfferLink").count(),0,"the homepage no longer promotes Strata AI");
@@ -126,24 +126,101 @@ test("members without Strata+ are sent to pricing, and Strata AI lives in its St
     await shot(page,"pricing-ai");
     await activatePlus(context);
     await page.goto("/discover.html",{waitUntil:"domcontentloaded"});
-    const bubble=page.locator("#strataAiBubble");
-    await bubble.waitFor({state:"visible"});assert.equal(await bubble.getAttribute("href"),"/ai");
-    assert.equal(await page.locator("#strataAiBubbleTip").isVisible(),false,"the bubble's explanation waits for hover or focus");
-    await bubble.hover();await page.locator("#strataAiBubbleTip").waitFor({state:"visible"});
-    assert.match(await page.locator("#strataAiBubbleTip").textContent(),/This is Strata AI/);await shot(page,"strata-plus-ai-bubble");
+
+    // The launcher glows in the corner of every Strata+ view and names itself on hover.
+    const launcher=page.locator("#aiChatLauncher"),panel=page.locator("#aiChatPanel"),tip=page.locator(".ai-launcher-tip");
+    await launcher.waitFor({state:"visible"});
+    assert.equal(await launcher.getAttribute("aria-label"),"Strata AI chat");assert.equal(await launcher.getAttribute("aria-expanded"),"false");
+    assert.equal(await panel.isVisible(),false);assert.equal(await tip.isVisible(),false,"the label waits for hover or focus");
+    assert.equal(await launcher.evaluate((node)=>getComputedStyle(node,"::before").animationName),"ai-launcher-glow","the launcher glows on a beat");
+    await launcher.hover();await page.waitForFunction(()=>getComputedStyle(document.querySelector(".ai-launcher-tip")).opacity==="1");
+    assert.equal((await tip.textContent()).trim(),"Strata AI chat");await shot(page,"strata-plus-ai-launcher");
     for(const target of ["progress","explore"]){
       await page.locator(`.destination-link[data-feature-target="${target}"]`).click();
-      assert.equal(await bubble.isVisible(),true,`the Strata AI bubble stays on the ${target} view`);
+      assert.equal(await launcher.isVisible(),true,`the Strata AI chat stays on the ${target} view`);
     }
     await page.setViewportSize({width:390,height:844});
-    const bubbleBox=await bubble.boundingBox(),navBox=await page.locator(".studio-nav-mobile").boundingBox();
-    assert.ok(bubbleBox.y+bubbleBox.height<=navBox.y,"the bubble floats above the mobile navigation");
-    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)<=1,"the bubble fits a phone");
+    const launcherBox=await launcher.boundingBox(),navBox=await page.locator(".studio-nav-mobile").boundingBox();
+    assert.ok(launcherBox.y+launcherBox.height<=navBox.y,"the launcher floats above the mobile navigation");
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)<=1,"the launcher fits a phone");
     await page.setViewportSize({width:1280,height:900});
-    await Promise.all([page.waitForURL(url=>url.pathname==="/ai"),bubble.click()]);
+    await page.locator('.destination-link[data-feature-target="today"]').click();
+
+    // Pressing it opens a small chat; a starter plans a week right there, and applying it updates the Overview.
+    await launcher.click();
+    await panel.waitFor({state:"visible"});
+    assert.equal(await launcher.getAttribute("aria-expanded"),"true");
+    assert.equal(await page.evaluate(()=>document.activeElement?.id),"aiChatMessage","focus starts in the message box");
+    await page.waitForFunction(()=>document.querySelector("#aiChatStatus")?.dataset.tone==="online");
+    assert.match(await page.locator("#aiChatStatusDetail").textContent(),/30 of 30 requests left today/);
+    assert.equal(await page.locator("#aiChatStarters button").count(),4);
+    const panelBox=await panel.boundingBox();
+    assert.ok(panelBox.width<=400&&panelBox.x+panelBox.width<=1280&&panelBox.y>=0,"the chat is a small panel in the corner");
+    await shot(page,"strata-plus-ai-chat");
+    const empty=await new AxeBuilder({page}).include("#aiChatPanel").include("#aiChatLauncher").analyze();
+    assert.deepEqual(empty.violations.map(({id})=>id),[],`chat accessibility: ${empty.violations.map(({id})=>id).join(", ")}`);
+    await page.locator("#aiChatStarters button").first().click();
+    await page.locator("#aiChatConversation .ai-turn-pending").waitFor({state:"visible"});
+    const answer=page.locator("#aiChatConversation .ai-turn-assistant").first();await answer.waitFor({state:"visible"});
+    assert.match(await answer.locator(".ai-reply").textContent(),/three-day full-body week/);
+    assert.equal(await answer.locator(".ai-week-strip li.is-training").count(),3);
+    assert.ok(await page.locator("#aiChatScroll").evaluate((node)=>node.scrollTop>0),"the panel scrolls to the new answer");
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)<=1,true);
+    await shot(page,"strata-plus-ai-chat-week");
+    await answer.getByRole("button",{name:"Apply to my plan"}).click();
+    await answer.locator(".ai-applied").waitFor({state:"visible"});
+    assert.deepEqual(trainingDays(await savedPlan(context)),["Monday","Wednesday","Friday"]);
+    await page.waitForFunction(()=>/^3 training days · 12 exercises/.test(document.querySelector("#overviewPlanDetail")?.textContent||""));
+
+    // Escape closes the chat and returns focus; “Ask Strata AI to plan” opens the same conversation.
+    await page.keyboard.press("Escape");
+    assert.equal(await panel.isVisible(),false);assert.equal(await page.evaluate(()=>document.activeElement?.id),"aiChatLauncher");
+    await page.locator("#plusAskAi").click();
+    await panel.waitFor({state:"visible"});assert.equal(new URL(page.url()).pathname,"/discover.html","the Overview action opens the chat instead of leaving Strata+");
+    assert.equal(await page.locator("#aiChatConversation .ai-turn-assistant").count(),1);
+    await page.fill("#aiChatMessage","How does progressive overload work?");await page.keyboard.press("Enter");
+    await page.locator("#aiChatConversation .ai-turn-user").nth(1).waitFor();
+    await page.locator("#aiChatClose").click();
+    await page.locator("#aiChatConversation .ai-turn-assistant").nth(1).waitFor({state:"attached"});
+    await page.waitForFunction(()=>document.querySelector("#aiChatLauncher")?.dataset.unread==="true");
+    assert.equal(await launcher.getAttribute("aria-label"),"Strata AI chat, new answer","a reply that arrives while the chat is closed is marked");
+
+    // The full page continues the same conversation in this tab.
+    await launcher.click();
+    await Promise.all([page.waitForURL((url)=>url.pathname==="/ai"),page.getByRole("link",{name:"Open Strata AI full screen"}).click()]);
+    await page.locator("#aiConversation .ai-turn-assistant").nth(1).waitFor({state:"visible"});
+    assert.equal(await page.locator("#aiConversation .ai-applied").count(),1,"the applied week stays applied on the full page");
     await page.goto("/pricing?reason=ai",{waitUntil:"domcontentloaded"});
     await page.locator("#openDiscovery").waitFor({state:"visible"});
     assert.equal(await page.locator("#openDiscovery").getAttribute("href"),"/ai");assert.match(await page.locator("#openDiscovery").textContent(),/Open Strata AI/);
+    assert.deepEqual(pageErrors,[]);
+  }finally{await context.close();}
+});
+
+test("on a phone the Strata AI chat fills the screen and closes back to the launcher",{timeout:60_000},async()=>{
+  const context=await browser.newContext({baseURL:baseUrl,serviceWorkers:"block",viewport:{width:390,height:844},isMobile:true,hasTouch:true,extraHTTPHeaders:{"X-Forwarded-For":"198.51.100.63"}});
+  context.setDefaultTimeout(WAIT_MS);
+  const page=await context.newPage(),pageErrors=[];page.on("pageerror",(error)=>pageErrors.push(error.message));
+  try{
+    await signup(context,"phone");await activatePlus(context);
+    await page.goto("/discover.html",{waitUntil:"domcontentloaded"});
+    await page.locator("#aiChatLauncher").tap();
+    const panel=page.locator("#aiChatPanel");await panel.waitFor({state:"visible"});
+    await panel.evaluate((node)=>Promise.all(node.getAnimations().map((animation)=>animation.finished)));
+    const box=await panel.boundingBox();
+    assert.deepEqual([box.x,box.y,box.width,box.height].map(Math.round),[0,0,390,844],"the chat covers the visible screen");
+    assert.equal(await page.evaluate(()=>document.activeElement?.id),"aiChatPanel","the keyboard stays down until the member taps the message box");
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).overflow),"hidden","the page behind the chat does not scroll");
+    assert.equal(await page.locator(".ai-launcher-tip").isVisible(),false,"a tap opens the chat without stopping at the label");
+    await page.waitForFunction(()=>document.querySelector("#aiChatStatus")?.dataset.tone==="online");
+    await page.locator("#aiChatStarters button").nth(3).tap();
+    await page.locator("#aiChatConversation .ai-turn-assistant").first().waitFor({state:"visible"});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth)<=1,"the chat fits a phone");
+    await shot(page,"strata-plus-ai-chat-phone");
+    await page.locator("#aiChatClose").tap();
+    assert.equal(await panel.isVisible(),false);assert.equal(await page.locator("#aiChatLauncher").isVisible(),true);
+    assert.notEqual(await page.evaluate(()=>getComputedStyle(document.documentElement).overflow),"hidden");
+    assert.deepEqual(pageErrors,[]);
   }finally{await context.close();}
 });
 

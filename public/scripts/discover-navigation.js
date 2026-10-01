@@ -82,7 +82,10 @@
       if(announce&&element("featureStatus"))element("featureStatus").textContent=`${item.label} workspace opened.`;
       onActivate(name);
       if(scroll||focus){
+        // Focus moved somewhere else before the next frame (a card, another tab, the chat) is not taken back.
+        const focusedBefore=document.activeElement;
         const move=()=>{
+          const current=document.activeElement;if(current!==focusedBefore&&current&&current!==document.body)return;
           const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
           if(scroll)(element(scrollAnchorId)||panel).scrollIntoView?.({behavior:smooth&&!reduceMotion?"smooth":"instant",block:"start"});
           if(focus)element(item.headingId)?.focus?.({preventScroll:true});
