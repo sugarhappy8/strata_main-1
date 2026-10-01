@@ -52,6 +52,7 @@
     if(error?.code==="SIGN_IN_REQUIRED"||error?.status===401)return `Your STRATA session ended. Sign in again, then choose Restore Purchases.${safe}`;
     if(error?.code==="APPLE_ACCOUNT_MISMATCH")return `This App Store purchase belongs to a different STRATA account. Sign in to the account that bought it, then choose Restore Purchases.${safe}`;
     if(error?.code==="APPLE_PURCHASE_OTHER_ACCOUNT")return "This Apple Account’s Strata+ subscription is already linked to another STRATA account. Sign in to that account to use it.";
+    if(error?.code==="APPLE_FAMILY_SHARED")return "Strata+ isn’t shared through Family Sharing. Subscribe with your own Apple Account to unlock it.";
     if(String(error?.code||"").startsWith("APPLE_"))return `STRATA could not verify this App Store purchase. Contact STRATA from Profile so we can help.${safe}`;
     if(error?.code==="NETWORK_ERROR")return `Could not reach STRATA. Reconnect, then choose Restore Purchases.${safe}`;
     if(error?.status===403)return `Your session needs refreshing. Leave this screen and come back, then choose Restore Purchases.${safe}`;

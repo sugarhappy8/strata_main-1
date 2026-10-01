@@ -141,8 +141,11 @@
     function sync({keepAwake:wantAwake=false,restEndsAt=0,now=Date.now()}={}){
       const want=Boolean(wantAwake),resumed=now-reportedAt>RESUME_GAP;reportedAt=now;
       if(want!==awake||want&&resumed){awake=want;void keepAwake(awake);}
-      const endsAt=Number(restEndsAt)>now?Number(restEndsAt):0;
+      const requested=Number(restEndsAt)||0,endsAt=requested>now?requested:0;
       if(endsAt===alertAt)return;
+      // A rest that simply ran out keeps its alert: it has fired (or is firing) while STRATA was in the background, and
+      // cancelling would also clear the delivered notification. Only a paused, skipped, replaced, or finished rest cancels.
+      if(!endsAt&&requested&&requested===alertAt){alertAt=0;return;}
       alertAt=endsAt;
       if(endsAt)void scheduleRestAlert({endsAt,title,body});else void cancelRestAlert();
     }

@@ -99,6 +99,7 @@ test("a purchase STRATA rejects stays unfinished so StoreKit delivers it again",
   for(const [status,code,message] of [
     [403,"APPLE_ACCOUNT_MISMATCH",/different STRATA account/],
     [409,"APPLE_PURCHASE_OTHER_ACCOUNT",/already linked to another STRATA account/],
+    [422,"APPLE_FAMILY_SHARED",/isn’t shared through Family Sharing/],
     [400,"APPLE_SIGNATURE_INVALID",/could not verify this App Store purchase/],
     [503,"UNAVAILABLE",/could not confirm the purchase yet/]
   ]){

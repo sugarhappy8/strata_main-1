@@ -265,11 +265,13 @@ test("the workout bridge calls the app only when the wanted screen and rest-aler
   assert.deepEqual(step({keepAwake:true,restEndsAt:null}),[["cancelRestAlert",{}]],"pausing or resetting cancels it");
   assert.deepEqual(step({keepAwake:true,restEndsAt:null}),[]);
   step({keepAwake:true,restEndsAt:now+1000});
-  assert.deepEqual(step({keepAwake:true,restEndsAt:now}),[["cancelRestAlert",{}]],"a rest that ran out clears its alert once");
+  assert.deepEqual(step({keepAwake:true,restEndsAt:now+1000,now:now+1000}),[],"a rest that ran out keeps its alert, which fires (or was delivered) on its own");
   assert.deepEqual(step({keepAwake:true,restEndsAt:now-5000}),[]);
   step({keepAwake:true,restEndsAt:now+30_000});
   assert.deepEqual(step({keepAwake:false,restEndsAt:now+30_000}),[["keepAwake",{enabled:false}]],"a hidden page lets the screen sleep but keeps the alert for the background");
   assert.deepEqual(step({keepAwake:false,restEndsAt:0}),[["cancelRestAlert",{}]],"a finished workout cancels the alert");
+  step({keepAwake:true,restEndsAt:now+30_000});
+  assert.deepEqual(step({keepAwake:true,restEndsAt:now-1}),[["cancelRestAlert",{}]],"a different, already-past rest is a replaced rest");
   // The app lets the screen sleep in the background; the first report after the page was suspended asks again.
   bridge.sync({now,keepAwake:true});calls.splice(0);
   bridge.sync({now:now+1000,keepAwake:true});assert.deepEqual(calls.splice(0),[],"steady reports stay quiet");

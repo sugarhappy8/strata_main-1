@@ -90,6 +90,9 @@ test("in the iOS app a workout keeps the screen awake, schedules its rest alert,
   assert.match(main,/addWeeklyToCalendar\(options\)\)\?\.added===true\)toast\("Added to your calendar\."\);\}\n {4}catch\{const link=document\.createElement\("a"\);link\.href=\$\("calendarWeeklyLink"\)\.href;link\.download=/,"a refused sheet falls back to the .ics file");
   assert.match(events,/\$\("calendarWeeklyLink"\)\?\.addEventListener\("click",\(event\)=>\{void actions\.addWeeklyToCalendar\?\.\(event\);\}\)/);
   assert.match(events,/windowLike\.addEventListener\("pagehide",\(\)=>\{state\.pageHidden=true;tick\(\);\}\)/);
+  // A rest alert the online page scheduled must not fire after the workout is finished on the offline page.
+  const offline=readFileSync(join(ROOT,"public/scripts/workout-offline.js"),"utf8");
+  assert.match(offline,/workout\.restEndsAt=null;const stored=persist\(\);render\(\);globalThis\.StrataAppMode\?\.cancelRestAlert\?\.\(\);/,"finishing offline cancels the rest alert");
 });
 
 test("workout renderer keeps the training essentials visible and nests configuration under More",()=>{

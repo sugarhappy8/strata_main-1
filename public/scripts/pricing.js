@@ -124,7 +124,7 @@
       state.checkoutOpen=true;signal("checkout_opened");
     }catch(error){
       if(error.status===401){location.assign("/account.html?mode=login&next=pricing");return;}
-      if(error.code==="ALREADY_ENTITLED"||error.code==="DISCOVERY_ALREADY_ACTIVE"||error.code==="CHECKOUT_PENDING_CONFIRMATION"){state.currentCheckoutUserId=checkoutUserId;await refreshAccess({focus:true});return;}
+      if(error.code==="ALREADY_ENTITLED"||error.code==="ALREADY_ENTITLED_APP_STORE"||error.code==="DISCOVERY_ALREADY_ACTIVE"||error.code==="CHECKOUT_PENDING_CONFIRMATION"){state.currentCheckoutUserId=checkoutUserId;await refreshAccess({focus:true});return;}
       if(error.code==="CHECKOUT_PREPARING"){state.actionError=error.message||"Another checkout is being prepared. Try again in a moment.";return;}
       state.actionError=error.status===403
         ?"Your secure session expired. Refresh this page before trying checkout again."
