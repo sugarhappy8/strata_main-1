@@ -459,7 +459,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.equal(users.data.users[0].name,"<img src=x onerror=alert(1)>");
   assert.deepEqual(users.data.users[0].discovery,{
     active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
-    latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed"
+    latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed",apple:{activeCount:0,expiresAt:null}
   },"account search must expose the selected account's complete entitlement state");
   assertPrivateJson(users.response);
   assertAdminResponseRedacted(users.data,secrets);
@@ -470,10 +470,23 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.ok(detail.data.user.activeSessions>=2);
   assert.deepEqual(detail.data.user.discovery,{
     active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
-    latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed"
+    latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed",apple:{activeCount:0,expiresAt:null,subscription:null}
   });
   assertPrivateJson(detail.response);
   assertAdminResponseRedacted(detail.data,secrets);
+
+  // Strata+ bought in the iOS app shows beside the Paddle state.
+  const appleExpiresAt=Date.now()+30*24*60*60*1000,appleDb=openDatabase();
+  try{
+    appleDb.prepare("INSERT INTO apple_subscriptions(original_transaction_id,user_id,product_id,environment,latest_transaction_id,purchased_at,original_purchased_at,expires_at,revoked_at,revocation_reason,auto_renew,grace_period_expires_at,last_signed_at,created_at,updated_at) VALUES('5000000000',?,'online.stratafitness.app.plus.monthly','Production','5000000001',?,?,?,NULL,NULL,1,NULL,?,?,?)")
+      .run(member.user.id,Date.now(),Date.now(),appleExpiresAt,Date.now(),Date.now(),Date.now());
+  }finally{appleDb.close();}
+  const appleDetail=await request(`/api/admin/users/${encodeURIComponent(member.user.id)}`,{headers:{Cookie:admin.cookie}});
+  assert.deepEqual(appleDetail.data.user.discovery.apple,{activeCount:1,expiresAt:appleExpiresAt,subscription:{active:true,productId:"online.stratafitness.app.plus.monthly",expiresAt:appleExpiresAt,autoRenew:true,inGracePeriod:false,environment:"Production",revoked:false}});
+  const appleList=await request("/api/admin/users",{headers:{Cookie:admin.cookie}});
+  assert.equal(appleList.data.users.find((entry)=>entry.id===member.user.id).discovery.apple.activeCount,1);
+  const appleCleanup=openDatabase();
+  try{appleCleanup.prepare("DELETE FROM apple_subscriptions WHERE original_transaction_id='5000000000'").run();}finally{appleCleanup.close();}
 
   const injection=await request("/api/admin/users?q=%25_%27%20OR%201%3D1--",{headers:{Cookie:admin.cookie}});
   assert.equal(injection.response.status,200);

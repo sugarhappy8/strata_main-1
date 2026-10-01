@@ -54,6 +54,10 @@ services:
         sync: false
       - key: PADDLE_ENFORCE_IP_ALLOWLIST
         value: "false"
+      - key: APPLE_BUNDLE_ID
+        value: online.stratafitness.app
+      - key: APPLE_IAP_PRODUCT_IDS
+        value: online.stratafitness.app.plus.monthly
       - key: GROQ_API_KEY
         sync: false
       - key: STRATA_AI_MODEL

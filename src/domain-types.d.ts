@@ -330,6 +330,7 @@ export type CheckoutRecovery=
 
 export interface BillingStore {
   adminControls(userId:string):Promise<AdminControlsRow|null>;
+  hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
   hasPaidDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(userId:string,priceId:string,productId:string,now?:number):Promise<boolean>;
   hasEntitledPaidDiscoveryAccess(userId:string,priceIds:readonly string[],productId:string,now?:number):Promise<boolean>;
@@ -363,7 +364,7 @@ export interface BillingStore {
   revokePurchase(transactionId:string,reason:string,revokedAt:number,updatedAt:number):Promise<PurchaseRow|null>;
 }
 
-export type BillingAdapterMethods=Omit<BillingStore,"activeAccountDeletion"|"adminControls">&{
+export type BillingAdapterMethods=Omit<BillingStore,"activeAccountDeletion"|"adminControls"|"hasActiveAppleSubscription">&{
   hasDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   discoveryAccessSummary(userId:string,priceId?:string|null,now?:number):Promise<DiscoveryAccessSummary>;
 };
@@ -415,13 +416,13 @@ export type AuthStoreMethod=
   |"accountExport"|"accountSessions"|"deleteSession"|"discardStagedAccountAction"|"insertSession"|"insertUser"|"insertVerification"
   |"markVerificationDelivery"|"rotateVerification"|"session"|"stageAccountAction"|"userByEmail"
   |"userById"|"verificationByTokenHash"|"verificationSendByChallengeGeneration"
-  |"revokeAccountSession"|"revokeOtherAccountSessions";
+  |"revokeAccountSession"|"revokeOtherAccountSessions"|"renewSession";
 
 export type AdminStoreMethod=
   |"accountCredentialsById"|"adminAudit"|"adminOverview"|"adminPrincipal"
   |"adminUserById"|"adminUsers"|"cancelAccountDeletionWithAudit"|"claimAdminPrincipal"
   |"recordAdminAudit"|"restoreUser"|"revokeUserSessions"
-  |"adminControls"|"writeAdminControls"|"unsettledPurchasesForUser"|"subscriptionForUser"|"checkoutCreationForUser"|"suspendUser"|"deleteUserByAdmin"|"userByEmail"|"userById";
+  |"adminControls"|"writeAdminControls"|"unsettledPurchasesForUser"|"subscriptionForUser"|"checkoutCreationForUser"|"suspendUser"|"deleteUserByAdmin"|"userByEmail"|"userById"|"appleSubscriptionsForUser";
 
 export type SupportStoreMethod=
   |"adminSupportTickets"|"claimSupportRequestEvent"|"deleteOldSupportRequestEvents"
@@ -448,7 +449,7 @@ export interface ProductSignalsStore {
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore&AppleBillingStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -474,6 +475,7 @@ export interface SessionRow extends AccountIdentityRow {
   token_hash:string;
   csrf_token:string;
   expires_at:number;
+  session_created_at?:number;
 }
 
 export interface AccountSessionStoreRow extends JsonObject {
@@ -517,6 +519,7 @@ export interface AccountExportStoreRows {
   trainingLinks:JsonObject[];
   aiSettings:JsonObject|null;
   aiUsage:JsonObject[];
+  appleSubscriptions?:JsonObject[];
 }
 
 export interface AccountSelfServiceStore {
@@ -952,6 +955,7 @@ export interface AuthServiceDependencies {
   claimAdminForLogin?:(user:UserRow)=>Promise<UserRow>;
   reconcileCheckoutCreationBeforeDeletion:(userId:string,expectedClaimId?:string)=>Promise<number>;
   reconcileUnsettledPurchases:(userId:string,options?:{includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]})=>Promise<number>;
+  appleDeletionNotice?:(userId:string)=>Promise<AppleDeletionNotice|null>;
   logger?:Pick<Console,"info"|"error">;
 }
 
@@ -1058,7 +1062,68 @@ export interface ServiceCompositionDependencies {
   reconcileCheckoutCreationBeforeDeletion:(userId:string,expectedClaimId?:string)=>Promise<number>;
   reconcileUnsettledPurchases:(userId:string,options?:{includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]})=>Promise<number>;
   isUniqueViolation:(error:unknown)=>boolean;
+  appleDeletionNotice?:(userId:string)=>Promise<AppleDeletionNotice|null>;
   createAuthService:CreateAuthService;
   createAdminService:CreateAdminService;
   createSupportService:CreateSupportService;
+}
+
+export type AppleEnvironment="Production"|"Sandbox";
+export interface AppleBillingSettings {
+  readonly bundleId:string;
+  readonly productIds:readonly string[];
+  readonly rootFingerprint:string;
+  readonly rootOverrideIgnored:boolean;
+}
+/** A verified StoreKit 2 transaction for a Strata+ product of this app. */
+export interface AppleTransaction {
+  transactionId:string;originalTransactionId:string;productId:string;environment:AppleEnvironment;
+  purchaseDate:number;originalPurchaseDate:number|null;expiresDate:number;signedDate:number;
+  revocationDate:number|null;revocationReason:number|null;appAccountToken:string|null;
+}
+export interface AppleRenewal {autoRenew:boolean|null;gracePeriodExpiresAt:number|null;}
+export interface AppleSubscriptionRow extends JsonObject {
+  original_transaction_id:string;user_id:string;product_id:string;environment:AppleEnvironment;latest_transaction_id:string;
+  purchased_at:number|null;original_purchased_at:number|null;expires_at:number|null;revoked_at:number|null;revocation_reason:string|null;
+  auto_renew:0|1|null;grace_period_expires_at:number|null;last_signed_at:number;created_at:number;updated_at:number;
+}
+export interface AppleSubscriptionWrite {
+  originalTransactionId:string;userId:string;productId:string;environment:AppleEnvironment;latestTransactionId:string;
+  purchasedAt:number|null;originalPurchasedAt:number|null;expiresAt:number|null;revokedAt:number|null;revocationReason:string|null;
+  autoRenew:boolean|null;gracePeriodExpiresAt:number|null;lastSignedAt:number;createdAt:number;updatedAt:number;
+}
+export interface AppleNotificationWrite {notificationUuid:string;notificationType:string;subtype:string|null;outcome:string;signedAt:number;processedAt:number;}
+export interface AppleBillingStore {
+  appleSubscription(originalTransactionId:string):Promise<AppleSubscriptionRow|null>;
+  appleSubscriptionsForUser(userId:string):Promise<AppleSubscriptionRow[]>;
+  upsertAppleSubscription(record:AppleSubscriptionWrite,replaceOwnerId?:string|null):Promise<AppleSubscriptionRow|null>;
+  hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
+  appleNotification(notificationUuid:string):Promise<JsonObject|null>;
+  recordAppleNotification(notification:AppleNotificationWrite):Promise<boolean>;
+  deleteOldAppleNotifications(before:number):Promise<void>;
+}
+/** /api/me "discovery.apple". */
+export interface AppleSubscriptionSummary {
+  active:boolean;productId:string;expiresAt:number|null;autoRenew:boolean|null;inGracePeriod:boolean;environment:AppleEnvironment;revoked:boolean;
+}
+export interface AppleDeletionNotice {message:string;manageUrl:string;}
+export interface AppleBillingServiceDependencies {
+  store:AppleBillingStore&{userById(userId:string):Promise<JsonObject|null>};
+  settings:AppleBillingSettings;
+  getAuth:()=>Pick<AuthService,"requireSession"|"validCsrf">|undefined;
+  getUserPayload:(account:SessionRow)=>Promise<JsonObject>;
+  trustedOrigin:(request:HttpRequest)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  http:Pick<HttpHelpers,"json">;
+  logger:OperationalLogger;
+  now?:()=>number;
+  verify?:(token:string,options:{rootFingerprint?:string;now?:number})=>Record<string,any>;
+}
+export interface AppleBillingService {
+  handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
+  handleNotification(request:HttpRequest,response:HttpResponse):Promise<void>;
+  processNotification(payload:Record<string,any>):Promise<string>;
+  subscriptionForUser(userId:string):Promise<AppleSubscriptionSummary|null>;
+  deletionNotice(userId:string):Promise<AppleDeletionNotice|null>;
+  cleanup():Promise<void>;
 }
