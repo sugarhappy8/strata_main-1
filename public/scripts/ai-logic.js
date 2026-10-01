@@ -117,7 +117,7 @@
     if(!status)return {tone:"checking",title:"Checking Strata AI…",detail:"",canAsk:false};
     if(!status.configured)return {tone:"offline",title:"Strata AI is unavailable right now",detail:"Your plan and nutrition tools work as usual.",canAsk:false};
     // Nothing is sent to the AI provider until the member agrees; the server enforces the same rule.
-    if(status.consent===false)return {tone:"consent",title:"Allow Strata AI to read your training",detail:"To answer, Strata AI sends Groq a short summary of your plan, workouts, recovery, and diary. Never your name, email, or Polar login.",canAsk:false,needsConsent:true};
+    if(status.consent===false)return {tone:"consent",title:"Share a training summary with Groq?",detail:"Strata AI is powered by Groq, Inc., an outside AI service. To answer you, and to write your Daily Brief each morning, STRATA sends Groq a short summary of your plan, workouts, food diary, and Polar sleep, recovery, and heart rate. Never your name, email, or Polar login. Nothing is sent until you allow it.",canAsk:false,needsConsent:true};
     if(status.resting)return {tone:"limit",title:"Strata AI is resting for today",detail:"It will be back tomorrow. Your Daily Brief stays on the Overview.",canAsk:false};
     if(Number(status.remainingToday)<=0)return {tone:"limit",title:"You’ve used today’s requests",detail:`Strata AI allows ${whole(status.dailyLimit)} requests a day. They reset at midnight UTC.`,canAsk:false};
     const left=`${whole(status.remainingToday)} of ${whole(status.dailyLimit)} requests left today`;

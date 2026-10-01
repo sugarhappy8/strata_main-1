@@ -40,7 +40,7 @@
 }
 .workout-page :where(h1,h2,h3,h4,.brand,.visual-core strong,.session-clock strong,.timer-readout strong,.chart-best strong){font-family:var(--display)}
 .workout-page :where(.eyebrow,.mode-notice,.workout-nav a,.field,.visual-core>span,.visual-label,.preview-number,.status-chip,footer){font-family:var(--body,"Manrope",Arial,sans-serif); font-variant-numeric:tabular-nums; }
-.workout-page .site-header{position:sticky;z-index:30;top:0;max-width:none;min-height:72px;margin:0;padding:14px max(clamp(20px,4vw,64px),env(safe-area-inset-right)) 14px max(clamp(20px,4vw,64px),env(safe-area-inset-left));background:rgba(16,17,15,.96);border-bottom:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.14);backdrop-filter:blur(14px) saturate(1.08)}
+.workout-page .site-header{position:sticky;z-index:30;top:0;max-width:none;min-height:calc(72px + env(safe-area-inset-top));margin:0;padding:calc(14px + env(safe-area-inset-top)) max(clamp(20px,4vw,64px),env(safe-area-inset-right)) 14px max(clamp(20px,4vw,64px),env(safe-area-inset-left));background:rgba(16,17,15,.96);border-bottom:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.14);backdrop-filter:blur(14px) saturate(1.08)}
 .workout-page .brand{font-size:22px;font-weight:700;letter-spacing:.055em}
 .workout-page .brand-mark{gap:2px;width:22px;height:24px;transform:skew(-8deg)}
 .workout-page .brand-mark i{width:6px;background:var(--lime)}
@@ -93,7 +93,7 @@
 @keyframes workout-orbit-cross{from{transform:rotate(35deg) scaleX(1.45)}to{transform:rotate(30deg) scaleX(1.52) translateX(8px)}}
 @media(max-width:760px){
   html{scroll-padding-bottom:calc(76px + env(safe-area-inset-bottom))}
-  .workout-page .site-header{min-height:64px;padding:10px max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));background:var(--bg);backdrop-filter:none}
+  .workout-page .site-header{min-height:calc(64px + env(safe-area-inset-top));padding:calc(10px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));background:var(--bg);backdrop-filter:none}
   .workout-page .shell{width:calc(100% - 36px);padding-top:12px}
   .workout-page .hero{grid-template-columns:1fr;gap:26px;padding:28px 0 36px}
   .workout-page .hero-visual{display:none}

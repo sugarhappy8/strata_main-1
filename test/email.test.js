@@ -141,7 +141,7 @@ test("Resend delivery uses server credentials, escaped HTML, and an idempotency 
   assert.deepEqual(body.to,["person@example.com"]);
   assert.match(body.text,/012345/);
   assert.match(body.text,/https:\/\/stratafitness\.online\/verify-email/);
-  assert.match(body.text,/browser where you started signup/i);
+  assert.match(body.text,/STRATA app or the browser where you started signup/i);
   assert.match(body.html,/Saeed &lt;Admin&gt;/);
   assert.doesNotMatch(body.html,/<Admin>/);
   assert.equal(body.reply_to,"support@stratafitness.online");

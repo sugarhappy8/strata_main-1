@@ -17,6 +17,12 @@
     history.back();
   });
 
+  // A workout started online keeps a context on this device; offline, /workout.html opens the offline logger.
+  const workoutLink=document.getElementById("offlineWorkout");
+  try{
+    if(workoutLink&&localStorage.getItem("strata_workout_offline_context_v1"))workoutLink.hidden=false;
+  }catch{}
+
   window.addEventListener("online",() => {
     if(status)status.textContent="You’re back online. Try this page again to continue.";
   });

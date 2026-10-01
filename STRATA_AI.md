@@ -140,7 +140,7 @@ Overview; `GET /api/ai/usage` also lists the heaviest members.
 
 ## Privacy
 
-- **Consent first:** nothing is sent to the provider until the member taps "Allow Strata AI"
+- **Consent first:** nothing is sent to the provider until the member taps "Allow and share with Groq", which names Groq and what is sent (App Store Guideline 5.1.2(i))
   (`PUT /api/ai/settings`). Withdrawing stops all sending at once; the Daily Brief can be turned
   off separately.
 - **Minimum data:** only the compact summary above; no identifiers.
