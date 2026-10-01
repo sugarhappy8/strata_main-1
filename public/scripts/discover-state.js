@@ -15,14 +15,13 @@
     // Plan and Nutrition open from Overview, so Overview stays the highlighted destination.
     plan:Object.freeze({panelId:"planWorkspace",headingId:"planWorkspaceTitle",label:"Plan",parent:"today"}),
     progress:Object.freeze({panelId:"progressWorkspace",headingId:"progressWorkspaceTitle",label:"Progress"}),
-    explore:Object.freeze({panelId:"exploreWorkspace",headingId:"exploreWorkspaceTitle",label:"Exercises"}),
     nutrition:Object.freeze({panelId:"nutritionWorkspace",headingId:"nutritionWorkspaceTitle",label:"Nutrition",parent:"today"}),
     recovery:Object.freeze({panelId:"recoveryWorkspace",headingId:"recoveryWorkspaceTitle",label:"Recovery"}),
     coaching:Object.freeze({panelId:"coachingWorkspace",headingId:"coachingWorkspaceTitle",label:"Personal setup",parent:"nutrition"}),
-    recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you",parent:"explore"}),
-    library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library",parent:"explore"}),
-    battle:Object.freeze({panelId:"battle",headingId:"battleTitle",label:"Compare exercises",parent:"explore"}),
-    profile:Object.freeze({panelId:"profile",headingId:"profileTitle",label:"Personalize recommendations",parent:"explore"}),
+    recommendations:Object.freeze({panelId:"recommendations",headingId:"recommendationTitle",label:"Best exercises for you",parent:"library"}),
+    library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library"}),
+    battle:Object.freeze({panelId:"battle",headingId:"battleTitle",label:"Compare exercises",parent:"library"}),
+    profile:Object.freeze({panelId:"profile",headingId:"profileTitle",label:"Personalize recommendations",parent:"library"}),
     community:Object.freeze({panelId:"communityPlans",headingId:"communityPlansTitle",label:"Browse community plans",parent:"plan"}),
     monthly:Object.freeze({panelId:"monthlyPlan",headingId:"monthlyPlanTitle",label:"Build a 31-day plan",parent:"plan"}),
     session:Object.freeze({panelId:"sessionBuilder",headingId:"sessionBuilderTitle",label:"Build a session",parent:"plan"})

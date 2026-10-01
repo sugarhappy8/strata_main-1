@@ -11,7 +11,6 @@ const Catalog=require("../public/scripts/discover-catalog");
 const Detail=require("../public/scripts/discover-detail");
 const Community=require("../public/scripts/discover-community");
 const Session=require("../public/scripts/discover-session");
-const Sharing=require("../public/scripts/discover-sharing");
 
 function classList(){const values=new Set();return{add:name=>values.add(name),remove:name=>values.delete(name),toggle:(name,force)=>force?values.add(name):values.delete(name),contains:name=>values.has(name)};}
 function element(id){return{id,hidden:false,dataset:{},classList:classList(),attributes:{},setAttribute(name,value){this.attributes[name]=String(value);},removeAttribute(name){delete this.attributes[name];},focus(){},scrollIntoView(){}};}
@@ -21,7 +20,7 @@ test("Discover state creates isolated mutable workspaces from immutable configur
   first.shortlist.push("one");first.aggregate.set("one",{overall:5});
   assert.deepEqual(second.shortlist,[]);assert.equal(second.aggregate.size,0);
   assert.equal(State.FEATURE_DEFAULT,"today");
-  assert.deepEqual(Object.keys(State.FEATURE_CONFIG).slice(0,4),["today","plan","progress","explore"]);
+  assert.deepEqual(Object.keys(State.FEATURE_CONFIG).slice(0,4),["today","plan","progress","nutrition"]);
   assert.equal(State.FEATURE_CONFIG.plan.parent,"today");assert.equal(State.FEATURE_CONFIG.nutrition.parent,"today");
   assert.equal(State.LIMITS.movementBoard,4);
 });
@@ -52,7 +51,7 @@ test("Discover navigation owns one visible destination and dismisses transient s
 
 test("Discover navigation reveals an active destination inside the mobile rail",()=>{
   const panels=new Map(Object.values(State.FEATURE_CONFIG).map(({panelId})=>[panelId,element(panelId)])),nav={clientWidth:300,scrollWidth:720,scrollLeft:0,scrollTo(options){this.scrollLeft=options.left;this.behavior=options.behavior;}},state=State.createState();
-  const links=["today","plan","progress","explore","coaching"].map((target,index)=>{const link=element(target);link.dataset.featureTarget=target;link.classList.add("destination-link");link.parentElement=nav;link.offsetLeft=index*145;link.offsetWidth=140;return link;});
+  const links=["today","plan","progress","library","coaching"].map((target,index)=>{const link=element(target);link.dataset.featureTarget=target;link.classList.add("destination-link");link.parentElement=nav;link.offsetLeft=index*145;link.offsetWidth=140;return link;});
   const document={body:element("body"),getElementById:id=>panels.get(id)||null,querySelectorAll:()=>links};
   const navigation=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state,document,window:{matchMedia:()=>({matches:true})}});
   assert.equal(navigation.activate("coaching",{smooth:true}),true);assert.equal(nav.scrollLeft,420);assert.equal(nav.behavior,"auto");
@@ -60,7 +59,7 @@ test("Discover navigation reveals an active destination inside the mobile rail",
 
 test("Plan, Nutrition, and their tools keep Overview highlighted as their destination",()=>{
   const panels=new Map(Object.values(State.FEATURE_CONFIG).map(({panelId})=>[panelId,element(panelId)])),state=State.createState();
-  const destinations=["today","recovery","progress","explore"].map((target)=>{const link=element(target);link.dataset.featureTarget=target;link.classList.add("destination-link");return link;});
+  const destinations=["today","recovery","progress","library"].map((target)=>{const link=element(target);link.dataset.featureTarget=target;link.classList.add("destination-link");return link;});
   const cards=["plan","nutrition"].map((target)=>{const link=element(`card-${target}`);link.dataset.featureTarget=target;link.classList.add("overview-tool");return link;});
   const document={body:element("body"),getElementById:id=>panels.get(id)||null,querySelectorAll:()=>[...destinations,...cards]};
   const navigation=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state,document,window:{matchMedia:()=>({matches:true})}});
@@ -72,7 +71,8 @@ test("Plan, Nutrition, and their tools keep Overview highlighted as their destin
   }
   assert.equal(navigation.activate("plan"),true);
   assert.equal(cards[0].classList.contains("active"),true);assert.equal(cards[0].attributes["aria-expanded"],"true");
-  assert.equal(navigation.activate("library"),true);assert.deepEqual(highlighted(),["explore"]);
+  assert.equal(navigation.activate("library"),true);assert.deepEqual(highlighted(),["library"]);
+  for(const tool of ["recommendations","battle","profile"]){assert.equal(navigation.activate(tool),true);assert.deepEqual(highlighted(),["library"],`${tool} belongs to the Library`);}
 });
 
 test("Discover navigation scrolls the destination switcher, not the panel, so the tabs stay visible",()=>{
@@ -103,8 +103,8 @@ test("Discover navigation never takes back focus that moved before its deferred 
     assert.deepEqual([focused,scrolled],[[],[]],"a card focused right after Overview opens keeps focus, so Enter opens it");
     navigation.activate("progress",{focus:true,scroll:true});frames.shift()();
     assert.deepEqual([focused,scrolled],[["progressWorkspaceTitle"],["progressWorkspace"]]);
-    navigation.activate("explore",{focus:true});document.activeElement=document.body;frames.shift()();
-    assert.equal(focused.at(-1),"exploreWorkspaceTitle","focus lost to the page still lands on the new heading");
+    navigation.activate("library",{focus:true});document.activeElement=document.body;frames.shift()();
+    assert.equal(focused.at(-1),"explorerTitle","focus lost to the page still lands on the new heading");
   }finally{globalThis.requestAnimationFrame=previousFrame;}
 });
 
@@ -167,15 +167,5 @@ test("Discover detail, community, session, and sharing factories expose focused 
   const session=Session.createSession({state,core:{WEEKDAYS:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],weeklyPulse:()=>({day:"Tuesday"})}});
   assert.equal(session.preferredDay("Tuesday"),"Tuesday");
   state.recommendations=[{exercise:{name:"Press"},result:{match:91}}];
-  const sharing=Sharing.createSharing({state,titleCase:value=>value});
-  assert.deepEqual(sharing.cardLines("ranking"),{eyebrow:"PERSONALIZED SHORTLIST",title:"balanced selection",score:"91",scoreLabel:"TOP PERSONAL MATCH",lines:["1. Press — 91% match"],footer:"3 days · Intermediate · community ratings separate"});
 });
 
-test("share-card text fills its last line before truncating and marks only omitted words",()=>{
-  const sharing=Sharing.createSharing({state:{},titleCase:value=>value}),draw=(text,maxLines=2,width=12)=>{const drawn=[],ctx={measureText:value=>({width:[...value].length}),fillText:(value,x,y)=>drawn.push([value,y])};return{end:sharing.wrapCanvasText(ctx,text,0,100,width,10,maxLines),drawn};};
-  assert.deepEqual(draw("alpha beta gamma delta"),{end:120,drawn:[["alpha beta",100],["gamma delta",110]]});
-  assert.deepEqual(draw("alpha beta gamma delta epsilon").drawn,[["alpha beta",100],["gamma delta…",110]]);
-  assert.deepEqual(draw("Supercalifragilistic press").drawn,[["Supercalifr…",100],["press",110]]);
-  assert.deepEqual(draw("  one   two  ",3),{end:110,drawn:[["one two",100]]});
-  assert.deepEqual(draw(""),{end:110,drawn:[]});
-});

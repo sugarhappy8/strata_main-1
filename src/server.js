@@ -180,7 +180,6 @@ const STATIC_FILES = new Map([
   ["discover-detail.js","scripts/discover-detail.js"],
   ["discover-community.js","scripts/discover-community.js"],
   ["discover-session.js","scripts/discover-session.js"],
-  ["discover-sharing.js","scripts/discover-sharing.js"],
   ["discover-events.js","scripts/discover-events.js"],
   ["discover-coaching.js","scripts/discover-coaching.js"],
   ["discover-program.js","scripts/discover-program.js"],

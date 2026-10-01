@@ -206,12 +206,6 @@
           "maxLines": 70
         },
         {
-          "file": "public/scripts/discover-sharing.js",
-          "role": "events",
-          "global": "StrataDiscoverSharing",
-          "maxLines": 55
-        },
-        {
           "file": "public/scripts/discover-events.js",
           "role": "events",
           "global": "StrataDiscoverEvents",

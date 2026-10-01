@@ -103,7 +103,6 @@ const PRECACHE_URLS=[
   "/discover-detail.js?v=8.9.0",
   "/discover-community.js?v=8.9.0",
   "/discover-session.js?v=8.9.0",
-  "/discover-sharing.js?v=8.9.0",
   "/discover-events.js?v=8.9.0",
   "/discover-coaching.js?v=8.9.0",
   "/discover-coaching-meals.js?v=8.9.0",

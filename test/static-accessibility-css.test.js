@@ -9,7 +9,7 @@ const vm=require("node:vm");
 const PROJECT_ROOT=path.join(__dirname,"..");
 const read=(name)=>fs.readFileSync(path.join(PROJECT_ROOT,name),"utf8");
 const homeClient=()=>["entitlements.js","home-logic.js","home-state.js","home-api.js","home-render.js","home-events.js","app.js"].map(name=>read(`public/scripts/${name}`)).join("\n");
-const discoverClient=()=>["discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-sharing.js","discover-events.js","discover.js"].map(name=>read(`public/scripts/${name}`)).join("\n");
+const discoverClient=()=>["discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-events.js","discover.js"].map(name=>read(`public/scripts/${name}`)).join("\n");
 const workoutClient=()=>["workout-state.js","workout-api.js","workout-calendar.js","workout-render.js","workout-context.js","workout-guidance.js","workout-history.js","workout-events.js","workout.js"].map(name=>read(`public/scripts/${name}`)).join("\n");
 
 test("homepage styles keep live comparison UI and omit retired modal families",()=>{

@@ -69,6 +69,18 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   `discovery.active===true` read on the home, pricing, planner, account, and studio pages. A
   payload cached by an older build falls back to the Strata+ flag.
 
+## Phase 2c — one Library, one Compare
+
+- **Exercises hub removed.** The "Exercises" destination opens the Library directly;
+  Recommendations, Compare, and Preferences are a tool row inside it, and "Back to
+  Exercises" links now read "Back to Library".
+- **Decision board folded into the Library's Saved collection.** Saving still works
+  from recommendations, the library, and the detail view and still stays on the device
+  (same four-movement limit, same storage key); "Compare saved" and "Clear saved" appear
+  inside the Saved collection instead of on a separate board.
+- **Share cards cut.** The PNG share-card generator (`discover-sharing.js`) and its three
+  "Share card" buttons are gone. Weekly-plan sharing between members is untouched.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).

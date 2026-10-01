@@ -7,7 +7,7 @@ const {join}=require("node:path");
 
 const PROJECT_ROOT=join(__dirname,"..");
 const read=(...parts)=>readFileSync(join(PROJECT_ROOT,"public",...parts),"utf8");
-const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-sharing.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover.js"];
+const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover.js"];
 const discoverScript=()=>discoverModules.map(name=>read("scripts",name)).join("\n");
 
 test("Strata+ progressively enhances four primary destinations and focused supporting tools",()=>{
@@ -16,13 +16,13 @@ test("Strata+ progressively enhances four primary destinations and focused suppo
   const panels=[...html.matchAll(/<section\b([^>]*\bdata-feature-panel="([^"]+)"[^>]*)>/g)];
   const blocks=[...html.matchAll(/<a\b[^>]*\bclass="[^"]*feature-block[^"]*"[^>]*\bdata-feature-target="([^"]+)"[^>]*>/g)];
 
-  assert.deepEqual(panels.map((match)=>match[2]).sort(),["battle","coaching","community","explore","library","monthly","nutrition","plan","profile","progress","recommendations","recovery","session","today"]);
-  assert.equal(blocks.length,4);
-  for(const label of ["Recommendations","Library","Compare","Preferences"])assert.match(html,new RegExp(`<span>${label}</span>`));
+  assert.deepEqual(panels.map((match)=>match[2]).sort(),["battle","coaching","community","library","monthly","nutrition","plan","profile","progress","recommendations","recovery","session","today"]);
+  assert.equal(blocks.length,3,"Recommendations, Compare, and Preferences are tools inside the Library");
+  for(const label of ["Recommendations","Compare","Preferences"])assert.match(html,new RegExp(`<span>${label}</span>`));
   const destinationNav=html.match(/<nav class="destination-nav"[\s\S]*?<\/nav>/)?.[0]||"";
-  assert.deepEqual([...destinationNav.matchAll(/data-feature-target="([^"]+)"/g)].map((match)=>match[1]),["today","recovery","progress","explore"]);
+  assert.deepEqual([...destinationNav.matchAll(/data-feature-target="([^"]+)"/g)].map((match)=>match[1]),["today","recovery","progress","library"]);
   assert.equal((destinationNav.match(/class="destination-link"/g)||[]).length,4,"Plan, Train, and Nutrition moved into Overview");
-  for(const destination of ["today","progress","explore","recovery"])assert.match(destinationNav,new RegExp(`class="destination-link"[^>]*data-feature-target="${destination}"[^>]*aria-controls="[^"]+"[^>]*aria-expanded="false"`));
+  for(const destination of ["today","progress","library","recovery"])assert.match(destinationNav,new RegExp(`class="destination-link"[^>]*data-feature-target="${destination}"[^>]*aria-controls="[^"]+"[^>]*aria-expanded="false"`));
   for(const [tag] of panels)assert.doesNotMatch(tag,/\bhidden\b/,"feature panels must remain visible when JavaScript is unavailable");
   for(const [tag] of blocks){
     assert.match(tag,/\baria-controls="[^"]+"/);
@@ -31,8 +31,9 @@ test("Strata+ progressively enhances four primary destinations and focused suppo
   assert.match(html,/class="studio-account" href="\/account\.html">Account<\/a>/);
   assert.match(html,/aria-label="Primary navigation"><a href="\/#rankings">Exercises<\/a><a class="active" href="\/discover\.html" aria-current="page">Strata\+<\/a><a href="\/planner\.html">Plan<\/a><a href="\/workout\.html">Train<\/a>/);
   assert.match(script,/account\.html\?mode=login&next=discover/);
-  const primaryExplore=html.match(/<nav class="feature-grid explore-tool-grid explore-primary-tools"[\s\S]*?<\/nav>/)?.[0]||"";
-  assert.equal((primaryExplore.match(/class="feature-block"/g)||[]).length,2,"Explore should present only recommendations and the library as immediate tools");
+  assert.doesNotMatch(html,/id="exploreWorkspace"/,"the Exercises hub is gone; the destination opens the Library");
+  const libraryTools=html.match(/<nav class="feature-grid explore-tool-grid library-tools"[\s\S]*?<\/nav>/)?.[0]||"";
+  assert.equal((libraryTools.match(/class="feature-block"/g)||[]).length,3,"the Library carries its three tools");
   assert.doesNotMatch(html,/<details class="explore-advanced-tools"/);
   const overview=html.match(/<section class="studio-hero feature-panel" id="todayWorkspace"[\s\S]*?<\/section>\n\n {6}<section class="plan-workspace/)?.[0]||"";
   const tools=overview.match(/<nav class="overview-tool-grid"[\s\S]*?<\/nav>/)?.[0]||"";
@@ -131,7 +132,6 @@ test("Strata+ explains its three score types once beside the relevant tools",()=
   assert.match(guide,/FitScore[\s\S]*STRATA’s fixed exercise score\. It does not change based on your profile\./);
   assert.match(guide,/Match for you[\s\S]*How well the exercise fits your goals, equipment, experience, and saved limitations\./);
   assert.match(guide,/Community rating[\s\S]*The average rating submitted by STRATA members\./);
-  assert.match(html,/Browse all exercises, view recommendations, compare options, or update the preferences used for your matches\./);
   assert.match(html,/Completed workouts, weekly volume, consistency, and how each exercise is moving\./);
 });
 
@@ -346,7 +346,7 @@ test("Strata+ copy and visual polish remain resilient across content and breakpo
   assert.match(html,/id="todayTitle"[^>]*>Your next step\.<br \/><em>Ready when you are\.<\/em>/);
   assert.match(html,/id="recommendationTitle"[^>]*>Best exercises <em>for you\.<\/em>/);
   assert.doesNotMatch(script,/recommendationTitle"\)\.innerHTML/,"A display name must not be interpolated into the recommendation heading");
-  assert.match(html,/>Explore every movement<\/strong>/);
+  assert.match(html,/>Find your strongest fits<\/strong>/);
   assert.match(html,/<span>Overview<\/span><small>Plan, train &amp; eat<\/small>/,"the Overview tab tells members where Plan, Train, and Nutrition live");
   assert.doesNotMatch(html,/feature-block-session/);
   assert.doesNotMatch(css,/feature-block-session/);
@@ -399,12 +399,12 @@ test("Strata+ polish keeps filters legible and comparison details accessible",()
     "Mobile navigation must escape the sticky header's backdrop-filter containing block");
 });
 
-test("Strata+ offers a private, bounded decision board without changing server contracts",()=>{
-  const html=read("pages","discover.html"),script=discoverScript(),core=read("scripts","discovery-core.js"),css=read("styles","discover.css");
-  for(const id of ["movementBoardTitle","movementBoardCapacity","movementBoardList","movementBoardStatus","clearMovementBoard","compareMovementBoard","savedCollectionLabel"]){
+test("Strata+ keeps saved movements as a private, bounded Library collection without changing server contracts",()=>{
+  const html=read("pages","discover.html"),script=discoverScript(),core=read("scripts","discovery-core.js");
+  for(const id of ["savedActions","movementBoardStatus","clearMovementBoard","compareMovementBoard","savedCollectionLabel"]){
     assert.match(html,new RegExp(`\\bid="${id}"`),id);
   }
-  assert.match(html,/Private on this device/);
+  assert.doesNotMatch(html,/movementBoardList|movementBoardCapacity|decision board/i,"the separate decision board is folded into the Library's Saved collection");
   assert.match(html,/data-collection="saved"/);
   assert.match(script,/movementBoard:4/);
   assert.match(script,/MOVEMENT_BOARD_LIMIT=StateCore\.LIMITS\.movementBoard/);
@@ -412,20 +412,16 @@ test("Strata+ offers a private, bounded decision board without changing server c
   assert.match(script,/localStorage\?\.setItem\(movementBoardStorageKey\(\),JSON\.stringify\(state\.shortlist\)\)/);
   assert.match(script,/core\.normalizeShortlist\(state\.shortlist,state\.exercises,movementBoardLimit\)/);
   assert.match(script,/data-toggle-shortlist/);
-  assert.match(script,/personal\.eligible\?`\$\{personal\.match\}% match`:"Excluded"/);
-  assert.match(script,/aria-label="Inspect \$\{escapeHtml\(exercise\.name\)\}, \$\{escapeHtml\(group\)\}, \$\{escapeHtml\(exercise\.equipment\)\}, \$\{escapeHtml\(fit\)\}"/);
-  assert.doesNotMatch(script,/containerId&&!el\("detailDialog"\)\?\.open/);
-  assert.match(css,/\.movement-board-open b\.is-excluded\s*\{/);
-  assert.doesNotMatch(script,/\/api\/(?:shortlist|saved|favorites)/,"The device-private board must not invent a new server contract");
-  assert.match(core,/function normalizeShortlist\(value,exercises,limit=4\)/);
-  assert.match(css,/\.movement-board-list\s*\{[^}]*grid-template-columns:repeat\(4,minmax\(0,1fr\)\)/);
-  assert.match(css,/@media \(max-width: 680px\)[\s\S]*?\.movement-board-list\s*\{\s*grid-template-columns:1fr/);
+  assert.match(script,/savedActions"\)\.hidden=state\.collection!=="saved"/,"saved actions show only inside the Saved collection");
+  assert.match(core,/function normalizeShortlist/);
+  assert.doesNotMatch(script,/\/api\/(?:shortlist|board|decision)/,"saving stays on the device");
+
 });
 
 
 test("each daily tool and plan approval has one canonical workspace",()=>{
   const html=read("pages","discover.html"),workout=read("pages","workout.html");
-  const progress=html.slice(html.indexOf('id="progressWorkspace"'),html.indexOf('id="exploreWorkspace" data-feature-panel'));
+  const progress=html.slice(html.indexOf('id="progressWorkspace"'),html.indexOf('id="coachingWorkspace" data-feature-panel'));
   const plan=html.slice(html.indexOf('id="planWorkspace" data-feature-panel'),html.indexOf('id="progressWorkspace" data-feature-panel'));
   const nutrition=html.slice(html.indexOf('id="nutritionWorkspace" data-feature-panel'),html.indexOf('id="profile" data-feature-panel'));
   assert.doesNotMatch(progress,/<form\b/);assert.match(progress,/data-feature-target="nutrition"/);

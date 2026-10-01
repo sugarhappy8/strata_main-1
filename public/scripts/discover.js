@@ -20,7 +20,6 @@ const CatalogCore=globalThis.StrataDiscoverCatalog;if(!CatalogCore)throw new Err
 const DetailCore=globalThis.StrataDiscoverDetail;if(!DetailCore)throw new Error("The Strata+ detail module did not load.");
 const CommunityCore=globalThis.StrataDiscoverCommunity;if(!CommunityCore)throw new Error("The Strata+ community module did not load.");
 const SessionCore=globalThis.StrataDiscoverSession;if(!SessionCore)throw new Error("The Strata+ session module did not load.");
-const SharingCore=globalThis.StrataDiscoverSharing;if(!SharingCore)throw new Error("The Strata+ sharing module did not load.");
 const CoachingDiaryUi=globalThis.StrataPersonalTrainingDiaryUi;if(!CoachingDiaryUi)throw new Error("The personal-training diary module did not load.");
 const CoachingUi=globalThis.StrataPersonalTrainingUi;if(!CoachingUi)throw new Error("The Strata+ personal-training input module did not load.");
 const CoachingMealsUi=globalThis.StrataPersonalTrainingMealsUi;if(!CoachingMealsUi)throw new Error("The Strata+ food-preference input module did not load.");
@@ -66,7 +65,7 @@ const featureNavigation=NavigationCore.createFeatureNavigation({
   config:FEATURE_CONFIG,defaultFeature:FEATURE_DEFAULT,state,document,window,scrollAnchorId:"featureHub",
   onDestinationChange:(name,previous)=>{hideToast();if(name==="coaching")coaching.setReturnFeature(previous);},
   onActivate:(name)=>{
-    const scoreGuide=el("scoreGuide"),showScoreGuide=["explore","recommendations","library","battle"].includes(name);if(scoreGuide)scoreGuide.hidden=!showScoreGuide;if(!showScoreGuide&&el("scoreGuideDetails"))el("scoreGuideDetails").open=false;
+    const scoreGuide=el("scoreGuide"),showScoreGuide=["recommendations","library","battle"].includes(name);if(scoreGuide)scoreGuide.hidden=!showScoreGuide;if(!showScoreGuide&&el("scoreGuideDetails"))el("scoreGuideDetails").open=false;
     if(state.user&&["recommendations","library","battle"].includes(name))void refreshCommunityRatings().catch(()=>{});
     if(state.user&&name==="community"&&!state.communityLoaded&&!state.communityLoading)void loadCommunityPlans({reset:true});
     if(state.user&&["coaching","plan","nutrition"].includes(name))void coaching.ensureLoaded();recovery.activate(name);
@@ -99,7 +98,7 @@ const detail=DetailCore.createDetail({
   profileReason,personalLabel,movementBoardButton,aggregateFor,communitySummary,communityLabel,ratingAverage,setupLabel,resistanceProfile,practicality,
   openDialog:(...args)=>openDialog(...args),showToast
 });
-const {comparisonWinner,openComparison,openDetail}=detail;
+const {openComparison,openDetail}=detail;
 
 const dialogReturnFocus=new WeakMap();
 function syncDialogState(){document.body.classList.toggle("dialog-open",[...document.querySelectorAll("dialog")].some((dialog)=>dialog.open));}
@@ -539,12 +538,7 @@ function printMonthlyPlan(){
   window.addEventListener?.("afterprint",finish,{once:true});window.print?.();setTimeout(finish,750);
 }
 
-const sharing=SharingCore.createSharing({
-  state,document,navigator,urlApi:URL,fileCtor:globalThis.File,labels:GROUP_LABELS,exerciseById,titleCase,personalResult,personalLabel,comparisonWinner,showToast
-});
-const {shareCard}=sharing;
-
-function setCollectionState(value){document.querySelectorAll("[data-collection]").forEach((button)=>{const active=button.dataset.collection===value;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});}
+function setCollectionState(value){document.querySelectorAll("[data-collection]").forEach((button)=>{const active=button.dataset.collection===value;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});const savedActions=el("savedActions");if(savedActions)savedActions.hidden=value!=="saved";}
 function resetFilters(){clearTimeout(state.explorerSearchTimer);state.explorerSearchTimer=null;state.collection="all";state.query="";state.group="all";state.equipment="all";state.pattern="all";state.level="all";state.sort="personal";el("searchInput").value="";el("groupFilter").value="all";el("equipmentFilter").value="all";el("patternFilter").value="all";el("levelFilter").value="all";el("sortSelect").value="personal";setCollectionState("all");resetExplorerWindow();renderExplorer();}
 
 const profileForm=el("profileForm");
@@ -717,7 +711,7 @@ async function init(){
 
 EventsCore.bind({
   document,window,el,state,core:Core,movementBoardLimit:MOVEMENT_BOARD_LIMIT,searchDebounceMs:SEARCH_DEBOUNCE_MS,featureNavigation,
-  actions:{api,activateFeature,closeDialog,explorerPageSize,featureName,hideToast,init,openComparison,openDetail,readBattleBuilder,renderCompareTray,renderExplorer,renderMovementBoard,renderRecommendations,resetExplorerWindow,resetFilters,restoreDialogFocus,revalidateMemberWorkspaceWhenVisible,saveMovementBoard,setCollectionState,shareCard,showToast,syncDialogState,toggleCompare,toggleMovementBoard}
+  actions:{api,activateFeature,closeDialog,explorerPageSize,featureName,hideToast,init,openComparison,openDetail,readBattleBuilder,renderCompareTray,renderExplorer,renderMovementBoard,renderRecommendations,resetExplorerWindow,resetFilters,restoreDialogFocus,revalidateMemberWorkspaceWhenVisible,saveMovementBoard,setCollectionState,showToast,syncDialogState,toggleCompare,toggleMovementBoard}
 });
 globalThis.StrataAiWidget?.mount({onApplied:(kind)=>{if(!state.user)return;if(kind==="nutrition"){void coaching.load({force:true});return;}refreshTrainingSnapshot({includePlan:true}).catch((error)=>{if(!redirectedOrChangedAccount(error))showToast("Saved. Reload Strata+ to see the change here.");});}});initializeFeatureNavigation();
 el("progressRetry")?.addEventListener("click",()=>void loadMemberDashboard(workspaceGeneration));
