@@ -26,7 +26,7 @@ Do not describe Strata as an AI coach, a medically personalized program, or a cl
 | A free-versus-Plus comparison | See the boundary before signup and understand that the manual weekly plan remains free. |
 | Actual completed-day progress in Today | A fully planned week no longer appears as completed training. |
 | A next-session link after workout completion | Return to the plan and reinforce the value of keeping a log. |
-| Visible checkout errors | Payment problems remain visible for trial-eligible members and active trial users. |
+| Visible checkout errors | Payment problems remain visible for members without Strata+. |
 | Readable days/hours on the account trial | A week-long trial does not appear as thousands of minutes. |
 
 The build extends the existing app. Accounts, Paddle billing verification, synced plans, PWA behavior, community plans, Training Memory and the rest of the product remain part of the codebase. Valid older trials retain their recorded expiry and cannot be restarted. No production accounts or payment settings were changed.
