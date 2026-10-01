@@ -124,6 +124,7 @@ const STATIC_FILES = new Map([
   ["refunds.html","pages/refunds.html"],
   ["styles.css","styles/styles.css"],
   ["fonts.css","styles/fonts.css"],
+  ["tokens.css","styles/tokens.css"],
   ["experience.css","styles/experience.css"],
   ["site-experience.css","styles/site-experience.css"],
   ["product-signals.css","styles/product-signals.css"],

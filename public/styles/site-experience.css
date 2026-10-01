@@ -1,6 +1,6 @@
 /* Shared wayfinding, calm hierarchy, and compact action-first layouts for every page.
    Strata+ workspace rules live in discover.css. */
-:root { --site-radius:16px; }
+:root { --site-radius:var(--strata-radius-site);}
 html { scroll-padding-top:100px; }
 body { line-height:1.5; }
 [hidden] { display:none!important; }
@@ -45,7 +45,7 @@ body { line-height:1.5; }
 
 /* Build 8.7 brand layer. This file loads last on every page, so the shared language lives here:
    one type family in sentence case, one olive accent, pill-shaped actions, and calmer lists. */
-:root { --focus-ring:#6f8e27; }
+:root { --focus-ring:var(--strata-focus);}
 :root body :is(.button,.small-button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button),
 :root body :is(.studio-user,.user-menu,.header-actions) :is(a,button) { border-radius:999px; }
 :root body :is(.button,.small-button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button):not(.compact) { padding-inline:20px; }

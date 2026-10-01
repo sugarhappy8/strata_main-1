@@ -8,6 +8,7 @@ const PRECACHE_URLS=[
   "/experience.css?v=9.0.0",
   "/site-experience.css?v=9.0.0",
   "/fonts.css?v=9.0.0",
+  "/tokens.css?v=9.0.0",
   "/product-signals.css?v=9.0.0",
   "/product-signals.js?v=9.0.0",
   "/motion.js?v=9.0.0",

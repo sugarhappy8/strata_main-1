@@ -1,4 +1,4 @@
-:root { --ink:#10110f; --paper:#f0efe9; --white:#faf9f5; --muted:#60635d; --line:#cbc9c0; --accent:#d4f578; --orange:#4a6a10; --danger:#b3261e; --display:"Manrope",sans-serif; --body:"Manrope",sans-serif; --mono:"DM Mono",monospace; --soft-shadow:0 8px 24px rgba(16,17,15,.055); }
+:root { --orange:var(--strata-green-text); --danger:var(--strata-danger); --soft-shadow:0 8px 24px rgba(16,17,15,.055);}
 * { box-sizing:border-box; }
 html,body { min-height:100%; }
 body { margin:0; color:var(--ink); background:radial-gradient(circle at 84% 4%,rgba(212,245,120,.22),transparent 27rem),linear-gradient(135deg,#f4f3ed 0,var(--paper) 48%,#e7e6de 100%); font-family:var(--body); -webkit-font-smoothing:antialiased; }

@@ -49,6 +49,8 @@ unchanged. The full record is `CHANGELOG_9.0.0.md`.
 - Open Graph share card on public pages, optional Polar step at the end of onboarding, upgrade
   lines from the entitlements module, human copy where Recovery was "coming soon", and the
   stranger-test fixes in `docs/stranger-test-9.0.0.md`.
+- One design-token file (`public/styles/tokens.css`) every page loads, with the dead palette
+  copies removed; setup's secondary text is readable again (`docs/design-tokens.md`).
 - Production responses send HSTS (`docs/security-audit-9.0.0.md`).
 
 ## Upgrade notes

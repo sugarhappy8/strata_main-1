@@ -1,16 +1,6 @@
 :root {
-  --ink: #10110f;
-  --paper: #f3f4ef;
-  --white: #ffffff;
-  --muted: #62675e;
-  --line: #d2d6cc;
-  --accent: #d4f578;
-  --orange:#4a6a10; --danger:#b3261e;
-  --orange-text:#4a6a10;
-  --panel: #191b18;
-  --display: "Manrope", sans-serif;
-  --body: "Manrope", sans-serif;
-  --mono: "DM Mono", monospace;
+  --orange:var(--strata-green-text); --danger:var(--strata-danger);
+  --orange-text:var(--strata-green-text);
   --shadow: 0 24px 70px rgba(16, 17, 15, 0.11);
   --site-header-height: 78px;
   --mobile-public-nav-height: 56px;

@@ -8,6 +8,7 @@
 - One data layer: the Athlete Profile, a deduplicated Training Log, Daily Snapshots, Rankings Signals, and plan history, kept in step by events. Coaching reads the saved weekly plan.
 - Polar sessions and nights join that layer; My Week shows last night's Nightly Recharge, and a Polar gym session completes an unlogged planned day.
 - Strata AI runs on Groq behind member consent and a shared daily budget, reads its context from the data layer, and writes a Daily Brief each morning. The owner sees today's use on the admin Overview.
+- One design-token file every page loads; setup's secondary text is readable again.
 - A share card for public pages, an optional Polar step at the end of onboarding, HSTS in production, and the fixes from a first-time-visitor walk.
 
 See the [9.0.0 release guide](docs/release-9.0.0.md) and the full record in [CHANGELOG_9.0.0.md](CHANGELOG_9.0.0.md).

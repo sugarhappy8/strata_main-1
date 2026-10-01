@@ -15,14 +15,15 @@ unchanged.
   days completed by Polar sessions (`POLAR_INTEGRATION.md`).
 - Strata AI on Groq: consent first, a shared daily budget, context from the data layer, and a
   Daily Brief (`STRATA_AI.md`).
-- No build numbers, "coming soon", or duplicate exports in the main UI; a share card; an owner
-  view of AI use.
+- No build numbers, "coming soon", or duplicate exports in the main UI; one design-token file
+  every page loads; a share card; an owner view of AI use.
 
 **Release documents**
 - Audit and verdicts: `AUDIT_BUILD9.md`. Parked ideas: `PROPOSALS.md`.
 - Data model: `DATA_MODEL.md`. Polar: `POLAR_INTEGRATION.md`. Strata AI: `STRATA_AI.md`.
 - Regression checklist: `REGRESSION_CHECKLIST.md`. Stranger test:
-  `docs/stranger-test-9.0.0.md`. Security audit: `docs/security-audit-9.0.0.md`.
+  `docs/stranger-test-9.0.0.md`. Security audit: `docs/security-audit-9.0.0.md`. Design
+  tokens: `docs/design-tokens.md`.
 - Release guide and deployment steps: `docs/release-9.0.0.md`.
 
 ## Phase 2a — dead code, legacy trial, giveaway copy
@@ -316,6 +317,20 @@ The first-time walk is written up in `docs/stranger-test-9.0.0.md`. What changed
 - Production responses send `Strict-Transport-Security: max-age=31536000` (proposal 5).
 - `PROPOSALS.md` marks what Build 9 delivered and parks merging the studio's view switcher into
   the site navigation (proposal 9).
+
+### Design tokens (third slice)
+- **One design system file.** `public/styles/tokens.css` holds the palette, type, radius,
+  spacing, and motion scale, and every page loads it right after the fonts. Page stylesheets
+  point their local names at it (`docs/design-tokens.md`).
+- **Dead palette copies removed.** Six page stylesheets repeated the light palette, but
+  `experience.css` loads later on all of their pages and replaced it, so none of those copies
+  ever applied. Computed styles on 24 page states, signed out and as a Strata+ member, are
+  identical before and after.
+- **Setup is readable again.** The same cascade replaced setup's night palette with the light
+  one: secondary text rendered #62675e on near-black (about 3.3:1). Setup's palette now sits on
+  its page body, so that text renders #b2b9aa (about 10:1) with matching dark borders. Its copy
+  says My Week instead of Plan.
+- About 870 raw colors inside individual rules remain; moving them onto tokens is proposal 11.
 
 ## Phase 7 — QA and release
 

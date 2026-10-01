@@ -1,14 +1,5 @@
 :root {
-  --ink:#10110f;
-  --paper:#f0efe9;
-  --white:#faf9f5;
-  --muted:#60635d;
-  --line:#b8b6ae;
-  --accent:#d4f578;
-  --orange:#4a6a10; --danger:#b3261e;
-  --display:"Manrope",Arial,sans-serif;
-  --body:"Manrope",Arial,sans-serif;
-  --mono:"DM Mono",monospace;
+  --orange:var(--strata-green-text); --danger:var(--strata-danger);
 }
 
 * { box-sizing:border-box; }

@@ -1,18 +1,8 @@
 :root {
-  --ink:#10110f;
-  --panel:#1a1d18;
-  --paper:#f3f4ef;
-  --white:#fff;
-  --muted:#62675e;
-  --line:#d2d6cc;
-  --accent:#d4f578;
   --accent-deep:#7f9d24;
-  --orange:#4a6a10; --danger:#b3261e;
-  --orange-text:#4a6a10;
-  --display:"Manrope",sans-serif;
-  --body:"Manrope",sans-serif;
-  --mono:"DM Mono",monospace;
-  --ease:cubic-bezier(.22,1,.36,1);
+  --orange:var(--strata-green-text); --danger:var(--strata-danger);
+  --orange-text:var(--strata-green-text);
+  --ease:var(--strata-ease-out);
   --shadow:0 24px 70px rgba(16,17,15,.1);
   --shadow-soft:0 12px 40px rgba(16,17,15,.06);
 }

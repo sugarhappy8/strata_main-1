@@ -1,17 +1,17 @@
 :root {
-  --ink: #10110f;
+  --ink:var(--strata-ink);
   --panel: #191b18;
   --paper: #f0efe9;
   --white: #faf9f5;
   --muted: #5f625c;
   --line: #cbc9c0;
-  --accent: #d4f578;
-  --orange:#4a6a10; --danger:#b3261e;
+  --accent:var(--strata-accent);
+  --orange:var(--strata-green-text); --danger:var(--strata-danger);
   --display: "Manrope", sans-serif;
   --body: "Manrope", sans-serif;
   --mono: "DM Mono", monospace;
   --shadow: 0 24px 64px rgba(16, 17, 15, .22);
-  --ease-out: cubic-bezier(.22, 1, .36, 1);
+  --ease-out:var(--strata-ease-out);
 }
 
 * { box-sizing: border-box; }
