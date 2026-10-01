@@ -158,12 +158,12 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 136 | 123 | 5.7 KiB | 140 | — |
 | `src/progression.js` | Pure per-set performance progression and comparison rules | 177 | 175 | 13.2 KiB | 300 | `src/plans.js` |
 | `src/schema.js` | Shared storage schema and statements | 355 | 349 | 42.2 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/devices-schema.js`, `src/product-signals-schema.js`, `src/training-loop-schema.js` |
-| `src/server.js` | HTTP composition root | 815 | 790 | 43.4 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
-| `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.8 KiB | 60 | — |
+| `src/server.js` | HTTP composition root | 814 | 789 | 43.4 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
+| `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.9 KiB | 60 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 84 | 77 | 4.9 KiB | 105 | `src/plans.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |
 | `src/store-contract.js` | Storage boundary contract | 170 | 167 | 5.0 KiB | 180 | — |
-| `src/support.js` | Public and administrative support workflow | 137 | 129 | 10.0 KiB | 160 | `src/email.js`, `src/plans.js` |
+| `src/support.js` | Public and administrative support workflow | 144 | 136 | 10.6 KiB | 160 | `src/email.js`, `src/plans.js` |
 | `src/training-loop-schema.js` | Check-in, training-block, and adaptation storage schema | 57 | 54 | 6.4 KiB | 70 | — |
 | `src/training-loop-store.js` | SQLite and Turso training-loop adapter parity | 136 | 133 | 7.1 KiB | 140 | `src/training-loop-schema.js` |
 | `src/training.js` | Check-ins, deterministic progression, blocks, and approved adaptations | 358 | 346 | 24.8 KiB | 450 | `src/plans.js`, `src/progression.js` |
