@@ -89,7 +89,7 @@
       const status=String(subscription.status||""),scheduled=subscription.scheduledChange;el("accountBillingTitle").textContent="Monthly subscription";
       el("accountBillingBadge").textContent=status==="paused"?"Paused":status==="canceled"?"Canceled":subscription.active!==true?"Inactive":scheduled?.action==="cancel"?"Canceling":scheduled?.action==="pause"?"Pausing":status==="past_due"?"Past due":status.charAt(0).toUpperCase()+status.slice(1);
       if(status==="paused")el("accountBillingDetail").textContent="Paid access is inactive while this subscription is paused. Open Paddle to review resumption or cancellation options.";
-      else if(status==="canceled")el("accountBillingDetail").textContent="This subscription is canceled, paid access is inactive, and there are no future renewals. Your free Plan remains available.";
+      else if(status==="canceled")el("accountBillingDetail").textContent="This subscription is canceled, paid access is inactive, and there are no future renewals. Your free week in My Week remains available.";
       else if(subscription.active!==true)el("accountBillingDetail").textContent="Paid access is inactive because the last verified billing period or scheduled access window has ended. Open Paddle to review its current state.";
       else if(scheduled?.action==="cancel")el("accountBillingDetail").textContent=`Cancellation takes effect ${logic.billingDate(scheduled.effectiveAt)}. Access remains available until then, with no renewal afterward.`;
       else if(scheduled?.action==="pause")el("accountBillingDetail").textContent=`The subscription pauses ${logic.billingDate(scheduled.effectiveAt)}. Access remains available until then and stops when the pause takes effect.`;

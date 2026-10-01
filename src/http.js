@@ -7,8 +7,14 @@ const MAX_BODY_BYTES=64*1024;
 const MAX_WEBHOOK_BYTES=256*1024;
 const MIN_GZIP_BYTES=1024;
 
-function securityHeaders() {
+/**
+ * Headers every response carries. HSTS is sent only in production, which is served over HTTPS (browsers ignore it
+ * over plain HTTP); it omits includeSubDomains so other hosts under the domain are not forced onto HTTPS.
+ * @param {boolean} [production]
+ */
+function securityHeaders(production=process.env.NODE_ENV==="production") {
   return {
+    ...(production?{"Strict-Transport-Security":"max-age=31536000"}:{}),
     "Content-Security-Policy":"default-src 'self'; img-src 'self' https://*.paddle.com data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://cdn.paddle.com; connect-src 'self' https://*.paddle.com; manifest-src 'self'; worker-src 'self'; frame-src https://*.paddle.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'",
     "X-Content-Type-Options":"nosniff",
     "X-Frame-Options":"DENY",

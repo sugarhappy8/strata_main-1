@@ -154,7 +154,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/energy-scenarios-core.js` | Explicit dynamic sensitivity scenarios with propagated maintenance uncertainty | 27 | 25 | 2.9 KiB | 100 | — |
 | `src/entitlements.js` | Feature tiers and the can(user, feature) capability map | 70 | 63 | 2.3 KiB | 80 | — |
 | `src/events.js` | In-process event bus announcing plan, workout, and profile saves | 54 | 51 | 1.9 KiB | 60 | — |
-| `src/http.js` | HTTP transport helpers | 170 | 155 | 5.9 KiB | 180 | — |
+| `src/http.js` | HTTP transport helpers | 176 | 161 | 6.3 KiB | 180 | — |
 | `src/legacy-checkout.js` | Strict retired-checkout migration and completion policy | 71 | 66 | 7.4 KiB | 75 | `src/payments.js` |
 | `src/meal-planning-core.js` | Validated dietary preferences and deterministic remaining-day food options | 168 | 157 | 25.6 KiB | 300 | — |
 | `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 197 | 184 | 11.9 KiB | 210 | `src/billing-schema.js` |

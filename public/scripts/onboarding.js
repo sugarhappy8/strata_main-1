@@ -79,8 +79,8 @@
     if(conflict){$("startFirstWorkout").hidden=true;$("connectPolarOptional").hidden=true;}
   }
   function requirePlus(account){
-    if(!account?.user?.id)throw new Error("Sign in to use Strata+ weekly setup. Your free Plan remains available without an account.");
-    if(account.user.discovery?.active!==true){ready=false;$("setupFields").disabled=true;$("saveWeek").disabled=true;throw new Error("Guided weekly setup is a Strata+ feature. Your free Plan is unchanged. Review Strata+ access to continue.");}
+    if(!account?.user?.id)throw new Error("Sign in to use Strata+ weekly setup. Your free week in My Week works without an account.");
+    if(account.user.discovery?.active!==true){ready=false;$("setupFields").disabled=true;$("saveWeek").disabled=true;throw new Error("Guided weekly setup is a Strata+ feature. Your free week in My Week is unchanged. Review Strata+ access to continue.");}
   }
   async function verifyAccess(){
     const me=await request("/api/me",{cache:"no-store"});requirePlus(me);

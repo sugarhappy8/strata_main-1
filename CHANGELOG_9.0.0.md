@@ -278,6 +278,19 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
 - Server errors without a known cause now read "Something went wrong on our side. Try again in a
   moment." instead of "Unexpected server error."
 
+### Stranger test fixes (second slice)
+The first-time walk is written up in `docs/stranger-test-9.0.0.md`. What changed:
+- The phone homepage no longer shows a signed-in name pill that ran off the header; Profile in
+  the bottom bar is the way to the account.
+- "From Account" on pricing, "free Plan" on Train, onboarding, and Profile billing, and the
+  "Account" link on Train now use Profile and My Week.
+- The Strata+ Overview no longer repeats "You have not built a weekly plan yet."; Train's two
+  empty panels no longer share one sentence.
+- Onboarding's footer offers members "Back to My Week" instead of "Return to free Plan".
+- Production responses send `Strict-Transport-Security: max-age=31536000` (proposal 5).
+- `PROPOSALS.md` marks what Build 9 delivered and parks merging the studio's view switcher into
+  the site navigation (proposal 9).
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).

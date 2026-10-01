@@ -121,7 +121,7 @@ test("workout empty days and planner mobile hand-offs expose useful 44px actions
   assert.match(workoutCss,/@media\(max-width:760px\)\{\s*html\{scroll-padding-bottom:calc\(76px \+ env\(safe-area-inset-bottom\)\)\}/);
   assert.match(workoutHtml,/id="historyError"[^>]*role="alert"/);
   assert.match(workoutHtml,/href="\/pricing">Review Strata\+ access<\/a>/);
-  assert.match(workoutHtml,/href="\/planner\.html">Return to free Plan<\/a>/);
+  assert.match(workoutHtml,/href="\/planner\.html">Open your free week<\/a>/);
   assert.match(workoutHtml,/id="openPlannerFromEmpty"[^>]*>Build your first week/);
   assert.match(workoutHtml,/id="editWorkoutWeek"[^>]*>Edit weekly plan/);
   assert.match(workoutHtml,/id="chooseScheduledDay"[^>]*>Go to next workout day/);

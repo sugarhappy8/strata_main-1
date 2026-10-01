@@ -32,6 +32,8 @@ test("security headers are complete and returned as a fresh object",()=>{
   assert.equal(first["X-Content-Type-Options"],"nosniff");
   assert.equal(first["X-Frame-Options"],"DENY");
   assert.match(first["Content-Security-Policy"],/frame-ancestors 'none'/);
+  assert.equal(first["Strict-Transport-Security"],undefined,"HSTS is never sent from development or test servers");
+  assert.equal(securityHeaders(true)["Strict-Transport-Security"],"max-age=31536000","production pins HTTPS for a year");
 });
 
 test("gzip negotiation respects explicit quality values and response metadata",()=>{

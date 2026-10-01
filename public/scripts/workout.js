@@ -64,7 +64,7 @@
     document.body.classList.remove("has-workout-access");
     clearOfflineContext();
     $("trainingRoom").hidden=true;$("historySection").hidden=true;$("recoveryPanel").hidden=true;$("conflictPanel").hidden=true;$("accessPanel").hidden=false;
-    $("modeNotice").textContent="Strata+ access ended. Saved sessions and device drafts are kept; your free Plan is unchanged.";
+    $("modeNotice").textContent="Strata+ access ended. Saved sessions and device drafts are kept; your free week in My Week is unchanged.";
     if($("detailDialog").open)$("detailDialog").close();if($("finishDialog").open)$("finishDialog").close();if($("swapDialog").open)$("swapDialog").close();
   }
   const client=A.create({state,onSessionBlocked:blockSession,onAccessBlocked:blockAccess,onIdentity:(current)=>{authorizeOffline(current.user.discovery);writeOfflineContext();}});
@@ -369,7 +369,7 @@
     try{
       const identity=await api("/api/me");
       if(!identity.user?.id)throw new Error("Sign in to Strata+ to open your workout room.");
-      if(identity.user.discovery?.active!==true){$("accessPanel").hidden=false;$("modeNotice").textContent="Guided workouts, set logging, and history are Strata+ features. Your free Plan is unchanged.";return;}
+      if(identity.user.discovery?.active!==true){$("accessPanel").hidden=false;$("modeNotice").textContent="Guided workouts, set logging, and history are Strata+ features. Your free week in My Week is unchanged.";return;}
       state.mode="account";state.user=identity.user;state.csrfToken=String(identity.csrfToken||"");state.ownerId=owner();authorizeOffline(identity.user.discovery);
       const catalog=await fetch("/exercises.json",{credentials:"same-origin"});
       if(!catalog.ok)throw new Error("The exercise library could not be loaded.");
@@ -379,7 +379,7 @@
       state.plan=planResult.plan;state.planUpdatedAt=Number(planResult.planUpdatedAt)||0;
       if(!state.plan?.days)throw new Error("Your account plan could not be loaded. Retry to continue.");
       document.body.classList.add("has-workout-access");
-      $("modeNotice").innerHTML=`<strong>${esc(state.user.name||"Your account")} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Account</a>`;
+      $("modeNotice").innerHTML=`<strong>${esc(state.user.name||"Your account")} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Profile</a>`;
       $("trainingRoom").hidden=false;$("historySection").hidden=false;scanDrafts();await historyView.load();void recoveryView.load();
       const resumed=!state.blocked&&await historyView.openRequested();
       if(!resumed&&location.hash==="#historySection"&&!state.blocked){$("historySection").scrollIntoView({block:"start"});$("historyTitle").focus();}
