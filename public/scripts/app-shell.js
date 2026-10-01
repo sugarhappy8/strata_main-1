@@ -15,7 +15,7 @@
     location.replace("/");
     return;
   }
-  document.write('<link rel="stylesheet" href="/app-mode.css?v=9.1.0" /><script src="/app-mode.js?v=9.1.0"></script>');
+  document.write('<link rel="stylesheet" href="/app-mode.css?v=9.2.0" /><script src="/app-mode.js?v=9.2.0"></script>');
 
   function removeInstallLinks() {
     for (const link of document.querySelectorAll('a[href^="/install"]')) {

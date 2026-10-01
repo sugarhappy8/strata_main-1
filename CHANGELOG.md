@@ -1,5 +1,15 @@
 # Changelog
 
+## 9.2.0 — The STRATA iOS app
+
+- The website half of the STRATA iOS app (`sugarhappy8/strata-fitness-ios`). Inside the app (user agent `StrataApp/<n>`) every page gets one tab bar and top bar, app-style transitions and press feedback, and native extras through the app: haptics, the screen kept on during a workout, a "Rest is over" notification, Add to Calendar through iOS's New Event sheet, AirPrint, and downloads handed to the share sheet. Browsers see the site exactly as before.
+- Strata+ in the app is sold through Apple In-App Purchase (Strata+ Monthly, the same $2.99). The server verifies StoreKit 2 transactions and App Store Server Notifications V2 against Apple's pinned root, binds each purchase to the STRATA account, and treats Paddle, App Store, and admin grants as one Strata+. Family Sharing copies never unlock it; Paddle checkout refuses App Store members and the portal points them to Apple.
+- Account deletion completes inside the app with the password and DELETE (`POST /api/account/delete/now`), with the same protections as the emailed link; App Store subscribers are told Apple keeps billing until they cancel.
+- Sessions in the app renew while in use (60-day cap). Daily Snapshots and the Training Log date "today" in the member's own time zone. Strata AI says it is not medical advice.
+- Advance every asset version and the offline cache to 9.2.0, so installed apps and returning browsers fetch the new scripts instead of mixing them with cached 9.1.0 files.
+
+See the [9.2.0 release guide](docs/release-9.2.0.md).
+
 ## 9.1.0 — Dashboard
 
 - Dashboard replaces My Week in the navigation. Strata+ members land on a page with two choices, Plan and the Strata+ dashboard; free accounts and visitors go straight to Plan. `/my-week` still works.
