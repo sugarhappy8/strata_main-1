@@ -9,7 +9,6 @@ const Progress=require("../public/scripts/discover-progress");
 const Render=require("../public/scripts/discover-render");
 const Catalog=require("../public/scripts/discover-catalog");
 const Detail=require("../public/scripts/discover-detail");
-const Community=require("../public/scripts/discover-community");
 const Session=require("../public/scripts/discover-session");
 
 function classList(){const values=new Set();return{add:name=>values.add(name),remove:name=>values.delete(name),toggle:(name,force)=>force?values.add(name):values.delete(name),contains:name=>values.has(name)};}
@@ -64,7 +63,7 @@ test("Plan, Nutrition, and their tools keep Overview highlighted as their destin
   const document={body:element("body"),getElementById:id=>panels.get(id)||null,querySelectorAll:()=>[...destinations,...cards]};
   const navigation=Navigation.createFeatureNavigation({config:State.FEATURE_CONFIG,defaultFeature:State.FEATURE_DEFAULT,state,document,window:{matchMedia:()=>({matches:true})}});
   const highlighted=()=>destinations.filter((link)=>link.classList.contains("active")).map((link)=>link.dataset.featureTarget);
-  for(const feature of ["plan","nutrition","session","monthly","community","coaching"]){
+  for(const feature of ["plan","nutrition","session","monthly","coaching"]){
     assert.equal(navigation.activate(feature),true);
     assert.deepEqual(highlighted(),["today"],`${feature} belongs to Overview`);
     assert.equal(destinations[0].attributes["aria-current"],"location");
@@ -157,13 +156,10 @@ test("Discover catalog keeps community and personal display rules outside the pa
   assert.equal(catalog.personalLabel({eligible:false,match:0,reasons:["equipment"]},{long:true}),"Profile mismatch — equipment");
 });
 
-test("Discover detail, community, session, and sharing factories expose focused responsibilities",()=>{
+test("Discover detail and session factories expose focused responsibilities",()=>{
   const state=State.createState();state.preferences={goal:"balanced",level:"Intermediate",days:3};state.weeklyPlan={restDays:["Sunday"],days:{}};
   const detail=Detail.createDetail({state,core:{comparisonRecommendation:()=>({winner:{id:"press"},reason:"Best fit"})}});
   assert.deepEqual(detail.comparisonWinner([{id:"press"}]),{winner:{id:"press"},text:"Best fit"});
-  const monthly={normalizeWeeklyPlan:plan=>plan,DAYS:["Monday"]},community=Community.createCommunity({state,monthly});
-  assert.equal(community.normalizeCommunityPlan(null),null);
-  assert.deepEqual(community.normalizeCommunityPlan({id:" plan ",title:" Week ",plan:{days:{Monday:[]}}}),{id:"plan",title:"Week",description:"",authorName:"STRATA member",createdAt:undefined,updatedAt:undefined,plan:{days:{Monday:[]}}});
   const session=Session.createSession({state,core:{WEEKDAYS:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"],weeklyPulse:()=>({day:"Tuesday"})}});
   assert.equal(session.preferredDay("Tuesday"),"Tuesday");
   state.recommendations=[{exercise:{name:"Press"},result:{match:91}}];

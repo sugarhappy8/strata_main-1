@@ -110,92 +110,11 @@ function sanitizePlan(input,{repair=false}={}) {
   return output;
 }
 
-function communityPlanError(message,code="INVALID_COMMUNITY_PLAN") {
-  return Object.assign(new Error(message),{status:400,code});
-}
-
-function communityPlanText(value,{label,min=0,max}) {
-  if (typeof value!=="string") throw communityPlanError(`${label} is invalid.`);
-  const text=value.trim().replace(/[ \t]+/g," ");
-  if (/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/.test(text)) {
-    throw communityPlanError(`${label} contains unsupported characters.`);
-  }
-  if (text.length<min||text.length>max) {
-    const range=min>0?`between ${min} and ${max}`:`at most ${max}`;
-    throw communityPlanError(`${label} must be ${range} characters.`);
-  }
-  return text;
-}
-
-function sanitizeCommunityPlanInput(input,currentPlan) {
-  if (!input||typeof input!=="object"||Array.isArray(input)) throw communityPlanError("Invalid community plan.");
-  const title=communityPlanText(input.title,{label:"Plan title",min:3,max:80});
-  if (/[\r\n]/.test(input.title)) throw communityPlanError("Plan title must use one line.");
-  const hasDescription=Object.prototype.hasOwnProperty.call(input,"description");
-  const hasPublished=Object.prototype.hasOwnProperty.call(input,"published");
-  const hasPlan=Object.prototype.hasOwnProperty.call(input,"plan");
-  if (hasPlan) throw communityPlanError("Save your weekly plan before publishing it.","COMMUNITY_PLAN_BODY_NOT_ALLOWED");
-  const description=hasDescription?communityPlanText(input.description,{label:"Description",max:240}):"";
-  if (hasPublished&&typeof input.published!=="boolean") throw communityPlanError("Published setting is invalid.");
-  const plan=currentPlan;
-  if (!plan||planStats(plan).planCount<1) throw communityPlanError("Add at least one exercise before sharing your weekly plan.","EMPTY_COMMUNITY_PLAN");
-  return {title,description,plan,published:!hasPublished||input.published};
-}
-
-function communityPlanId(value) {
-  const id=String(value||"").toLowerCase();
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(id)?id:"";
-}
-
-function communityAuthorName(value) {
-  const name=String(value||"")
-    .replace(/[\u0000-\u001F\u007F\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g," ")
-    .replace(/\s+/gu," ")
-    .trim()
-    .slice(0,80);
-  return name||"STRATA member";
-}
-
-function communityPlanPayload(row,{owner=false}={}) {
-  if (!row) return null;
-  let plan;
-  try { plan=sanitizePlan(JSON.parse(row.plan_json)); }
-  catch { return null; }
-  const output={
-    id:String(row.id),
-    title:String(row.title),
-    description:String(row.description||""),
-    authorName:communityAuthorName(row.author_name),
-    plan,
-    createdAt:Number(row.created_at),
-    updatedAt:Number(row.updated_at)
-  };
-  if (owner) output.published=Boolean(Number(row.is_published));
-  return output;
-}
-
-function communityRevision(value,label,{allowZero=false}={}) {
-  if (!Number.isSafeInteger(value)||(allowZero?value<0:value<=0)) {
-    throw communityPlanError(`${label} is invalid. Refresh and try again.`,"INVALID_COMMUNITY_REVISION");
-  }
-  return value;
-}
-
 function expectedPlanRevision(value) {
   if (!Number.isSafeInteger(value)||value<0) {
     throw Object.assign(new Error("Your plan version is missing or invalid. Refresh and try again."),{status:400,code:"PLAN_VERSION_REQUIRED"});
   }
   return value;
-}
-
-function communityPagination(url) {
-  const rawLimit=url.searchParams.get("limit"),rawOffset=url.searchParams.get("offset");
-  if (rawLimit!=null&&!/^[0-9]+$/.test(rawLimit)) throw communityPlanError("Community plan limit is invalid.","INVALID_PAGINATION");
-  if (rawOffset!=null&&!/^[0-9]+$/.test(rawOffset)) throw communityPlanError("Community plan offset is invalid.","INVALID_PAGINATION");
-  const limit=rawLimit==null?12:Number(rawLimit),offset=rawOffset==null?0:Number(rawOffset);
-  if (!Number.isSafeInteger(limit)||limit<1||limit>24) throw communityPlanError("Community plan limit must be between 1 and 24.","INVALID_PAGINATION");
-  if (!Number.isSafeInteger(offset)||offset<0||offset>10000) throw communityPlanError("Community plan offset must be between 0 and 10000.","INVALID_PAGINATION");
-  return {limit,offset};
 }
 
 function monthlyPlanError(message) {
@@ -345,11 +264,6 @@ module.exports={
   sanitizePreferences,
   sanitizeRating,
   sanitizePlan,
-  sanitizeCommunityPlanInput,
-  communityPlanId,
-  communityPlanPayload,
-  communityRevision,
   expectedPlanRevision,
-  communityPagination,
   sanitizeMonthlyPlan
 };

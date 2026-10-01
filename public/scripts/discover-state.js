@@ -22,7 +22,6 @@
     library:Object.freeze({panelId:"exerciseExplorer",headingId:"explorerTitle",label:"Exercise library"}),
     battle:Object.freeze({panelId:"battle",headingId:"battleTitle",label:"Compare exercises",parent:"library"}),
     profile:Object.freeze({panelId:"profile",headingId:"profileTitle",label:"Personalize recommendations",parent:"library"}),
-    community:Object.freeze({panelId:"communityPlans",headingId:"communityPlansTitle",label:"Browse community plans",parent:"plan"}),
     monthly:Object.freeze({panelId:"monthlyPlan",headingId:"monthlyPlanTitle",label:"Build a 31-day plan",parent:"plan"}),
     session:Object.freeze({panelId:"sessionBuilder",headingId:"sessionBuilderTitle",label:"Build a session",parent:"plan"})
   });
@@ -31,7 +30,6 @@
     explorerMobilePageSize:12,
     searchDebounceMs:180,
     ratingsRefreshMinIntervalMs:15_000,
-    communityPageSize:12,
     movementBoard:4
   });
   const MOVEMENT_BOARD_STORAGE_PREFIX="strata_plus_movement_board_v1";
@@ -47,8 +45,6 @@
       trainingBlock:null,trainingBlockRevision:0,trainingBlockAction:null,progressionSuggestion:null,
       session:null,sessionSaving:false,sessionDayInitialized:false,
       monthlyPlan:null,monthlyPlanUpdatedAt:0,monthlySchedule:null,monthlySource:"muscle-schedule",
-      communityPlans:[],communityLoaded:false,communityLoading:false,communityError:"",communityNextOffset:0,communityQuery:"",
-      communityPendingId:null,communityAppliedId:null,communityAppliedUpdatedAt:0
     };
   }
 

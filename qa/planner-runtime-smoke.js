@@ -73,9 +73,6 @@ const context={
     requests.push({path,options});
     if(path===CATALOG_URL)return {ok:true,json:async()=>exercises};
     if(path==="/api/plan")return {ok:true,json:async()=>({plan,user:{id:"u1",name:"Planner Audit",email:"audit@example.test",discovery:{active:true,accessType:"paid",trial:{eligible:false,active:false}}},csrfToken:"planner-csrf",planUpdatedAt:1_700_000_000_100})};
-    if(path==="/api/community-plans/mine")return {ok:true,json:async()=>({plans:[],csrfToken:"planner-csrf"})};
-    if(path==="/api/community-plans"&&options.method==="POST")return {ok:true,json:async()=>({ok:true,plan:{id:"shared-runtime",title:"Runtime strength week",description:"A runtime-tested week.",authorName:"Planner Audit",plan,published:true,createdAt:Date.now(),updatedAt:Date.now()}})};
-    if(path==="/api/community-plans/shared-runtime"&&options.method==="DELETE")return {ok:true,json:async()=>({ok:true})};
     return {ok:false,status:404,json:async()=>({error:"Not found"})};
   },
   requestAnimationFrame:(callback)=>callback(),setTimeout,clearTimeout,URL,URLSearchParams
@@ -83,7 +80,7 @@ const context={
 context.globalThis=context;
 context.StrataDiscovery=Discovery;
 vm.createContext(context);
-for(const script of ["activation-core.js","entitlements.js","planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-sharing.js","planner-activation.js","planner-events.js"]){
+for(const script of ["activation-core.js","entitlements.js","planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-activation.js","planner-events.js"]){
   vm.runInContext(readPublic("scripts",script),context,{filename:script});
 }
 vm.runInContext(readPublic("scripts","planner.js"),context,{filename:"planner.js"});
@@ -100,13 +97,6 @@ function clickLoadMore(){
   for(const handler of documentListeners.click||[])handler(event);
 }
 
-function clickUnpublish(){
-  const target={
-    closest(selector){return selector==="[data-unpublish-plan]"?{dataset:{unpublishPlan:"shared-runtime"}}:null;}
-  };
-  const event={target,defaultPrevented:false,button:0,metaKey:false,ctrlKey:false,shiftKey:false,altKey:false};
-  for(const handler of documentListeners.click||[])handler(event);
-}
 
 function clickSelectDay(day){
   const select={dataset:{selectDay:day,dayChip:day}};
@@ -144,7 +134,6 @@ function clickSelectDay(day){
   assert.match(plannerCss,/@media\(max-width:480px\)\{[^}]*\.library-panel\{[^}]*72svh[^}]*\}\.planner-day-chips\{grid-template-columns:repeat\(4,minmax\(44px,1fr\)\)/,"Small screens should expose four full-size day targets per row and enough room to read library results");
   assert.match(plannerCss,/\.library-list \{[^}]*grid-auto-rows:max-content/,"Library rows must grow with wrapped exercise names instead of clipping them");
   assert.match(html,/id="exportWeeklyPlan"[^>]*>Export week/,"Export should use a short, familiar label");
-  assert.match(html,/id="shareWeeklyPlan"[^>]*>Share week/,"Community publishing should not be described as a file upload");
   assert.match(html,/id="userName" href="\/account\.html"/,"Signed-in planners should have a direct account link");
   assert.equal((html.match(/class="planner-workflow"/g)||[]).length,1,"Planner onboarding should be a single compact workflow");
   assert.match(html,/Build a weekly plan in three steps/,"Planner workflow should describe its purpose to assistive technology");
@@ -180,38 +169,6 @@ function clickSelectDay(day){
 
   const expandedIds=renderedIds();
   const loadMoreFocused=focusedSelector==='[data-library-index="32"] [data-quick-add]';
-  assert.equal(elements.get("sharePlanGuest").hidden,true,"Signed-in planners should not see the guest publishing prompt");
-  assert.equal(elements.get("sharePlanAccount").hidden,false,"Signed-in planners should see publishing controls");
-  elements.get("sharePlanTitle").value="Runtime strength week";
-  elements.get("sharePlanDescription").value="A runtime-tested week.";
-  elements.get("sharePlanConfirm").checked=false;
-  for(const handler of elements.get("sharePlanForm").listeners.submit||[])handler({preventDefault(){}});
-  await new Promise(setImmediate);
-  assert.equal(fetches.filter((path)=>path==="/api/community-plans").length,0,"Publishing must wait for explicit privacy confirmation");
-  assert.match(elements.get("sharePlanStatus").textContent,/confirm/i);
-  vm.runInContext('state.plan.days.Tuesday.push({instanceId:"dirty-before-publish",exerciseId:state.exercises[1].id,sets:3,reps:"8–12"});state.revision+=1;',context);
-  elements.get("sharePlanConfirm").checked=true;
-  for(const handler of elements.get("sharePlanForm").listeners.submit||[])handler({preventDefault(){}});
-  await new Promise(setImmediate);
-  const publishRequest=requests.find((request)=>request.path==="/api/community-plans"&&request.options.method==="POST");
-  assert.ok(publishRequest,"Publishing must call the community-plan endpoint");
-  assert.equal(publishRequest.options.headers["X-CSRF-Token"],"planner-csrf","Publishing must include the signed-in CSRF token");
-  const publishBody=JSON.parse(publishRequest.options.body);
-  assert.equal(Object.hasOwn(publishBody,"plan"),false,"Publishing must snapshot the already-saved server plan instead of trusting a second client copy");
-  assert.equal(publishBody.expectedPlanUpdatedAt,1_700_000_000_100,"Publishing must bind the upload to the Plan revision shown to the user");
-  const saveIndex=requests.findIndex((request)=>request.path==="/api/plan"&&request.options.method==="PUT"),publishIndex=requests.indexOf(publishRequest);
-  assert.ok(saveIndex>=0&&saveIndex<publishIndex,"A dirty weekly plan must finish saving before its community snapshot is published");
-  assert.equal(JSON.parse(requests[saveIndex].options.body).expectedPlanUpdatedAt,1_700_000_000_100,"Account saves must include the plan revision that the browser loaded");
-  assert.equal(JSON.parse(requests[saveIndex].options.body).plan.days.Monday[0].reps,"12–15","A lifecycle-style save must include the value from a still-focused reps field");
-  assert.equal(requests[saveIndex].options.keepalive,true,"Plan saves must be eligible to finish while the page is backgrounded");
-  assert.match(elements.get("ownSharedPlans").innerHTML,/Runtime strength week/);
-
-  clickUnpublish();
-  assert.match(elements.get("ownSharedPlans").innerHTML,/Confirm unpublish/,"Unpublish requires an explicit second confirmation");
-  clickUnpublish();
-  await new Promise(setImmediate);
-  assert.equal(fetches.filter((path)=>path==="/api/community-plans/shared-runtime").length,1,"Confirmed unpublish must call DELETE once");
-  assert.match(elements.get("ownSharedPlans").innerHTML,/not shared a week/i);
   const expandedResultStatus=elements.get("libraryResultStatus").textContent;
 
   let retrySaveAttempts=0;
@@ -341,20 +298,15 @@ function clickSelectDay(day){
   assert.equal(vm.runInContext("state.entitlementFailureCount",context),0,"a successful retry must reset backoff");
   assert.match(elements.get("weekSummary").innerHTML,/class="week-readiness ready"/);
 
-  let guestCommunityFetches=0;
   context.fetch=async(path)=>{
     if(path===CATALOG_URL)return {ok:true,json:async()=>exercises};
     if(path==="/api/plan")return {ok:false,status:401,json:async()=>({error:"Not signed in."})};
-    if(path==="/api/community-plans/mine")guestCommunityFetches+=1;
     return {ok:false,status:404,json:async()=>({error:"Not found"})};
   };
   await vm.runInContext("init()",context);
   assert.equal(vm.runInContext("state.entitlementTimer",context),null,"guest fallback must cancel account entitlement timers");
-  assert.equal(elements.get("sharePlanGuest").hidden,false,"Guest planners should see the sign-in publishing prompt");
-  assert.equal(elements.get("sharePlanAccount").hidden,true,"Guest planners must not see account publishing controls");
   assert.doesNotMatch(elements.get("weekSummary").innerHTML,/class="week-readiness/,"Free and guest planners must not receive Strata+ plan-guidance cards");
   assert.equal(elements.get("userName").hidden,true,"Guest planners should not see a misleading account-name link");
-  assert.equal(guestCommunityFetches,0,"Guest planners must not request private community management data");
   assert.match(elements.get("plannerModeNotice").innerHTML,/Free device plan[\s\S]*No account required[\s\S]*stays in this browser[\s\S]*Use a synced plan/i,"Guest copy must distinguish the browser-local free plan from optional account sync");
   assert.doesNotMatch(elements.get("plannerModeNotice").innerHTML,/Sign in for cross-device sync/i);
   guestStorageWrites.length=0;
@@ -377,11 +329,6 @@ function clickSelectDay(day){
   const result={
     catalogFetch:fetches.filter((path)=>path===CATALOG_URL).length===1,
     planFetch:requests.filter((request)=>request.path==="/api/plan"&&!request.options.method).length===1,
-    planSave:saveIndex>=0&&saveIndex<publishIndex,
-    communityFetch:fetches.filter((path)=>path==="/api/community-plans/mine").length===1,
-    communityPublish:Boolean(publishRequest),
-    communityUnpublish:fetches.filter((path)=>path==="/api/community-plans/shared-runtime").length===1,
-    guestPublishingPrompt:elements.get("sharePlanGuest").hidden===false&&elements.get("sharePlanAccount").hidden===true,
     initialCards:initialIds.length,
     initialLoadMore:true,
     expandedCards:expandedIds.length,
@@ -394,11 +341,6 @@ function clickSelectDay(day){
 
   assert.equal(result.catalogFetch,true);
   assert.equal(result.planFetch,true);
-  assert.equal(result.planSave,true);
-  assert.equal(result.communityFetch,true);
-  assert.equal(result.communityPublish,true);
-  assert.equal(result.communityUnpublish,true);
-  assert.equal(result.guestPublishingPrompt,true);
   assert.equal(result.expandedCards,64,"One desktop Load more action should render 64 cards total");
   assert.equal(result.uniqueExpandedCards,64,"Load more must not duplicate library cards");
   assert.equal(result.firstPagePreserved,true,"Load more should preserve the original first page order");
@@ -590,7 +532,6 @@ function clickSelectDay(day){
     if(path===CATALOG_URL)return {ok:true,json:async()=>exercises};
     if(path==="/api/plan"&&options.method==="PUT"){planWrites+=1;throw new Error("Offline");}
     if(path==="/api/plan")return {ok:true,json:async()=>({plan:fixture(),user:{id:"u1",name:"Runtime"},csrfToken:"planner-csrf",planUpdatedAt:110})};
-    if(path==="/api/community-plans/mine")return {ok:true,json:async()=>({plans:[],userId:"u1"})};
     return {ok:false,status:404,json:async()=>({error:"Not found"})};
   };
   run("state.plan.days.Monday[0].reps='10–12';queueSave()");
@@ -673,16 +614,15 @@ function clickSelectDay(day){
   assert.equal(elements.get("keepAccountPlan").hidden,false);
   assert.equal(elements.get("claimDevicePlan").disabled,true);
 
-  // A userless shared-plan response cannot supply a replacement account's CSRF.
+  // A userless identity response cannot supply a replacement account's CSRF.
   storedValues.clear();reset({guest:false});
   let identity="u1",unexpectedWrites=0;
   context.fetch=async(path,options={})=>{
     if(path==="/api/me")return {ok:true,json:async()=>({user:{id:identity},csrfToken:`csrf-${identity}`})};
-    if(path==="/api/community-plans/mine")return {ok:true,json:async()=>({plans:[],csrfToken:"unbound-csrf",userId:"u1"})};
     if(options.method==="PUT"||options.method==="POST"){unexpectedWrites+=1;return {ok:true,json:async()=>({})};}
     return {ok:false,status:404,json:async()=>({error:"Not found"})};
   };
-  assert.equal(await run("loadSharedPlans()"),true);
+  await run("verifyPlannerIdentity()");
   assert.equal(run("state.csrfToken"),"csrf-u1","Only an identity-bound response can refresh the CSRF token");
   run("state.plan.days.Monday[0].reps='7';queueSave()");identity="u2";
   assert.equal(await run("flushSave()"),false);

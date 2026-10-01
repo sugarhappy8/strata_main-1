@@ -12,9 +12,4 @@ export function planStats(plan:WeeklyPlan):{planCount:number;workoutDays:number}
 export function sanitizePlan(input:unknown,options?:{repair?:boolean}):WeeklyPlan;
 export function sanitizePreferences(input:unknown):TrainingPreferences;
 export function sanitizeRating(input:unknown):Record<string,number>;
-export function sanitizeCommunityPlanInput(input:unknown,currentPlan:WeeklyPlan):{title:string;description:string;plan:WeeklyPlan;published:boolean};
-export function communityPlanId(value:unknown):string;
-export function communityPlanPayload(row:JsonObject|null|undefined,options?:{owner?:boolean}):JsonObject|null;
-export function communityRevision(value:unknown,label:string,options?:{allowZero?:boolean}):number;
-export function communityPagination(url:URL):{limit:number;offset:number};
 export function sanitizeMonthlyPlan(input:unknown,options?:{generatedAt?:number}):JsonObject;

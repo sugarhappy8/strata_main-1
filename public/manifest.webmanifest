@@ -36,7 +36,7 @@
     {
       "name": "Strata+ Studio",
       "short_name": "Strata+",
-      "description": "Open personalized tools and community weekly plans in Strata+.",
+      "description": "Open your personalized training tools in Strata+.",
       "url": "/discover.html",
       "icons": [{"src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png"}]
     },

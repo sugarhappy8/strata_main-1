@@ -34,7 +34,7 @@
 
     document.addEventListener("click",event=>{
       if(event.target.closest("[data-open-guest]")){void actions.init({guestOnly:true});return;}
-      const guide=event.target.closest("[data-guide-exercise]"),replace=event.target.closest("[data-replace-item]"),filter=event.target.closest("[data-library-group]"),quick=event.target.closest("[data-quick-add]"),select=event.target.closest("[data-select-day]"),remove=event.target.closest("[data-remove-item]"),rest=event.target.closest("[data-set-rest]"),move=event.target.closest("[data-move-item]"),loadMore=event.target.closest("[data-load-more-library]"),retry=event.target.closest("[data-retry-init]"),unpublish=event.target.closest("[data-unpublish-plan]");
+      const guide=event.target.closest("[data-guide-exercise]"),replace=event.target.closest("[data-replace-item]"),filter=event.target.closest("[data-library-group]"),quick=event.target.closest("[data-quick-add]"),select=event.target.closest("[data-select-day]"),remove=event.target.closest("[data-remove-item]"),rest=event.target.closest("[data-set-rest]"),move=event.target.closest("[data-move-item]"),loadMore=event.target.closest("[data-load-more-library]"),retry=event.target.closest("[data-retry-init]");
       if(guide)actions.openExerciseGuide(guide.dataset.guideExercise,guide);
       else if(filter){state.group=filter.dataset.libraryGroup;actions.resetLibraryWindow();actions.renderFilters(state.group);actions.renderLibrary();}
       else if(quick)actions.addExercise(quick.dataset.quickAdd,state.selectedDay);
@@ -49,7 +49,6 @@
       else if(move){const day=move.closest("[data-day]").dataset.day;actions.moveWithinDay(day,move.dataset.moveItem,Number(move.dataset.moveDirection));}
       else if(loadMore){const firstNewIndex=state.libraryLimit;state.libraryLimit+=actions.libraryPageSize();actions.renderLibrary();frame(()=>el("libraryList").querySelector(`[data-library-index="${firstNewIndex}"] [data-quick-add]`)?.focus());}
       else if(retry)void actions.init();
-      else if(unpublish)void actions.unpublishSharedPlan(unpublish.dataset.unpublishPlan);
     });
 
     // Input is captured before blur so pagehide saves include the newest value.
@@ -109,13 +108,6 @@
     el("devicePlanConfirm").addEventListener("change",event=>{el("claimDevicePlan").disabled=!event.target.checked||state.activationBusy;actions.setActivationStatus(event.target.checked?"Ready to replace the account week. The write will check for newer account changes first.":"No decision has been made. Both copies remain unchanged.");});
     el("keepAccountPlan").addEventListener("click",actions.keepAccountActivationPlan);
     el("claimDevicePlan").addEventListener("click",()=>void actions.claimActivationPlan());
-    el("shareWeeklyPlan").addEventListener("click",()=>{if(el("shareWeeklyPanel").hidden)actions.openSharePanel();else actions.closeSharePanel();});
-    el("closeShareWeekly").addEventListener("click",actions.closeSharePanel);
-    el("sharePlanTitle").addEventListener("input",event=>event.target.removeAttribute?.("aria-invalid"));
-    el("sharePlanDescription").addEventListener("input",event=>{event.target.removeAttribute?.("aria-invalid");el("shareDescriptionCount").textContent=`${event.target.value.length} / 240`;});
-    el("sharePlanConfirm").addEventListener("change",event=>event.target.removeAttribute?.("aria-invalid"));
-    el("sharePlanForm").addEventListener("submit",event=>{event.preventDefault();void actions.publishWeeklyPlan();});
-    el("refreshSharedPlans").addEventListener("click",()=>void actions.loadSharedPlans({announce:true}));
     el("logoutButton").addEventListener("click",async event=>{
       const button=event.currentTarget;button.disabled=true;
       const saved=await actions.flushSave();

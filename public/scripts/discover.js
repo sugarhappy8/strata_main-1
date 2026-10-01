@@ -18,7 +18,6 @@ const RenderCore=globalThis.StrataDiscoverRender;if(!RenderCore)throw new Error(
 const EventsCore=globalThis.StrataDiscoverEvents;if(!EventsCore)throw new Error("The Strata+ event module did not load.");
 const CatalogCore=globalThis.StrataDiscoverCatalog;if(!CatalogCore)throw new Error("The Strata+ catalog module did not load.");
 const DetailCore=globalThis.StrataDiscoverDetail;if(!DetailCore)throw new Error("The Strata+ detail module did not load.");
-const CommunityCore=globalThis.StrataDiscoverCommunity;if(!CommunityCore)throw new Error("The Strata+ community module did not load.");
 const SessionCore=globalThis.StrataDiscoverSession;if(!SessionCore)throw new Error("The Strata+ session module did not load.");
 const CoachingDiaryUi=globalThis.StrataPersonalTrainingDiaryUi;if(!CoachingDiaryUi)throw new Error("The personal-training diary module did not load.");
 const CoachingUi=globalThis.StrataPersonalTrainingUi;if(!CoachingUi)throw new Error("The Strata+ personal-training input module did not load.");
@@ -31,7 +30,6 @@ const EXPLORER_DESKTOP_PAGE_SIZE=StateCore.LIMITS.explorerDesktopPageSize;
 const EXPLORER_MOBILE_PAGE_SIZE=StateCore.LIMITS.explorerMobilePageSize;
 const SEARCH_DEBOUNCE_MS=StateCore.LIMITS.searchDebounceMs;
 const RATINGS_REFRESH_MIN_INTERVAL_MS=StateCore.LIMITS.ratingsRefreshMinIntervalMs;
-const COMMUNITY_PAGE_SIZE=StateCore.LIMITS.communityPageSize;
 const MOVEMENT_BOARD_LIMIT=StateCore.LIMITS.movementBoard;
 const state=StateCore.createState();
 let workspaceGeneration=0,workspaceReady=false,workspaceRevalidating=false;
@@ -67,7 +65,6 @@ const featureNavigation=NavigationCore.createFeatureNavigation({
   onActivate:(name)=>{
     const scoreGuide=el("scoreGuide"),showScoreGuide=["recommendations","library","battle"].includes(name);if(scoreGuide)scoreGuide.hidden=!showScoreGuide;if(!showScoreGuide&&el("scoreGuideDetails"))el("scoreGuideDetails").open=false;
     if(state.user&&["recommendations","library","battle"].includes(name))void refreshCommunityRatings().catch(()=>{});
-    if(state.user&&name==="community"&&!state.communityLoaded&&!state.communityLoading)void loadCommunityPlans({reset:true});
     if(state.user&&["coaching","plan","nutrition"].includes(name))void coaching.ensureLoaded();recovery.activate(name);
   }
 });
@@ -118,12 +115,7 @@ function openDialog(dialog,initialFocus){
 }
 function closeDialog(id){const dialog=el(id);if(dialog?.open)dialog.close();syncDialogState();restoreDialogFocus(dialog);}
 
-const community=CommunityCore.createCommunity({
-  state,monthly:Monthly,element:el,document,escapeHtml,exerciseById,titleCase,api,getGeneration:()=>workspaceGeneration,pageSize:COMMUNITY_PAGE_SIZE,
-  weeklyPlanCount,openDialog,closeDialog,syncSessionPlanViews:(...args)=>syncSessionPlanViews(...args),saveRetryMessage,showToast
-});
 const program=globalThis.StrataDiscoverProgram.createController({element:el,api,state,getWeek:()=>coaching.state.week,getGeneration:()=>workspaceGeneration,monthly:Monthly,openDialog,closeDialog,syncPlanViews:(options)=>syncSessionPlanViews(options),onAccountError:redirectedOrChangedAccount});
-const {applyCommunityPlan,loadCommunityPlans,openCommunityApplyDialog,renderCommunityPlans}=community;
 
 function blankMonthlySchedule(){
   const training={Monday:["chest","triceps"],Wednesday:["back","biceps"],Friday:["legs","glutes"],Saturday:["shoulders","core"]};
@@ -299,11 +291,11 @@ function renderProgression(){
 function clearPrivateWorkspace(){
   workspaceGeneration+=1;workspaceReady=false;coaching.reset();program.reset();recovery.reset();
   state.exercises=[];state.methodology=null;state.sources=[];state.limited=new Set();state.preferences=null;state.user=null;state.csrfToken="";state.aggregate=new Map();state.userRatings=new Map();state.ratingsRefreshedAt=0;state.ratingsRefreshPromise=null;state.ratingSaving=new Set();state.compare=[];state.shortlist=[];state.collection="all";state.query="";state.group="all";state.equipment="all";state.pattern="all";state.level="all";state.sort="personal";state.recommendations=[];state.activeExercise=null;state.explorerLimit=EXPLORER_DESKTOP_PAGE_SIZE;
-  state.weeklyPlan=null;state.weeklyPlanUpdatedAt=0;state.workouts=[];state.workoutHistoryAvailable=false;state.workoutHistoryHasMore=false;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.trainingBlock=null;state.trainingBlockRevision=0;state.trainingBlockAction=null;state.progressionSuggestion=null;state.session=null;state.sessionSaving=false;state.sessionDayInitialized=false;state.monthlyPlan=null;state.monthlyPlanUpdatedAt=0;state.monthlySchedule=null;state.monthlySource="muscle-schedule";state.communityPlans=[];state.communityLoaded=false;state.communityLoading=false;state.communityError="";state.communityNextOffset=0;state.communityQuery="";state.communityPendingId=null;state.communityAppliedId=null;state.communityAppliedUpdatedAt=0;
+  state.weeklyPlan=null;state.weeklyPlanUpdatedAt=0;state.workouts=[];state.workoutHistoryAvailable=false;state.workoutHistoryHasMore=false;state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.trainingBlock=null;state.trainingBlockRevision=0;state.trainingBlockAction=null;state.progressionSuggestion=null;state.session=null;state.sessionSaving=false;state.sessionDayInitialized=false;state.monthlyPlan=null;state.monthlyPlanUpdatedAt=0;state.monthlySchedule=null;state.monthlySource="muscle-schedule";
   const main=document.querySelector("main");if(main){main.hidden=true;main.inert=true;main.setAttribute("aria-busy","true");}
   el("userName").textContent="Checking account…";el("compareTray").hidden=true;el("compareNames").textContent="Choose 2–4 exercises";el("toast").textContent="";el("featureStatus").textContent="";
-  el("progressionCard").hidden=true;el("trainingBlockReview").hidden=true;el("battleResults").hidden=true;el("battleResults").innerHTML="";el("communityPlanGrid").innerHTML="";el("sessionResults").innerHTML="";
-  if(el("detailContent"))el("detailContent").innerHTML="";if(el("communityApplySummary"))el("communityApplySummary").innerHTML="";
+  el("progressionCard").hidden=true;el("trainingBlockReview").hidden=true;el("battleResults").hidden=true;el("battleResults").innerHTML="";el("sessionResults").innerHTML="";
+  if(el("detailContent"))el("detailContent").innerHTML="";
   document.querySelectorAll("dialog").forEach((dialog)=>{if(dialog.open)dialog.close();});document.body.classList.remove("dialog-open");
 }
 function revealPrivateWorkspace(){
@@ -628,15 +620,6 @@ el("monthlyFileInput").addEventListener("change",async(event)=>{
 el("monthlyPdfButton").addEventListener("click",printMonthlyPlan);
 el("monthlyShareButton").addEventListener("click",()=>void shareMonthlyPlan());
 el("monthlyEditButton").addEventListener("click",()=>{monthlyPlanForm.scrollIntoView?.({behavior:window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches?"auto":"smooth",block:"start"});el("monthlyTitle").focus?.({preventScroll:true});});
-el("communityPlanSearch").addEventListener("input",(event)=>{state.communityQuery=event.target.value;renderCommunityPlans();});
-el("communityRefresh").addEventListener("click",()=>void loadCommunityPlans({reset:true}));
-el("communityLoadMore").addEventListener("click",()=>void loadCommunityPlans());
-el("communityPlanGrid").addEventListener("click",(event)=>{
-  const apply=event.target.closest("[data-apply-community]"),retry=event.target.closest("[data-community-retry]");
-  if(apply)openCommunityApplyDialog(apply.dataset.applyCommunity);else if(retry)void loadCommunityPlans({reset:true});
-});
-el("communityApplyConfirm").addEventListener("click",()=>void applyCommunityPlan());
-el("communityApplyDialog").addEventListener("close",()=>{if(el("communityApplyDialog").dataset.busy!=="true")state.communityPendingId=null;});
 
 document.addEventListener("submit",async(event)=>{
   const form=event.target.closest("[data-rating-form]");if(!form)return;event.preventDefault();
@@ -677,7 +660,7 @@ function initialLoadMessage(error){
 function showInitialLoadProgress(){
   el("discoveryLoadError").hidden=true;el("discoveryRetry").disabled=true;
   state.workoutHistoryStatus="loading";state.workoutHistoryError="";state.workoutHistoryAvailable=false;if(el("plusStartWorkout"))el("plusStartWorkout").hidden=true;showTodayAlternative(false);renderProgress();
-  el("profileStatus").textContent="Loading profile…";el("battleStatus").textContent="Loading exercises…";el("monthlyPlanStatus").textContent="Loading planner…";el("communityPlanStatus").textContent="Loading shared plans…";if(el("sessionStatus"))el("sessionStatus").textContent="Loading your profile and weekly plan…";
+  el("profileStatus").textContent="Loading profile…";el("battleStatus").textContent="Loading exercises…";el("monthlyPlanStatus").textContent="Loading planner…";if(el("sessionStatus"))el("sessionStatus").textContent="Loading your profile and weekly plan…";
   el("recommendationGrid").innerHTML='<div class="loading-card">Building your ranking…</div>';
   if(el("rankingLensItems"))el("rankingLensItems").innerHTML="<li>Loading preferences…</li>";
   if(el("movementBoardStatus"))el("movementBoardStatus").textContent="Loading your decision board…";
@@ -687,7 +670,7 @@ function showInitialLoadProgress(){
 }
 function showInitialLoadError(error){
   const message=initialLoadMessage(error);
-  el("profileStatus").textContent="Unable to load";el("battleStatus").textContent=message;el("monthlyPlanStatus").textContent=message;el("communityPlanStatus").textContent=message;if(el("sessionStatus"))el("sessionStatus").textContent=message;
+  el("profileStatus").textContent="Unable to load";el("battleStatus").textContent=message;el("monthlyPlanStatus").textContent=message;if(el("sessionStatus"))el("sessionStatus").textContent=message;
   el("recommendationGrid").innerHTML=`<div class="loading-card load-error-card">${escapeHtml(message)}</div>`;el("exerciseGrid").innerHTML=`<div class="loading-card load-error-card">${escapeHtml(message)}</div>`;
   if(el("movementBoardStatus"))el("movementBoardStatus").textContent="Decision board unavailable until Strata+ reconnects.";
   el("discoveryLoadErrorMessage").textContent=message;el("discoveryLoadError").hidden=false;showToast(message);

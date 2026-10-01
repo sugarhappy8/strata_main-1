@@ -7,7 +7,7 @@ const {join}=require("node:path");
 
 const PROJECT_ROOT=join(__dirname,"..");
 const read=(...parts)=>readFileSync(join(PROJECT_ROOT,"public",...parts),"utf8");
-const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover.js"];
+const discoverModules=["personal-training-energy-ui-core.js","personal-training-ui-core.js","personal-training-diary-ui.js","personal-training-meals-ui-core.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-coaching-render.js","discover-coaching-trend.js","discover-catalog.js","discover-detail.js","discover-session.js","discover-events.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js","discover.js"];
 const discoverScript=()=>discoverModules.map(name=>read("scripts",name)).join("\n");
 
 test("Strata+ progressively enhances four primary destinations and focused supporting tools",()=>{
@@ -16,7 +16,7 @@ test("Strata+ progressively enhances four primary destinations and focused suppo
   const panels=[...html.matchAll(/<section\b([^>]*\bdata-feature-panel="([^"]+)"[^>]*)>/g)];
   const blocks=[...html.matchAll(/<a\b[^>]*\bclass="[^"]*feature-block[^"]*"[^>]*\bdata-feature-target="([^"]+)"[^>]*>/g)];
 
-  assert.deepEqual(panels.map((match)=>match[2]).sort(),["battle","coaching","community","library","monthly","nutrition","plan","profile","progress","recommendations","recovery","session","today"]);
+  assert.deepEqual(panels.map((match)=>match[2]).sort(),["battle","coaching","library","monthly","nutrition","plan","profile","progress","recommendations","recovery","session","today"]);
   assert.equal(blocks.length,3,"Recommendations, Compare, and Preferences are tools inside the Library");
   for(const label of ["Recommendations","Compare","Preferences"])assert.match(html,new RegExp(`<span>${label}</span>`));
   const destinationNav=html.match(/<nav class="destination-nav"[\s\S]*?<\/nav>/)?.[0]||"";
@@ -120,8 +120,8 @@ test("Strata+ keeps the weekly Plan primary and explains secondary planning tool
   assert.match(plan,/>Create a workout(?:\s|<)/);
   assert.match(plan,/Repeat and review your weekly plan over four to eight weeks\./);
   assert.match(plan,/Place workouts on actual dates for the next 31 days\./);
-  assert.match(plan,/Save a weekly plan as a template or copy one shared by another member\./);
-  for(const label of ["Templates","Import/export","Shared plans"])assert.match(plan,new RegExp(label));
+  assert.match(plan,/Save a weekly plan as a template or move it between devices\./);
+  for(const label of ["Templates","Import/export"])assert.match(plan,new RegExp(label));
   assert.equal((plan.match(/id="planSummaryTitle">Your weekly plan<\/h3>/g)||[]).length,1,"Strata+ must not grow a second weekly-plan editor");
 });
 
@@ -184,28 +184,6 @@ test("Today distinguishes completed planned days from plan coverage and preserve
   assert.match(script,/planAction\.href="#planWorkspace"/);
   assert.match(script,/planAction\.innerHTML='Review plan <span aria-hidden="true">→<\/span>'/);
   assert.doesNotMatch(script,/weeklyPulse[^\n]*(?:recovered|readiness)/i);
-});
-
-test("community plans preview a full week and require confirmation before replacing My Plan",()=>{
-  const html=read("pages","discover.html"),script=discoverScript();
-  for(const id of ["communityPlans","communityPlanSearch","communityPlanGrid","communityPlanStatus","communityLoadMore","communityApplyDialog","communityApplyCancel","communityApplyConfirm","communityApplyWarning","communityOpenPlan"]){
-    assert.match(html,new RegExp(`\\bid="${id}"`),id);
-  }
-  assert.doesNotMatch(html,/data-feature-target="methodology"/);
-  assert.doesNotMatch(html,/>FitScore method</i);
-  assert.match(html,/Your current week will be replaced/i);
-  assert.match(html,/aria-describedby="communityApplyDescription communityApplyWarning"/);
-  assert.match(script,/\/api\/community-plans\?limit=/);
-  assert.match(script,/\/api\/community-plans\/\$\{encodeURIComponent\(record\.id\)\}\/apply/);
-  assert.match(script,/monthly\.DAYS\.map\(\(day\)=>sharedPlanDayMarkup/);
-  assert.match(script,/Use this week/);
-  assert.match(script,/Open my plan <span aria-hidden="true">→<\/span>/);
-  assert.match(script,/sourceUpdatedAt:Number\(record\.updatedAt\)/);
-  assert.match(script,/targetUpdatedAt:state\.weeklyPlanUpdatedAt/);
-  assert.match(script,/openDialog\(dialog,element\("communityApplyCancel"\)\)/);
-  assert.doesNotMatch(script,/items\.slice\(0,8\)/,"the preview must show every exercise that can be applied");
-  assert.match(script,/state\.weeklyPlan=monthly\.normalizeWeeklyPlan\(result\.plan/);
-  assert.match(script,/communityApplyDialog/);
 });
 
 test("monthly workspace exposes private import, multi-muscle schedule, PDF, and sharing controls",()=>{
@@ -386,7 +364,6 @@ test("Strata+ polish keeps filters legible and comparison details accessible",()
 
   assert.equal((html.match(/class="filter-label"/g)||[]).length,6);
   assert.match(html,/id="clearFilters"[^>]*>Clear all</);
-  assert.match(html,/id="communityApplyTitle">Replace my weekly plan\?</);
   assert.match(script,/data-scroll-alternatives/);
   assert.doesNotMatch(script,/href="#alternativeSection"/);
   assert.match(script,/<thead><tr><th scope="col">Measure<\/th>/);

@@ -194,12 +194,6 @@
           "maxLines": 75
         },
         {
-          "file": "public/scripts/discover-community.js",
-          "role": "render",
-          "global": "StrataDiscoverCommunity",
-          "maxLines": 75
-        },
-        {
           "file": "public/scripts/discover-session.js",
           "role": "events",
           "global": "StrataDiscoverSession",
@@ -346,12 +340,6 @@
           "role": "events",
           "global": "StrataPlannerTemplates",
           "maxLines": 105
-        },
-        {
-          "file": "public/scripts/planner-sharing.js",
-          "role": "events",
-          "global": "StrataPlannerSharing",
-          "maxLines": 140
         },
         {
           "file": "public/scripts/planner-activation.js",

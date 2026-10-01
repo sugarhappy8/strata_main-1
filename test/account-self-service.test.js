@@ -30,7 +30,6 @@ function fixtureRows(){
       {log_date:"2030-03-05",calories:0,protein_g:null,carbs_g:null,fat_g:null,morning_weight_kg:null,intake_complete:null,revision:1,updated_at:16},
       {log_date:"2030-03-06",calories:1800,protein_g:null,carbs_g:null,fat_g:null,morning_weight_kg:81.9,intake_complete:0,revision:1,updated_at:17}
     ],
-    communityPlans:[{id:"community-1",title:"My week",description:"Three days",plan_json:JSON.stringify({days:{}}),is_published:1,created_at:15,updated_at:16}],
     purchases:[{transaction_id:"txn_1",price_id:"pri_1",product_id:"pro_1",subscription_id:"sub_1",customer_id:"never-export-customer",paddle_status:"completed",completed_at:19,access_revoked_at:null,revocation_reason:null,created_at:18,updated_at:19}],
     subscriptions:[{subscription_id:"sub_1",transaction_id:"txn_1",customer_id:"never-export-customer",status:"active",price_id:"pri_1",product_id:"pro_1",scheduled_change_action:null,scheduled_change_at:null,current_period_ends_at:20,created_at:19,updated_at:20}],
     adjustments:[{adjustment_id:"adj_1",transaction_id:"txn_1",action:"refund",type:"full",status:"approved",occurred_at:21,updated_at:22}],

@@ -416,7 +416,6 @@ function localStore(root) {
         statements.deleteAdminControlsForDeletedUser.run(user.id,user.id);
         deleteLocalTrainingData(statements,user.id);
         deleteLocalCoachingData(statements,user.id);
-        statements.deleteCommunityPlanForDeletedUser.get(user.id,user.id);
         statements.deleteWorkoutsForDeletedUser.run(user.id,user.id);
         statements.deleteCheckoutClaimsForDeletedUser.all(user.id,user.id);
         statements.deleteVerificationSendsForDeletedUser.run(user.id,user.email,user.id);
@@ -474,31 +473,6 @@ function localStore(root) {
         }
         throw error;
       }
-    },
-    async communityWeeklyPlans(limit,offset) { return plainRows(statements.communityWeeklyPlans.all(limit,offset)); },
-    async communityWeeklyPlan(id) { return plainRow(statements.communityWeeklyPlan.get(id)); },
-    async communityWeeklyPlansForUser(userId) { return plainRows(statements.communityWeeklyPlansForUser.all(userId)); },
-    async communityWeeklyPlanForOwner(id,userId) { return plainRow(statements.communityWeeklyPlanForOwner.get(id,userId)); },
-    async upsertCommunityWeeklyPlan(plan) {
-      return plainRow(statements.upsertCommunityWeeklyPlan.get(
-        plan.id,plan.title,plan.description,plan.planJson,plan.isPublished?1:0,
-        plan.createdAt,plan.updatedAt,plan.userId
-      ));
-    },
-    async upsertCommunityWeeklyPlanFromPlan(plan) {
-      return plainRow(statements.upsertCommunityWeeklyPlanFromPlan.get(
-        plan.id,plan.title,plan.description,plan.isPublished?1:0,
-        plan.createdAt,plan.updatedAt,plan.userId,plan.expectedPlanUpdatedAt,plan.storedPlanJson
-      ));
-    },
-    async setCommunityWeeklyPlanPublished(id,userId,isPublished,updatedAt) {
-      return plainRow(statements.setCommunityWeeklyPlanPublished.get(isPublished?1:0,updatedAt,id,userId));
-    },
-    async deleteCommunityWeeklyPlan(id,userId) { return Boolean(plainRow(statements.deleteCommunityWeeklyPlan.get(id,userId))); },
-    async applyCommunityWeeklyPlan({id,userId,sourceUpdatedAt,targetUpdatedAt,planJson,storedPlanJson,updatedAt}) {
-      return plainRow(statements.applyCommunityWeeklyPlan.get(
-        planJson,updatedAt,userId,id,sourceUpdatedAt,storedPlanJson,targetUpdatedAt
-      ));
     },
     async monthlyPlan(userId) { return plainRow(statements.monthlyPlan.get(userId)); },
     async upsertMonthlyPlan(userId,planJson,updatedAt,expectedUpdatedAt) {
@@ -631,7 +605,6 @@ function localStore(root) {
         statements.deleteAdminControlsForDeletedUser.run(user.id,user.id);
         deleteLocalTrainingData(statements,user.id);
         deleteLocalCoachingData(statements,user.id);
-        statements.deleteCommunityPlanForDeletedUser.get(user.id,user.id);
         statements.deleteWorkoutsForDeletedUser.run(user.id,user.id);
         statements.deleteCheckoutClaimsForDeletedUser.all(user.id,user.id);
         statements.deleteVerificationSendsForDeletedUser.run(user.id,targetEmail,user.id);
@@ -912,7 +885,6 @@ async function tursoStore(url,authToken,tursoClientFactory) {
         {sql:SQL.deleteAdminControlsForDeletedUser,args:[action.user_id,action.user_id]},
         ...trainingDeletionBatch(action.user_id),
         ...coachingDeletionBatch(action.user_id),
-        {sql:SQL.deleteCommunityPlanForDeletedUser,args:[action.user_id,action.user_id]},
         {sql:SQL.deleteWorkoutsForDeletedUser,args:[action.user_id,action.user_id]},
         {sql:SQL.deleteCheckoutClaimsForDeletedUser,args:[action.user_id,action.user_id]},
         {sql:SQL.deleteVerificationSendsForDeletedUser,args:[action.user_id,action.email,action.user_id]},
@@ -955,38 +927,6 @@ async function tursoStore(url,authToken,tursoClientFactory) {
       if (!plan) return null;
       if (!preferences) throw new Error("Training preferences could not be saved atomically with the weekly plan.");
       return {...plan,preferences_json:preferences.preferences_json,preferences_updated_at:Number(preferences.updated_at)};
-    },
-    communityWeeklyPlans:(limit,offset) => all(SQL.communityWeeklyPlans,[limit,offset]),
-    communityWeeklyPlan:(id) => first(SQL.communityWeeklyPlan,[id]),
-    communityWeeklyPlansForUser:(userId) => all(SQL.communityWeeklyPlansForUser,[userId]),
-    communityWeeklyPlanForOwner:(id,userId) => first(SQL.communityWeeklyPlanForOwner,[id,userId]),
-    async upsertCommunityWeeklyPlan(plan) {
-      const result=await run(SQL.upsertCommunityWeeklyPlan,[
-        plan.id,plan.title,plan.description,plan.planJson,plan.isPublished?1:0,
-        plan.createdAt,plan.updatedAt,plan.userId
-      ]);
-      return plainRow(result.rows?.[0],result.columns);
-    },
-    async upsertCommunityWeeklyPlanFromPlan(plan) {
-      const result=await run(SQL.upsertCommunityWeeklyPlanFromPlan,[
-        plan.id,plan.title,plan.description,plan.isPublished?1:0,
-        plan.createdAt,plan.updatedAt,plan.userId,plan.expectedPlanUpdatedAt,plan.storedPlanJson
-      ]);
-      return plainRow(result.rows?.[0],result.columns);
-    },
-    async setCommunityWeeklyPlanPublished(id,userId,isPublished,updatedAt) {
-      const result=await run(SQL.setCommunityWeeklyPlanPublished,[isPublished?1:0,updatedAt,id,userId]);
-      return plainRow(result.rows?.[0],result.columns);
-    },
-    async deleteCommunityWeeklyPlan(id,userId) {
-      const result=await run(SQL.deleteCommunityWeeklyPlan,[id,userId]);
-      return Boolean(plainRow(result.rows?.[0],result.columns));
-    },
-    async applyCommunityWeeklyPlan({id,userId,sourceUpdatedAt,targetUpdatedAt,planJson,storedPlanJson,updatedAt}) {
-      const result=await run(SQL.applyCommunityWeeklyPlan,[
-        planJson,updatedAt,userId,id,sourceUpdatedAt,storedPlanJson,targetUpdatedAt
-      ]);
-      return plainRow(result.rows?.[0],result.columns);
     },
     monthlyPlan:(userId) => first(SQL.monthlyPlan,[userId]),
     async upsertMonthlyPlan(userId,planJson,updatedAt,expectedUpdatedAt) {
@@ -1068,7 +1008,6 @@ async function tursoStore(url,authToken,tursoClientFactory) {
         {sql:SQL.deleteAdminControlsForDeletedUser,args:[userId,userId]},
         ...trainingDeletionBatch(userId),
         ...coachingDeletionBatch(userId),
-        {sql:SQL.deleteCommunityPlanForDeletedUser,args:[userId,userId]},
         {sql:SQL.deleteWorkoutsForDeletedUser,args:[userId,userId]},
         {sql:SQL.deleteCheckoutClaimsForDeletedUser,args:[userId,userId]},
         {sql:SQL.deleteVerificationSendsForDeletedUser,args:[userId,targetEmail,userId]},

@@ -31,6 +31,9 @@ function legacyDatabase() {
   database.prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)").run("legacy-coach",1000,2000);
   database.exec("CREATE INDEX IF NOT EXISTS discovery_trials_expires_at ON discovery_trials(expires_at)");
   database.exec("CREATE TABLE admin_elevations (session_token_hash TEXT PRIMARY KEY,expires_at INTEGER NOT NULL,created_at INTEGER NOT NULL)");
+  database.exec("CREATE TABLE community_weekly_plans (id TEXT PRIMARY KEY,user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,title TEXT NOT NULL,description TEXT NOT NULL DEFAULT '',plan_json TEXT NOT NULL,is_published INTEGER NOT NULL DEFAULT 1,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL)");
+  database.exec("CREATE INDEX IF NOT EXISTS community_weekly_plans_public_updated ON community_weekly_plans(is_published,updated_at DESC)");
+  database.prepare("INSERT INTO community_weekly_plans(id,user_id,title,description,plan_json,is_published,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)").run("shared-1","legacy-coach","Legacy week","",JSON.stringify({days:{}}),1,1000,1001);
   database.exec("CREATE INDEX IF NOT EXISTS admin_elevations_expiry ON admin_elevations(expires_at)");
   database.exec("DROP TABLE product_signal_counts");
   database.exec(`CREATE TABLE product_signal_counts (
@@ -49,6 +52,9 @@ function assertRetiredTables(database) {
   assert.equal(tables.has("device_revocations"),false,"V3 revocation credentials are dropped");
   assert.equal(tables.has("admin_elevations"),false,"the unused elevation table is dropped");
   assert.equal(tables.has("discovery_trials"),false,"legacy trials no longer grant access");
+  assert.equal(tables.has("community_weekly_plans"),false,"shared community plans are retired");
+  assert.deepEqual(database.prepare("SELECT id,title FROM archive_community_weekly_plans").all().map((row)=>({...row})),[{id:"shared-1",title:"Legacy week"}],"shared plans are archived, not deleted");
+  assert.equal(database.prepare("SELECT COUNT(*) AS count FROM sqlite_master WHERE type='index' AND name='community_weekly_plans_public_updated'").get().count,0);
   assert.deepEqual(database.prepare("SELECT user_id,started_at,expires_at FROM archive_discovery_trials").all().map((row)=>({...row})),[{user_id:"legacy-coach",started_at:1000,expires_at:2000}],"legacy trial rows are archived, not deleted");
   assert.deepEqual(database.prepare("SELECT event_name,event_count FROM product_signal_counts ORDER BY event_name").all().map((row)=>({...row})),[{event_name:"plan_saved",event_count:2}],"the retired trial signal is dropped from the counts");
   assert.throws(()=>database.prepare("INSERT INTO product_signal_counts(event_day,event_name,event_count) VALUES(?,?,?)").run("2030-03-05","trial_started",1),/CHECK constraint failed/);

@@ -67,7 +67,6 @@ body { line-height:1.5; }
 :root body :is(.button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button):not(.compact) { font-size:.9375rem; }
 :root body :is(.small-button,.button.compact,.compact-button) { font-size:.875rem; }
 /* A toolbar segment attached to a card edge keeps its square seam. */
-.plus-studio .community-plan-toolbar .small-button { border-radius:0; }
 .home-page .exercise-title h3 { font:700 1.125rem/1.3 var(--display); letter-spacing:-.01em; }
 .home-page .exercise-title p { font-size:.8125rem; }
 .home-page .exercise-list-more { display:flex; justify-content:center; padding:28px 0 8px; }

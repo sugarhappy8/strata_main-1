@@ -94,7 +94,6 @@ test("published Strata+ price and refund promise are exact and consistent",()=>{
   assert.doesNotMatch(pricing,/trial|no card/i,"the free trial is retired");
   assert.match(pricing,/Renews until canceled/i);
   assert.match(pricing,/session building/i);
-  assert.match(pricing,/community week previews/i);
   assert.match(pricing,/31-day planner/i);
   assert.match(pricing,/workout check-ins/i);
   assert.match(pricing,/Review suggested plan changes before saving/i);
@@ -161,7 +160,7 @@ test("support and deletion pages explain their important fallback and retention 
   assert.match(contact,/<noscript>[\s\S]*support form needs JavaScript[\s\S]*mailto:/i);
   assert.match(text("contact.html"),/signed-in requests use the name and email registered to the account/i);
   assert.match(deletion,/monthly plan/i);
-  assert.match(deletion,/published (?:community-)?plan listing/i);
+  assert.match(deletion,/weekly and monthly plans, profile, and preferences/i);
   assert.match(deletion,/support (?:requests|records)[\s\S]*administrator security logs[\s\S]*may be retained/i);
 });
 
@@ -177,17 +176,6 @@ test("public policies distinguish self-service from guarded administrator deleti
   assert.doesNotMatch(terms,/exact account email and an audit reason/i);
   assert.match(privacy,/re-checks Paddle and database blockers/i);
   assert.match(privacy,/cannot delete the primary owner/i);
-});
-
-test("community-plan policies explain publication, privacy, replacement, and removal",()=>{
-  const privacy=text("privacy.html"),terms=text("terms.html");
-  assert.match(privacy,/validated structured weekly plan/i);
-  assert.match(privacy,/display name/i);
-  assert.match(privacy,/email address and internal user identifier are not included in the listing/i);
-  assert.match(privacy,/rather than uploading a binary file or attachment/i);
-  assert.match(terms,/Only Strata\+ members can browse and apply community plans/i);
-  assert.match(terms,/replaces your current saved week/i);
-  assert.match(terms,/publisher can unpublish their listing/i);
 });
 
 test("public copy describes recurring checkout, cancellation, and grandfathered access",()=>{

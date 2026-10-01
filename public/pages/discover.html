@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#10110f" />
-    <meta name="description" content="Your private Strata+ exercise, planning, and community workout workspace." />
+    <meta name="description" content="Your private Strata+ exercise, planning, and training workspace." />
     <meta name="application-name" content="STRATA" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -155,8 +155,8 @@
               </details>
 
               <details class="plan-tool-disclosure" id="reuseWeekDetails">
-                <summary><span class="plan-tool-summary"><span class="plan-tool-number" aria-hidden="true">04</span><span class="plan-tool-copy"><small class="kicker">Repeat what works</small><strong role="heading" aria-level="3">Reuse a week</strong><span>Save a weekly plan as a template or copy one shared by another member.</span></span></span><b aria-hidden="true">+</b></summary>
-                <nav class="plan-tool-body reuse-week-links" aria-label="Ways to reuse a weekly plan"><a href="/planner.html#manageWeekTemplates"><span>Templates</span><small>Save and reuse complete weekly plans on this device.</small><b aria-hidden="true">→</b></a><a href="/planner.html#exportWeeklyPlan"><span>Import/export</span><small>Move a STRATA week between devices with a private JSON file.</small><b aria-hidden="true">→</b></a><a href="#communityPlans" data-feature-target="community"><span>Shared plans</span><small>Preview a member’s full week before choosing to copy it.</small><b aria-hidden="true">→</b></a></nav>
+                <summary><span class="plan-tool-summary"><span class="plan-tool-number" aria-hidden="true">04</span><span class="plan-tool-copy"><small class="kicker">Repeat what works</small><strong role="heading" aria-level="3">Reuse a week</strong><span>Save a weekly plan as a template or move it between devices.</span></span></span><b aria-hidden="true">+</b></summary>
+                <nav class="plan-tool-body reuse-week-links" aria-label="Ways to reuse a weekly plan"><a href="/planner.html#manageWeekTemplates"><span>Templates</span><small>Save and reuse complete weekly plans on this device.</small><b aria-hidden="true">→</b></a><a href="/planner.html#exportWeeklyPlan"><span>Import/export</span><small>Move a STRATA week between devices with a private JSON file.</small><b aria-hidden="true">→</b></a></nav>
               </details>
             </div>
           </div>
@@ -527,29 +527,6 @@
         </div>
       </section>
 
-      <section class="community-plans-section feature-panel" id="communityPlans" data-feature-panel="community" aria-labelledby="communityPlansTitle">
-        <div class="studio-container">
-          <a class="tool-menu-link tool-menu-link-light" href="#planWorkspace" data-feature-target="plan">Back to Plan ↑</a>
-          <div class="section-heading">
-            <div><p class="kicker kicker-light">Shared weekly plans</p><h2 id="communityPlansTitle" tabindex="-1">Find your next <em>week.</em></h2></div>
-            <p>Explore seven-day workout plans shared by other STRATA members. Preview every day first, then confirm before replacing your current weekly plan.</p>
-          </div>
-
-          <div class="community-browser">
-            <div class="community-plan-toolbar">
-              <label class="community-plan-search" for="communityPlanSearch"><span aria-hidden="true">⌕</span><span class="sr-only">Search community workout plans</span><input id="communityPlanSearch" type="search" placeholder="Search by plan, creator, or exercise…" autocomplete="off" /></label>
-              <button class="small-button" id="communityRefresh" type="button">Refresh plans</button>
-            </div>
-            <div class="community-browser-status">
-              <p id="communityPlanStatus" role="status" aria-live="polite" aria-atomic="true">Loading shared plans…</p>
-              <a class="small-button community-open-plan" id="communityOpenPlan" href="/planner.html" hidden>Open my plan <span aria-hidden="true">→</span></a>
-            </div>
-            <div class="community-plan-grid" id="communityPlanGrid" aria-busy="true"><div class="community-plan-state"><span class="community-state-mark" aria-hidden="true">↻</span><strong>Loading shared plans</strong><p>Getting the latest plans from the community.</p></div></div>
-            <div class="community-more-row"><button class="button button-accent" id="communityLoadMore" type="button" hidden>Load more plans <span>↓</span></button></div>
-          </div>
-        </div>
-      </section>
-
       <section class="monthly-section feature-panel" id="monthlyPlan" data-feature-panel="monthly" aria-labelledby="monthlyPlanTitle">
         <div class="studio-container">
           <a class="tool-menu-link" href="#planWorkspace" data-feature-target="plan">Back to Plan ↑</a>
@@ -673,18 +650,6 @@
       <div class="community-confirm-body"><p class="kicker">Review before saving</p><h2 id="programApplyTitle">Use this suggested week?</h2><p id="programApplyDescription">This replaces all seven days of your saved weekly plan. Your completed workouts and calorie diary stay saved. Only exercises, sets, and repetitions transfer; load and rest guidance remain in the suggestion above.</p><p id="programApplySummary" class="program-review-summary"></p><p id="programApplyError" role="alert" hidden></p><div class="community-confirm-actions"><button class="small-button" id="programApplyCancel" data-close-dialog="programApplyDialog" type="button">Keep current week</button><button class="button button-dark" id="programApplyConfirm" type="button">Use this week</button></div></div>
     </dialog>
 
-    <dialog class="community-apply-dialog" id="communityApplyDialog" aria-labelledby="communityApplyTitle" aria-describedby="communityApplyDescription communityApplyWarning">
-      <div class="community-confirm-head"><p class="kicker">Replace weekly plan</p><button class="icon-button" data-close-dialog="communityApplyDialog" type="button" aria-label="Close without replacing your plan">×</button></div>
-      <div class="community-confirm-body">
-        <span class="community-confirm-mark" aria-hidden="true">!</span>
-        <h2 id="communityApplyTitle">Replace my weekly plan?</h2>
-        <p id="communityApplyDescription">Review this shared week before replacing every day in your current plan.</p>
-        <div class="community-confirm-summary" id="communityApplySummary"></div>
-        <p class="community-confirm-warning" id="communityApplyWarning"><strong>Your current week will be replaced.</strong> This cannot be undone automatically. Nothing changes until you confirm.</p>
-        <p class="community-confirm-error" id="communityApplyError" role="alert" hidden></p>
-        <div class="community-confirm-actions"><button class="small-button" id="communityApplyCancel" data-close-dialog="communityApplyDialog" type="button">Keep my current plan</button><button class="button button-dark" id="communityApplyConfirm" type="button">Replace with this plan <span aria-hidden="true">→</span></button></div>
-      </div>
-    </dialog>
     <dialog class="community-apply-dialog training-block-action-dialog" id="trainingBlockActionDialog" aria-labelledby="trainingBlockActionTitle" aria-describedby="trainingBlockActionDescription trainingBlockActionWarning">
       <div class="community-confirm-head"><p class="kicker">Review block action</p><button class="icon-button" data-close-dialog="trainingBlockActionDialog" type="button" aria-label="Close without changing the training block">×</button></div>
       <div class="community-confirm-body">
@@ -719,7 +684,6 @@
     <script src="discover-coaching-trend.js?v=8.9.0"></script>
     <script src="discover-catalog.js?v=8.9.0"></script>
     <script src="discover-detail.js?v=8.9.0"></script>
-    <script src="discover-community.js?v=8.9.0"></script>
     <script src="discover-session.js?v=8.9.0"></script>
     <script src="discover-events.js?v=8.9.0"></script>
     <script src="discover-coaching-meals.js?v=8.9.0"></script>

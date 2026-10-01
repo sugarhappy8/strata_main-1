@@ -503,7 +503,6 @@ export interface AccountExportStoreRows {
   coachingProfile:JsonObject|null;
   coachingWeeks:JsonObject[];
   coachingLogs:CoachingDailyLogRow[];
-  communityPlans:JsonObject[];
   grants:JsonObject[];
   purchases:JsonObject[];
   subscriptions:JsonObject[];

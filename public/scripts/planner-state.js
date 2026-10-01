@@ -16,7 +16,7 @@
       exercises:[],plan:null,user:null,query:"",group:"all",drag:null,selectedDay:"Monday",
       ready:false,guest:false,guestRaw:null,saveTimer:null,savePromise:null,lastSaveError:null,planUpdatedAt:0,revision:0,savedRevision:0,navigating:false,libraryLimit:desktopPageSize,
       accountChanged:false,undoRemoval:null,replacement:null,templatePreview:null,draftKey:"",draftValue:"",recoverySource:null,recoveredDrafts:[],draftStorageError:false,
-      conflictDraft:null,conflictLatest:null,conflictReview:false,csrfToken:"",sharedPlans:[],sharedPlansLoaded:false,sharedPlansRequest:0,shareBusy:false,pendingUnpublish:"",
+      conflictDraft:null,conflictLatest:null,conflictReview:false,csrfToken:"",
       activationCandidates:[],activationCandidateId:"",activationBusy:false,activationDirectClaim:false,copyPreview:null,copyTrigger:null,resetWeekSnapshot:null,resetWeekTrigger:null,
       entitlementStatus:"unknown",entitlementCheckedAt:0,entitlementRequest:0,entitlementRefreshPromise:null,entitlementTimer:null,entitlementFailureCount:0
     };

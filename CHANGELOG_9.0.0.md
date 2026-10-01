@@ -93,7 +93,19 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   module is a code-level duplication members never see at once; it moves to Phase 6.
 - The Nutrition "Behind the numbers" panel folds into Strata AI in Phase 5.
 
+## Phase 2d — Plan consolidation (first slice)
+
+- **Community weekly plans cut.** The studio's "Shared plans" browser, the apply dialog, the
+  planner's "Share week" publishing panel, the five `/api/community-plans*` routes, their
+  store methods and validation helpers, and the public copy that described them are gone.
+  Migration `009-build9-archive-community-plans` renames `community_weekly_plans` to
+  `archive_community_weekly_plans` (reversible for one release) and drops its index.
+  Community *ratings* are a different feature and stay. Templates and import/export remain
+  the two ways to reuse a week.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).
 Migration 007's drop and the product-signal rebuild lose nothing a member can see.
+Migration 009 is reversible the same way: `ALTER TABLE archive_community_weekly_plans RENAME
+TO community_weekly_plans` restores the listings (the routes that served them are in 8.9.0).

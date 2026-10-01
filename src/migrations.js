@@ -15,7 +15,8 @@ const MIGRATIONS=Object.freeze([
   {id:"005-coaching-calibration",description:"Add optional morning-weight and intake-completeness observations to coaching logs."},
   {id:"006-polar-v4-ans-status",description:"Store Polar V4 ANS status across its documented range."},
   {id:"007-polar-v4-revocations",description:"Drop the queued V3 deregistration credentials that V4 cannot use."},
-  {id:"008-build9-retired-tables",description:"Archive legacy trials, drop admin elevations, and retire the trial product signal."}
+  {id:"008-build9-retired-tables",description:"Archive legacy trials, drop admin elevations, and retire the trial product signal."},
+  {id:"009-build9-archive-community-plans",description:"Archive shared community weekly plans; Build 9 retires the feature."}
 ]);
 const LATEST_MIGRATION_ID=MIGRATIONS.at(-1).id;
 
@@ -99,6 +100,10 @@ function migrateLocalSchema(database,{activeWorkoutIndex,reconcileActiveWorkouts
     if (database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='discovery_trials'").get()) database.exec("ALTER TABLE discovery_trials RENAME TO archive_discovery_trials");
     for (const sql of productSignalRebuild(productSignalTable)) database.exec(sql);
   },now())) applied.push(MIGRATIONS[7].id);
+  if (runLocalMigration(database,MIGRATIONS[8].id,()=>{
+    database.exec("DROP INDEX IF EXISTS community_weekly_plans_public_updated");
+    if (database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='community_weekly_plans'").get()) database.exec("ALTER TABLE community_weekly_plans RENAME TO archive_community_weekly_plans");
+  },now())) applied.push(MIGRATIONS[8].id);
   return {latest:LATEST_MIGRATION_ID,applied};
 }
 
@@ -179,6 +184,12 @@ async function migrateTursoSchema(client,{activeWorkoutIndex,reconcileActiveWork
       {sql:"INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",args:[MIGRATIONS[7].id,now()]}
     ],"write");
     applied.push(MIGRATIONS[7].id);
+  }
+  if (!completed.has(MIGRATIONS[8].id)) {
+    await client.execute("DROP INDEX IF EXISTS community_weekly_plans_public_updated");
+    const shared=await client.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='community_weekly_plans'");
+    if ((shared.rows||[]).length) await client.execute("ALTER TABLE community_weekly_plans RENAME TO archive_community_weekly_plans");
+    await recordTursoMigration(client,MIGRATIONS[8].id,now());applied.push(MIGRATIONS[8].id);
   }
   return {latest:LATEST_MIGRATION_ID,applied};
 }
