@@ -275,6 +275,9 @@ async function checkout(account){
     {cookie:account.cookie,csrf:account.csrfToken});
 }
 
+const DAY_MS=24*60*60*1000;
+const PERIOD_START_AT=new Date(Date.now()-DAY_MS).toISOString();
+const PERIOD_END_AT=new Date(Date.now()+31*DAY_MS).toISOString();
 let eventSequence=0;
 function subscriptionId(transactionId){return `sub_${String(transactionId).slice(4)}`;}
 function eventId(label){
@@ -313,7 +316,7 @@ function subscriptionEvent(transactionId,userId,{label="subscription",status="ac
       billing_cycle:{interval:"month",frequency:1},
       items:[{quantity:1,recurring:true,price:{id:PRICE_ID,product_id:PRODUCT_ID,billing_cycle:{interval:"month",frequency:1}}}],
       scheduled_change:null,
-      current_billing_period:["active","trialing","past_due"].includes(status)?{starts_at:"2026-09-01T00:00:00Z",ends_at:"2026-10-01T00:00:00Z"}:null,
+      current_billing_period:["active","trialing","past_due"].includes(status)?{starts_at:PERIOD_START_AT,ends_at:PERIOD_END_AT}:null,
       updated_at:occurredAt
     }
   };
