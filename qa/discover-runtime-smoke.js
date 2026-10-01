@@ -45,13 +45,12 @@ const document={
   body:new Element("body"),
   getElementById(id){return elements.get(id)||null;},
   querySelector(selector){return selector==="main"?mainElement:null;},
-  querySelectorAll(selector){if(selector==="dialog")return [elements.get("detailDialog"),elements.get("communityApplyDialog"),elements.get("trainingBlockActionDialog")];return [];},
+  querySelectorAll(selector){if(selector==="dialog")return [elements.get("detailDialog"),elements.get("trainingBlockActionDialog")];return [];},
   addEventListener(){},
   createElement(){return new Element("created");}
 };
 const weeklyPlan={version:1,restDay:"Sunday",days:Object.fromEntries(["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"].map((day)=>[day,day==="Monday"?[{instanceId:"runtime-plan-item",exerciseId:"flat-dumbbell-press",sets:3,reps:"8–12"}]:[]]))};
 const response={user:{id:"u1",name:"Runtime Audit",email:"audit@example.test",discovery:{active:true}},csrfToken:"csrf",exercises,methodology:discovery.methodology,sources:discovery.sources,limitedConfidenceExercises:discovery.limitedConfidenceExercises,preferences:{version:1,goal:"hypertrophy",level:"Intermediate",days:4,equipment:[...new Set(exercises.map((exercise)=>exercise.equipment))],preferences:["stable","long-range"],limitations:[]},ratings:{aggregates:[],user:[]},weeklyPlan,weeklyPlanUpdatedAt:1_700_000_000_100};
-const communityPlan={id:"11111111-1111-4111-8111-111111111111",title:"Runtime <Week>",description:"A shared smoke-test plan.",authorName:"Other Member",plan:weeklyPlan,createdAt:1_700_000_000_000,updatedAt:1_700_000_000_000};
 const workoutSummary={id:"runtime-workout",title:"Monday workout",planDay:"Monday",date:localDateOffset(),status:"completed",startedAt:1_700_000_000_000,completedAt:1_700_001_800_000,elapsedSeconds:1800,totalSets:3,completedSets:3,exerciseCount:1,exerciseSummaries:[{exerciseId:"flat-dumbbell-press",measurement:"reps",loadType:"external",unit:"kg",completedSets:3,totalReps:24,maxReps:8,maxWeight:20,volume:480,totalSeconds:0,maxSeconds:null}]};
 const trainingBlock={version:1,title:"Runtime block",goal:"hypertrophy",weeks:6,currentWeek:2,lightWeek:6,startDate:localDateOffset(-7),status:"active",progressionRule:"reps-then-load",milestones:[],revision:3,updatedAt:1_700_000_000_500};
 const adaptation={id:"adapt-runtime",sourceWorkoutId:"runtime-workout",status:"pending",kind:"reduce_sets",title:"Reduce one set of Flat Dumbbell Press",explanation:"Your optional check-in supported a lower next-session dose.",change:{day:"Monday",instanceId:"runtime-plan-item",exerciseId:"flat-dumbbell-press",fromSets:3,toSets:2},requiresApproval:true,expectedPlanUpdatedAt:response.weeklyPlanUpdatedAt,createdAt:1_700_000_000_600,resolvedAt:null};
@@ -64,8 +63,6 @@ const context={console,document,window:{location:{replace(path){navigations.push
   if(path==="/api/training")return {ok:true,json:async()=>({block:trainingBlock,progression:{workoutId:"runtime-workout",suggestions:[{exerciseId:"flat-dumbbell-press",explanation:"Two comparable sessions reached the prescribed repetitions."}]},adaptation,csrfToken:"csrf"})};
   if(path==="/api/training-block"&&options.method==="PUT"){const body=JSON.parse(options.body);return {ok:true,json:async()=>({block:{...trainingBlock,...body.block,revision:4,updatedAt:1_700_000_000_700},adaptation,csrfToken:"csrf"})};}
   if(path==="/api/training/adaptations/adapt-runtime"&&options.method==="POST"){const decision=JSON.parse(options.body).decision;return {ok:true,json:async()=>decision==="dismiss"?{adaptation:{...adaptation,status:"dismissed"},planUpdatedAt:null}:{adaptation:{...adaptation,status:"accepted"},plan:weeklyPlan,planUpdatedAt:1_700_000_000_800}};}
-  if(String(path).startsWith("/api/community-plans?"))return {ok:true,json:async()=>({plans:[communityPlan],pagination:{limit:12,offset:0,nextOffset:null}})};
-  if(String(path).endsWith("/apply"))return {ok:true,json:async()=>({ok:true,plan:weeklyPlan,planUpdatedAt:1_700_000_000_200})};
   if(path==="/api/plan"&&options.method==="PUT"){
     if(context.forcePlanConflict){context.forcePlanConflict=false;return {ok:false,status:409,json:async()=>({error:"Your weekly plan changed in another tab or device.",code:"PLAN_CHANGED",plan:context.authoritativeConflictPlan,planUpdatedAt:1_700_000_000_400})};}
     const body=JSON.parse(options.body);return {ok:true,json:async()=>({ok:true,plan:body.plan,planUpdatedAt:planSaveRevision})};
@@ -82,11 +79,11 @@ vm.runInContext(readPublic("scripts","devices-core.js"),context,{filename:"devic
 vm.runInContext(readPublic("scripts","personal-training-ui-core.js"),context,{filename:"personal-training-ui-core.js"});
 vm.runInContext(readPublic("scripts","personal-training-diary-ui.js"),context,{filename:"personal-training-diary-ui.js"});
 vm.runInContext(readPublic("scripts","personal-training-meals-ui-core.js"),context,{filename:"personal-training-meals-ui-core.js"});
-for(const name of ["discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-catalog.js","discover-detail.js","discover-community.js","discover-session.js","discover-sharing.js","discover-events.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
+for(const name of ["entitlements.js","discover-state.js","discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-catalog.js","discover-detail.js","discover-session.js","discover-events.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
 for(const name of ["discover-coaching-render.js","discover-coaching-meals.js","discover-coaching.js","discover-program.js","discover-recovery.js"])vm.runInContext(readPublic("scripts",name),context,{filename:name});
 vm.runInContext(readPublic("scripts","discover.js"),context,{filename:"discover.js"});
 assert.equal(vm.runInContext("state.activeFeature",context),"today","feature navigation must initialize before discovery data resolves");
-assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>featureNavigation.featurePanel(name).hidden).length',context),13,"only the default workspace should remain visible during discovery loading");
+assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>featureNavigation.featurePanel(name).hidden).length',context),11,"only the default workspace should remain visible during discovery loading");
 
 (async()=>{
   await new Promise(setImmediate);
@@ -143,16 +140,8 @@ assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>feature
   vm.runInContext("globalThis.ratingRefreshPromise=refreshCommunityRatings({force:true});",context);
   await context.ratingRefreshPromise;
   context.audit.ratingDraftPreserved=Object.entries(draftValues).every(([name,value])=>new RegExp(`name="${name}">[\\s\\S]*?<option value="${value}" selected`).test(elements.get("detailContent").innerHTML));
-  vm.runInContext('closeDialog("detailDialog"); activateFeature("community");',context);
+  vm.runInContext('closeDialog("detailDialog");',context);
   await new Promise(setImmediate);
-  vm.runInContext(`
-    openCommunityApplyDialog("11111111-1111-4111-8111-111111111111");
-    globalThis.communityBeforeApply={dialogOpen:el("communityApplyDialog").open,applyRequests:requests.filter((request)=>String(request.path).endsWith("/apply")).length};
-    globalThis.communityApplyPromise=applyCommunityPlan();
-  `,context);
-  await context.communityApplyPromise;
-  const applyRequest=requests.find((request)=>String(request.path).endsWith("/apply"));
-  const applyBody=applyRequest?JSON.parse(applyRequest.options.body):{};
   vm.runInContext(`
     activateFeature("session");
     generateSession();
@@ -196,15 +185,9 @@ assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>feature
     evidence:/Does not support/.test(elements.get("detailContent").innerHTML),
     alternatives:/Find an alternative/.test(elements.get("detailContent").innerHTML),
     ratings:/Community score/.test(elements.get("detailContent").innerHTML),
-    communityFetch:fetches.filter((path)=>String(path).startsWith("/api/community-plans?")).length===1,
-    communityRendered:/Runtime &lt;Week&gt;/.test(elements.get("communityPlanGrid").innerHTML),
-    communitySevenDayPreview:(elements.get("communityPlanGrid").innerHTML.match(/class="shared-plan-day/g)||[]).length===7,
-    communityConfirmation:context.communityBeforeApply.dialogOpen&&context.communityBeforeApply.applyRequests===0,
-    communityApplied:Boolean(applyRequest&&applyRequest.options.method==="POST"&&applyRequest.options.headers["X-CSRF-Token"]==="csrf"&&applyBody.sourceUpdatedAt===communityPlan.updatedAt&&applyBody.targetUpdatedAt===response.weeklyPlanUpdatedAt),
-    communityPlanLink:elements.get("communityOpenPlan").hidden===false,
     sessionGenerated:vm.runInContext("state.session.items.length",context)===4&&/personal match/.test(elements.get("sessionResults").innerHTML)&&/rest/.test(elements.get("sessionResults").innerHTML),
     sessionOptions:/value="full"/.test(elements.get("sessionGroup").innerHTML)&&/value="20"/.test(elements.get("sessionLength").innerHTML)&&/value="35"/.test(elements.get("sessionLength").innerHTML)&&/value="50"/.test(elements.get("sessionLength").innerHTML),
-    sessionAdded:Boolean(sessionRequest&&sessionRequest.options.headers["X-CSRF-Token"]==="csrf"&&sessionBody.expectedPlanUpdatedAt===1_700_000_000_200&&sessionBody.plan.days.Tuesday.length===4),
+    sessionAdded:Boolean(sessionRequest&&sessionRequest.options.headers["X-CSRF-Token"]==="csrf"&&sessionBody.expectedPlanUpdatedAt===response.weeklyPlanUpdatedAt&&sessionBody.plan.days.Tuesday.length===4),
     sessionPlanRevision:sessionSavedRevision===planSaveRevision,
     sessionPlanLink:sessionPlanLinkShown,
     sessionConflictHandled,
@@ -240,13 +223,13 @@ assert.equal(vm.runInContext('Object.keys(FEATURE_CONFIG).filter((name)=>feature
   assert.equal(result.compareCount,3);
   assert.equal(result.defaultFeature,"today");
   assert.equal(result.defaultVisible,true);
-  assert.equal(result.defaultHidden,13);
+  assert.equal(result.defaultHidden,11);
   assert.equal(result.explorerFeature,"library");
   assert.equal(result.explorerVisible,true);
-  assert.equal(result.explorerHidden,13);
+  assert.equal(result.explorerHidden,11);
   assert.equal(result.unknownHashFeature,"library");
   assert.equal(result.battleSlots,4);
   assert.ok(result.battleRows>=10);
-  for(const key of ["discoveryFetch","battleBuilder","battleTable","battleVisible","battleStatus","detailOpen","bodyLocked","scoreAudit","evidence","alternatives","ratings","ratingDraftPreserved","communityFetch","communityRendered","communitySevenDayPreview","communityConfirmation","communityApplied","communityPlanLink","sessionGenerated","sessionOptions","sessionAdded","sessionPlanRevision","sessionPlanLink","sessionConflictHandled","weeklyPulse","todayComparable","progressRendered","firstWorkoutState","trainingBlockSaved","trainingBlockReview","blockControlsWorked","progressionFormatted","progressionAccepted","dismissRaceSafe","focusConcealedWhileChecking","focusSameSessionKept","focusPrivacyCleared","focusAccountSafe"])assert.equal(result[key],true,key);
+  for(const key of ["discoveryFetch","battleBuilder","battleTable","battleVisible","battleStatus","detailOpen","bodyLocked","scoreAudit","evidence","alternatives","ratings","ratingDraftPreserved","sessionGenerated","sessionOptions","sessionAdded","sessionPlanRevision","sessionPlanLink","sessionConflictHandled","weeklyPulse","todayComparable","progressRendered","firstWorkoutState","trainingBlockSaved","trainingBlockReview","blockControlsWorked","progressionFormatted","progressionAccepted","dismissRaceSafe","focusConcealedWhileChecking","focusSameSessionKept","focusPrivacyCleared","focusAccountSafe"])assert.equal(result[key],true,key);
   console.log(JSON.stringify(result,null,2));
 })().catch(error=>{console.error(error);process.exitCode=1;});

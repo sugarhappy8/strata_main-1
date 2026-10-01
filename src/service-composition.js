@@ -32,7 +32,7 @@ function composeServices({
   });
   const support=createSupportService({
     store,emailConfig,auth,admin,requestAddress,trustedAuthOrigin,rateAllowed,isUniqueViolation,
-    http:{json:http.json,bodyJson:http.bodyJson}
+    http:{json:http.json,bodyJson:http.bodyJson,bodyForm:http.bodyForm,redirect:http.redirect}
   });
   return {auth,admin,support};
 }

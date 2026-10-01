@@ -21,6 +21,7 @@
         "src/database.js",
         "src/devices.js",
         "src/email.js",
+        "src/entitlements.js",
         "src/http.js",
         "src/observability.js",
         "src/payments.js",
@@ -164,7 +165,7 @@
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 160,
+      "maxLines": 210,
       "allowedDependencies": [
         "src/billing-schema.js"
       ]
@@ -218,7 +219,7 @@
       "allowedDependencies": []
     },
     "src/billing.js": {
-      "role": "Commercial entitlement, checkout, trial, webhook, and reconciliation service",
+      "role": "Commercial entitlement, checkout, webhook, and reconciliation service",
       "maxLines": 720,
       "allowedDependencies": [
         "src/access-controls.js",
@@ -502,6 +503,11 @@
     "src/wellness-core.js": {
       "role": "Usual ranges, overnight stress signals, recovery labels, and trends",
       "maxLines": 150,
+      "allowedDependencies": []
+    },
+    "src/entitlements.js": {
+      "role": "Feature tiers and the can(user, feature) capability map",
+      "maxLines": 80,
       "allowedDependencies": []
     }
   }

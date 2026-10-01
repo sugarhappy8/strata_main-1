@@ -140,10 +140,10 @@ test("a requested planner day survives guest selection and reload; missing or in
   assert.equal(W.dayFromSearch("?day=monday",sunday),"Sunday");
 });
 
-test("offline authorization ends at the earliest verified trial, period, cancel, or pause boundary",()=>{
+test("offline authorization ends at the earliest verified grant, period, cancel, or pause boundary",()=>{
   const now=Date.UTC(2026,8,8,12),hour=60*60*1000;
   assert.equal(W.offlineAccessUntil({active:false},now),0);
-  assert.equal(W.offlineAccessUntil({active:true,accessType:"trial",trial:{expiresAt:now+30*60*1000}},now),now+30*60*1000);
+  assert.equal(W.offlineAccessUntil({active:true,accessType:"grant",adminGrant:{active:true,expiresAt:now+30*60*1000}},now),now+30*60*1000);
   assert.equal(W.offlineAccessUntil({active:true,accessType:"paid",subscription:null},now),now+24*hour,"grandfathered access keeps the bounded device window");
   assert.equal(W.offlineAccessUntil({active:true,accessType:"paid",subscription:{currentPeriodEndsAt:now+48*hour,scheduledChange:null}},now),now+24*hour);
   for(const action of ["cancel","pause"]){

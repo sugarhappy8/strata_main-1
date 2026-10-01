@@ -6,7 +6,7 @@ const PRODUCT_SIGNAL_TABLE=`CREATE TABLE IF NOT EXISTS product_signal_counts (
   event_day TEXT NOT NULL CHECK(length(event_day)=10 AND event_day GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
   event_name TEXT NOT NULL CHECK(event_name IN (
     'preview_generated','onboarding_previewed','onboarding_saved','plan_saved',
-    'workout_started','workout_completed','upgrade_viewed','trial_started',
+    'workout_started','workout_completed','upgrade_viewed',
     'checkout_opened','upgrade_activated','recommendation_feedback_useful',
     'recommendation_feedback_not_relevant','recommendation_feedback_not_clear'
   )),

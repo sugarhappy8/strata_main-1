@@ -21,12 +21,10 @@ const connectionArgs=(record)=>[record.provider,record.providerUserId,record.mem
 const syncArgs=(record)=>[record.status,record.syncedThrough,record.lastSyncAt,record.lastError,record.nextSyncAt,record.failures,record.updatedAt,record.userId,record.provider,record.providerUserId];
 /** @param {import("./domain-types").DeviceConnectStateRecord} record */
 const stateArgs=(record)=>[record.stateHash,record.provider,record.sessionHash,record.redirectUri,record.createdAt,record.expiresAt,record.userId];
-/** @param {import("./domain-types").DeviceRevocationRecord} record */
-const revocationArgs=(record)=>[record.id,record.provider,record.providerUserId,record.tokenSealed,record.createdAt,record.nextAttemptAt];
-/** Cleanup cutoffs: connect states and stale revocations, 13 months of wellness data, and 28 days of heart-rate detail. @param {number} now */
+/** Cleanup cutoffs: connect states, 13 months of wellness data, and 28 days of heart-rate detail. @param {number} now */
 function cleanupSteps(now){
   return /** @type {Array<[string,unknown[]]>} */([
-    ["deleteExpiredDeviceStates",[now-60*60*1000]],["deleteStaleDeviceRevocations",[now-30*DAY_MS]],
+    ["deleteExpiredDeviceStates",[now-60*60*1000]],
     ["deleteOldWellnessNights",[isoDate(now-400*DAY_MS)]],["deleteOldWellnessDays",[isoDate(now-400*DAY_MS)]],
     ["deleteOldWellnessWorkouts",[now-400*DAY_MS]],["trimWellnessDayBuckets",[isoDate(now-28*DAY_MS)]]
   ]);
@@ -64,11 +62,6 @@ function createLocalDeviceMethods({db,statements,plainRow}){
         return deleted;
       }catch(error){if(open)try{db.exec("ROLLBACK");}catch{/* Keep the original error. */}throw error;}
     },
-    async insertDeviceRevocation(record){statement("insertDeviceRevocation").run(...revocationArgs(record));},
-    async dueDeviceRevocations(now,limit){return many("dueDeviceRevocations",[now,limit]);},
-    async rescheduleDeviceRevocation(id,attempts,nextAttemptAt){statement("rescheduleDeviceRevocation").run(attempts,nextAttemptAt,id);},
-    async deleteDeviceRevocation(id){statement("deleteDeviceRevocation").run(id);},
-    async cancelDeviceRevocations(provider,providerUserId){statement("cancelDeviceRevocations").run(provider,providerUserId);},
     async upsertWellnessNight(owner,night){statement("upsertWellnessNight").run(...nightArgs(night),...ownerArgs(owner));},
     async upsertWellnessDay(owner,day){statement("upsertWellnessDay").run(...dayArgs(day),...ownerArgs(owner));},
     async upsertWellnessWorkout(owner,workout){statement("upsertWellnessWorkout").run(...workoutArgs(workout),...ownerArgs(owner));},
@@ -99,11 +92,6 @@ function createTursoDeviceMethods({client,first,all,run,plainRow}){
       const results=await client.batch([{sql:DEVICE_SQL.deleteDeviceConnection,args:[userId,provider]},...DATA_DELETIONS.map((name)=>({sql:String(sql[name]),args:[userId,provider]}))],"write");
       return plainRow(results[0]?.rows?.[0],results[0]?.columns);
     },
-    async insertDeviceRevocation(record){await run(DEVICE_SQL.insertDeviceRevocation,revocationArgs(record));},
-    dueDeviceRevocations:(now,limit)=>all(DEVICE_SQL.dueDeviceRevocations,[now,limit]),
-    async rescheduleDeviceRevocation(id,attempts,nextAttemptAt){await run(DEVICE_SQL.rescheduleDeviceRevocation,[attempts,nextAttemptAt,id]);},
-    async deleteDeviceRevocation(id){await run(DEVICE_SQL.deleteDeviceRevocation,[id]);},
-    async cancelDeviceRevocations(provider,providerUserId){await run(DEVICE_SQL.cancelDeviceRevocations,[provider,providerUserId]);},
     async upsertWellnessNight(owner,night){await run(DEVICE_SQL.upsertWellnessNight,[...nightArgs(night),...ownerArgs(owner)]);},
     async upsertWellnessDay(owner,day){await run(DEVICE_SQL.upsertWellnessDay,[...dayArgs(day),...ownerArgs(owner)]);},
     async upsertWellnessWorkout(owner,workout){await run(DEVICE_SQL.upsertWellnessWorkout,[...workoutArgs(workout),...ownerArgs(owner)]);},

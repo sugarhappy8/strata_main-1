@@ -245,7 +245,7 @@ test("service worker precaches only public assets and never handles account APIs
   assert.ok(harness.precache.includes(`/offline.js?v=${BUILD}`));
   assert.ok(harness.precache.includes(`/workout-offline.js?v=${BUILD}`));
   assert.ok(harness.precache.includes(`/workout-offline.css?v=${BUILD}`));
-  for(const asset of ["/fonts/manrope-latin.woff2","/fonts/dm-mono-400-latin.woff2","/fonts/dm-mono-500-latin.woff2","/images/hero-training.jpg","/images/training-story.jpg"])assert.ok(harness.precache.includes(asset),`${asset} must remain self-hosted and installable`);
+  for(const asset of ["/fonts/manrope-latin.woff2","/fonts/dm-mono-400-latin.woff2","/fonts/dm-mono-500-latin.woff2","/images/hero-training.jpg"])assert.ok(harness.precache.includes(asset),`${asset} must remain self-hosted and installable`);
   assert.ok(harness.precache.some((url)=>url.includes("strata-512.png")));
   assert.ok(!harness.precache.some((url)=>url.includes("strata-layers.jpg")),"The lazy homepage artwork must not become an eager PWA install download");
 

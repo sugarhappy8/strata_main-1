@@ -19,7 +19,7 @@ function uses(plan,indexName) {
   return plan.some((detail)=>detail.includes(indexName));
 }
 
-test("schema indexes match the exercised authentication, entitlement, community, and abuse-control queries",()=>{
+test("schema indexes match the exercised authentication, entitlement, and abuse-control queries",()=>{
   const database=new DatabaseSync(":memory:",{enableForeignKeyConstraints:true});
   try {
     for (const statement of SCHEMA) database.exec(statement);
@@ -29,7 +29,6 @@ test("schema indexes match the exercised authentication, entitlement, community,
     assert.equal(uses(queryPlan(database,SQL.deleteExpired,[0]),"sessions_expires_at"),true);
     assert.equal(uses(queryPlan(database,SQL.countVerificationSends,["email",0]),"email_verification_sends_email_time"),true);
     assert.equal(uses(queryPlan(database,SQL.countAccountActionSends,["email","password_reset",0]),"account_action_sends_email_time"),true);
-    assert.equal(uses(queryPlan(database,SQL.communityWeeklyPlans,[20,0]),"community_weekly_plans_public_updated"),true);
     assert.equal(uses(queryPlan(database,SQL.purchaseByTransaction,["transaction"]),"sqlite_autoindex_paddle_purchases_1"),true);
     assert.equal(uses(queryPlan(database,SQL.hasDiscoveryAccess,["user",null,null]),"paddle_purchases_user_id"),true);
     assert.equal(uses(queryPlan(database,SQL.productSignalCounts,["2026-01-01","2026-12-31"]),"sqlite_autoindex_product_signal_counts_1"),true);
@@ -48,7 +47,6 @@ test("schema indexes match the exercised authentication, entitlement, community,
     const allIndexes=database.prepare("SELECT name FROM sqlite_schema WHERE type='index'").all().map((row)=>row.name);
     for (const unused of [
       "paddle_purchases_customer_id",
-      "discovery_trials_expires_at",
       "support_tickets_email"
     ]) assert.equal(allIndexes.includes(unused),false,`${unused} has no matching production query`);
   } finally {
@@ -64,7 +62,6 @@ test("the additive SQLite migration removes superseded write-only indexes",{conc
   for (const statement of SCHEMA) database.exec(statement);
   database.exec(`
     CREATE INDEX paddle_purchases_customer_id ON paddle_purchases(customer_id);
-    CREATE INDEX discovery_trials_expires_at ON discovery_trials(expires_at);
     CREATE INDEX support_tickets_email ON support_tickets(email,created_at DESC);
   `);
   database.close();
@@ -90,7 +87,6 @@ test("the additive SQLite migration removes superseded write-only indexes",{conc
     migrated.close();
     for (const removed of [
       "paddle_purchases_customer_id",
-      "discovery_trials_expires_at",
       "support_tickets_email"
     ]) assert.equal(indexes.includes(removed),false,removed);
   } finally {

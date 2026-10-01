@@ -12,12 +12,11 @@
     const recheckAccount=()=>{if(!document.visibilityState||document.visibilityState==="visible")void actions.recheckAccount();};
 
     document.addEventListener("click",event=>{
-      const groupButton=event.target.closest("[data-group]"),subButton=event.target.closest("[data-sub]"),detailButton=event.target.closest("[data-detail]"),addButton=event.target.closest("[data-add-planner]"),compareButton=event.target.closest("[data-compare]"),closeButton=event.target.closest("[data-close-dialog]");
+      const groupButton=event.target.closest("[data-group]"),subButton=event.target.closest("[data-sub]"),detailButton=event.target.closest("[data-detail]"),addButton=event.target.closest("[data-add-planner]"),closeButton=event.target.closest("[data-close-dialog]");
       if(groupButton)actions.selectGroup(groupButton.dataset.group);
       else if(subButton)actions.selectSubfilter(subButton.dataset.sub);
       else if(detailButton)actions.openDetail(detailButton.dataset.detail);
       else if(addButton)actions.addToPlanner(addButton.dataset.addPlanner);
-      else if(compareButton)actions.toggleCompare(compareButton.dataset.compare);
       else if(closeButton)actions.closeModal(document.getElementById(closeButton.dataset.closeDialog));
     });
 
@@ -38,8 +37,6 @@
     el("showAllExercises")?.addEventListener("click",()=>{state.showAll=true;actions.renderExercises();el("exerciseList").querySelectorAll("[data-detail]")[10]?.focus();});
     el("clearFilters").addEventListener("click",actions.resetFilters);
     el("resetActiveFilters").addEventListener("click",actions.resetFilters);
-    el("clearCompare").addEventListener("click",actions.clearCompare);
-    el("openCompare").addEventListener("click",actions.openComparison);
     el("quickPreviewForm").addEventListener("submit",event=>{event.preventDefault();actions.generateQuickPreview();});
     for(const button of document.querySelectorAll("[data-preview-starter]"))button.addEventListener("click",()=>actions.applyPreviewStarter(button.dataset.previewStarter));
     el("quickPreviewForm").addEventListener("change",event=>{

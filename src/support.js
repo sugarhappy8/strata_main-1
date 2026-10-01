@@ -32,7 +32,7 @@ function createSupportService({
   if(!store||!emailConfig||!auth||!admin||typeof requestAddress!=="function"||typeof trustedAuthOrigin!=="function"||typeof rateAllowed!=="function"||!http){
     throw new TypeError("Support service requires store, email configuration, auth/admin services, request guards, and HTTP helpers.");
   }
-  const {json,bodyJson}=http;
+  const {json,bodyJson,bodyForm,redirect}=http;
   const hash=(value)=>createHash("sha256").update(value).digest("hex");
 
   function supportTicketPayload(row){
@@ -91,7 +91,14 @@ function createSupportService({
   async function handleApi(req,res,url){
     if(url.pathname==="/api/support"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Support security check failed. Refresh and try again.",code:"SUPPORT_ORIGIN_REQUIRED"});return true;}
-      if(!String(req.headers["content-type"]||"").toLowerCase().startsWith("application/json")){json(res,415,{error:"Support requests must use JSON.",code:"JSON_REQUIRED"});return true;}
+      const contentType=String(req.headers["content-type"]||"").toLowerCase();
+      if(contentType.startsWith("application/x-www-form-urlencoded")){
+        // The contact form works without JavaScript: a plain post lands back on /contact with the outcome in the query string.
+        try{const result=await createSupportRequest(req,await bodyForm(req));redirect(res,`/contact?sent=${encodeURIComponent(result.reference)}#supportStatus`);}
+        catch(error){if(!error.status)throw error;redirect(res,`/contact?error=${encodeURIComponent(error.code||"SUPPORT_REQUEST_FAILED")}#supportStatus`);}
+        return true;
+      }
+      if(!contentType.startsWith("application/json")){json(res,415,{error:"Support requests must use JSON.",code:"JSON_REQUIRED"});return true;}
       try{json(res,201,{ok:true,...await createSupportRequest(req,await bodyJson(req))});}
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"SUPPORT_REQUEST_FAILED"});}
       return true;

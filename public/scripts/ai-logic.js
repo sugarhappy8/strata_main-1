@@ -115,7 +115,7 @@
 
   function statusView(status){
     if(!status)return {tone:"checking",title:"Checking Strata AI…",detail:"",canAsk:false};
-    if(!status.configured)return {tone:"offline",title:"Strata AI isn’t switched on yet",detail:"Your plan and nutrition tools work as usual. Check back soon.",canAsk:false};
+    if(!status.configured)return {tone:"offline",title:"Strata AI is unavailable right now",detail:"Your plan and nutrition tools work as usual.",canAsk:false};
     if(Number(status.remainingToday)<=0)return {tone:"limit",title:"You’ve used today’s requests",detail:`Strata AI allows ${whole(status.dailyLimit)} requests a day. They reset at midnight UTC.`,canAsk:false};
     const left=`${whole(status.remainingToday)} of ${whole(status.dailyLimit)} requests left today`;
     if(!status.online)return {tone:"offline",title:"Strata AI may be offline",detail:`You can still ask; it will answer if it comes back. ${left}.`,canAsk:true};

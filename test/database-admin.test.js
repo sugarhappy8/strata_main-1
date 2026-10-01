@@ -350,7 +350,7 @@ test("a populated 6.7.5 database receives an additive, idempotent admin migratio
       action:db.prepare("SELECT * FROM account_action_requests WHERE request_id='legacy-675-reset'").get(),
       delivery:db.prepare("SELECT * FROM account_action_deliveries WHERE request_id='legacy-675-delete-stage'").get(),
       actionSend:db.prepare("SELECT * FROM account_action_sends WHERE send_id='legacy-675-action-send'").get(),
-      counts:Object.fromEntries(["plans","monthly_plans","preferences","ratings","paddle_purchases","paddle_adjustments","paddle_webhook_events","support_tickets","admin_principal","admin_elevations","admin_audit_events"].map((table)=>[table,Number(db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count)])),
+      counts:Object.fromEntries(["plans","monthly_plans","preferences","ratings","paddle_purchases","paddle_adjustments","paddle_webhook_events","support_tickets","admin_principal","admin_audit_events"].map((table)=>[table,Number(db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get().count)])),
       tables:new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row)=>row.name)),
       foreignKeyProblems:db.prepare("PRAGMA foreign_key_check").all()
     }));
@@ -365,9 +365,9 @@ test("a populated 6.7.5 database receives an additive, idempotent admin migratio
     assert.equal(snapshot.actionSend.email_hash,"legacy-675-email-hash");
     assert.deepEqual(snapshot.counts,{
       plans:1,monthly_plans:0,preferences:1,ratings:1,paddle_purchases:1,paddle_adjustments:1,paddle_webhook_events:1,
-      support_tickets:0,admin_principal:0,admin_elevations:0,admin_audit_events:0
+      support_tickets:0,admin_principal:0,admin_audit_events:0
     });
-    for(const table of ["monthly_plans","support_tickets","support_request_events","product_signal_counts","admin_principal","admin_elevations","admin_audit_events"])assert.equal(snapshot.tables.has(table),true,`${table} should be created`);
+    for(const table of ["monthly_plans","support_tickets","support_request_events","product_signal_counts","admin_principal","admin_audit_events"])assert.equal(snapshot.tables.has(table),true,`${table} should be created`);
     assert.deepEqual(snapshot.foreignKeyProblems,[]);
   } finally {
     if(store)await store.close();
@@ -552,7 +552,6 @@ test("admin overview, user search, detail, and support queries are accurate and 
       first_workout_users:2,
       second_workout_users:1,
       day_eight_return_users:1,
-      trial_users:0,
       paid_users:3,
       renewed_subscriptions:1
     });

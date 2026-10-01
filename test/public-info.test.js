@@ -36,16 +36,14 @@ test("homepage exposes pricing, contact, and the public policy directory without
   assert.doesNotMatch(text("index.html"),/lifetime|one[- ]time|never a subscription/i);
 });
 
-test("the 7.8.1 editorial homepage and four-destination product identity remain canonical",()=>{
+test("the editorial homepage and four-destination product identity remain canonical",()=>{
   const home=read("index.html"),discover=read("discover.html"),planner=read("planner.html"),workout=read("workout.html");
   assert.match(home,/<section class="hero"[^>]*aria-labelledby="hero-title"/);
   assert.match(home,/<div class="hero-media" role="img" aria-label="Athlete performing a pull-up in a gym">/);
   assert.match(home,/<h1 id="hero-title">Your next<br \/>workout\.<br \/><em>Ready\.<\/em><\/h1>/);
   assert.ok(home.indexOf('class="hero"')<home.indexOf('id="rankings"'),"The editorial hero must lead instead of opening on the exercise catalog");
-  assert.match(home,/src="\/images\/strata-layers\.jpg"/);
-  assert.match(home,/src="\/images\/training-story\.jpg"/);
-  assert.match(home,/<section class="editorial-section">/);
   assert.doesNotMatch(home,/<title>Exercises\b/i,"The rejected Exercises-first shell must not replace the STRATA homepage");
+  for(const removed of ["start-directory","class=\"ticker\"","system-section","editorial-section","discovery-offer"])assert.doesNotMatch(home,new RegExp(removed),`${removed} was cut: the homepage is hero, free preview, rankings, method, sources`);
 
   const expected=["Exercises","Strata+","Plan","Train"];
   assert.deepEqual(navLabels(home,"desktop-nav"),expected);
@@ -94,7 +92,6 @@ test("published Strata+ price and refund promise are exact and consistent",()=>{
   assert.doesNotMatch(pricing,/trial|no card/i,"the free trial is retired");
   assert.match(pricing,/Renews until canceled/i);
   assert.match(pricing,/session building/i);
-  assert.match(pricing,/community week previews/i);
   assert.match(pricing,/31-day planner/i);
   assert.match(pricing,/workout check-ins/i);
   assert.match(pricing,/Review suggested plan changes before saving/i);
@@ -161,7 +158,7 @@ test("support and deletion pages explain their important fallback and retention 
   assert.match(contact,/<noscript>[\s\S]*support form needs JavaScript[\s\S]*mailto:/i);
   assert.match(text("contact.html"),/signed-in requests use the name and email registered to the account/i);
   assert.match(deletion,/monthly plan/i);
-  assert.match(deletion,/published (?:community-)?plan listing/i);
+  assert.match(deletion,/weekly and monthly plans, profile, and preferences/i);
   assert.match(deletion,/support (?:requests|records)[\s\S]*administrator security logs[\s\S]*may be retained/i);
 });
 
@@ -179,17 +176,6 @@ test("public policies distinguish self-service from guarded administrator deleti
   assert.match(privacy,/cannot delete the primary owner/i);
 });
 
-test("community-plan policies explain publication, privacy, replacement, and removal",()=>{
-  const privacy=text("privacy.html"),terms=text("terms.html");
-  assert.match(privacy,/validated structured weekly plan/i);
-  assert.match(privacy,/display name/i);
-  assert.match(privacy,/email address and internal user identifier are not included in the listing/i);
-  assert.match(privacy,/rather than uploading a binary file or attachment/i);
-  assert.match(terms,/Only Strata\+ members can browse and apply community plans/i);
-  assert.match(terms,/replaces your current saved week/i);
-  assert.match(terms,/publisher can unpublish their listing/i);
-});
-
 test("public copy describes recurring checkout, cancellation, and grandfathered access",()=>{
   const publicCopy=["pricing.html","terms.html","privacy.html","refunds.html"].map(text).join(" ");
   assert.match(publicCopy,/\$2\.99 USD per month/i);
@@ -200,7 +186,7 @@ test("public copy describes recurring checkout, cancellation, and grandfathered 
   assert.match(text("privacy.html"),/Paddle handles checkout, recurring payment/i);
   assert.match(text("privacy.html"),/current billing-period end/i);
   assert.match(text("refunds.html"),/Refunding the charge may end the paid Strata\+ access/i);
-  const pricingClient=["pricing-logic.js","pricing-render.js","pricing.js"].map(name=>fs.readFileSync(path.join(PUBLIC_ROOT,"scripts",name),"utf8")).join("\n");
+  const pricingClient=["entitlements.js","pricing-logic.js","pricing-render.js","pricing.js"].map(name=>fs.readFileSync(path.join(PUBLIC_ROOT,"scripts",name),"utf8")).join("\n");
   assert.doesNotMatch(pricingClient,/permanently unlocked/i);
   assert.doesNotMatch(pricingClient,/\/api\/discovery\/trial|startTrial|trialDiscovery/,"pricing never starts the retired trial");
   assert.match(pricingClient,/buyButton\.hidden=!canSubscribe;/);

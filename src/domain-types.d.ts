@@ -194,19 +194,6 @@ export interface AdminControlsRow {
   user_id:string;grant_starts_at:number|null;grant_expires_at:number|null;grant_revoked_at:number|null;checkout_blocked_at:number|null;revision:number;updated_at:number;
 }
 
-export interface DiscoveryTrialRow {
-  user_id:string;
-  started_at:number;
-  expires_at:number;
-}
-
-export interface DiscoveryTrialState {
-  eligible:boolean;
-  active:boolean;
-  startedAt:number|null;
-  expiresAt:number|null;
-}
-
 export interface DiscoveryAccessSummary {
   active:boolean;
   purchaseCount:number;
@@ -346,7 +333,6 @@ export interface BillingStore {
   hasPaidDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(userId:string,priceId:string,productId:string,now?:number):Promise<boolean>;
   hasEntitledPaidDiscoveryAccess(userId:string,priceIds:readonly string[],productId:string,now?:number):Promise<boolean>;
-  discoveryTrial(userId:string):Promise<DiscoveryTrialRow|null>;
   currentDiscoveryAccessSummary(userId:string,priceId:string,productId:string,now?:number):Promise<DiscoveryAccessSummary>;
   entitledDiscoveryAccessSummary(userId:string,priceIds:readonly string[],productId:string,now?:number):Promise<DiscoveryAccessSummary>;
   activeAccountDeletion(userId:string,now:number):Promise<JsonObject|null>;
@@ -432,10 +418,10 @@ export type AuthStoreMethod=
   |"revokeAccountSession"|"revokeOtherAccountSessions";
 
 export type AdminStoreMethod=
-  |"accountCredentialsById"|"adminAudit"|"adminElevation"|"adminOverview"|"adminPrincipal"
+  |"accountCredentialsById"|"adminAudit"|"adminOverview"|"adminPrincipal"
   |"adminUserById"|"adminUsers"|"cancelAccountDeletionWithAudit"|"claimAdminPrincipal"
-  |"deleteExpiredAdminElevations"|"recordAdminAudit"|"restoreUser"|"revokeUserSessions"
-  |"adminControls"|"writeAdminControls"|"unsettledPurchasesForUser"|"subscriptionForUser"|"checkoutCreationForUser"|"rotateAdminSessionForElevation"|"suspendUser"|"deleteUserByAdmin"|"userByEmail"|"userById";
+  |"recordAdminAudit"|"restoreUser"|"revokeUserSessions"
+  |"adminControls"|"writeAdminControls"|"unsettledPurchasesForUser"|"subscriptionForUser"|"checkoutCreationForUser"|"suspendUser"|"deleteUserByAdmin"|"userByEmail"|"userById";
 
 export type SupportStoreMethod=
   |"adminSupportTickets"|"claimSupportRequestEvent"|"deleteOldSupportRequestEvents"
@@ -443,7 +429,7 @@ export type SupportStoreMethod=
 
 export type ProductSignalEvent=
   |"preview_generated"|"onboarding_previewed"|"onboarding_saved"|"plan_saved"
-  |"workout_started"|"workout_completed"|"upgrade_viewed"|"trial_started"
+  |"workout_started"|"workout_completed"|"upgrade_viewed"
   |"checkout_opened"|"upgrade_activated"|"recommendation_feedback_useful"
   |"recommendation_feedback_not_relevant"|"recommendation_feedback_not_clear";
 
@@ -517,9 +503,7 @@ export interface AccountExportStoreRows {
   coachingProfile:JsonObject|null;
   coachingWeeks:JsonObject[];
   coachingLogs:CoachingDailyLogRow[];
-  communityPlans:JsonObject[];
   grants:JsonObject[];
-  trials:JsonObject[];
   purchases:JsonObject[];
   subscriptions:JsonObject[];
   adjustments:JsonObject[];
@@ -735,8 +719,8 @@ export type BillingPreparedStatementName=
   |"purchaseByTransaction"|"pendingPurchaseForUser"|"completePurchase"|"updatePurchaseStatus"
   |"bindPurchaseSubscription"|"createPaddleSubscription"|"updatePaddleSubscription"|"updatePaddleSubscriptionAfterCatalog"|"replaceSubscriptionPurchaseCatalog"
   |"subscriptionById"|"subscriptionForUser"|"upsertAdjustment"|"adjustmentById"
-  |"revokePurchase"|"hasDiscoveryAccess"|"hasCurrentDiscoveryAccess"|"hasEntitledDiscoveryAccess"|"activeDiscoveryTrial"
-  |"activeAdminGrant"|"discoveryTrial"|"discoveryAccessSummary"
+  |"revokePurchase"|"hasDiscoveryAccess"|"hasCurrentDiscoveryAccess"|"hasEntitledDiscoveryAccess"
+  |"activeAdminGrant"|"discoveryAccessSummary"
   |"currentDiscoveryAccessSummary"|"entitledDiscoveryAccessSummary"|"webhookEvent"|"recordWebhookEvent";
 
 export interface LocalBillingStoreDependencies {
@@ -852,7 +836,6 @@ export interface DeviceConnectionRecord {userId:string;provider:string;providerU
 export interface DeviceTokenRecord extends WellnessOwner {tokenSealed:string;tokenExpiresAt:number;updatedAt:number;}
 export interface DeviceSyncRecord {userId:string;provider:string;providerUserId:string;status:string;syncedThrough:string|null;lastSyncAt:number|null;lastError:string|null;nextSyncAt:number;failures:number;updatedAt:number;}
 export interface DeviceConnectStateRecord {stateHash:string;userId:string;provider:string;sessionHash:string;redirectUri:string;createdAt:number;expiresAt:number;}
-export interface DeviceRevocationRecord {id:string;provider:string;providerUserId:string;tokenSealed:string;createdAt:number;nextAttemptAt:number;}
 export interface DeviceStore {
   deviceConnection(userId:string,provider:string):Promise<any>;
   deviceConnectionByProviderUser(provider:string,providerUserId:string):Promise<any>;
@@ -867,11 +850,6 @@ export interface DeviceStore {
   dueDeviceConnections(now:number,limit:number):Promise<any[]>;
   updateDeviceSettings(userId:string,provider:string,settingsJson:string,expectedRevision:number,updatedAt:number):Promise<any>;
   deleteDeviceData(userId:string,provider:string):Promise<any>;
-  insertDeviceRevocation(record:DeviceRevocationRecord):Promise<void>;
-  dueDeviceRevocations(now:number,limit:number):Promise<any[]>;
-  rescheduleDeviceRevocation(id:string,attempts:number,nextAttemptAt:number):Promise<void>;
-  deleteDeviceRevocation(id:string):Promise<void>;
-  cancelDeviceRevocations(provider:string,providerUserId:string):Promise<void>;
   upsertWellnessNight(owner:WellnessOwner,night:WellnessNightRecord):Promise<void>;
   upsertWellnessDay(owner:WellnessOwner,day:WellnessDayRecord):Promise<void>;
   upsertWellnessWorkout(owner:WellnessOwner,workout:WellnessWorkoutRecord):Promise<void>;
@@ -1006,7 +984,7 @@ export interface SupportServiceDependencies {
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
   rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
   isUniqueViolation?:(error:unknown)=>boolean;
-  http:JsonHttpHelpers;
+  http:Pick<HttpHelpers,"json"|"bodyJson"|"bodyForm"|"redirect">;
   logger?:Pick<Console,"error">;
 }
 

@@ -1,9 +1,10 @@
 /* global module, require */
 (function(root,factory){
-  const api=factory(typeof module==="object"&&module.exports?require("./planner-logic"):root.StrataPlannerLogic);
-  if(typeof module==="object"&&module.exports)module.exports=api;
+  const node=typeof module==="object"&&module.exports;
+  const api=factory(node?require("./planner-logic"):root.StrataPlannerLogic,node?require("./entitlements"):root.StrataEntitlements);
+  if(node)module.exports=api;
   root.StrataPlannerState=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(logic){
+})(typeof globalThis!=="undefined"?globalThis:this,function(logic,entitlements){
   "use strict";
 
   const SELECTED_DAY_PREFIX="strata_planner_selected_day_v1:";
@@ -15,7 +16,7 @@
       exercises:[],plan:null,user:null,query:"",group:"all",drag:null,selectedDay:"Monday",
       ready:false,guest:false,guestRaw:null,saveTimer:null,savePromise:null,lastSaveError:null,planUpdatedAt:0,revision:0,savedRevision:0,navigating:false,libraryLimit:desktopPageSize,
       accountChanged:false,undoRemoval:null,replacement:null,templatePreview:null,draftKey:"",draftValue:"",recoverySource:null,recoveredDrafts:[],draftStorageError:false,
-      conflictDraft:null,conflictLatest:null,conflictReview:false,csrfToken:"",sharedPlans:[],sharedPlansLoaded:false,sharedPlansRequest:0,shareBusy:false,pendingUnpublish:"",
+      conflictDraft:null,conflictLatest:null,conflictReview:false,csrfToken:"",
       activationCandidates:[],activationCandidateId:"",activationBusy:false,activationDirectClaim:false,copyPreview:null,copyTrigger:null,resetWeekSnapshot:null,resetWeekTrigger:null,
       entitlementStatus:"unknown",entitlementCheckedAt:0,entitlementRequest:0,entitlementRefreshPromise:null,entitlementTimer:null,entitlementFailureCount:0
     };
@@ -24,7 +25,6 @@
   function timestamp(value){const numeric=Number(value);return Number.isFinite(numeric)&&numeric>0?numeric:0;}
   function entitlementBoundary(user){
     const discovery=user?.discovery;if(discovery?.active!==true)return 0;
-    if(discovery.accessType==="trial")return timestamp(discovery.trial?.expiresAt)||-1;
     if(discovery.accessType==="grant")return discovery.adminGrant?.expiresAt===null?0:timestamp(discovery.adminGrant?.expiresAt)||-1;
     const subscription=discovery.subscription;if(!subscription)return 0;
     if(subscription.active===false)return 0;
@@ -34,7 +34,7 @@
     return Math.min(...boundaries);
   }
   function hasConfirmedPlusAccess(state,now=Date.now()){
-    if(state?.entitlementStatus!=="ready"||state.user?.discovery?.active!==true)return false;
+    if(state?.entitlementStatus!=="ready"||!entitlements.can(state.user,"plus.studio"))return false;
     const boundary=entitlementBoundary(state.user);return boundary===0||boundary>now;
   }
   function entitlementRefreshDelay(user,now=Date.now()){

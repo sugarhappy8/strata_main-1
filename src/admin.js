@@ -119,12 +119,12 @@ function createAdminService({
   function adminUserPayload(row,{detail=false}={}){
     if(!row)return null;
     const output=numericAdminRow(row);
-    const grant=adminGrantState(output),trialActive=Number(output.trial_expires_at)>Date.now();
+    const grant=adminGrantState(output);
     const result={
       controlsRevision:Number(output.controls_revision||0),checkoutBlocked:Boolean(output.checkout_blocked_at),
       id:output.id,name:output.name,email:output.email,createdAt:output.created_at,verifiedAt:output.email_verified_at??null,suspendedAt:output.suspended_at??null,
       activeSessions:Number(output.active_session_count||0),
-      discovery:{active:!output.suspended_at&&(Number(output.active_purchase_count||0)>0||grant.active||trialActive),adminGrant:grant,trialExpiresAt:output.trial_expires_at??null,activePurchaseCount:Number(output.active_purchase_count||0),pendingPurchaseCount:Number(output.pending_purchase_count||0),purchaseCount:Number(output.purchase_count||0),latestPurchaseAt:output.latest_purchase_at??null,transactionId:output.transaction_id||null,transactionStatus:output.transaction_status||null},
+      discovery:{active:!output.suspended_at&&(Number(output.active_purchase_count||0)>0||grant.active),adminGrant:grant,activePurchaseCount:Number(output.active_purchase_count||0),pendingPurchaseCount:Number(output.pending_purchase_count||0),purchaseCount:Number(output.purchase_count||0),latestPurchaseAt:output.latest_purchase_at??null,transactionId:output.transaction_id||null,transactionStatus:output.transaction_status||null},
       accountDeletion:{pending:Boolean(output.deletion_expires_at),expiresAt:output.deletion_expires_at??null}
     };
     if(detail){
@@ -139,7 +139,7 @@ function createAdminService({
     return {
       accounts:{total:value("total_users"),verified:value("verified_users"),suspended:value("suspended_users"),activeSessions:value("active_sessions")},
       discovery:{activeUsers:value("discovery_users"),pendingPayments:value("pending_payments")},
-      activation:{firstWorkoutAccounts:value("first_workout_users"),secondWorkoutAccounts:value("second_workout_users"),dayEightReturnAccounts:value("day_eight_return_users"),trialAccounts:value("trial_users"),paidAccounts:value("paid_users"),renewedSubscriptions:value("renewed_subscriptions")},
+      activation:{firstWorkoutAccounts:value("first_workout_users"),secondWorkoutAccounts:value("second_workout_users"),dayEightReturnAccounts:value("day_eight_return_users"),paidAccounts:value("paid_users"),renewedSubscriptions:value("renewed_subscriptions")},
       support:{open:value("open_support"),pendingDeletions:value("pending_deletions")},
       services:{storage:store.kind,persistent:store.kind==="turso"||environment.NODE_ENV!=="production",email:emailConfig.enabled,checkout:paymentConfig.enabled,webhookProtection:enforcePaddleIps}
     };
@@ -198,10 +198,9 @@ function createAdminService({
       await store.claimAdminPrincipal(configuredUser.id,adminEmail,Date.now());
     }
   }
-  async function cleanup(now=Date.now()){await store.deleteExpiredAdminElevations(now);}
 
   return Object.freeze({
-    handleApi,bootstrap,cleanup,adminIdentity,maybeClaimAdminForLogin,requireAdmin,requireAdminMutation,
+    handleApi,bootstrap,adminIdentity,maybeClaimAdminForLogin,requireAdmin,requireAdminMutation,
     sensitiveAdminText,cleanAdminTarget,adminAuditEvent,recordAdminAudit,adminUserPayload
   });
 }

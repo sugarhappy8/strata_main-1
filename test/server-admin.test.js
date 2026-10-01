@@ -458,7 +458,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.equal(users.data.users[0].id,member.user.id);
   assert.equal(users.data.users[0].name,"<img src=x onerror=alert(1)>");
   assert.deepEqual(users.data.users[0].discovery,{
-    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},trialExpiresAt:null,activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
+    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
     latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed"
   },"account search must expose the selected account's complete entitlement state");
   assertPrivateJson(users.response);
@@ -469,7 +469,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.equal(detail.data.user.email,"member@example.test");
   assert.ok(detail.data.user.activeSessions>=2);
   assert.deepEqual(detail.data.user.discovery,{
-    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},trialExpiresAt:null,activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
+    active:true,adminGrant:{active:false,startedAt:null,expiresAt:null,revokedAt:null},activePurchaseCount:1,pendingPurchaseCount:0,purchaseCount:1,
     latestPurchaseAt:purchaseAt,transactionId:"txn_admin_visible_member",transactionStatus:"completed"
   });
   assertPrivateJson(detail.response);
@@ -626,6 +626,22 @@ test("anonymous support rejects credentials and payment-card numbers before pers
   assert.equal(card.data.code,"SENSITIVE_SUPPORT_CONTENT");
   assertPrivateJson(card.response);
   assert.deepEqual(databaseCounts(member.user.id),before,"rejected sensitive support content must not create tickets, rate reservations, audits, or email deliveries");
+});
+
+test("the contact form still works without JavaScript through a plain form post",async()=>{
+  const form=(fields,ip)=>request("/api/support",{method:"POST",redirect:"manual",headers:{"Content-Type":"application/x-www-form-urlencoded",Origin:base,"X-Forwarded-For":ip},body:new URLSearchParams(fields).toString()});
+  const sent=await form({name:"No Script",email:"no-script@example.test",category:"other",subject:"Form post without scripts",referenceId:"",message:"This came from the plain HTML form with JavaScript disabled.",website:""},"198.51.100.241");
+  assert.equal(sent.response.status,303);
+  const location=sent.response.headers.get("location");
+  assert.match(location,/^\/contact\?sent=STR-\d{4}-[0-9A-F]{6}#supportStatus$/,"a successful post lands back on the contact page with its reference");
+  const reference=new URL(location,base).searchParams.get("sent");
+  const stored=openDatabase().prepare("SELECT reference,email,message FROM support_tickets WHERE reference=?").get(reference);
+  assert.equal(stored.email,"no-script@example.test");
+  const invalid=await form({name:"N",email:"not-an-email",category:"other",subject:"x",message:"short",website:""},"198.51.100.242");
+  assert.equal(invalid.response.status,303);
+  assert.equal(invalid.response.headers.get("location"),"/contact?error=INVALID_SUPPORT_REQUEST#supportStatus");
+  const plainText=await request("/api/support",{method:"POST",headers:{"Content-Type":"text/plain",Origin:base,"X-Forwarded-For":"198.51.100.243"},body:"hello"});
+  assert.equal(plainText.response.status,415,"other content types are still refused");
 });
 
 test("anonymous support rate reservations survive an application restart",async()=>{
@@ -847,7 +863,6 @@ test("admin grants timed or indefinite free Strata+, revokes it, and controls ne
   assert.equal((await request("/api/discovery",{headers:{Cookie:target.cookie}})).response.status,200);
   assert.equal((await jsonRequest("/api/discovery/trial",{},{cookie:target.cookie,csrf:target.csrf})).response.status,410,"the retired trial cannot start alongside a grant");
   const db=openDatabase();
-  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM discovery_trials WHERE user_id=?").get(target.user.id).n,0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM paddle_purchases WHERE user_id=?").get(target.user.id).n,0);
   db.prepare("UPDATE admin_account_controls SET grant_starts_at=?,grant_expires_at=? WHERE user_id=?").run(Date.now()-2000,Date.now()-1000,target.user.id);db.close();
   assert.equal((await request("/api/discovery",{headers:{Cookie:target.cookie}})).response.status,402);

@@ -90,7 +90,7 @@
       <section class="week-section" aria-labelledby="weekTitle">
         <div class="week-toolbar">
           <div><p class="eyebrow">Weekly training architecture</p><h1 id="weekTitle" tabindex="-1">Build your <em>week.</em></h1><p class="week-intro">Shape a balanced seven-day plan, then fine-tune sets, reps, and recovery as you go.</p></div>
-          <div class="toolbar-actions"><button class="outline-button" id="undoPlanRemoval" type="button" disabled>Undo removal <span aria-hidden="true">↶</span></button><button class="outline-button reset-week-button" id="resetWeeklyPlan" type="button" aria-haspopup="dialog" aria-controls="resetWeekDialog" disabled>Reset week <span aria-hidden="true">↺</span></button><button class="outline-button" id="manageWeekTemplates" type="button" disabled>Week templates <span aria-hidden="true">▧</span></button><button class="outline-button" id="exportWeeklyPlan" type="button" disabled>Export week <span aria-hidden="true">↓</span></button><button class="outline-button share-week-button" id="shareWeeklyPlan" type="button" aria-controls="shareWeeklyPanel" aria-expanded="false" disabled>Share week <span aria-hidden="true">↗</span></button></div>
+          <div class="toolbar-actions"><button class="outline-button" id="undoPlanRemoval" type="button" disabled>Undo removal <span aria-hidden="true">↶</span></button><button class="outline-button reset-week-button" id="resetWeeklyPlan" type="button" aria-haspopup="dialog" aria-controls="resetWeekDialog" disabled>Reset week <span aria-hidden="true">↺</span></button><button class="outline-button" id="manageWeekTemplates" type="button" disabled>Week templates <span aria-hidden="true">▧</span></button><button class="outline-button" id="exportWeeklyPlan" type="button" disabled>Export week <span aria-hidden="true">↓</span></button></div>
         </div>
         <details class="planner-guide">
           <summary><span>New to Plan?</span><strong>Build a weekly plan in three steps</strong><i aria-hidden="true">+</i></summary>
@@ -100,34 +100,6 @@
             <li><span>03</span><p><strong>Set your volume</strong><small>Adjust sets and reps; every change saves automatically.</small></p></li>
           </ol>
         </details>
-        <section class="share-week-panel" id="shareWeeklyPanel" aria-labelledby="shareWeeklyTitle" hidden>
-          <div class="share-week-heading">
-            <div><p class="eyebrow">Community plans</p><h2 id="shareWeeklyTitle" tabindex="-1">Share your <em>week.</em></h2></div>
-            <button class="share-panel-close" id="closeShareWeekly" type="button" aria-label="Close weekly-plan sharing panel">×</button>
-          </div>
-          <p class="share-week-lead">Publish a copy of your current weekly plan to the Strata+ community library. Other members can preview it and apply it to their own Plan. You can keep one shared week active at a time; publishing again updates that copy.</p>
-          <div class="share-guest" id="sharePlanGuest" hidden>
-            <strong>Sign in to share.</strong>
-            <p>Your planner stays free. A free STRATA account is all you need to publish a week.</p>
-            <a class="dark-button" href="/account.html?mode=login&amp;next=planner">Sign in or create an account <span aria-hidden="true">↗</span></a>
-          </div>
-          <div class="share-account" id="sharePlanAccount" hidden>
-            <form class="share-plan-form" id="sharePlanForm" novalidate>
-              <div class="share-plan-fields">
-                <label>Plan title <input id="sharePlanTitle" name="title" type="text" minlength="3" maxlength="80" autocomplete="off" placeholder="My strength week" aria-describedby="sharePlanStatus" required /></label>
-                <label>Short description <textarea id="sharePlanDescription" name="description" maxlength="240" rows="3" placeholder="Optional: who this week is for, its focus, or equipment used" aria-describedby="sharePlanStatus"></textarea><span id="shareDescriptionCount" aria-hidden="true">0 / 240</span></label>
-              </div>
-              <div class="share-privacy-note"><strong>Your display name will be visible.</strong><p>Your email address is never included. Publishing creates a community copy; editing your private plan later will not silently change that shared copy.</p></div>
-              <label class="share-confirm"><input id="sharePlanConfirm" type="checkbox" aria-describedby="sharePlanStatus" required /> <span>I confirm that I want this plan and my display name to appear in the Strata+ community library.</span></label>
-              <p class="share-plan-status" id="sharePlanStatus" role="status" aria-live="polite"></p>
-              <button class="dark-button publish-plan-button" id="publishWeeklyPlan" type="submit">Publish to Strata+ <span aria-hidden="true">↗</span></button>
-            </form>
-            <section class="own-shares" aria-labelledby="ownSharesTitle">
-              <div class="own-shares-heading"><div><p class="eyebrow">Manage sharing</p><h3 id="ownSharesTitle">Your shared week.</h3></div><button class="outline-button" id="refreshSharedPlans" type="button">Refresh <span aria-hidden="true">↻</span></button></div>
-              <div class="own-shared-plans" id="ownSharedPlans"><p class="share-list-empty">Loading your shared plan…</p></div>
-            </section>
-          </div>
-        </section>
         <div class="week-summary" id="weekSummary" aria-label="Plan summary"></div>
         <details class="plan-insights" id="planInsights">
           <summary><span><small>Plan evidence</small><strong>Review balance, duration, and repeats</strong></span><i aria-hidden="true">+</i></summary>
@@ -206,6 +178,7 @@
     <div class="planner-toast" id="plannerToast" role="status" aria-live="polite"></div>
     <script src="/pwa.js?v=8.9.0"></script>
     <script src="/product-signals.js?v=8.9.0"></script>
+    <script src="/entitlements.js?v=8.9.0"></script>
     <script src="/discovery-core.js?v=8.9.0"></script>
     <script src="/activation-core.js?v=8.9.0"></script>
     <script src="/plan-insights-core.js?v=8.9.0"></script>
@@ -215,7 +188,6 @@
     <script src="/planner-render.js?v=8.9.0"></script>
     <script src="/planner-conflicts.js?v=8.9.0"></script>
     <script src="/planner-templates.js?v=8.9.0"></script>
-    <script src="/planner-sharing.js?v=8.9.0"></script>
     <script src="/planner-activation.js?v=8.9.0"></script>
     <script src="/planner-events.js?v=8.9.0"></script>
     <script src="planner.js?v=8.9.0"></script>

@@ -8,9 +8,8 @@ const RENDER=globalThis.StrataPlannerRender;
 const EVENTS=globalThis.StrataPlannerEvents;
 const CONFLICTS=globalThis.StrataPlannerConflicts;
 const TEMPLATES=globalThis.StrataPlannerTemplates;
-const SHARING=globalThis.StrataPlannerSharing;
 const ACTIVATION=globalThis.StrataPlannerActivation;
-if(!LOGIC||!STATE||!API||!RENDER||!EVENTS||!CONFLICTS||!TEMPLATES||!SHARING||!ACTIVATION)throw new Error("Planner modules are unavailable. Reload Plan to try again.");
+if(!LOGIC||!STATE||!API||!RENDER||!EVENTS||!CONFLICTS||!TEMPLATES||!ACTIVATION)throw new Error("Planner modules are unavailable. Reload Plan to try again.");
 const DAYS=LOGIC.DAYS;
 const GROUPS=LOGIC.GROUPS;
 const LIBRARY_DESKTOP_PAGE_SIZE=32;
@@ -152,7 +151,6 @@ function setReady(ready){
   state.ready=ready;
   el("plannerSearch").disabled=!ready;
   el("exportWeeklyPlan").disabled=!ready;
-  el("shareWeeklyPlan").disabled=!ready;
   el("retryPlanSave").disabled=!ready;
   if(!ready)el("retryPlanSave").hidden=true;
   el("manageWeekTemplates").disabled=!ready;
@@ -199,10 +197,6 @@ function nextScheduledDay(plan=state.plan,now=new Date()){
   return LOGIC.nextScheduledDay(plan,now);
 }
 
-const shareActions=SHARING.createController({
-  state,el,api,escapeHtml,planMovementCount,restDays,hasRestConflict,verifyIdentity:verifyPlannerIdentity,lockChangedAccount,flushSave,showToast,focusSoon,browserWindow:window
-});
-const{renderShareAccess,loadSharedPlans,openSharePanel,closeSharePanel,publishWeeklyPlan,unpublishSharedPlan}=shareActions;
 
 function renderFilters(focusGroup=null){
   el("plannerFilters").innerHTML=RENDER.filterMarkup(GROUPS,state.group);
@@ -620,9 +614,9 @@ function restoreExerciseGuideFocus(){const trigger=exerciseGuideTrigger;exercise
 
 function bindPlannerUIEvents(){
   EVENTS.bindPlannerEvents({document,window,location,el,state,searchDebounceMs:SEARCH_DEBOUNCE_MS,actions:{
-    api,init,addExercise,moveItem,persistSelectedDay,renderLibrary,renderFilters,resetLibraryWindow,openExerciseGuide,instanceSelector,renderWeek,showToast,openReplacement,removeItem,setRestDay,moveWithinDay,libraryPageSize,unpublishSharedPlan,updatePrescriptionInput,
+    api,init,addExercise,moveItem,persistSelectedDay,renderLibrary,renderFilters,resetLibraryWindow,openExerciseGuide,instanceSelector,renderWeek,showToast,openReplacement,removeItem,setRestDay,moveWithinDay,libraryPageSize,updatePrescriptionInput,
     downloadWeeklyPlan,undoLastRemoval,openResetWeek,closeResetWeek,confirmResetWeek,openTemplates,saveWeekTemplate,weekTemplates,previewTemplate,importWeekTemplate,useWeekTemplate,deleteWeekTemplate,syncCopyDayOptions,openCopyDayPreview,applyCopyDayPreview,closeCopyDayPreview,renderReplacementOptions,confirmReplacement,restoreExerciseGuideFocus,selectRecoveredDraft,
-    setSaveStatus,flushSave,reviewConflictDraft,keepLatestPlan,renderActivationCandidate,toggleActivationComparison,setActivationStatus,keepAccountActivationPlan,claimActivationPlan,openSharePanel,closeSharePanel,publishWeeklyPlan,loadSharedPlans,sendKeepaliveSave,refreshEntitlement
+    setSaveStatus,flushSave,reviewConflictDraft,keepLatestPlan,renderActivationCandidate,toggleActivationComparison,setActivationStatus,keepAccountActivationPlan,claimActivationPlan,sendKeepaliveSave,refreshEntitlement
   }});
 }
 
@@ -646,7 +640,7 @@ async function init({guestOnly=false}={}){
     try{result=guestOnly?{plan:guestPlan(),user:null}:await api("/api/plan");}
     catch(error){if(error.status!==401)throw error;result={plan:guestPlan(),user:null};}
     if(!result.plan?.days)throw new Error("STRATA returned an incomplete plan.");
-    state.plan=result.plan;state.user=result.user;state.guest=!result.user?.id;state.csrfToken=String(result.csrfToken||"");state.planUpdatedAt=Number(result.planUpdatedAt)||0;state.sharedPlans=[];state.sharedPlansLoaded=false;state.sharedPlansRequest=0;state.shareBusy=false;state.pendingUnpublish="";state.entitlementStatus=state.guest?"guest":"ready";state.entitlementCheckedAt=Date.now();
+    state.plan=result.plan;state.user=result.user;state.guest=!result.user?.id;state.csrfToken=String(result.csrfToken||"");state.planUpdatedAt=Number(result.planUpdatedAt)||0;state.shareBusy=false;state.pendingUnpublish="";state.entitlementStatus=state.guest?"guest":"ready";state.entitlementCheckedAt=Date.now();
     clearPlanConflict();
     state.accountChanged=false;el("accountChangedNotice").hidden=true;el("draftStorageNotice").hidden=true;state.undoRemoval=null;state.draftKey="";state.draftValue="";state.recoverySource=null;state.recoveredDrafts=[];
     state.revision=0;state.savedRevision=0;state.savePromise=null;state.lastSaveError=null;
@@ -661,15 +655,14 @@ async function init({guestOnly=false}={}){
     el("plannerSignIn").hidden=!state.guest;
     renderPlannerModeNotice();
     setReady(true);
-    resetLibraryWindow();renderFilters();renderLibrary();renderWeek();renderShareAccess();setSaveStatus("Saved");scheduleEntitlementRefresh();
-    if(!state.guest)void loadSharedPlans();
+    resetLibraryWindow();renderFilters();renderLibrary();renderWeek();setSaveStatus("Saved");scheduleEntitlementRefresh();
     if(!state.guest){const renderedPlan=state.plan;state.plan=storedAccountPlan;const recovered=offerRecoveredDraft();if(recovered){renderWeek();renderLibrary();return;}state.plan=renderedPlan;}
     if(repairedRest){queueSave();showToast("Scheduled exercises preserved. Conflicting rest markers removed.");}
     handlePendingAdd();
     if(!state.guest)offerDevicePlan();
   }catch(error){
     state.ready=false;state.entitlementStatus="unavailable";clearTimeout(state.entitlementTimer);state.entitlementTimer=null;
-    el("plannerSearch").disabled=true;el("exportWeeklyPlan").disabled=true;el("shareWeeklyPlan").disabled=true;
+    el("plannerSearch").disabled=true;el("exportWeeklyPlan").disabled=true;
     el("plannerShell").setAttribute("aria-busy","false");el("libraryPanel").setAttribute("aria-busy","false");
     setSaveStatus("Unable to load",true);renderLoadError(error);
   }

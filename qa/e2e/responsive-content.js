@@ -43,7 +43,7 @@ test("Strata+ content keeps long labels and persistent controls in separate resp
     const markup=`
       <main class="studio-container">
         <article class="exercise-card"><div class="card-topline"><span class="match-pill">96% personal match</span><div class="card-tools"><button class="movement-save is-compact"><span>+</span><b>Save</b></button><button class="score-button"><strong>95</strong><span>FitScore</span></button></div></div><h3>Behind-body Cable Lateral Raise With A Deliberately Long Name</h3><span class="target">Shoulders / side delts</span><p>A complete explanation remains readable without escaping the card.</p><div class="mini-meta"><span>Cables</span><span>Raise / press</span><span>Intermediate</span></div><div class="community-line"><span>Community rating</span><strong>Not rated yet</strong></div><div class="mini-actions"><button>Inspect</button><button>Compare +</button><a href="#">Add to plan</a></div></article>
-        <div class="movement-board-item"><button class="movement-board-open"><span>01</span><span><strong>Behind-body Cable Lateral Raise With A Deliberately Long Name</strong><small>Shoulders · side delts · cables</small></span><b>95</b></button><button class="movement-board-remove">×</button></div>
+div>
         <section class="training-block-card"><h3>4–8 week block</h3><p>Optional structure that never rewrites the weekly plan.</p><form id="trainingBlockForm"><label>Block length<select><option>8 weeks</option></select></label><label>Start date<input type="date" value="2026-09-07" /></label><label>Current week<select><option>Week 8</option></select></label><label>Status<select><option>Completed</option></select></label><label class="training-block-check"><input type="checkbox" /><span><strong>Mark the final week as lighter</strong><small>A reminder to review a lower workload; your weekly Plan is not edited.</small></span></label><div class="training-block-actions"><button class="button">Save training block</button><span>Review the suggested start date. Nothing changes until you save.</span></div></form></section>
         <div class="detail-hero"><div class="dialog-head"><p class="kicker">Exercise intelligence / shoulders</p><button class="icon-button" aria-label="Close exercise details">×</button></div><h2 class="detail-title">Behind-body Cable Lateral Raise</h2></div>
       </main>
@@ -52,9 +52,9 @@ test("Strata+ content keeps long labels and persistent controls in separate resp
     for(const width of WIDTHS){
       await page.setViewportSize({width,height:800});
       await page.setContent(`<style>${css}</style><body class="plus-studio">${markup}</body>`);
-      const result=await layout(page),card=await rect(page,".exercise-card"),board=await rect(page,".movement-board-item"),tray=await rect(page,".compare-tray"),nav=width<=760?await rect(page,".studio-nav-mobile"):null;
+      const result=await layout(page),card=await rect(page,".exercise-card"),tray=await rect(page,".compare-tray"),nav=width<=760?await rect(page,".studio-nav-mobile"):null;
       assert.ok(result.overflow<=1,`Strata+ fixture overflows ${width}px by ${result.overflow}px`);
-      for(const [selector,label] of [[".exercise-card h3","long exercise name"],[".mini-actions","exercise actions"],[".movement-board-open","decision-board item"]])inside(await rect(page,selector),selector.includes("movement")?board:card,`${label} at ${width}px`);
+      for(const [selector,label] of [[".exercise-card h3","long exercise name"],[".mini-actions","exercise actions"]])inside(await rect(page,selector),card,`${label} at ${width}px`);
       const block=await rect(page,".training-block-card"),blockForm=await rect(page,"#trainingBlockForm");inside(blockForm,block,`training block form at ${width}px`);
       for(const control of await rects(page,"#trainingBlockForm > label,#trainingBlockForm > .training-block-actions"))inside(control,blockForm,`training block control at ${width}px`);
       if(width<=760){assert.ok(tray.bottom<=nav.top+.5,`comparison tray overlaps mobile navigation at ${width}px`);}

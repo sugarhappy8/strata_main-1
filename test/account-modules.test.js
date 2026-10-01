@@ -19,15 +19,12 @@ test("account pure logic constrains redirects and derives access state",()=>{
   assert.equal(logic.safePortalUrl("https://customer-portal.paddle.com.evil.test/cpl_123"),"");
 });
 
-test("account pure logic explains every earlier trial, grant, subscription, and legacy access state",()=>{
+test("account pure logic explains every grant, subscription, and legacy access state",()=>{
   const now=Date.parse("2026-09-10T12:00:00Z"),future=now+2*24*60*60*1000;
   const discovery=(value)=>({discovery:value});
-  assert.deepEqual(logic.accountAccessSummary(discovery({active:true,accessType:"trial",trial:{expiresAt:future}}),false,now),{
-    state:"Trial",detail:"2d 0h remaining",message:"Your trial ends automatically and never charges you. Subscribe from Pricing to keep Strata+ after it ends."
-  });
   assert.equal(logic.accountAccessSummary(discovery({active:true,adminGrant:{active:true,expiresAt:null}})).detail,"Until revoked");
   assert.match(logic.accountAccessSummary(discovery({active:true,adminGrant:{active:true,expiresAt:future},subscription:{id:"sub_1"}})).message,/subscription remains separate/);
-  assert.match(logic.accountAccessSummary(discovery({active:true,accessType:"lifetime",adminGrant:{active:true,expiresAt:future}})).message,/lifetime access remains separate/);
+  assert.match(logic.accountAccessSummary(discovery({active:true,accessType:"paid",adminGrant:{active:true,expiresAt:future}})).message,/lifetime access remains separate/);
 
   const subscribed=(subscription)=>discovery({active:subscription.active===true,accessType:"subscription",subscription:{id:"sub_1",...subscription}});
   assert.equal(logic.accountAccessSummary(subscribed({status:"paused",active:false})).state,"Paused");
@@ -37,7 +34,7 @@ test("account pure logic explains every earlier trial, grant, subscription, and 
   assert.equal(logic.accountAccessSummary(subscribed({status:"active",active:true,scheduledChange:{action:"pause",effectiveAt:future}})).state,"Pausing");
   assert.equal(logic.accountAccessSummary(subscribed({status:"past_due",active:true,pastDue:true})).state,"Past due");
   assert.equal(logic.accountAccessSummary(subscribed({status:"active",active:true,currentPeriodEndsAt:future})).state,"Active");
-  assert.equal(logic.accountAccessSummary(discovery({active:true,accessType:"lifetime"})).state,"Lifetime");
+  assert.equal(logic.accountAccessSummary(discovery({active:true,accessType:"paid"})).state,"Lifetime");
   assert.equal(logic.accountAccessSummary(discovery({active:false}),true).state,"Pending");
 });
 

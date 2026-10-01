@@ -77,7 +77,7 @@ test("live stays the default, requires both current catalog IDs, and rejects san
   assert.notEqual(webhookSecretFor(getPaymentConfig(liveEnv({PADDLE_CHECKOUT_ENABLED:"false"}))),"","existing payment webhooks remain enabled when new checkout is paused");
 });
 
-async function runPricing(config,{environmentApi=true,user={id:"u-1",email:"member@example.test",discovery:{active:false,trial:{eligible:false}}}}={}){
+async function runPricing(config,{environmentApi=true,user={id:"u-1",email:"member@example.test",discovery:{active:false}}}={}){
   const nodes=new Map(),calls=[];
   function node(id){if(!nodes.has(id))nodes.set(id,{id,hidden:false,disabled:false,classList:{toggle(){}},setAttribute(){},addEventListener(){},focus(){},textContent:""});return nodes.get(id);}
   const paddle={Initialize:options=>calls.push(["initialize",options.token]),Checkout:{open(){}}};
@@ -85,7 +85,7 @@ async function runPricing(config,{environmentApi=true,user={id:"u-1",email:"memb
   const context={document:{getElementById:node},navigator:{onLine:true},location:{search:""},window:{addEventListener(){}},
     URLSearchParams,requestAnimationFrame:fn=>fn(),Paddle:paddle,
     fetch:async path=>({ok:true,json:async()=>path==="/api/billing/config"?config:{user,csrfToken:"csrf"}})};
-  const source=["pricing-logic.js","pricing-state.js","pricing-api.js","pricing-render.js","pricing-events.js","pricing.js"]
+  const source=["entitlements.js","pricing-logic.js","pricing-state.js","pricing-api.js","pricing-render.js","pricing-events.js","pricing.js"]
     .map(name=>readFileSync(join(__dirname,"..","public","scripts",name),"utf8")).join("\n");
   vm.runInNewContext(source,context);
   await new Promise(setImmediate);
@@ -120,7 +120,7 @@ test("pricing preserves live behavior and refuses mixed client tokens and sandbo
 
 test("pricing names a scheduled pause and its paid-access boundary",async()=>{
   const config=publicPaymentConfig(getPaymentConfig(liveEnv())),effectiveAt=Date.now()+7*24*60*60*1000;
-  const user={id:"u-1",email:"member@example.test",discovery:{active:true,accessType:"paid",trial:{eligible:false},subscription:{id:"sub-active",status:"active",active:true,pastDue:false,currentPeriodEndsAt:Date.now()+30*24*60*60*1000,scheduledChange:{action:"pause",effectiveAt}}}};
+  const user={id:"u-1",email:"member@example.test",discovery:{active:true,accessType:"paid",subscription:{id:"sub-active",status:"active",active:true,pastDue:false,currentPeriodEndsAt:Date.now()+30*24*60*60*1000,scheduledChange:{action:"pause",effectiveAt}}}};
   const result=await runPricing(config,{user});
   assert.match(result.nodes.get("purchaseStatus").textContent,/remains active until[\s\S]*scheduled pause takes effect and paid access stops/i);
 });

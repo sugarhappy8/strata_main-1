@@ -7,7 +7,7 @@ const vm=require("node:vm");
 
 const accountHtml=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
 const accountScript=fs.readFileSync(require.resolve("../public/scripts/account.js"),"utf8");
-const accountModules=["devices-core","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
+const accountModules=["devices-core","entitlements","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
 const verifyHtml=fs.readFileSync(require.resolve("../public/pages/verify-email.html"),"utf8");
 const verifyScript=fs.readFileSync(require.resolve("../public/scripts/verify-email.js"),"utf8");
 
@@ -60,7 +60,6 @@ function accountPage(route){
   elements.get("signedInCard").hidden=true;
   elements.get("signupMessage").hidden=true;
   elements.get("loginMessage").hidden=true;
-  elements.get("storageState").statusText=new Element("storageText");
   const authGrid=new Element("authGrid");
   class FakeFormData{constructor(form){this.values=form.values;}get(name){return this.values[name]??null;}}
   const location={search:"?mode=signup&next=pricing",href:"https://strata.test/account.html?mode=signup&next=pricing",assign:(path)=>navigations.push(path),replace:(path)=>navigations.push(path)};

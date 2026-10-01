@@ -4,7 +4,6 @@ const http = require("node:http");
 const { readFileSync, existsSync } = require("node:fs");
 const { extname, join, normalize } = require("node:path");
 const { isIP } = require("node:net");
-const { randomUUID } = require("node:crypto");
 const { createStore,isUniqueViolation } = require("./database");
 const { loadPublicAssets,cachedResponseBody } = require("./static-assets");
 const { getEmailVerificationConfig } = require("./email");
@@ -20,26 +19,21 @@ const { createSetupService } = require("./setup");
 const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
 const {adminGrantState}=require("./access-controls");
-const { createBillingService,discoveryTrialState } = require("./billing");
+const {entitlementSettings,tierFor,capabilitiesFor}=require("./entitlements");
+const { createBillingService } = require("./billing");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
 const { createLogger,observeRequest } = require("./observability");
 const {
   EXERCISES,
   EXERCISE_IDS,DAYS,
-  cleanText,
   defaultPlan,
   defaultPreferences,
   planStats,
   sanitizePreferences,
   sanitizeRating,
   sanitizePlan,
-  sanitizeCommunityPlanInput,
-  communityPlanId,
-  communityPlanPayload,
-  communityRevision,
   expectedPlanRevision,
-  communityPagination,
   sanitizeMonthlyPlan
 } = require("./plans");
 const {
@@ -63,6 +57,7 @@ const EMAIL_CONFIG = getEmailVerificationConfig(process.env);
 const ADMIN_EMAIL = configuredAdminEmail(process.env.ADMIN_EMAIL);
 const ENFORCE_PADDLE_IPS=String(process.env.PADDLE_ENFORCE_IP_ALLOWLIST||"").toLowerCase()==="true";
 const AI_SETTINGS=aiSettings(process.env);
+const ENTITLEMENTS=entitlementSettings(process.env);
 const LOGGER=createLogger();
 // Browser URLs deliberately remain stable even though files are grouped by
 // purpose on disk. Only entries in this map can ever be served publicly.
@@ -155,11 +150,11 @@ const STATIC_FILES = new Map([
   ["planner-render.js","scripts/planner-render.js"],
   ["planner-conflicts.js","scripts/planner-conflicts.js"],
   ["planner-templates.js","scripts/planner-templates.js"],
-  ["planner-sharing.js","scripts/planner-sharing.js"],
   ["planner-activation.js","scripts/planner-activation.js"],
   ["planner-events.js","scripts/planner-events.js"],
   ["planner.js","scripts/planner.js"],
   ["session-selection-core.js","scripts/session-selection-core.js"],
+  ["entitlements.js","scripts/entitlements.js"],
   ["discovery-core.js","scripts/discovery-core.js"],
   ["preview-core.js","scripts/preview-core.js"],
   ["monthly-plan-core.js","scripts/monthly-plan-core.js"],
@@ -176,9 +171,7 @@ const STATIC_FILES = new Map([
   ["discover-coaching-trend.js","scripts/discover-coaching-trend.js"],
   ["discover-catalog.js","scripts/discover-catalog.js"],
   ["discover-detail.js","scripts/discover-detail.js"],
-  ["discover-community.js","scripts/discover-community.js"],
   ["discover-session.js","scripts/discover-session.js"],
-  ["discover-sharing.js","scripts/discover-sharing.js"],
   ["discover-events.js","scripts/discover-events.js"],
   ["discover-coaching.js","scripts/discover-coaching.js"],
   ["discover-program.js","scripts/discover-program.js"],
@@ -210,15 +203,14 @@ const STATIC_FILES = new Map([
   ["icons/strata-512.png","icons/strata-512.png"],
   ["icons/strata-maskable-512.png","icons/strata-maskable-512.png"],
   ["icons/apple-touch-icon.png","icons/apple-touch-icon.png"],
-  ["images/strata-layers.jpg","images/strata-layers.jpg"],
   ["images/hero-training.jpg","images/hero-training.jpg"],
-  ["images/training-story.jpg","images/training-story.jpg"],
   ["fonts/manrope-latin.woff2","fonts/manrope-latin.woff2"],
   ["fonts/dm-mono-400-latin.woff2","fonts/dm-mono-400-latin.woff2"],
   ["fonts/dm-mono-500-latin.woff2","fonts/dm-mono-500-latin.woff2"]
 ]);
 const PAGE_ALIASES = new Map([
   ["/install","install.html"],
+  ["/planner","planner.html"],
   ["/pricing","pricing.html"],
   ["/contact","contact.html"],
   ["/policies","policies.html"],
@@ -296,25 +288,22 @@ async function hasCurrentDiscoveryAccess(userId,now=Date.now()) {
 
 async function userPayload(session) {
   const now=Date.now();
-  const [plan,paidDiscovery,trial,subscription,deletion,adminState,controls]=await Promise.all([
+  const [plan,paidDiscovery,subscription,deletion,adminState,controls]=await Promise.all([
     planFor(session.id),
     billing.accessSummaryForUser(session.id),
-    store.discoveryTrial(session.id),
     billing.subscriptionForUser(session.id),
     store.activeAccountDeletion(session.id,now),
     admin.adminIdentity(session),
     store.adminControls(session.id)
   ]);
-  const trialState=discoveryTrialState(trial,now),adminGrant=adminGrantState(controls,now);
+  const adminGrant=adminGrantState(controls,now);
   const discovery={
     ...paidDiscovery,
-    active:paidDiscovery.active||trialState.active||adminGrant.active,
-    // Preserve the established durable-access marker for existing clients.
-    // The nullable subscription snapshot distinguishes monthly from legacy
-    // lifetime access without ever making a grandfathered buyer appear free.
-    accessType:paidDiscovery.active?"paid":adminGrant.active?"grant":trialState.active?"trial":null,
+    active:paidDiscovery.active||adminGrant.active,
+    // "paid" covers a subscription or a legacy lifetime purchase; the
+    // nullable subscription snapshot tells the two apart for the client.
+    accessType:paidDiscovery.active?"paid":adminGrant.active?"grant":null,
     adminGrant,checkoutBlocked:Boolean(controls?.checkout_blocked_at),
-    trial:trialState,
     subscription
   };
   return {
@@ -324,6 +313,7 @@ async function userPayload(session) {
     createdAt:session.created_at,
     ...planStats(plan),
     discovery,
+    capabilities:capabilitiesFor({plusActive:discovery.active},ENTITLEMENTS),
     isAdmin:adminState.active,
     accountDeletion:{pending:Boolean(deletion),expiresAt:deletion?Number(deletion.expires_at):null}
   };
@@ -342,31 +332,22 @@ async function preferencesFor(userId) {
   return (await preferencesSnapshotFor(userId)).preferences;
 }
 
-function requireCommunityMutation(req,res,session,{jsonBody=false}={}) {
-  if (!trustedAuthOrigin(req)) {
-    json(res,403,{error:"Community-plan security check failed. Refresh and try again.",code:"COMMUNITY_ORIGIN_REQUIRED"});
-    return false;
-  }
-  if (!auth.validCsrf(req,session)) {
-    json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});
-    return false;
-  }
-  if (jsonBody&&!String(req.headers["content-type"]||"").toLowerCase().startsWith("application/json")) {
-    json(res,415,{error:"Community-plan requests must use JSON.",code:"JSON_REQUIRED"});
-    return false;
-  }
-  return true;
+/** Every member route guards itself with one feature name from src/entitlements.js. */
+function requireFeature(feature) {
+  const tier=tierFor(feature,ENTITLEMENTS);
+  if (tier===null) throw new TypeError(`Unknown feature ${feature}.`);
+  return async function requireAccess(req,res) {
+    const session=await auth.requireSession(req,res);
+    if (!session) return null;
+    if (tier==="off") { json(res,403,{error:"This feature is switched off.",code:"FEATURE_UNAVAILABLE",feature}); return null; }
+    if (tier==="plus"&&!await hasCurrentDiscoveryAccess(session.id)) {
+      json(res,402,{error:"Strata+ purchase required.",code:"DISCOVERY_ACCESS_REQUIRED",feature});
+      return null;
+    }
+    return session;
+  };
 }
-
-async function requireDiscoveryAccess(req,res) {
-  const session=await auth.requireSession(req,res);
-  if (!session) return null;
-  if (!await hasCurrentDiscoveryAccess(session.id)) {
-    json(res,402,{error:"Strata+ purchase required.",code:"DISCOVERY_ACCESS_REQUIRED"});
-    return null;
-  }
-  return session;
-}
+const requireDiscoveryAccess=requireFeature("plus.studio");
 
 function sameOrigin(req) {
   const fetchSite=String(req.headers["sec-fetch-site"]||"").toLowerCase();
@@ -477,118 +458,6 @@ async function handleApi(req,res,url) {
     }
     json(res,200,{ok:true,plan,planUpdatedAt:Number(saved.updated_at),stats:planStats(plan)}); return;
   }
-  if (url.pathname === "/api/community-plans/mine" && req.method === "GET") {
-    const session=await auth.requireSession(req,res); if (!session) return;
-    const plans=(await store.communityWeeklyPlansForUser(session.id))
-      .map((row)=>communityPlanPayload(row,{owner:true}))
-      .filter(Boolean);
-    json(res,200,{plans,userId:session.id,csrfToken:session.csrf_token}); return;
-  }
-  if (url.pathname === "/api/community-plans" && req.method === "POST") {
-    const session=await auth.requireSession(req,res); if (!session) return;
-    if (!requireCommunityMutation(req,res,session,{jsonBody:true})) return;
-    if (!rateAllowed(req,`community-plan-publish:${session.id}`,15,15*60*1000)) {
-      json(res,429,{error:"Too many community-plan updates. Wait a moment and try again.",code:"COMMUNITY_RATE_LIMIT"}); return;
-    }
-    const input=await bodyJson(req);
-    const expectedPlanUpdatedAt=communityRevision(input.expectedPlanUpdatedAt,"Your plan version");
-    const currentPlan=await planSnapshotFor(session.id);
-    if (currentPlan.updatedAt!==expectedPlanUpdatedAt) {
-      json(res,409,{error:"Your weekly plan changed. Refresh it and publish again.",code:"PLAN_CHANGED"}); return;
-    }
-    const clean=sanitizeCommunityPlanInput(input,currentPlan.plan);
-    const now=Date.now();
-    const existing=(await store.communityWeeklyPlansForUser(session.id))[0]||null;
-    const saved=await store.upsertCommunityWeeklyPlanFromPlan({
-      id:existing?.id||randomUUID(),userId:session.id,title:clean.title,description:clean.description,
-      isPublished:clean.published,createdAt:existing?Number(existing.created_at):now,updatedAt:now,
-      expectedPlanUpdatedAt,storedPlanJson:currentPlan.storedPlanJson
-    });
-    if (!saved) { json(res,409,{error:"Your weekly plan changed. Refresh it and publish again.",code:"PLAN_CHANGED"}); return; }
-    const row=await store.communityWeeklyPlanForOwner(saved.id,session.id);
-    const plan=communityPlanPayload(row,{owner:true});
-    if (!plan) { json(res,500,{error:"Your plan was saved but could not be read safely.",code:"COMMUNITY_PLAN_INVALID"}); return; }
-    json(res,200,{ok:true,plan,planUpdatedAt:currentPlan.updatedAt}); return;
-  }
-  if (url.pathname === "/api/community-plans" && req.method === "GET") {
-    const session=await requireDiscoveryAccess(req,res); if (!session) return;
-    const {limit,offset}=communityPagination(url);
-    const rows=await store.communityWeeklyPlans(limit+1,offset);
-    const hasMore=rows.length>limit;
-    const plans=rows.slice(0,limit).map((row)=>communityPlanPayload(row)).filter(Boolean);
-    json(res,200,{plans,pagination:{limit,offset,nextOffset:hasMore?offset+limit:null}}); return;
-  }
-  const communityApplyMatch=url.pathname.match(/^\/api\/community-plans\/([0-9a-f-]{36})\/apply$/i);
-  if (communityApplyMatch && req.method === "POST") {
-    const session=await requireDiscoveryAccess(req,res); if (!session) return;
-    if (!requireCommunityMutation(req,res,session,{jsonBody:true})) return;
-    if (!rateAllowed(req,`community-plan-apply:${session.id}`,30,15*60*1000)) {
-      json(res,429,{error:"Too many plan changes. Wait a moment and try again.",code:"COMMUNITY_RATE_LIMIT"}); return;
-    }
-    const input=await bodyJson(req);
-    const sourceUpdatedAt=communityRevision(input.sourceUpdatedAt,"Community plan version");
-    const targetUpdatedAt=communityRevision(input.targetUpdatedAt,"Your plan version",{allowZero:true});
-    const id=communityPlanId(communityApplyMatch[1]);
-    const sourceRow=id?await store.communityWeeklyPlan(id):null;
-    const source=communityPlanPayload(sourceRow);
-    if (!source) { json(res,404,{error:"Community plan not found.",code:"COMMUNITY_PLAN_NOT_FOUND"}); return; }
-    if (source.updatedAt!==sourceUpdatedAt) {
-      json(res,409,{error:"That community plan changed. Refresh it and confirm again.",code:"COMMUNITY_PLAN_CHANGED"}); return;
-    }
-    const applied=await store.applyCommunityWeeklyPlan({
-      id,userId:session.id,sourceUpdatedAt,targetUpdatedAt,
-      planJson:JSON.stringify(source.plan),storedPlanJson:sourceRow.plan_json,updatedAt:Date.now()
-    });
-    if (!applied) { json(res,409,{error:"A plan changed before it could be applied. Refresh and confirm again.",code:"COMMUNITY_PLAN_CHANGED"}); return; }
-    let plan;
-    try { plan=sanitizePlan(JSON.parse(applied.plan_json)); }
-    catch { json(res,500,{error:"The applied plan could not be read safely.",code:"COMMUNITY_PLAN_INVALID"}); return; }
-    json(res,200,{ok:true,plan,planUpdatedAt:Number(applied.updated_at),stats:planStats(plan),source:{id:source.id,title:source.title,authorName:source.authorName}}); return;
-  }
-  const communityPlanMatch=url.pathname.match(/^\/api\/community-plans\/([0-9a-f-]{36})$/i);
-  if (communityPlanMatch && req.method === "GET") {
-    const session=await requireDiscoveryAccess(req,res); if (!session) return;
-    const id=communityPlanId(communityPlanMatch[1]);
-    const plan=communityPlanPayload(id?await store.communityWeeklyPlan(id):null);
-    if (!plan) { json(res,404,{error:"Community plan not found.",code:"COMMUNITY_PLAN_NOT_FOUND"}); return; }
-    json(res,200,{plan}); return;
-  }
-  if (communityPlanMatch && req.method === "PATCH") {
-    const session=await auth.requireSession(req,res); if (!session) return;
-    if (!requireCommunityMutation(req,res,session,{jsonBody:true})) return;
-    if (!rateAllowed(req,`community-plan-manage:${session.id}`,30,15*60*1000)) {
-      json(res,429,{error:"Too many community-plan updates. Wait a moment and try again.",code:"COMMUNITY_RATE_LIMIT"}); return;
-    }
-    const id=communityPlanId(communityPlanMatch[1]);
-    let owned=id?await store.communityWeeklyPlanForOwner(id,session.id):null;
-    if (!owned) {
-      const visible=id?await store.communityWeeklyPlan(id):null;
-      json(res,visible?403:404,{error:visible?"Only the plan owner can change this upload.":"Community plan not found.",code:visible?"COMMUNITY_PLAN_FORBIDDEN":"COMMUNITY_PLAN_NOT_FOUND"}); return;
-    }
-    const input=await bodyJson(req);
-    if (typeof input.published!=="boolean") { json(res,400,{error:"Published setting is invalid.",code:"INVALID_COMMUNITY_PLAN"}); return; }
-    await store.setCommunityWeeklyPlanPublished(id,session.id,input.published,Date.now());
-    owned=await store.communityWeeklyPlanForOwner(id,session.id);
-    if (!owned) { json(res,409,{error:"The community plan changed. Refresh and try again.",code:"COMMUNITY_PLAN_CHANGED"}); return; }
-    json(res,200,{ok:true,plan:communityPlanPayload(owned,{owner:true})}); return;
-  }
-  if (communityPlanMatch && req.method === "DELETE") {
-    const session=await auth.requireSession(req,res); if (!session) return;
-    if (!requireCommunityMutation(req,res,session)) return;
-    if (!rateAllowed(req,`community-plan-manage:${session.id}`,30,15*60*1000)) {
-      json(res,429,{error:"Too many community-plan updates. Wait a moment and try again.",code:"COMMUNITY_RATE_LIMIT"}); return;
-    }
-    const id=communityPlanId(communityPlanMatch[1]);
-    const owned=id?await store.communityWeeklyPlanForOwner(id,session.id):null;
-    if (!owned) {
-      const visible=id?await store.communityWeeklyPlan(id):null;
-      json(res,visible?403:404,{error:visible?"Only the plan owner can remove this upload.":"Community plan not found.",code:visible?"COMMUNITY_PLAN_FORBIDDEN":"COMMUNITY_PLAN_NOT_FOUND"}); return;
-    }
-    if (!await store.deleteCommunityWeeklyPlan(id,session.id)) {
-      json(res,409,{error:"The community plan changed. Refresh and try again.",code:"COMMUNITY_PLAN_CHANGED"}); return;
-    }
-    json(res,200,{ok:true}); return;
-  }
   if (url.pathname === "/api/monthly-plan" && req.method === "GET") {
     const session=await requireDiscoveryAccess(req,res); if (!session) return;
     const [monthlyPlan,weeklyPlan]=await Promise.all([monthlyPlanSnapshotFor(session.id),planFor(session.id)]);
@@ -669,16 +538,9 @@ async function serveStatic(req,res,url) {
     }
   }
   if (PROTECTED_HTML.has(requested) && !activeSession) {
-    const params=new URLSearchParams({mode:"login"});
-    if (requested==="planner.html") {
-      params.set("next","planner");
-      const add=cleanText(url.searchParams.get("add"),80);
-      if (/^[a-z0-9-]{2,80}$/.test(add)&&EXERCISE_IDS.has(add)) params.set("add",add);
-    } else {
-      params.set("next",requested.replace(".html",""));
-      const day=url.searchParams.get("day");
-      if (requested==="workout.html"&&DAYS.includes(day)) params.set("next",`/workout.html?day=${day}`);
-    }
+    const params=new URLSearchParams({mode:"login",next:requested.replace(".html","")});
+    const day=url.searchParams.get("day");
+    if (requested==="workout.html"&&DAYS.includes(day)) params.set("next",`/workout.html?day=${day}`);
     res.writeHead(302,{...securityHeaders(),Location:`/account.html?${params}`,"Cache-Control":"no-store"});
     res.end();
     return;
@@ -764,12 +626,12 @@ async function start() {
     createAuthService,createAdminService,createSupportService
   }));
   productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
-  workouts=createWorkoutService({store,auth,requireAccess:requireDiscoveryAccess,rateAllowed,http:{json,bodyJson}});
-  training=createTrainingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  coaching=createCoachingService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  devices=createDevicesService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
+  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson}});
+  training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
-  ai=createAiService({store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
+  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
   setup=createSetupService({
     store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,
     getPlanSnapshot:planSnapshotFor,getPreferencesSnapshot:preferencesSnapshotFor,getUserPayload:userPayload,
@@ -777,7 +639,6 @@ async function start() {
   });
   await admin.bootstrap();
   await store.deleteExpired(Date.now());
-  await admin.cleanup();
   await auth.cleanup();
   await support.cleanup();
   await productSignals.cleanup();
@@ -785,7 +646,6 @@ async function start() {
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
     void auth.cleanup().catch((error)=>LOGGER.error("cleanup.auth_failed",{error}));
-    void admin.cleanup().catch((error)=>LOGGER.error("cleanup.admin_failed",{error}));
     void support.cleanup().catch((error)=>LOGGER.error("cleanup.support_failed",{error}));
     void productSignals.cleanup().catch((error)=>LOGGER.error("cleanup.product_signals_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);

@@ -7,7 +7,6 @@ const {randomUUID}=require("node:crypto");
 const {MAX_WEBHOOK_BYTES,bodyBuffer:readBodyBuffer}=require("./http");
 const {
   DEFAULT_PRODUCT_ID,DEFAULT_PRICE_ID,
-  STRATA_PLUS_TRIAL_MS,
   publicPaymentConfig,
   webhookSecretFor,
   verifyPaddleSignature,
@@ -43,27 +42,7 @@ const PADDLE_CANCELABLE_STALE_STATUSES=new Set(["ready","billed"]);
 const eventTime=(value,fallback=Date.now())=>{const parsed=Date.parse(String(value||""));return Number.isFinite(parsed)?parsed:fallback;};
 
 /**
- * Strata+ no longer offers a free trial, so no account is eligible to start
- * one. A trial started before Build 8.9.0 keeps its recorded expiry, bounded
- * by the old seven-day maximum so a malformed row can never extend access.
- * @param {import("./domain-types").DiscoveryTrialRow|null|undefined} trial
- * @param {number} [now]
- * @returns {import("./domain-types").DiscoveryTrialState}
- */
-function discoveryTrialState(trial,now=Date.now()) {
-  const startedAt=trial?Number(trial.started_at):null;
-  const storedExpiresAt=trial?Number(trial.expires_at):null;
-  const maximumExpiresAt=Number.isSafeInteger(startedAt)&&Number.isSafeInteger(Number(startedAt)+STRATA_PLUS_TRIAL_MS)
-    ? Number(startedAt)+STRATA_PLUS_TRIAL_MS
-    : null;
-  const expiresAt=Number.isSafeInteger(storedExpiresAt)&&maximumExpiresAt!==null
-    ? Math.min(Number(storedExpiresAt),maximumExpiresAt)
-    : null;
-  return {eligible:false,active:expiresAt!==null&&expiresAt>now,startedAt,expiresAt};
-}
-
-/**
- * Paddle checkout, entitlement, trial, webhook, and account-deletion
+ * Paddle checkout, entitlement, webhook, and account-deletion
  * reconciliation boundary. The composition root supplies account/session
  * policy and storage capabilities; provider details only point downward.
  * @param {import("./domain-types").BillingServiceDependencies} dependencies
@@ -105,8 +84,8 @@ function createBillingService({
 
   /** @param {string} userId @param {number} [timestamp] */
   async function hasCurrentAccess(userId,timestamp=now()) {
-    const [paid,trial,controls]=await Promise.all([hasCurrentPaidAccess(userId,timestamp),store.discoveryTrial(userId),store.adminControls(userId)]);
-    return Boolean(paid||discoveryTrialState(trial,timestamp).active||adminGrantState(controls,timestamp).active);
+    const [paid,controls]=await Promise.all([hasCurrentPaidAccess(userId,timestamp),store.adminControls(userId)]);
+    return Boolean(paid||adminGrantState(controls,timestamp).active);
   }
 
   /** @param {string} userId @param {number} [timestamp] */
@@ -696,4 +675,4 @@ function createBillingService({
   };
 }
 
-module.exports={createBillingService,discoveryTrialState};
+module.exports={createBillingService};

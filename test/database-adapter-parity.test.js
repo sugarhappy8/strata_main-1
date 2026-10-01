@@ -337,7 +337,7 @@ test("SQLite and Turso adapters expose matching values, mutation results, and se
     ]) assert.equal(localResult[key],undefined,`${key} must have one documented void result across adapters`);
     assert.equal(localResult.replayed,null,"a provider completion cannot replace the durable customer identity");
     assert.deepEqual(Object.keys(localResult.adminOverview).sort(),[
-      "active_sessions","day_eight_return_users","discovery_users","first_workout_users","open_support","paid_users","pending_deletions","pending_payments","renewed_subscriptions","second_workout_users","suspended_users","total_users","trial_users","verified_users"
+      "active_sessions","day_eight_return_users","discovery_users","first_workout_users","open_support","paid_users","pending_deletions","pending_payments","renewed_subscriptions","second_workout_users","suspended_users","total_users","verified_users"
     ].sort(),"the shared owner-overview contract must expose the same activation metrics through both adapters");
     assert.equal(localResult.completed.customer_id,"ctm_original");
     assert.equal(localResult.completed.completed_at,1_900);
@@ -413,7 +413,6 @@ test("SQLite and Turso grants and payment holds enforce a live bound-owner sessi
     assert.equal(await store.hasDiscoveryAccess(target,null,now),true);
     assert.equal(await store.hasDiscoveryAccess(target,null,now+60000),false);
     assert.equal(await store.hasPaidDiscoveryAccess(target,null,now),false);
-    assert.equal(await store.discoveryTrial(target),null);
     assert.equal((await store.accountExport(target)).grants.length,1);
     assert.equal(await store.writeAdminControls(target,row,0,token,{...base,id:"stale"}),null);
     await assert.rejects(store.writeAdminControls(target,{...row,grant_expires_at:null},1,token,base),/UNIQUE/);

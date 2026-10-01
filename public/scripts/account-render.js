@@ -57,7 +57,7 @@
     function renderDashboard(plan,user,{workouts=null,historyError=false}={}){
       const summary=logic.planSummary(plan),week=logic.weekContext(now()),historyAvailable=Array.isArray(workouts),weekWorkouts=historyAvailable?logic.completedThisWeek(workouts,week):[];
       const completedDays=new Set(weekWorkouts.map((workout)=>String(workout.planDay||"")).filter((day)=>summary.scheduled.includes(day))),active=historyAvailable?workouts.find((workout)=>workout?.status==="active"):null;
-      const discoveryActive=user?.discovery?.active===true,historyLoading=discoveryActive&&!historyAvailable&&!historyError;
+      const discoveryActive=logic.hasPlus(user),historyLoading=discoveryActive&&!historyAvailable&&!historyError;
       el("accountPlanCount").textContent=String(summary.movements);el("accountWorkoutDays").textContent=String(summary.scheduled.length);
 
       const primary=el("accountPrimaryAction"),primaryLabel=el("accountPrimaryLabel"),nextTitle=el("accountNextTitle"),nextDetail=el("accountNextDetail"),nextEyebrow=el("accountNextEyebrow"),nextMetrics=el("accountNextMetrics");nextMetrics.hidden=true;
@@ -106,7 +106,7 @@
       const planCount=Math.max(0,Number(user?.planCount)||0),workoutDays=Math.max(0,Number(user?.workoutDays)||0);el("accountPlanCount").textContent=String(planCount);el("accountWorkoutDays").textContent=String(workoutDays);
       const createdAt=Number(user?.createdAt),createdDate=Number.isFinite(createdAt)&&createdAt>0?new Date(createdAt):null;el("accountMemberSince").textContent=createdDate&&!Number.isNaN(createdDate.getTime())?new Intl.DateTimeFormat(undefined,{month:"short",year:"numeric"}).format(createdDate):"Member";
       el("accountAdminAction").hidden=user?.isAdmin!==true;
-      const discoveryActive=user?.discovery?.active===true,discoveryPending=Number(user?.discovery?.pendingPurchaseCount||0)>0,subscription=logic.subscriptionFor(user),access=logic.accountAccessSummary(user,discoveryPending);
+      const discoveryActive=logic.hasPlus(user),discoveryPending=Number(user?.discovery?.pendingPurchaseCount||0)>0,subscription=logic.subscriptionFor(user),access=logic.accountAccessSummary(user,discoveryPending);
       const discoveryAction=el("accountDiscoveryAction"),managedInactive=Boolean(subscription)&&!discoveryActive&&subscription?.status!=="canceled";
       discoveryAction.href=discoveryActive?"/discover.html":managedInactive?"#accountBilling":"/pricing";discoveryAction.textContent=discoveryActive?"Open Strata+ studio →":managedInactive?"Manage Strata+ billing →":subscription?.status==="canceled"?"Restart Strata+ →":discoveryPending?"Check Strata+ subscription →":"Unlock Strata+ →";
       el("accountDiscoveryStatus").textContent=access.message;el("accountAccessState").textContent=access.state;el("accountAccessDetail").textContent=access.detail;renderAccountBilling(user);
@@ -129,10 +129,9 @@
 
     function showSessionLoading(){const list=el("accountSessionList");list.setAttribute("aria-busy","true");list.innerHTML='<li class="account-session-loading">Checking active sessions…</li>';el("accountRevokeOtherSessions").disabled=true;}
     function showSessionError(){const list=el("accountSessionList");list.setAttribute("aria-busy","false");list.innerHTML='<li class="account-session-loading">Active sessions could not be loaded. Nothing was changed.</li>';showAccountControlStatus("accountSessionStatus","Could not load signed-in sessions. Refresh to try again.",{error:true});}
-    function renderStorageState(node,state,message){node.classList.remove("good","warn","bad");node.classList.add(state);node.querySelector("span").textContent=message;}
     function showInitialLoading(){el("accountPage").setAttribute("aria-busy","true");el("accountAccess").hidden=true;el("signedInCard").hidden=true;el("accountLoading").hidden=false;el("accountLoadingTitle").textContent="CHECKING YOUR ACCOUNT…";el("accountLoadingMessage").textContent="Confirming whether you are already signed in.";el("accountReload").hidden=true;}
 
-    return{el,clearFormError,clearAllFormErrors,clearPrivateData,setButtonBusy,showFormError,showAccess,renderDashboard,renderDashboardUnavailable,renderAccountBilling,showSecurityStatus,showSignedIn,showChangedAccount,showAccountControlStatus,renderAccountSessions,showSessionLoading,showSessionError,renderStorageState,showInitialLoading};
+    return{el,clearFormError,clearAllFormErrors,clearPrivateData,setButtonBusy,showFormError,showAccess,renderDashboard,renderDashboardUnavailable,renderAccountBilling,showSecurityStatus,showSignedIn,showChangedAccount,showAccountControlStatus,renderAccountSessions,showSessionLoading,showSessionError,showInitialLoading};
   }
 
   return{createRenderer};

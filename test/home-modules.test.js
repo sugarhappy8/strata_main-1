@@ -44,41 +44,25 @@ test("homepage state owns catalog, filter, and account transitions",()=>{
   assert.equal(State.selectSubfilter(state,"Upper chest"),false);
   State.setAccount(state,{id:"u1",name:"Sam",discovery:{active:true}});
   assert.equal(state.accountStatus,"authenticated");
-  state.compare=[catalog[0].id];
   State.beginAccountRecheck(state);
   assert.equal(state.accountStatus,"rechecking");
   assert.equal(state.user,null);
-  assert.deepEqual(state.compare,[catalog[0].id]);
   State.setAccount(state,{id:"u1",name:"Sam",discovery:{active:true}},{verifiedAt:100});
-  assert.deepEqual(state.compare,[catalog[0].id]);
-  State.beginAccountRecheck(state);State.beginAccountRecheck(state);State.setAccount(state,{id:"u2",name:"Lee",discovery:{active:true}},{verifiedAt:200});
-  assert.deepEqual(state.compare,[]);
-  state.compare=[catalog[0].id];State.setAccount(state,null);
-  assert.equal(state.accountStatus,"anonymous");assert.deepEqual(state.compare,[]);
-  state.compare=[catalog[0].id];State.setAccountUnavailable(state);
-  assert.equal(state.accountStatus,"unavailable");assert.deepEqual(state.compare,[]);
+  assert.equal(state.accountStatus,"authenticated");assert.equal(state.accountVerifiedAt,100);
+  State.setAccount(state,null);
+  assert.equal(state.accountStatus,"anonymous");assert.equal(state.accountVerifiedAt,0);
+  State.setAccountUnavailable(state);
+  assert.equal(state.accountStatus,"unavailable");assert.equal(state.user,null);
   State.failCatalog(state);
   assert.equal(state.catalogStatus,"error");
   assert.deepEqual(state.exercises,[]);
 });
 
-test("homepage pure logic safely counts known guest-plan entries and bounds comparison",()=>{
+test("homepage pure logic safely counts known guest-plan entries",()=>{
   const exercises=Logic.normalizeCatalog(catalog),known=exercises[0].id;
   const raw=JSON.stringify({days:{Monday:[{exerciseId:known},{exerciseId:"retired"}],Tuesday:[{exerciseId:known}]}});
   assert.equal(Logic.guestPlanCount(raw,exercises),2);
   assert.equal(Logic.guestPlanCount("not-json",exercises),0);
-  const verified={accountStatus:"authenticated",accountVerifiedAt:1_000,user:{discovery:{active:true}}};
-  assert.equal(Logic.canCompareExercises(verified),true);
-  assert.equal(Logic.comparisonAccessIsFresh(verified,1_000+Logic.COMPARISON_ACCESS_MAX_AGE_MS),true);
-  assert.equal(Logic.comparisonAccessIsFresh(verified,1_001+Logic.COMPARISON_ACCESS_MAX_AGE_MS),false);
-  for(const state of [null,{},
-    {accountStatus:"loading",user:{discovery:{active:true}}},
-    {accountStatus:"rechecking",user:{discovery:{active:true}}},
-    {accountStatus:"authenticated",user:{discovery:{active:false}}},
-    {accountStatus:"authenticated",user:{discovery:{active:"true"}}}
-  ])assert.equal(Logic.canCompareExercises(state),false);
-  assert.deepEqual(Logic.toggleComparison(["a","b"],"c"),{compare:["a","b"],full:true});
-  assert.deepEqual(Logic.toggleComparison(["a","b"],"a"),{compare:["b"],full:false});
 });
 
 test("homepage API normalizes transport and HTTP failures",async()=>{

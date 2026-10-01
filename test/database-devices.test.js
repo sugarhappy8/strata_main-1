@@ -90,16 +90,6 @@ async function scenario(store,suffix){
   const same=await store.upsertDeviceConnection(connection(a.id,"111",{tokenSealed:"sealed-new",connectedAt:NOW+20,updatedAt:NOW+20}));
   result.reconnect={revision:Number(same.revision),syncedThrough:same.synced_through,settings:JSON.parse(same.settings_json),token:same.token_sealed};
 
-  await store.insertDeviceRevocation({id:"r1",provider:"polar",providerUserId:"555",tokenSealed:"sealed-555",createdAt:NOW,nextAttemptAt:NOW});
-  await store.insertDeviceRevocation({id:"r2",provider:"polar",providerUserId:"556",tokenSealed:"sealed-556",createdAt:NOW,nextAttemptAt:NOW+DAY});
-  await store.insertDeviceRevocation({id:"r3",provider:"polar",providerUserId:"557",tokenSealed:"sealed-557",createdAt:NOW,nextAttemptAt:NOW});
-  await store.rescheduleDeviceRevocation("r1",1,NOW+5000);
-  await store.cancelDeviceRevocations("polar","557");
-  result.revocations={due:(await store.dueDeviceRevocations(NOW+6000,10)).map((row)=>[row.id,row.provider_user_id,Number(row.attempts)])};
-  await store.deleteDeviceRevocation("r1");
-  result.revocations.afterDelete=(await store.dueDeviceRevocations(NOW+2*DAY,10)).map((row)=>row.id);
-  await store.deleteDeviceRevocation("r2");
-
   const exported=await store.accountExport(a.id);
   result.exported={connections:exported.deviceConnections.map((row)=>Object.keys(row).sort().join(",")),nights:exported.wellnessNights.length,days:exported.wellnessDays.length,workouts:exported.wellnessWorkouts.length,
     buckets:exported.wellnessDays[0].buckets_json!==null};
@@ -113,28 +103,25 @@ async function scenario(store,suffix){
   await store.recordDeviceSync({userId:a.id,provider:"polar",providerUserId:"121",status:"active",syncedThrough:"2026-09-28",lastSyncAt:NOW,lastError:null,nextSyncAt:NOW,failures:0,updatedAt:NOW});
   result.replaced=(await store.upsertDeviceConnection(connection(a.id,"122"))).synced_through;
 
-  // Deleting an account keeps only the sealed token until Polar confirms the app lost access.
+  // Deleting an account removes the connection, its wellness data, and any pending connect state.
   await store.upsertDeviceConnection(connection(b.id,"333"));
   await store.upsertWellnessNight({userId:b.id,provider:"polar",providerUserId:"333"},night("2026-09-28"));
   await state("s4",b.id);
   await store.upsertAccountAction({requestId:`delete-${suffix}`,userId:b.id,purpose:"account_delete",tokenHash:`delete-token-${suffix}`,expiresAt:NOW+1000,deliveryState:"sent",createdAt:NOW,updatedAt:NOW});
   const deletion=await store.deleteAccount(`delete-token-${suffix}`,NOW+10,"email-hash");
-  const queued=await store.dueDeviceRevocations(Date.now()+DAY,10);
-  result.accountDeletion={status:deletion.status,queued:queued.map((row)=>[row.provider,row.provider_user_id,row.token_sealed,Number(row.attempts),Number(row.created_at)>0,typeof row.id==="string"&&row.id.length===32]),
+  result.accountDeletion={status:deletion.status,
     connection:await store.deviceConnectionByProviderUser("polar","333"),nights:(await store.wellnessNights(b.id,"polar","2000-01-01","2100-01-01")).length,state:await store.readDeviceConnectState("s4")};
-  for(const row of queued)await store.deleteDeviceRevocation(row.id);
 
   // Cleanup keeps 13 months of wellness data and 28 days of heart-rate detail.
   const ownerNew={userId:a.id,provider:"polar",providerUserId:"122"};
   await store.upsertWellnessNight(ownerNew,night("2025-08-01"));await store.upsertWellnessNight(ownerNew,night("2026-09-20"));
   await store.upsertWellnessDay(ownerNew,day("2025-08-01"));await store.upsertWellnessDay(ownerNew,day("2026-08-01"));await store.upsertWellnessDay(ownerNew,day("2026-09-20"));
   await store.upsertWellnessWorkout(ownerNew,workout("old",Date.parse("2025-08-01T08:00:00Z")));await store.upsertWellnessWorkout(ownerNew,workout("new",Date.parse("2026-09-20T08:00:00Z")));
-  await store.insertDeviceRevocation({id:"stale",provider:"polar",providerUserId:"777",tokenSealed:"x",createdAt:NOW-31*DAY,nextAttemptAt:NOW+DAY});
   await store.deleteExpiredDeviceData(NOW);
   result.cleanup={nights:(await store.wellnessNights(a.id,"polar","2000-01-01","2100-01-01")).map((row)=>row.night_date),
     days:(await store.wellnessDays(a.id,"polar","2000-01-01","2100-01-01")).map((row)=>[row.day_date,row.buckets_json===null]),
     workouts:(await store.wellnessWorkouts(a.id,"polar",0,NOW*2)).map((row)=>row.external_id),
-    revocations:(await store.dueDeviceRevocations(NOW+2*DAY,10)).length,recentState:Boolean(await store.readDeviceConnectState("s2"))};
+    recentState:Boolean(await store.readDeviceConnectState("s2"))};
   await store.deleteExpiredDeviceData(NOW+2*60*60*1000);
   result.cleanup.laterState=await store.readDeviceConnectState("s2");
   return result;
@@ -157,13 +144,11 @@ test("device storage behaves identically on SQLite and Turso",async()=>{
     assert.deepEqual(result.sync,{recorded:true,strangerRecorded:false,dueBefore:0,marked:true,markedLater:false,due:[[true,NOW+60000,"2026-09-28",NOW]],limited:0});
     assert.deepEqual(result.settings,{revision:2,settings:{recoverySuggestions:false},stale:null});
     assert.deepEqual(result.reconnect,{revision:3,syncedThrough:"2026-09-28",settings:{recoverySuggestions:false},token:"sealed-new"});
-    assert.deepEqual(result.revocations,{due:[["r1","555",1]],afterDelete:["r2"]});
     assert.deepEqual(result.exported,{connections:["connected_at,consent_version,last_sync_at,provider,settings_json,status,synced_through"],nights:2,days:1,workouts:1,buckets:true});
     assert.deepEqual(result.disconnect,{removed:{providerUserId:"111",token:"sealed-new"},again:null,connection:null,nights:0,days:0,workouts:0});
     assert.equal(result.replaced,null);
     assert.equal(result.accountDeletion.status,"deleted");
-    assert.deepEqual(result.accountDeletion.queued,[]);
     assert.equal(result.accountDeletion.connection,null);assert.equal(result.accountDeletion.nights,0);assert.equal(result.accountDeletion.state,null);
-    assert.deepEqual(result.cleanup,{nights:["2026-09-20"],days:[["2026-08-01",true],["2026-09-20",false]],workouts:["new"],revocations:0,recentState:true,laterState:null},"connect states are kept for an hour after they expire");
+    assert.deepEqual(result.cleanup,{nights:["2026-09-20"],days:[["2026-08-01",true],["2026-09-20",false]],workouts:["new"],recentState:true,laterState:null},"connect states are kept for an hour after they expire");
   }finally{await close();}
 });

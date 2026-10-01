@@ -12,12 +12,7 @@ const {
   sanitizePreferences,
   sanitizeRating,
   sanitizePlan,
-  sanitizeCommunityPlanInput,
-  communityPlanId,
-  communityPlanPayload,
-  communityRevision,
   expectedPlanRevision,
-  communityPagination,
   sanitizeMonthlyPlan
 }=require("../src/plans");
 
@@ -84,27 +79,10 @@ test("weekly plans, preferences, and ratings keep their existing validation cont
   assert.throws(()=>sanitizeRating({}),/whole number/);
 });
 
-test("community plan helpers sanitize public payloads and revisions",()=>{
-  const plan=weeklyPlan();
-  const input=sanitizeCommunityPlanInput({title:"  Push   week  ",description:"  Simple   plan ",published:true},plan);
-  assert.equal(input.title,"Push week");
-  assert.equal(input.description,"Simple plan");
-  assert.throws(()=>sanitizeCommunityPlanInput({title:"Push week",plan},plan),(error)=>error.code==="COMMUNITY_PLAN_BODY_NOT_ALLOWED");
-
-  const id="123e4567-e89b-42d3-a456-426614174000";
-  assert.equal(communityPlanId(id.toUpperCase()),id);
-  assert.equal(communityPlanId("not-an-id"),"");
-  assert.equal(communityRevision(1,"Plan"),1);
+test("plan revisions accept zero and reject anything that is not a timestamp",()=>{
   assert.equal(expectedPlanRevision(0),0);
-  assert.throws(()=>communityRevision(0,"Plan"),(error)=>error.code==="INVALID_COMMUNITY_REVISION");
-
-  const payload=communityPlanPayload({id,title:"Push week",description:"",author_name:"  STRATA   Lifter  ",plan_json:JSON.stringify(plan),created_at:"10",updated_at:"20",is_published:1},{owner:true});
-  assert.equal(payload.authorName,"STRATA Lifter");
-  assert.equal(payload.published,true);
-  assert.equal(communityPlanPayload({...payload,plan_json:"{}"}),null);
-
-  assert.deepEqual(communityPagination(new URL("https://example.test/community?limit=24&offset=2")),{limit:24,offset:2});
-  assert.throws(()=>communityPagination(new URL("https://example.test/community?limit=25")),(error)=>error.code==="INVALID_PAGINATION");
+  assert.equal(expectedPlanRevision(12),12);
+  assert.throws(()=>expectedPlanRevision("later"),(error)=>error.code==="PLAN_VERSION_REQUIRED");
 });
 
 test("31-day plan validation remains deterministic at the module boundary",()=>{

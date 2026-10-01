@@ -46,8 +46,6 @@
     }
 
     return{
-      status:()=>requestJson("/api/status"),
-      health:()=>requestJson("/healthz"),
       identity:(options={})=>requestJson("/api/me",options),
       plan:()=>requestJson("/api/plan",{cache:"no-store"}),
       workouts:()=>requestJson("/api/workouts?limit=100&offset=0",{cache:"no-store"}),

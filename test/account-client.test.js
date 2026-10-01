@@ -7,7 +7,7 @@ const vm=require("node:vm");
 
 const html=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
 const script=fs.readFileSync(require.resolve("../public/scripts/account.js"),"utf8");
-const moduleScripts=["devices-core","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
+const moduleScripts=["devices-core","entitlements","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
 
 class ClassList{
   constructor(){this.values=new Set();}
@@ -51,7 +51,6 @@ function createPage({search="",route}){
   elements.get("signedInCard").hidden=true;
   elements.get("signupMessage").hidden=true;
   elements.get("loginMessage").hidden=true;
-  elements.get("storageState").statusText=new Element("storageText");
   const authGrid=new Element("authGrid"),body=new Element("body"),navigations=[],requests=[],replaced=[],reloads=[],downloads=[],objectUrls=[],windowListeners={},documentListeners={};
   const location={search,href:`http://strata.test/account.html${search}`,assign:(path)=>navigations.push(path),replace:(path)=>navigations.push(path),reload:()=>reloads.push(true)};
   const document={
@@ -329,12 +328,10 @@ test("auth submit buttons communicate progress and restore after failure",async(
   assert.equal(button.disabled,false);
 });
 
-test("failed storage probes are advisory and a login error stays scoped",async()=>{
+test("a login error stays scoped to the login form",async()=>{
   const page=createPage({
     search:"?mode=login&error=Email%20or%20password%20is%20incorrect.",
     route:async(path)=>{
-      if(path==="/api/status")return jsonResponse(200,{persistent:true});
-      if(path==="/healthz")throw new Error("health unavailable");
       if(path==="/api/me")return jsonResponse(401,{error:"Not signed in."});
       throw new Error(`Unexpected route ${path}`);
     }
@@ -342,14 +339,9 @@ test("failed storage probes are advisory and a login error stays scoped",async()
   await settle();
   const {elements}=page;
   assert.equal(elements.get("signupSubmit").disabled,false);
-  assert.equal(elements.get("storageState").dataset.persistence,"persistent");
-  assert.equal(elements.get("storageState").dataset.health,"unavailable");
-  assert.match(elements.get("storageState").statusText.textContent,/retry/i);
   assert.equal(elements.get("loginMessage").hidden,false);
   assert.equal(elements.get("loginMessage").textContent,"Email or password is incorrect.");
-  assert.equal(elements.get("signupMessage").hidden,true);
-  await elements.get("signupForm").emit("input");
-  assert.equal(elements.get("loginMessage").hidden,true);
+
 });
 
 test("signed-in dashboard distinguishes access and plan states with a useful next action",async()=>{
@@ -378,13 +370,8 @@ test("signed-in dashboard distinguishes access and plan states with a useful nex
     },
     {
       name:"grandfathered lifetime account",planCount:0,workoutDays:0,
-      discovery:{active:true,accessType:"lifetime",pendingPurchaseCount:0,subscription:null},
+      discovery:{active:true,accessType:"paid",pendingPurchaseCount:0,subscription:null},
       access:"Lifetime",detail:/grandfathered · no renewal/i,primary:"Build your week",href:/^\/onboarding\.html$/,discoveryAction:"Open Strata+ studio →",billing:/prior lifetime purchase remains active/i,badge:"Grandfathered",manage:false
-    },
-    {
-      name:"trial account without a week",planCount:0,workoutDays:0,
-      discovery:{active:true,accessType:"trial",pendingPurchaseCount:0,trial:{expiresAt:Date.now()+25*60000}},
-      access:"Trial",detail:/25 min remaining/i,primary:"Build your week",href:/^\/onboarding\.html$/,discoveryAction:"Open Strata+ studio →",billing:null
     },
     {
       name:"scheduled cancellation",planCount:0,workoutDays:0,

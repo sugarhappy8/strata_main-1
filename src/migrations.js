@@ -14,10 +14,25 @@ const MIGRATIONS=Object.freeze([
   {id:"004-monthly-subscriptions",description:"Add the lean Paddle subscription cache while preserving legacy lifetime purchases."},
   {id:"005-coaching-calibration",description:"Add optional morning-weight and intake-completeness observations to coaching logs."},
   {id:"006-polar-v4-ans-status",description:"Store Polar V4 ANS status across its documented range."},
-  {id:"007-polar-v4-revocations",description:"Discard queued V3 deregistration credentials that V4 cannot use."}
+  {id:"007-polar-v4-revocations",description:"Drop the queued V3 deregistration credentials that V4 cannot use."},
+  {id:"008-build9-retired-tables",description:"Archive legacy trials, drop admin elevations, and retire the trial product signal."},
+  {id:"009-build9-archive-community-plans",description:"Archive shared community weekly plans; Build 9 retires the feature."}
 ]);
 const LATEST_MIGRATION_ID=MIGRATIONS.at(-1).id;
 
+// Build 9 keeps the trial rows under an archive name so the cut stays reversible for one release.
+const RETIRED_TABLE_STATEMENTS=Object.freeze([
+  "DROP INDEX IF EXISTS admin_elevations_expiry",
+  "DROP TABLE IF EXISTS admin_elevations",
+  "DROP TABLE IF EXISTS product_signal_counts_build9"
+]);
+/** Rebuild the aggregate counts table under the current CHECK list, dropping the retired trial signal. @param {string} table */
+const productSignalRebuild=(table)=>[
+  table.replace("CREATE TABLE IF NOT EXISTS product_signal_counts","CREATE TABLE product_signal_counts_build9"),
+  "INSERT INTO product_signal_counts_build9(event_day,event_name,event_count) SELECT event_day,event_name,event_count FROM product_signal_counts WHERE event_name<>'trial_started'",
+  "DROP TABLE product_signal_counts",
+  "ALTER TABLE product_signal_counts_build9 RENAME TO product_signal_counts"
+];
 function localColumnNames(database,table) {
   return new Set(database.prepare(`PRAGMA table_info(${table})`).all().map((row)=>String(row.name)));
 }
@@ -46,8 +61,8 @@ function runLocalMigration(database,id,operation,appliedAt) {
   }
 }
 
-function migrateLocalSchema(database,{activeWorkoutIndex,reconcileActiveWorkouts,now=Date.now}={}) {
-  if (!activeWorkoutIndex||!reconcileActiveWorkouts) throw new TypeError("Local migrations require the reviewed workout reconciliation and index statements.");
+function migrateLocalSchema(database,{activeWorkoutIndex,reconcileActiveWorkouts,productSignalTable,now=Date.now}={}) {
+  if (!activeWorkoutIndex||!reconcileActiveWorkouts||!productSignalTable) throw new TypeError("Local migrations require the reviewed workout reconciliation and index statements.");
   database.exec(MIGRATION_LEDGER_SCHEMA);
   const applied=[];
   if (runLocalMigration(database,MIGRATIONS[0].id,()=>{
@@ -79,7 +94,16 @@ function migrateLocalSchema(database,{activeWorkoutIndex,reconcileActiveWorkouts
   if (runLocalMigration(database,MIGRATIONS[5].id,()=>{
     addLocalColumn(database,"wellness_nights","ans_charge_v4","REAL CHECK(ans_charge_v4 BETWEEN -15.7068 AND 15.7068)");
   },now())) applied.push(MIGRATIONS[5].id);
-  if (runLocalMigration(database,MIGRATIONS[6].id,()=>database.exec("DELETE FROM device_revocations"),now())) applied.push(MIGRATIONS[6].id);
+  if (runLocalMigration(database,MIGRATIONS[6].id,()=>database.exec("DROP TABLE IF EXISTS device_revocations"),now())) applied.push(MIGRATIONS[6].id);
+  if (runLocalMigration(database,MIGRATIONS[7].id,()=>{
+    for (const sql of RETIRED_TABLE_STATEMENTS) database.exec(sql);
+    if (database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='discovery_trials'").get()) database.exec("ALTER TABLE discovery_trials RENAME TO archive_discovery_trials");
+    for (const sql of productSignalRebuild(productSignalTable)) database.exec(sql);
+  },now())) applied.push(MIGRATIONS[7].id);
+  if (runLocalMigration(database,MIGRATIONS[8].id,()=>{
+    database.exec("DROP INDEX IF EXISTS community_weekly_plans_public_updated");
+    if (database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='community_weekly_plans'").get()) database.exec("ALTER TABLE community_weekly_plans RENAME TO archive_community_weekly_plans");
+  },now())) applied.push(MIGRATIONS[8].id);
   return {latest:LATEST_MIGRATION_ID,applied};
 }
 
@@ -105,8 +129,8 @@ async function recordTursoMigration(client,id,appliedAt) {
   await client.execute({sql:"INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",args:[id,appliedAt]});
 }
 
-async function migrateTursoSchema(client,{activeWorkoutIndex,reconcileActiveWorkouts,now=Date.now}={}) {
-  if (!activeWorkoutIndex||!reconcileActiveWorkouts) throw new TypeError("Turso migrations require the reviewed workout reconciliation and index statements.");
+async function migrateTursoSchema(client,{activeWorkoutIndex,reconcileActiveWorkouts,productSignalTable,now=Date.now}={}) {
+  if (!activeWorkoutIndex||!reconcileActiveWorkouts||!productSignalTable) throw new TypeError("Turso migrations require the reviewed workout reconciliation and index statements.");
   await client.execute(MIGRATION_LEDGER_SCHEMA);
   const completed=await tursoMigrationIds(client),applied=[];
   if (!completed.has(MIGRATIONS[0].id)) {
@@ -148,8 +172,24 @@ async function migrateTursoSchema(client,{activeWorkoutIndex,reconcileActiveWork
     await recordTursoMigration(client,MIGRATIONS[5].id,now());applied.push(MIGRATIONS[5].id);
   }
   if (!completed.has(MIGRATIONS[6].id)) {
-    await client.execute("DELETE FROM device_revocations");
+    await client.execute("DROP TABLE IF EXISTS device_revocations");
     await recordTursoMigration(client,MIGRATIONS[6].id,now());applied.push(MIGRATIONS[6].id);
+  }
+  if (!completed.has(MIGRATIONS[7].id)) {
+    for (const sql of RETIRED_TABLE_STATEMENTS) await client.execute(sql);
+    const trials=await client.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='discovery_trials'");
+    await client.batch([
+      ...((trials.rows||[]).length?["ALTER TABLE discovery_trials RENAME TO archive_discovery_trials"]:[]),
+      ...productSignalRebuild(productSignalTable),
+      {sql:"INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",args:[MIGRATIONS[7].id,now()]}
+    ],"write");
+    applied.push(MIGRATIONS[7].id);
+  }
+  if (!completed.has(MIGRATIONS[8].id)) {
+    await client.execute("DROP INDEX IF EXISTS community_weekly_plans_public_updated");
+    const shared=await client.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='community_weekly_plans'");
+    if ((shared.rows||[]).length) await client.execute("ALTER TABLE community_weekly_plans RENAME TO archive_community_weekly_plans");
+    await recordTursoMigration(client,MIGRATIONS[8].id,now());applied.push(MIGRATIONS[8].id);
   }
   return {latest:LATEST_MIGRATION_ID,applied};
 }

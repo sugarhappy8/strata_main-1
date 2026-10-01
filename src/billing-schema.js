@@ -48,12 +48,6 @@ const BILLING_SCHEMA=[
   )`,
   "CREATE UNIQUE INDEX IF NOT EXISTS paddle_checkout_claims_claim_id ON paddle_checkout_claims(claim_id)",
   "CREATE UNIQUE INDEX IF NOT EXISTS paddle_checkout_claims_transaction_id ON paddle_checkout_claims(transaction_id)",
-  `CREATE TABLE IF NOT EXISTS discovery_trials (
-    user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-    started_at INTEGER NOT NULL,
-    expires_at INTEGER NOT NULL,
-    CHECK(expires_at > started_at)
-  )`,
   `CREATE TABLE IF NOT EXISTS paddle_adjustments (
     adjustment_id TEXT PRIMARY KEY,
     transaction_id TEXT NOT NULL REFERENCES paddle_purchases(transaction_id) ON DELETE CASCADE,
@@ -112,8 +106,6 @@ const BILLING_SQL={
   hasDiscoveryAccess:withEntitlementClock(`SELECT 1 AS active FROM paddle_purchases WHERE user_id=? AND (? IS NULL OR price_id=?) AND ${ACTIVE_ENTITLEMENT} LIMIT 1`),
   hasCurrentDiscoveryAccess:withEntitlementClock(`SELECT 1 AS active FROM paddle_purchases WHERE user_id=? AND (subscription_id IS NULL OR (price_id=? AND product_id=?)) AND ${ACTIVE_ENTITLEMENT} LIMIT 1`),
   hasEntitledDiscoveryAccess:withEntitlementClock(`SELECT 1 AS active FROM paddle_purchases WHERE user_id=? AND (${ENTITLED_RECURRING_CATALOG}) AND ${ACTIVE_ENTITLEMENT} LIMIT 1`),
-  discoveryTrial:"SELECT user_id,started_at,expires_at FROM discovery_trials WHERE user_id=?",
-  activeDiscoveryTrial:"SELECT user_id,started_at,expires_at FROM discovery_trials WHERE user_id=? AND expires_at>?",
   discoveryAccessSummary:withEntitlementClock(`SELECT COUNT(*) AS purchase_count,COALESCE(SUM(CASE WHEN ${ACTIVE_ENTITLEMENT} THEN 1 ELSE 0 END),0) AS active_purchase_count,COALESCE(SUM(CASE WHEN paddle_status<>'canceled' AND completed_at IS NULL AND access_revoked_at IS NULL THEN 1 ELSE 0 END),0) AS pending_purchase_count,MAX(CASE WHEN ${ACTIVE_ENTITLEMENT} THEN completed_at ELSE NULL END) AS latest_active_purchase_at,MAX(completed_at) AS latest_completed_at,MAX(access_revoked_at) AS latest_revoked_at FROM paddle_purchases WHERE user_id=? AND (? IS NULL OR price_id=?)`),
   currentDiscoveryAccessSummary:withEntitlementClock(`SELECT COUNT(*) AS purchase_count,COALESCE(SUM(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (subscription_id IS NULL OR (price_id=? AND product_id=?)) THEN 1 ELSE 0 END),0) AS active_purchase_count,COALESCE(SUM(CASE WHEN paddle_status<>'canceled' AND completed_at IS NULL AND access_revoked_at IS NULL THEN 1 ELSE 0 END),0) AS pending_purchase_count,MAX(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (subscription_id IS NULL OR (price_id=? AND product_id=?)) THEN completed_at ELSE NULL END) AS latest_active_purchase_at,MAX(completed_at) AS latest_completed_at,MAX(access_revoked_at) AS latest_revoked_at FROM paddle_purchases WHERE user_id=?`),
   entitledDiscoveryAccessSummary:withEntitlementClock(`SELECT COUNT(*) AS purchase_count,COALESCE(SUM(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (${ENTITLED_RECURRING_CATALOG}) THEN 1 ELSE 0 END),0) AS active_purchase_count,COALESCE(SUM(CASE WHEN paddle_status<>'canceled' AND completed_at IS NULL AND access_revoked_at IS NULL THEN 1 ELSE 0 END),0) AS pending_purchase_count,MAX(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (${ENTITLED_RECURRING_CATALOG}) THEN completed_at ELSE NULL END) AS latest_active_purchase_at,MAX(completed_at) AS latest_completed_at,MAX(access_revoked_at) AS latest_revoked_at FROM paddle_purchases WHERE user_id=?`),

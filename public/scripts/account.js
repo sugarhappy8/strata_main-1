@@ -125,21 +125,8 @@ function showSignedIn(user,csrfToken=""){
   void loadAccountDashboard(user);void loadAccountSessions(user);void devices.load(user);
 }
 
-async function updateStorageStatus(){
-  const node=el("storageState"),[statusProbe,healthProbe]=await Promise.allSettled([api.status(),api.health()]);
-  const persistence=statusProbe.status==="fulfilled"?statusProbe.value.persistent===true?"persistent":statusProbe.value.persistent===false?"temporary":"unknown":"unavailable";
-  const health=healthProbe.status==="fulfilled"&&healthProbe.value.ok===true?"healthy":healthProbe.status==="fulfilled"?"unhealthy":"unavailable";
-  node.dataset.persistence=persistence;node.dataset.health=health;
-  if(persistence==="persistent"&&health==="healthy")renderer.renderStorageState(node,"good","Permanent account storage is active");
-  else if(health==="healthy"&&persistence==="temporary")renderer.renderStorageState(node,"warn","Account storage is temporary; accounts may be lost when the server restarts");
-  else if(health==="healthy")renderer.renderStorageState(node,"warn","Account storage is reachable, but permanent storage could not be verified");
-  else if(persistence==="persistent")renderer.renderStorageState(node,"bad","Permanent storage is configured but temporarily unreachable; you can still retry");
-  else if(persistence==="unavailable"&&health==="unavailable")renderer.renderStorageState(node,"warn","Could not verify account storage; you can still try creating an account");
-  else renderer.renderStorageState(node,"bad","Could not verify account storage; you can still try creating an account");
-}
-
 async function initialize(){
-  renderer.showInitialLoading();void updateStorageStatus();const request=state.beginIdentity();
+  renderer.showInitialLoading();const request=state.beginIdentity();
   try{const result=await api.identity();if(!state.isCurrentIdentity(request))return;showSignedIn(result.user,result.csrfToken);}
   catch(error){if(!state.isCurrentIdentity(request))return;if(error.status===401){showAccess();return;}showAccess("We could not verify your current session. You can still try an account request.");}
 }

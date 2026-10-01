@@ -11,7 +11,6 @@ const state=STATE.createState();
 const el=id=>document.getElementById(id);
 const groupTabs=el("groupTabs");
 const submuscleFilters=el("submuscleFilters");
-const exerciseList=el("exerciseList");
 const apiClient=API.createClient({fetchImpl:(...args)=>fetch(...args)});
 
 async function api(path,options={}){return apiClient.request(path,options);}
@@ -31,20 +30,12 @@ function guestPlanCount(){
 const renderer=RENDER.createRenderer({document,window,state,readPreviewProfile:quickPreviewProfile,guestPlanCount});
 function renderSubfilters(){renderer.renderSubfilters();}
 function renderExercises(){renderer.renderExercises();}
-function updateCompareDock(){renderer.updateCompareDock();}
 function updateAccountUI(){renderer.updateAccountUI();}
 function renderAll(){renderer.renderAll();}
 function previewPlaceholder(message){renderer.previewPlaceholder(message);}
 function updatePreviewEquipmentOptions(options){renderer.updatePreviewEquipmentOptions(options);}
 function previewResultMarkup(item){return RENDER.previewResultMarkup(item);}
 function openDetail(id){renderer.openDetail(id);}
-function comparisonAllowed(){return LOGIC.comparisonAccessIsFresh(state);}
-function rejectComparison(){if(state.accountStatus!=="rechecking")STATE.clearComparison(state);renderer.syncComparisonAccess();return false;}
-function retryComparison(action){
-  if(state.accountStatus!=="authenticated"||state.user?.discovery?.active!==true)return rejectComparison();
-  return recheckAccount({preserveAccountChrome:true}).then(()=>comparisonAllowed()?action():rejectComparison());
-}
-function openComparison(){return comparisonAllowed()?renderer.openComparison():retryComparison(()=>renderer.openComparison());}
 function closeModal(dialog){renderer.closeModal(dialog);}
 function showToast(message){renderer.showToast(message);}
 
@@ -88,35 +79,19 @@ function selectSubfilter(sub,restoreFocus=true){
   if(!STATE.selectSubfilter(state,sub))return;renderSubfilters();renderExercises();if(restoreFocus)renderer.focusRenderedControl(submuscleFilters,"data-sub",sub);
 }
 function addToPlanner(id){window.location.assign(LOGIC.plannerUrl(id));}
-function applyComparisonToggle(id){
-  const detailWasOpen=renderer.detailDialog.open,result=LOGIC.toggleComparison(state.compare,id);
-  if(result.full){showToast("Comparison tray is full");return;}
-  state.compare=result.compare;updateCompareDock();renderExercises();
-  if(detailWasOpen){renderer.detailDialog.close();requestAnimationFrame(()=>{openDetail(id);renderer.focusRenderedControl(renderer.detailDialog,"data-compare",id);});}
-  else renderer.focusRenderedControl(exerciseList,"data-compare",id);
-}
-function toggleCompare(id){return comparisonAllowed()?applyComparisonToggle(id):retryComparison(()=>applyComparisonToggle(id));}
-
 function resetFilters(){
   if(state.catalogStatus==="error"){void initializeCatalog();return;}
   STATE.resetFilters(state);el("searchInput").value="";el("levelFilter").value="all";renderAll();requestAnimationFrame(()=>el("searchInput").focus());
 }
-function clearCompare(){state.compare=[];updateCompareDock();renderExercises();requestAnimationFrame(()=>el("searchInput").focus());}
 
-let accountRequestId=0,accountRecheck=null,comparisonAccessTimer=null;
-function syncAccountBoundUI(){renderer.syncComparisonAccess();updateAccountUI();}
-function scheduleComparisonAccessRecheck(){
-  clearTimeout(comparisonAccessTimer);comparisonAccessTimer=null;if(!LOGIC.canCompareExercises(state))return;
-  const delay=Math.max(0,LOGIC.COMPARISON_ACCESS_MAX_AGE_MS-(Date.now()-state.accountVerifiedAt)+25);
-  comparisonAccessTimer=setTimeout(()=>{comparisonAccessTimer=null;if(!document.visibilityState||document.visibilityState==="visible")void recheckAccount({preserveAccountChrome:true});else{STATE.beginAccountRecheck(state);renderer.syncComparisonAccess();}},delay);
-  comparisonAccessTimer?.unref?.();
-}
+let accountRequestId=0,accountRecheck=null;
+function syncAccountBoundUI(){renderer.syncAccountAccess();updateAccountUI();}
 async function initializeAccount({recheck=false,preserveAccountChrome=false}={}){
   const requestId=++accountRequestId;
-  if(recheck){STATE.beginAccountRecheck(state);renderer.syncComparisonAccess();if(!preserveAccountChrome)updateAccountUI();}
+  if(recheck){STATE.beginAccountRecheck(state);renderer.syncAccountAccess();if(!preserveAccountChrome)updateAccountUI();}
   try{const result=await api("/api/me",{cache:"no-store"});if(requestId!==accountRequestId)return;STATE.setAccount(state,result.user);}
   catch(error){if(requestId!==accountRequestId)return;if(error.status===401)STATE.setAccount(state,null);else STATE.setAccountUnavailable(state);}
-  syncAccountBoundUI();scheduleComparisonAccessRecheck();
+  syncAccountBoundUI();
   const requestedSignin=new URLSearchParams(location.search).get("signin")==="1";
   if(requestedSignin&&state.accountStatus!=="unavailable"){
     history.replaceState({},"","/");window.location.assign(state.user?"/planner.html":"/account.html?mode=login");
@@ -137,8 +112,8 @@ async function initializeCatalog(){
 EVENTS.bindHomeEvents({
   document,window,state,groupOrder:LOGIC.GROUP_ORDER,
   actions:{
-    addToPlanner,applyPreviewStarter,clearCompare,closeModal,dialogs:[renderer.detailDialog,renderer.compareDialog],generateQuickPreview,openComparison,openDetail,previewGroup,previewPlaceholder,
-    recheckAccount,renderExercises,resetFilters,restoreModalFocus:renderer.restoreModalFocus,selectGroup,selectSubfilter,syncDialogState:renderer.syncDialogState,toggleCompare,updatePreviewEquipmentOptions
+    addToPlanner,applyPreviewStarter,closeModal,dialogs:[renderer.detailDialog],generateQuickPreview,openDetail,previewGroup,previewPlaceholder,
+    recheckAccount,renderExercises,resetFilters,restoreModalFocus:renderer.restoreModalFocus,selectGroup,selectSubfilter,syncDialogState:renderer.syncDialogState,updatePreviewEquipmentOptions
   }
 });
 

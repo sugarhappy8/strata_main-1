@@ -18,14 +18,6 @@ body { line-height:1.5; }
 .home-page .hero-intro { max-width:52ch; font-size:1rem; line-height:1.7; }
 .home-page .hero-data { max-width:230px; }
 .home-page .ticker { display:none; }
-.start-directory { padding:28px 0; background:#f3f4ef; color:#10110f; border-bottom:1px solid #d2d6cc; }
-.start-directory-title { margin:0 0 14px; font-size:.8rem; font-weight:700; letter-spacing:0; }
-.start-directory nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
-.start-directory a { position:relative; display:flex; flex-direction:column; gap:8px; min-width:0; padding:20px 38px 20px 20px; color:inherit; background:#fff; border:1px solid #d2d6cc; border-radius:12px; text-decoration:none; }
-.start-directory a:hover { border-color:#6f8e27; background:#f4f9e8; }
-.start-directory strong { font-size:1rem; }
-.start-directory small { color:#525a49; font-size:.8rem; line-height:1.6; }
-.start-directory b { position:absolute; right:18px; top:20px; }
 .home-page :where(.proof-section,.week-section,.method-section) { padding-block:56px; }
 .home-page .section-heading h2 { font-size:clamp(2rem,4vw,3.4rem); }
 /* Shared page hierarchy puts forms and tools ahead of decorative space. */
@@ -39,7 +31,6 @@ body { line-height:1.5; }
 :where(.account-page) h1 { font-size:clamp(2.5rem,5vw,4.5rem); line-height:1.08; }
 :where(.account-page) :where(.info-hero) { padding-block:48px; }
 @media (max-width:1000px) {
-  .start-directory nav { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
 @media (max-width:680px) {
   html { scroll-padding-top:128px; }
@@ -47,12 +38,6 @@ body { line-height:1.5; }
   .home-page .hero-grid { padding-top:132px; padding-bottom:34px; gap:24px; }
   .home-page .hero h1 { font-size:clamp(2.8rem,11.5vw,4.2rem); }
   .home-page .hero-data { max-width:none; }
-  .start-directory { padding-block:22px; }
-  .start-directory nav { gap:8px; }
-  .start-directory a { padding:16px 28px 16px 14px; }
-  .start-directory b { right:10px; top:16px; }
-  .start-directory strong { font-size:.9rem; }
-  .start-directory small { font-size:.75rem; }
   .workout-page .hero { padding-block:26px; }
   .planner-page .week-toolbar { padding-block:20px; }
 }
@@ -67,7 +52,6 @@ body { line-height:1.5; }
 :root body :is(.button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button):not(.compact) { font-size:.9375rem; }
 :root body :is(.small-button,.button.compact,.compact-button) { font-size:.875rem; }
 /* A toolbar segment attached to a card edge keeps its square seam. */
-.plus-studio .community-plan-toolbar .small-button { border-radius:0; }
 .home-page .exercise-title h3 { font:700 1.125rem/1.3 var(--display); letter-spacing:-.01em; }
 .home-page .exercise-title p { font-size:.8125rem; }
 .home-page .exercise-list-more { display:flex; justify-content:center; padding:28px 0 8px; }

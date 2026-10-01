@@ -114,7 +114,6 @@
   function offlineAccessUntil(discovery,now=Date.now()){
     if(discovery?.active!==true)return 0;
     if(discovery.accessType==="grant"){const grant=discovery.adminGrant;if(grant?.active!==true)return 0;if(grant.expiresAt===null)return now+24*60*60*1000;const expiry=timestamp(grant.expiresAt);return expiry>now?Math.min(expiry,now+24*60*60*1000):0;}
-    if(discovery.accessType==="trial")return Math.max(0,timestamp(discovery.trial?.expiresAt));
     const boundaries=[now+24*60*60*1000],subscription=discovery.subscription;
     // No subscription row means this is grandfathered lifetime access. A
     // monthly subscription must carry a current server-verified period.

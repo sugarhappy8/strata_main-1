@@ -10,7 +10,6 @@ const PlannerApi=require("../public/scripts/planner-api");
 const PlannerRender=require("../public/scripts/planner-render");
 const PlannerConflicts=require("../public/scripts/planner-conflicts");
 const PlannerTemplates=require("../public/scripts/planner-templates");
-const PlannerSharing=require("../public/scripts/planner-sharing");
 const PlannerActivation=require("../public/scripts/planner-activation");
 const PlannerEvents=require("../public/scripts/planner-events");
 const ROOT=join(__dirname,"..");
@@ -59,7 +58,7 @@ test("planner state keeps destination choices scoped and rejects a stored rest d
 
 test("planner guidance requires a fresh entitlement and schedules boundaries, periodic checks, and retries",()=>{
   const now=1_800_000_000_000,state=PlannerState.createState(),trialExpiry=now+10*60*1000;
-  state.user={id:"member-1",discovery:{active:true,accessType:"trial",trial:{active:true,expiresAt:trialExpiry}}};
+  state.user={id:"member-1",discovery:{active:true,accessType:"grant",adminGrant:{active:true,expiresAt:trialExpiry}}};
   state.entitlementStatus="checking";
   assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),false,"a foreground recheck must hide Plus guidance immediately");
   state.entitlementStatus="ready";
@@ -67,7 +66,7 @@ test("planner guidance requires a fresh entitlement and schedules boundaries, pe
   assert.equal(PlannerState.hasConfirmedPlusAccess(state,trialExpiry),false,"the client must fail closed at the known expiry even before a delayed timer runs");
   assert.equal(PlannerState.entitlementBoundary(state.user),trialExpiry);
   assert.equal(PlannerState.entitlementRefreshDelay(state.user,now),10*60*1000+50);
-  state.user.discovery.trial.expiresAt=null;
+  state.user.discovery.adminGrant.expiresAt=undefined;
   assert.equal(PlannerState.hasConfirmedPlusAccess(state,now),false,"malformed timed access must fail closed instead of becoming lifetime access");
 
   state.user={id:"member-1",discovery:{active:true,accessType:"paid",subscription:{active:true,currentPeriodEndsAt:now+90_000,scheduledChange:{action:"cancel",effectiveAt:now+60_000}}}};
@@ -110,22 +109,22 @@ test("planner API applies identity-bound mutation headers and reports typed fail
 
   const offline=PlannerApi.createClient({fetchImpl:async()=>{throw new Error("offline");},getSession:()=>({guest:true})});
   await assert.rejects(offline.request("/api/plan"),error=>error.code==="NETWORK_ERROR");
-  for(const boundary of [PlannerConflicts,PlannerTemplates,PlannerSharing,PlannerActivation])assert.equal(typeof boundary.createController,"function");
+  for(const boundary of [PlannerConflicts,PlannerTemplates,PlannerActivation])assert.equal(typeof boundary.createController,"function");
   assert.equal(typeof PlannerEvents.bindPlannerEvents,"function");
 });
 
 test("planner entrypoint composes bounded modules in dependency order",()=>{
-  const modules=["planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-sharing.js","planner-activation.js","planner-events.js"];
+  const modules=["entitlements.js","planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-activation.js","planner-events.js"];
   const sources=Object.fromEntries(modules.map(file=>[file,readFileSync(join(ROOT,"public","scripts",file),"utf8")]));
   for(const [file,source] of Object.entries(sources))assert.ok(source.split("\n").length<=180,`${file} should stay a focused browser module`);
   assert.match(sources["planner-state.js"],/require\("\.\/planner-logic"\)/,"state may depend on pure planner logic");
-  for(const file of ["planner-logic.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-sharing.js","planner-activation.js","planner-events.js"])assert.doesNotMatch(sources[file],/require\("\.\/planner-/i,`${file} must not create a planner module cycle`);
+  for(const file of ["planner-logic.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-activation.js","planner-events.js"])assert.doesNotMatch(sources[file],/require\("\.\/planner-/i,`${file} must not create a planner module cycle`);
   const html=readFileSync(join(ROOT,"public","pages","planner.html"),"utf8"),entry=html.indexOf('src="planner.js');
   assert.ok(entry>0);
   for(const file of modules)assert.ok(html.indexOf(`src="/${file}`)>0&&html.indexOf(`src="/${file}`)<entry,`${file} must load before the planner entrypoint`);
   const main=readFileSync(join(ROOT,"public","scripts","planner.js"),"utf8");
   assert.ok(main.split("\n").length<700,"planner orchestration should stay focused after workflow extraction");
-  for(const globalName of ["StrataPlannerConflicts","StrataPlannerTemplates","StrataPlannerSharing","StrataPlannerActivation"])assert.match(main,new RegExp(`globalThis\\.${globalName}`),`entrypoint should explicitly compose ${globalName}`);
+  for(const globalName of ["StrataPlannerConflicts","StrataPlannerTemplates","StrataPlannerActivation"])assert.match(main,new RegExp(`globalThis\\.${globalName}`),`entrypoint should explicitly compose ${globalName}`);
   assert.match(html,/id="resetWeeklyPlan"[^>]*aria-haspopup="dialog"[^>]*aria-controls="resetWeekDialog"/);
   assert.match(html,/<dialog class="planner-dialog reset-week-dialog"[^>]*aria-labelledby="resetWeekDialogTitle"[^>]*aria-describedby="resetWeekDialogDescription resetWeekImpact"/);
   assert.match(main,/state\.plan=emptyPlan\(\);state\.selectedDay=STATE\.firstTrainingDay\(state\.plan\)/,"whole-week reset must reuse the canonical empty plan");

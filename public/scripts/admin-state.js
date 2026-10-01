@@ -18,7 +18,6 @@
     workout_started:"Workout started",
     workout_completed:"Workout completed",
     upgrade_viewed:"Pricing viewed",
-    trial_started:"Trial started",
     checkout_opened:"Checkout opened",
     upgrade_activated:"Paid access activated",
     recommendation_feedback_useful:"Shortlist · useful",

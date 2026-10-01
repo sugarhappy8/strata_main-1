@@ -104,12 +104,12 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/access-controls-schema.js` | Admin grant and checkout hold schema and authorization guards | 22 | 22 | 2.4 KiB | 55 | — |
 | `src/access-controls-store.js` | Atomic audited account controls for SQLite and Turso | 34 | 34 | 2.1 KiB | 65 | `src/access-controls-schema.js` |
 | `src/access-controls.js` | Complimentary access state and duration validation | 35 | 34 | 2.1 KiB | 65 | — |
-| `src/account-export.js` | Bounded streaming account export serialization | 96 | 89 | 10.5 KiB | 120 | — |
-| `src/account-self-service-schema.js` | Account self-service query catalog | 42 | 40 | 5.7 KiB | 55 | — |
+| `src/account-export.js` | Bounded streaming account export serialization | 94 | 87 | 10.2 KiB | 120 | — |
+| `src/account-self-service-schema.js` | Account self-service query catalog | 40 | 38 | 5.5 KiB | 55 | — |
 | `src/account-self-service-store.js` | SQLite and Turso account self-service storage parity | 72 | 67 | 4.2 KiB | 95 | `src/account-self-service-schema.js` |
 | `src/account-self-service.js` | Authenticated session inventory, revocation, and privacy-safe data export | 84 | 80 | 6.2 KiB | 150 | `src/account-export.js` |
 | `src/admin-user-actions.js` | Audited administrator account and payment actions | 87 | 86 | 9.2 KiB | 160 | `src/access-controls.js`, `src/plans.js` |
-| `src/admin.js` | Administrative authorization and actions | 209 | 195 | 12.4 KiB | 280 | `src/access-controls.js`, `src/admin-user-actions.js`, `src/plans.js` |
+| `src/admin.js` | Administrative authorization and actions | 208 | 194 | 12.1 KiB | 280 | `src/access-controls.js`, `src/admin-user-actions.js`, `src/plans.js` |
 | `src/ai-catalog.js` | Strata AI library search and per-request exercise shortlists | 126 | 114 | 10.6 KiB | 130 | `src/plans.js` |
 | `src/ai-core.js` | Strata AI prompt rules and proposal validation | 260 | 243 | 22.8 KiB | 260 | `src/ai-catalog.js`, `src/coaching-core.js`, `src/plans.js` |
 | `src/ai-plan-edits.js` | Strata AI structured draft and plan-edit contracts | 135 | 125 | 14.8 KiB | 140 | `src/ai-catalog.js`, `src/plans.js` |
@@ -118,9 +118,9 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/ai-response-schema.js` | Bounded grammar schema for Strata AI responses | 35 | 32 | 3.0 KiB | 80 | — |
 | `src/ai.js` | Strata AI request queue and review-only proposal API | 204 | 192 | 18.0 KiB | 215 | `src/ai-catalog.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
 | `src/auth.js` | Authentication and account lifecycle | 815 | 772 | 53.6 KiB | 840 | `src/account-self-service.js`, `src/email.js`, `src/plans.js` |
-| `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 125 | 119 | 17.4 KiB | 140 | — |
-| `src/billing-store.js` | SQLite and Turso commercial storage parity | 237 | 230 | 22.4 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
-| `src/billing.js` | Commercial entitlement, checkout, trial, webhook, and reconciliation service | 699 | 670 | 43.3 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
+| `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 117 | 111 | 17.0 KiB | 140 | — |
+| `src/billing-store.js` | SQLite and Turso commercial storage parity | 231 | 224 | 21.7 KiB | 240 | `src/access-controls-schema.js`, `src/billing-schema.js` |
+| `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 678 | 650 | 42.2 KiB | 720 | `src/access-controls.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/checkout-reconciliation.js` | Validated checkout closure and settlement reconciliation | 99 | 98 | 8.0 KiB | 130 | `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
 | `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 133 | 126 | 19.8 KiB | 300 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
 | `src/coaching-evidence.js` | Owner-filtered coaching history and original-target diary assembly | 84 | 78 | 6.9 KiB | 130 | `src/coaching-core.js`, `src/energy-calibration-core.js` |
@@ -129,47 +129,47 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/coaching-store.js` | SQLite and Turso coaching storage parity | 48 | 42 | 3.9 KiB | 80 | `src/coaching-schema.js` |
 | `src/coaching-training-core.js` | Repeatable goal-specific training composition with duration and coverage accounting | 107 | 106 | 13.3 KiB | 220 | `src/coaching-prescription-core.js`, `src/plans.js` |
 | `src/coaching.js` | Strata+ coaching profile, weekly snapshot, and daily-log API | 134 | 130 | 14.0 KiB | 180 | `src/coaching-core.js`, `src/coaching-evidence.js`, `src/energy-calibration-core.js`, `src/meal-planning-core.js` |
-| `src/database.js` | SQLite and Turso store adapters | 1199 | 1172 | 64.0 KiB | 1200 | `src/access-controls-store.js`, `src/account-self-service-store.js`, `src/billing-store.js`, `src/coaching-store.js`, `src/devices-store.js`, `src/migrations.js`, `src/schema.js`, `src/store-contract.js`, `src/training-loop-store.js` |
+| `src/database.js` | SQLite and Turso store adapters | 1081 | 1054 | 57.2 KiB | 1200 | `src/access-controls-store.js`, `src/account-self-service-store.js`, `src/billing-store.js`, `src/coaching-store.js`, `src/devices-store.js`, `src/migrations.js`, `src/schema.js`, `src/store-contract.js`, `src/training-loop-store.js` |
 | `src/devices-config.js` | Connected-device and Polar AccessLink settings | 64 | 57 | 3.4 KiB | 80 | — |
 | `src/devices-crypto.js` | Sealed device tokens and connection secrets | 47 | 39 | 2.5 KiB | 60 | — |
-| `src/devices-schema.js` | Connected-device, legacy-revocation, and wellness tables | 161 | 156 | 12.0 KiB | 170 | — |
-| `src/devices-store.js` | Connected-device and wellness storage for SQLite and Turso | 120 | 114 | 10.3 KiB | 130 | `src/devices-schema.js` |
-| `src/devices-sync.js` | Polar V4 credential refresh, polling import, and legacy revocation cleanup | 106 | 95 | 6.1 KiB | 140 | `src/devices-crypto.js`, `src/polar-client.js`, `src/polar-mapping.js` |
+| `src/devices-schema.js` | Connected-device, legacy-revocation, and wellness tables | 145 | 140 | 10.9 KiB | 170 | — |
+| `src/devices-store.js` | Connected-device and wellness storage for SQLite and Turso | 108 | 102 | 9.0 KiB | 130 | `src/devices-schema.js` |
+| `src/devices-sync.js` | Polar V4 credential refresh, polling import, and legacy revocation cleanup | 98 | 88 | 5.7 KiB | 140 | `src/devices-crypto.js`, `src/polar-client.js`, `src/polar-mapping.js` |
 | `src/devices.js` | Strata+ connected devices: Polar V4 connect flow, settings, local disconnect, and wellness reads | 248 | 232 | 18.7 KiB | 280 | `src/devices-config.js`, `src/devices-crypto.js`, `src/devices-sync.js`, `src/polar-client.js`, `src/wellness-core.js` |
 | `src/email.js` | Resend integration and email security | 387 | 354 | 20.0 KiB | 400 | — |
 | `src/energy-activity-core.js` | Profile-v4 non-workout and generated-session activity energy budget | 51 | 48 | 3.7 KiB | 100 | — |
 | `src/energy-calibration-core.js` | Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation | 158 | 153 | 22.8 KiB | 220 | — |
 | `src/energy-planning-core.js` | Versioned energy estimation, bounded trend calibration, and nutrition planning | 139 | 130 | 23.3 KiB | 190 | `src/energy-activity-core.js`, `src/energy-calibration-core.js`, `src/energy-scenarios-core.js`, `src/plans.js` |
 | `src/energy-scenarios-core.js` | Explicit dynamic sensitivity scenarios with propagated maintenance uncertainty | 27 | 25 | 2.9 KiB | 100 | — |
+| `src/entitlements.js` | Feature tiers and the can(user, feature) capability map | 70 | 63 | 2.3 KiB | 80 | — |
 | `src/http.js` | HTTP transport helpers | 170 | 155 | 5.9 KiB | 180 | — |
 | `src/legacy-checkout.js` | Strict retired-checkout migration and completion policy | 71 | 66 | 7.4 KiB | 75 | `src/payments.js` |
 | `src/meal-planning-core.js` | Validated dietary preferences and deterministic remaining-day food options | 168 | 157 | 25.6 KiB | 300 | — |
-| `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 157 | 144 | 8.8 KiB | 160 | `src/billing-schema.js` |
+| `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 197 | 184 | 11.9 KiB | 210 | `src/billing-schema.js` |
 | `src/observability.js` | Structured request tracing and redacted operational logging | 81 | 72 | 4.0 KiB | 90 | — |
 | `src/paddle-catalog.js` | Paddle catalog, credential, exact checkout-price, and subscription-transition policy | 72 | 68 | 4.7 KiB | 80 | — |
 | `src/paddle-checkout-retirement.js` | Interrupted Paddle checkout retirement policy | 52 | 45 | 3.3 KiB | 80 | — |
 | `src/paddle-subscriptions.js` | Recurring subscription validation and temporary customer-portal links | 136 | 129 | 8.2 KiB | 165 | — |
 | `src/paddle-webhooks.js` | Paddle signature and webhook source verification | 118 | 108 | 4.6 KiB | 150 | — |
-| `src/payments.js` | Paddle integration boundary | 419 | 396 | 20.9 KiB | 430 | `src/paddle-catalog.js`, `src/paddle-checkout-retirement.js`, `src/paddle-subscriptions.js`, `src/paddle-webhooks.js` |
-| `src/plans.js` | Plan domain validation | 355 | 321 | 18.5 KiB | 380 | — |
+| `src/payments.js` | Paddle integration boundary | 417 | 394 | 20.8 KiB | 430 | `src/paddle-catalog.js`, `src/paddle-checkout-retirement.js`, `src/paddle-subscriptions.js`, `src/paddle-webhooks.js` |
+| `src/plans.js` | Plan domain validation | 269 | 243 | 14.6 KiB | 380 | — |
 | `src/polar-client.js` | Polar AccessLink V4 OAuth, credential refresh, date ranges, and rate limits | 140 | 132 | 11.1 KiB | 160 | — |
 | `src/polar-mapping.js` | Range-checked Polar V4 and legacy V3 payloads as wellness rows | 194 | 181 | 12.0 KiB | 210 | — |
 | `src/product-signals-schema.js` | Aggregate product-activity schema and statements | 23 | 20 | 1.4 KiB | 35 | — |
-| `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 137 | 124 | 5.7 KiB | 140 | — |
+| `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 136 | 123 | 5.7 KiB | 140 | — |
 | `src/progression.js` | Pure per-set performance progression and comparison rules | 177 | 175 | 13.2 KiB | 300 | `src/plans.js` |
-| `src/schema.js` | Shared storage schema and statements | 367 | 361 | 44.4 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/devices-schema.js`, `src/product-signals-schema.js`, `src/training-loop-schema.js` |
-| `src/server.js` | HTTP composition root | 826 | 801 | 44.0 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
-| `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.8 KiB | 60 | — |
+| `src/schema.js` | Shared storage schema and statements | 334 | 328 | 38.5 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/devices-schema.js`, `src/product-signals-schema.js`, `src/training-loop-schema.js` |
+| `src/server.js` | HTTP composition root | 686 | 662 | 35.7 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-provider.js`, `src/ai.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/entitlements.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/setup.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |
+| `src/service-composition.js` | Typed auth/admin/support composition | 40 | 38 | 1.9 KiB | 60 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 84 | 77 | 4.9 KiB | 105 | `src/plans.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |
-| `src/store-contract.js` | Storage boundary contract | 175 | 172 | 5.2 KiB | 180 | — |
-| `src/support.js` | Public and administrative support workflow | 137 | 129 | 10.0 KiB | 160 | `src/email.js`, `src/plans.js` |
+| `src/store-contract.js` | Storage boundary contract | 161 | 158 | 4.7 KiB | 180 | — |
+| `src/support.js` | Public and administrative support workflow | 144 | 136 | 10.6 KiB | 160 | `src/email.js`, `src/plans.js` |
 | `src/training-loop-schema.js` | Check-in, training-block, and adaptation storage schema | 57 | 54 | 6.4 KiB | 70 | — |
 | `src/training-loop-store.js` | SQLite and Turso training-loop adapter parity | 136 | 133 | 7.1 KiB | 140 | `src/training-loop-schema.js` |
 | `src/training.js` | Check-ins, deterministic progression, blocks, and approved adaptations | 358 | 346 | 24.8 KiB | 450 | `src/plans.js`, `src/progression.js` |
 | `src/wellness-core.js` | Usual ranges, overnight stress signals, recovery labels, and trends | 125 | 113 | 8.5 KiB | 150 | — |
 | `src/workouts.js` | Workout validation, history summaries, and authenticated lifecycle | 216 | 210 | 14.6 KiB | 230 | `src/plans.js` |
-Snapshot result: 69 server modules, zero dependency cycles, and zero policy violations. The separate browser report covers 8 page boundaries and 88 browser modules with zero cycles and zero violations.
 
 ## Strata AI
 
