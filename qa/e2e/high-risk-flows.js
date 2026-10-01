@@ -8,6 +8,7 @@ const http=require("node:http");
 const {tmpdir}=require("node:os");
 const {join,resolve}=require("node:path");
 const test=require("node:test");
+const DAY_MS=24*60*60*1000;
 const {chromium}=require("playwright");
 
 const PROJECT_ROOT=join(__dirname,"..","..");
@@ -370,7 +371,7 @@ function subscriptionEvent(transaction,userId){
       billing_cycle:{interval:"month",frequency:1},
       items:[{quantity:1,recurring:true,price:{id:PRICE_ID,product_id:PRODUCT_ID,billing_cycle:{interval:"month",frequency:1}}}],
       scheduled_change:null,
-      current_billing_period:{starts_at:"2026-09-01T00:00:00Z",ends_at:"2026-10-01T00:00:00Z"},
+      current_billing_period:{starts_at:new Date(Date.now()-DAY_MS).toISOString(),ends_at:new Date(Date.now()+31*DAY_MS).toISOString()},
       updated_at:occurredAt
     }
   };

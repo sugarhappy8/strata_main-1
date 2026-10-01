@@ -1,5 +1,12 @@
 # Changelog
 
+## 8.8.8 — Clock-relative billing test fixtures
+
+- Derive the Paddle subscription billing period in the account-recovery server tests and the browser payment journey from the current clock instead of a fixed window that ended on 2026-10-01, so entitlement checks in CI no longer expire with the calendar.
+- No product or runtime behavior changes; Build 8.8.8 ships the same Polar AccessLink V4 integration as 8.8.7.
+
+See the [8.8.8 release guide](docs/release-8.8.8.md).
+
 ## 8.8.7 — Polar AccessLink V4
 
 - Move Polar authorization to `auth.polar.com`, request only sleep, Nightly Recharge, continuous-sample, and training-session read scopes, and read data from the V4 range endpoints.
