@@ -144,7 +144,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/daily-snapshot.js` | Daily Snapshot read model rebuilt from sleep, recovery, training, and nutrition events | 89 | 81 | 7.7 KiB | 110 | `src/training-log.js`, `src/wellness-core.js` |
 | `src/data-layer-schema.js` | Training-link, Daily Snapshot, and plan-change storage schema | 58 | 55 | 4.2 KiB | 60 | — |
 | `src/data-layer-store.js` | SQLite and Turso data-layer adapter parity | 58 | 52 | 4.8 KiB | 70 | `src/data-layer-schema.js` |
-| `src/data-service.js` | Shared data layer front door: read models, their routes, and derived-record listeners | 95 | 86 | 6.1 KiB | 120 | `src/athlete-profile.js`, `src/daily-snapshot.js`, `src/training-log.js` |
+| `src/data-service.js` | Shared data layer front door: read models, their routes, and derived-record listeners | 105 | 96 | 7.0 KiB | 120 | `src/athlete-profile.js`, `src/daily-snapshot.js`, `src/training-log.js` |
 | `src/database.js` | SQLite and Turso store adapters | 1121 | 1093 | 60.8 KiB | 1200 | `src/access-controls-store.js`, `src/account-self-service-store.js`, `src/ai-store.js`, `src/apple-billing-store.js`, `src/billing-store.js`, `src/coaching-store.js`, `src/data-layer-store.js`, `src/devices-store.js`, `src/migrations.js`, `src/schema.js`, `src/store-contract.js`, `src/training-loop-store.js` |
 | `src/devices-config.js` | Connected-device and Polar AccessLink settings | 64 | 57 | 3.4 KiB | 80 | — |
 | `src/devices-crypto.js` | Sealed device tokens and connection secrets | 47 | 39 | 2.5 KiB | 60 | — |
