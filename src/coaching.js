@@ -45,7 +45,7 @@ function logPayload(row,target=null){
  * @param {import("./domain-types").CoachingServiceDependencies} dependencies
  * @returns {import("./domain-types").CoachingService}
  */
-function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,now=Date.now}){
+function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,now=Date.now,events=null}){
   if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http)throw new TypeError("Coaching service requires storage, access guards, rate limiting, and HTTP helpers.");
   const {json,bodyJson}=http;
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").SessionRow} session */
@@ -95,6 +95,7 @@ function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllow
         const saved=await store.upsertCoachingProfile(session.id,JSON.stringify(profile),timestamp,expectedRevision);
         if(!saved){json(res,409,{error:"This coaching profile changed elsewhere. Review the latest version before saving.",code:"COACHING_PROFILE_CHANGED",profile:await readProfile(session.id)});return true;}
         const output=profilePayload(saved);if(!output)throw coachingError("The coaching profile was saved but could not be read safely.",500,"COACHING_PROFILE_UNREADABLE");
+        await events?.emit("coaching.profile_saved",{userId:session.id,profile:output});
         const week=await ensureWeek(session.id,output,timestamp,prepared);
         json(res,200,{ok:true,profile:output,...await diaryResponse(session.id,output,week,timestamp),csrfToken:session.csrf_token});return true;
       }

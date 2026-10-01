@@ -132,6 +132,20 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   setup → Profile merge are the next PR: they move Nutrition and Progress between sections and
   depend on the Phase 3 data layer.
 
+## Phase 3 — one data layer (first slice)
+
+- **Athlete Profile.** `GET /api/profile` is one read model over the ranking lens
+  (`preferences`) and the coaching profile (`coaching_profiles`): training facts in one
+  vocabulary for everyone, plus body, energy, schedule, and food for Strata+. `DATA_MODEL.md`
+  names the owner of every fact.
+- **No more two training profiles.** Saving the ranking lens mirrors goal, experience,
+  equipment, and limitations into the coaching profile; saving the coaching profile mirrors them
+  (and the day count) back. The mirror is an ordinary revision bump, so a stale screen gets the
+  usual "changed elsewhere" conflict instead of overwriting.
+- **Events.** `src/events.js` is a small in-process bus. Plan, workout, preferences, and
+  coaching-profile saves announce themselves; the profile sync is the first listener, the
+  Polar matcher and the Daily Brief come next.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).

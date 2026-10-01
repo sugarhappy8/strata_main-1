@@ -542,7 +542,7 @@ profileForm.addEventListener("submit",async(event)=>{
   const formElement=event.currentTarget,form=new FormData(formElement),preferences={goal:form.get("goal"),level:form.get("level"),days:Number(form.get("days")),equipment:form.getAll("equipment"),preferences:form.getAll("preferences"),limitations:form.getAll("limitations")};
   const controls=[...formElement.elements];profileForm.dataset.saving="true";controls.forEach((control)=>{control.disabled=true;});
   el("profileStatus").textContent="Saving…";
-  try{const result=await api("/api/preferences",{method:"PUT",body:JSON.stringify({preferences})});state.preferences=result.preferences;renderProfile();renderMovementBoard();renderRecommendations();resetExplorerWindow();renderExplorer();renderWeeklyPulse();resetSessionPreview("Preferences saved. Build a new session when you're ready.");showToast("Saved. Your recommendations are updated.");}
+  try{const result=await api("/api/preferences",{method:"PUT",body:JSON.stringify({preferences})});state.preferences=result.preferences;if(coaching.state.profile)void coaching.load({force:true});renderProfile();renderMovementBoard();renderRecommendations();resetExplorerWindow();renderExplorer();renderWeeklyPulse();resetSessionPreview("Preferences saved. Build a new session when you're ready.");showToast("Saved. Your recommendations are updated.");}
   catch(error){const message=saveRetryMessage(error);el("profileStatus").textContent=message;showToast(message);}
   finally{profileForm.dataset.saving="false";controls.forEach((control)=>{control.disabled=false;});}
 });

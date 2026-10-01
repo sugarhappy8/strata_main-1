@@ -15,6 +15,7 @@
         "src/admin.js",
         "src/ai-provider.js",
         "src/ai.js",
+        "src/athlete-profile.js",
         "src/auth.js",
         "src/billing.js",
         "src/coaching.js",
@@ -22,6 +23,7 @@
         "src/devices.js",
         "src/email.js",
         "src/entitlements.js",
+        "src/events.js",
         "src/http.js",
         "src/observability.js",
         "src/payments.js",
@@ -509,6 +511,18 @@
       "role": "Feature tiers and the can(user, feature) capability map",
       "maxLines": 80,
       "allowedDependencies": []
+    },
+    "src/events.js": {
+      "role": "In-process event bus announcing plan, workout, and profile saves",
+      "maxLines": 60,
+      "allowedDependencies": []
+    },
+    "src/athlete-profile.js": {
+      "role": "Athlete Profile read model and the sync that keeps preferences and the coaching profile in step",
+      "maxLines": 150,
+      "allowedDependencies": [
+        "src/plans.js"
+      ]
     }
   }
 }

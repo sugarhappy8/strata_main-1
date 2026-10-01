@@ -20,6 +20,9 @@ const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
 const {adminGrantState}=require("./access-controls");
 const {entitlementSettings,tierFor,capabilitiesFor}=require("./entitlements");
+const {createEventBus}=require("./events");
+const {createAthleteProfileSync}=require("./athlete-profile");
+const {profilePayload:coachingProfilePayload}=require("./coaching");
 const { createBillingService } = require("./billing");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
@@ -438,6 +441,7 @@ async function handleApi(req,res,url) {
     const input=await bodyJson(req), expectedPlanUpdatedAt=expectedPlanRevision(input.expectedPlanUpdatedAt), plan=sanitizePlan(input.plan);
     if (input.expectedUserId!==undefined && String(input.expectedUserId)!==String(session.id)) { json(res,409,{error:"The signed-in account changed. Reload before saving.",code:"ACCOUNT_CHANGED"}); return; }
     const saved=await store.upsertPlan(session.id,JSON.stringify(plan),Date.now(),expectedPlanUpdatedAt);
+    if (saved) await events.emit("plan.saved",{userId:session.id,plan,updatedAt:Number(saved.updated_at)});
     if (!saved) {
       const current=await planSnapshotFor(session.id);
       // A retry after a committed response was lost is not a conflict. The
@@ -491,7 +495,14 @@ async function handleApi(req,res,url) {
     if (!auth.validCsrf(req,session)) { json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"}); return; }
     const input=await bodyJson(req), preferences=sanitizePreferences(input.preferences);
     await store.upsertPreferences(session.id,JSON.stringify(preferences),Date.now());
+    await events.emit("preferences.saved",{userId:session.id,preferences});
     json(res,200,{ok:true,preferences}); return;
+  }
+  if (url.pathname === "/api/profile" && req.method === "GET") {
+    // One Athlete Profile for every client: the ranking lens for everyone, body/energy/food when a coaching profile exists.
+    const session=await auth.requireSession(req,res); if (!session) return;
+    const profile=await athleteProfile.read(session.id,coachingProfilePayload(await store.coachingProfile(session.id)));
+    json(res,200,{profile,csrfToken:session.csrf_token},{"Cache-Control":"private, no-store"}); return;
   }
   const ratingMatch=url.pathname.match(/^\/api\/ratings\/([a-z0-9-]{2,80})$/);
   if (ratingMatch && req.method === "PUT") {
@@ -604,13 +615,16 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
 
 server.setTimeout(60_000,(socket)=>socket.destroy());
 
-let cleanup,shuttingDown=false;
+let cleanup,shuttingDown=false,events,athleteProfile;
 async function start() {
   if (process.env.NODE_ENV==="production"&&!EMAIL_CONFIG.flagValid) {
     throw new Error("EMAIL_VERIFICATION_ENABLED must be set explicitly to true or false in production.");
   }
   publicAssets=loadPublicAssets({root:PUBLIC_ROOT,files:STATIC_FILES,privateFiles:PRIVATE_HTML,mime:MIME});
   store = await createStore(PROJECT_ROOT);
+  events=createEventBus({logger:LOGGER});
+  athleteProfile=createAthleteProfileSync({store,logger:LOGGER});
+  athleteProfile.subscribe(events);
   billing=createBillingService({
     store,paymentConfig:PAYMENT_CONFIG,enforcePaddleIps:ENFORCE_PADDLE_IPS,
     requestAddress,rateAllowed,isUniqueViolation,getAuth:()=>auth,getUserPayload:userPayload,
@@ -626,16 +640,16 @@ async function start() {
     createAuthService,createAdminService,createSupportService
   }));
   productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
-  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson}});
+  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson},events});
   training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
-  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson}});
+  coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
   devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
   ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:createAiProvider(AI_SETTINGS.provider),getPlanSnapshot:planSnapshotFor,logger:LOGGER,config:AI_SETTINGS.limits});
   setup=createSetupService({
     store,auth,requireAccess:requireDiscoveryAccess,trustedOrigin:trustedAuthOrigin,
     getPlanSnapshot:planSnapshotFor,getPreferencesSnapshot:preferencesSnapshotFor,getUserPayload:userPayload,
-    http:{json,bodyJson}
+    http:{json,bodyJson},events
   });
   await admin.bootstrap();
   await store.deleteExpired(Date.now());

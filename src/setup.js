@@ -8,7 +8,7 @@ const {expectedPlanRevision,planStats,sanitizePlan,sanitizePreferences}=require(
  * @param {import("./domain-types").SetupServiceDependencies} dependencies
  * @returns {import("./domain-types").SetupService}
  */
-function createSetupService({store,auth,requireAccess,trustedOrigin,getPlanSnapshot,getPreferencesSnapshot,getUserPayload,http}){
+function createSetupService({store,auth,requireAccess,trustedOrigin,getPlanSnapshot,getPreferencesSnapshot,getUserPayload,http,events=null}){
   if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof getPlanSnapshot!=="function"||typeof getPreferencesSnapshot!=="function"||typeof getUserPayload!=="function"||!http){
     throw new TypeError("Setup service requires storage, account guards, snapshots, and HTTP helpers.");
   }
@@ -50,6 +50,8 @@ function createSetupService({store,auth,requireAccess,trustedOrigin,getPlanSnaps
       expectedPlanUpdatedAt,expectedPreferencesUpdatedAt
     );
     if(saved){
+      await events?.emit("plan.saved",{userId:session.id,plan,updatedAt:Number(saved.updated_at)});
+      await events?.emit("preferences.saved",{userId:session.id,preferences});
       json(res,200,{ok:true,plan,planUpdatedAt:Number(saved.updated_at),preferences,preferencesUpdatedAt:Number(saved.preferences_updated_at),stats});return;
     }
     const [currentPlan,currentPreferences]=await Promise.all([getPlanSnapshot(session.id),getPreferencesSnapshot(session.id)]);

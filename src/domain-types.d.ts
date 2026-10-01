@@ -642,6 +642,12 @@ export interface SetupStore {
   ):Promise<SavedTrainingSetupRow|null>;
 }
 
+export interface EventBus {
+  on(name:string,handler:(payload:Record<string,unknown>)=>unknown):()=>void;
+  emit(name:string,payload?:Record<string,unknown>):Promise<number>;
+  names:readonly string[];
+}
+
 export interface SetupServiceDependencies {
   store:SetupStore;
   auth:Pick<AuthService,"validCsrf">;
@@ -651,6 +657,7 @@ export interface SetupServiceDependencies {
   getPreferencesSnapshot:(userId:string)=>Promise<PreferencesSnapshot>;
   getUserPayload:(account:SessionRow)=>Promise<unknown>;
   http:JsonHttpHelpers;
+  events?:EventBus|null;
 }
 
 export interface SetupService {
@@ -878,6 +885,7 @@ export interface CoachingServiceDependencies {
   rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
   http:JsonHttpHelpers;
   now?:()=>number;
+  events?:EventBus|null;
 }
 export interface CoachingService {handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;}
 
