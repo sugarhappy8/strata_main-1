@@ -60,6 +60,7 @@ const STORE_METHODS = Object.freeze([
   "unsettledPurchasesForUser",
   "activeCheckoutCreationForUser",
   "deleteAccount",
+  "deleteAccountForUser",
   "deleteOldAccountActionData",
   "workout",
   "activeWorkout",

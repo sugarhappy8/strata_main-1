@@ -284,6 +284,94 @@ test("on the website an App Store member sees Strata+ through the App Store, App
   assert.deepEqual(state.errors,[]);
 });
 
+// Account deletion inside the app (App Review Guideline 5.1.1(v)): no email round trip. The journey's server refuses
+// the first password and accepts the second, then forgets the account.
+function deletionApi(state,{appleBilling=null}={}){
+  state.deletions=[];
+  return async(url,request)=>{
+    if(url.pathname==="/api/account/sessions")return {body:{userId:USER_ID,sessions:[]}};
+    if(url.pathname==="/api/account/delete/request")return {status:202,body:{ok:true,maskedEmail:"a***@example.test",expiresAt:Date.now()+1_800_000}};
+    if(url.pathname!=="/api/account/delete/now")return null;
+    const body=request.postDataJSON();state.deletions.push({body,csrf:request.headers()["x-csrf-token"],user:request.headers()["x-strata-user"]});
+    if(body.password!=="correct-password-123")return {status:401,body:{error:"That password is incorrect.",code:"PASSWORD_INCORRECT"}};
+    state.user=null;
+    return {body:{ok:true,message:`Your STRATA account was permanently deleted.${appleBilling?` ${appleBilling.message}`:""}`,...(appleBilling?{appleBilling}:{})}};
+  };
+}
+const APPLE_NOTICE={message:"Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions.",manageUrl:"https://apps.apple.com/account/subscriptions"};
+
+test("in the app, Delete account deletes the account in place with the password and DELETE, then leaves signed out",{timeout:60_000},async(t)=>{
+  const holder={};
+  const {page,state}=await fixture(t,{signedIn:true,discovery:{active:true,accessType:"apple",apple:APPLE,subscription:null,adminGrant:{active:false}},api:(url,request)=>holder.api(url,request)});
+  holder.api=deletionApi(state,{appleBilling:APPLE_NOTICE});
+  await page.goto("/account.html",{waitUntil:"load"});
+  await page.locator("#signedInCard").waitFor({state:"visible"});
+  const opener=page.getByRole("button",{name:"Delete account",exact:true});
+  const dialog=page.getByRole("dialog",{name:"Delete your account?"});
+
+  // Escape closes the dialog and focus returns to the button that opened it.
+  await opener.click();
+  await dialog.waitFor({state:"visible"});
+  assert.equal(await page.evaluate(()=>document.activeElement?.id),"accountDeleteTitle","VoiceOver starts at the title");
+  await page.keyboard.press("Escape");
+  await dialog.waitFor({state:"hidden"});
+  assert.equal(await page.evaluate(()=>document.activeElement?.id),"accountDeleteRequest");
+
+  await opener.click();
+  await dialog.waitFor({state:"visible"});
+  const apple=dialog.locator("#accountDeleteApple");
+  assert.equal(await apple.isVisible(),true);
+  assert.match(await apple.textContent(),/does not cancel your App Store subscription\..*Apple keeps billing your Apple Account until you cancel it\./);
+  await apple.getByRole("link",{name:"Manage subscription"}).click();
+  assert.deepEqual(await page.evaluate(()=>window.__nativeCalls.filter((call)=>call[0]==="manageSubscriptions").length),1,"Apple's own sheet, from the dialog");
+  const submit=dialog.getByRole("button",{name:"Delete account",exact:true});
+  assert.equal(await submit.isDisabled(),true);
+  const password=dialog.getByLabel("Your STRATA password"),confirmation=dialog.getByLabel("Type DELETE to confirm");
+  assert.equal(await password.getAttribute("type"),"password");assert.equal(await password.getAttribute("autocomplete"),"current-password");
+  await password.fill("wrong-password-123");await confirmation.fill("delete");
+  assert.equal(await submit.isDisabled(),true,"only DELETE, exactly");
+  await confirmation.fill("DELETE");
+  assert.equal(await submit.isDisabled(),false);
+  const sizes=await dialog.evaluate((node)=>[...node.querySelectorAll("input,button:not([hidden]),a:not([hidden])")].filter((item)=>item.getClientRects().length).map((item)=>({id:item.id,height:item.getBoundingClientRect().height})));
+  for(const {id,height} of sizes)assert.ok(height>=44,`${id} is a 44pt target (${height}px)`);
+  const before=await submit.boundingBox();
+  await submit.click();
+  await dialog.locator("#accountDeleteError").filter({hasText:"That password is incorrect."}).waitFor();
+  assert.deepEqual(await submit.boundingBox(),before,"the error appears without moving the buttons");
+  assert.equal(await password.inputValue(),"");assert.equal(await password.getAttribute("aria-invalid"),"true");
+  assert.equal(await page.evaluate(()=>document.activeElement?.id),"accountDeletePassword");
+  assert.equal(page.url(),`${ORIGIN}/account.html`);
+
+  await password.fill("correct-password-123");
+  await submit.click();
+  const done=dialog.locator("#accountDeleteDone");
+  await done.waitFor({state:"visible"});
+  assert.match((await done.textContent()).replace(/\s+/g," "),/Account deleted Your STRATA account was permanently deleted\. .*Apple keeps billing your Apple Account/);
+  assert.equal(await done.getByRole("link",{name:"Manage subscription"}).isVisible(),true);
+  assert.deepEqual(state.deletions.map(({body})=>body.password),["wrong-password-123","correct-password-123"]);
+  assert.ok(state.deletions.every(({body,csrf,user})=>body.confirmation==="DELETE"&&csrf==="journey-csrf"&&user===USER_ID));
+  // After the notice has been read, the app returns to its signed-out start screen on its own.
+  await page.waitForURL(`${ORIGIN}/`,{timeout:15_000});
+  await page.locator(".app-welcome").waitFor({state:"visible"});
+  assert.equal(state.requests.includes("/api/account/delete/request"),false,"no email round trip");
+  assert.deepEqual(state.external,[]);assert.deepEqual(state.errors,[]);
+});
+
+test("in a browser, Delete account still emails a deletion link and never opens the in-app dialog",{timeout:40_000},async(t)=>{
+  const holder={};
+  const {page,state}=await fixture(t,{app:false,signedIn:true,discovery:{active:false,accessType:null,apple:null},api:(url,request)=>holder.api(url,request)});
+  holder.api=deletionApi(state);
+  await page.goto("/account.html",{waitUntil:"load"});
+  await page.locator("#signedInCard").waitFor({state:"visible"});
+  await page.getByRole("button",{name:"Delete account",exact:true}).click();
+  await page.locator("#accountSecurityStatus").filter({hasText:"A deletion confirmation link was sent to a***@example.test."}).waitFor();
+  assert.equal(await page.locator("#accountDeleteDialog").isVisible(),false);
+  assert.equal(await page.evaluate(()=>document.getElementById("accountDeleteDialog").open),false);
+  assert.equal(state.requests.includes("/api/account/delete/request"),true);
+  assert.equal(state.requests.includes("/api/account/delete/now"),false);
+  assert.deepEqual(state.errors,[]);
+});
+
 test("browsers without the app token keep the website exactly as it was",{timeout:40_000},async(t)=>{
   const {page,state}=await fixture(t,{app:false});
   for(const path of ["/","/pricing","/terms","/account.html"]){

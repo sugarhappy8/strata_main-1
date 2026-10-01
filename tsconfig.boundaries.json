@@ -22,6 +22,7 @@
   },
   "include": [
     "src/domain-types.d.ts",
+    "src/account-deletion.js",
     "src/account-self-service.js",
     "src/account-self-service-schema.js",
     "src/account-self-service-store.js",

@@ -7,7 +7,7 @@ const vm=require("node:vm");
 
 const html=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
 const script=fs.readFileSync(require.resolve("../public/scripts/account.js"),"utf8");
-const moduleScripts=["devices-core","entitlements","account-logic","account-state","account-api","account-render","account-events","account-devices"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
+const moduleScripts=["devices-core","entitlements","account-logic","account-state","account-api","account-render","account-events","account-devices","account-delete-dialog"].map((name)=>({name,source:fs.readFileSync(require.resolve(`../public/scripts/${name}.js`),"utf8")}));
 
 class ClassList{
   constructor(){this.values=new Set();}
@@ -34,6 +34,9 @@ class Element{
   click(){this.clicked=true;}
   remove(){this.removed=true;}
   querySelector(selector){return selector==="span"?this.statusText:null;}
+  // <dialog>: the app's web view has showModal; closing fires "close" as a browser does.
+  showModal(){this.open=true;}
+  close(){if(!this.open)return;this.open=false;void this.emit("close");}
 }
 
 function jsonResponse(status,data){
@@ -605,6 +608,9 @@ test("in the app, an App Store subscriber manages Strata+ on Apple's own sheet",
   // Deleting the account names Apple's billing and links to Apple's subscriptions, which open on Apple's sheet in the app.
   const deleting=createPage({route:accountRoutes(user,{appleBilling:APPLE_DELETION}),app:{plugin:{manageSubscriptions:async()=>{calls.push("manage-from-delete");return {};}}}});await settle();
   await deleting.elements.get("accountDeleteRequest").emit("click",{currentTarget:deleting.elements.get("accountDeleteRequest")});await settle();
+  assert.equal(deleting.elements.get("accountDeleteDialog").open,true,"in the app, Delete account opens the in-app dialog");
+  await deleting.elements.get("accountDeleteEmail").emit("click");await settle();
+  assert.equal(deleting.elements.get("accountDeleteDialog").open,false);
   assert.match(deleting.elements.get("accountSecurityStatus").textContent,/Nothing is deleted until you open it and type DELETE\. Deletion does not cancel a subscription or refund a charge\. Deleting your STRATA account does not cancel a Strata\+ subscription bought through Apple\. Apple keeps billing your Apple Account until you cancel it/);
   assert.equal(deleting.elements.get("accountSecurityAppleLink").hidden,false);assert.equal(deleting.elements.get("accountSecurityAppleLink").href,"https://apps.apple.com/account/subscriptions");
   await deleting.elements.get("accountSecurityAppleLink").emit("click",{preventDefault(){}});await settle();
@@ -620,6 +626,8 @@ test("in the app, Paddle billing is read-only and the deletion copy names the Ap
   assert.doesNotMatch(`${page.elements.get("accountBillingDetail").textContent} ${page.elements.get("accountDiscoveryStatus").textContent}`,/Paddle/);
   assert.match(page.elements.get("accountDiscoveryStatus").textContent,/billed on stratafitness\.online/);
   await page.elements.get("accountDeleteRequest").emit("click",{currentTarget:page.elements.get("accountDeleteRequest")});await settle();
+  assert.equal(page.elements.get("accountDeleteApple").hidden,true,"a Paddle subscription is not billed by Apple");
+  await page.elements.get("accountDeleteEmail").emit("click");await settle();
   assert.match(page.elements.get("accountSecurityStatus").textContent,/an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions\.$/);
   assert.equal(page.elements.get("accountSecurityAppleLink").hidden,true,"no App Store subscription, no Apple link");
   assert.match(html,/<span class="web-only">Account deletion does not cancel a Paddle subscription[^<]*<\/span><span class="app-only" hidden>[^<]*App Store subscription keeps billing your Apple Account until you cancel it in Settings/);
@@ -650,4 +658,100 @@ test("on the website an App Store subscriber gets Apple's subscriptions link and
   assert.match(paddle.elements.get("accountBillingDetail").textContent,/Paddle could not collect/);
   await paddle.elements.get("accountDeleteRequest").emit("click",{currentTarget:paddle.elements.get("accountDeleteRequest")});await settle();
   assert.match(paddle.elements.get("accountSecurityStatus").textContent,/Deletion does not cancel a Paddle subscription or refund a charge\.$/);
+});
+
+test("the in-app deletion dialog is labelled, asks for the current password, and types DELETE without autocorrect",()=>{
+  assert.match(html,/<dialog class="account-delete-dialog" id="accountDeleteDialog" aria-labelledby="accountDeleteTitle" aria-describedby="accountDeleteLede">/);
+  assert.match(html,/<label for="accountDeletePassword">[^<]+<\/label>\s*<input id="accountDeletePassword" name="password" type="password" autocomplete="current-password"/);
+  assert.match(html,/<label for="accountDeleteConfirmation">Type DELETE to confirm<\/label>\s*<input id="accountDeleteConfirmation"[^>]*autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false"/);
+  assert.match(html,/<p class="account-delete-error" id="accountDeleteError" role="alert" aria-live="assertive"><\/p>/);
+  assert.match(html,/<button class="account-delete-submit" id="accountDeleteSubmit" type="submit" disabled>/);
+  assert.match(html,/<a class="account-delete-manage" id="accountDeleteManage" href="https:\/\/apps\.apple\.com\/account\/subscriptions"/);
+});
+
+test("in the app, Delete account deletes the account in a dialog with the password and DELETE, and never sends an email",async()=>{
+  const calls=[],attempts=[],user=memberFixture({discovery:{active:true,accessType:"apple",pendingPurchaseCount:0,apple:APPLE_ACTIVE,subscription:null}}),base=accountRoutes(user);
+  const page=createPage({app:{plugin:{manageSubscriptions:async()=>{calls.push("manage");return {};}}},route:async(path,options)=>{
+    if(path!=="/api/account/delete/now")return base(path);
+    const body=JSON.parse(options.body);attempts.push({body,headers:options.headers});
+    if(body.password!=="right-password-123")return jsonResponse(401,{error:"That password is incorrect.",code:"PASSWORD_INCORRECT"});
+    return jsonResponse(200,{ok:true,message:`Your STRATA account was permanently deleted. ${APPLE_DELETION.message}`,appleBilling:APPLE_DELETION});
+  }});
+  await settle();
+  const el=(id)=>page.elements.get(id);
+  await el("accountDeleteRequest").emit("click",{currentTarget:el("accountDeleteRequest")});await settle();
+  assert.equal(el("accountDeleteDialog").open,true);
+  assert.equal(el("accountDeleteTitle").focused,true,"VoiceOver starts at the dialog's title and explanation");
+  assert.equal(el("accountDeleteApple").hidden,false,"an App Store subscriber is told Apple keeps billing");
+  assert.equal(el("accountDeleteSubmit").disabled,true);
+  await el("accountDeleteManage").emit("click",{preventDefault(){}});await settle();
+  assert.deepEqual(calls,["manage"],"Manage subscription opens Apple's own sheet from the dialog");
+
+  el("accountDeletePassword").value="wrong-password-1";await el("accountDeletePassword").emit("input");
+  el("accountDeleteConfirmation").value="delete";await el("accountDeleteConfirmation").emit("input");
+  assert.equal(el("accountDeleteSubmit").disabled,true,"only DELETE, exactly, enables the button");
+  el("accountDeleteConfirmation").value="DELETE";await el("accountDeleteConfirmation").emit("input");
+  assert.equal(el("accountDeleteSubmit").disabled,false);
+  await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
+  assert.deepEqual(attempts[0].body,{password:"wrong-password-1",confirmation:"DELETE"});
+  assert.equal(attempts[0].headers["X-CSRF-Token"],"app-csrf");assert.equal(attempts[0].headers["X-Strata-User"],"member-1");
+  assert.equal(el("accountDeleteError").textContent,"That password is incorrect.");
+  assert.equal(el("accountDeletePassword").value,"");assert.equal(el("accountDeletePassword").getAttribute("aria-invalid"),"true");
+  assert.equal(el("accountDeletePassword").getAttribute("aria-describedby"),"accountDeleteError");assert.equal(el("accountDeletePassword").focused,true);
+  assert.equal(el("accountDeleteDialog").open,true);assert.equal(el("accountDeleteSubmit").disabled,true);assert.deepEqual(page.navigations,[]);
+
+  el("accountDeletePassword").value="right-password-123";await el("accountDeletePassword").emit("input");
+  assert.equal(el("accountDeleteError").textContent,"","typing clears the error");
+  await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
+  assert.equal(el("accountDeleteForm").hidden,true);assert.equal(el("accountDeleteDone").hidden,false);assert.equal(el("accountDeleteDone").focused,true);
+  assert.match(el("accountDeleteDoneMessage").textContent,/^Your STRATA account was permanently deleted\. .*Apple keeps billing your Apple Account/);
+  assert.equal(el("accountDeleteDoneManage").hidden,false);assert.equal(el("accountDeleteDoneManage").href,"https://apps.apple.com/account/subscriptions");
+  assert.equal(el("accountDeletePassword").value,"");
+  assert.equal(el("signedInCard").hidden,true,"the deleted account's details leave the page");
+  await el("accountDeleteDoneContinue").emit("click");
+  el("accountDeleteDialog").close();await settle();
+  assert.deepEqual(page.navigations,["/"],"leaves for the signed-out start screen once");
+  assert.ok(!page.requests.some(({path})=>path==="/api/account/delete/request"),"no email is sent");
+});
+
+test("the deletion dialog closes with Escape or Cancel without deleting, holds while deleting, and browsers keep the emailed link",async()=>{
+  const user=memberFixture(),pending=deferred();
+  const page=createPage({app:{plugin:{}},route:async(path)=>path==="/api/account/delete/now"?pending.promise:accountRoutes(user)(path)});
+  await settle();
+  const el=(id)=>page.elements.get(id);
+  await el("accountDeleteRequest").emit("click",{currentTarget:el("accountDeleteRequest")});
+  assert.equal(el("accountDeleteApple").hidden,true,"no App Store subscription, no Apple note");
+  el("accountDeletePassword").value="typed-password";el("accountDeleteConfirmation").value="DELETE";
+  let prevented=false;await el("accountDeleteDialog").emit("cancel",{preventDefault:()=>{prevented=true;}});
+  assert.equal(prevented,false,"Escape closes the dialog");
+  el("accountDeleteDialog").close();await settle();
+  assert.equal(el("accountDeletePassword").value,"","the password does not stay on the page");
+  assert.equal(el("accountDeleteRequest").focused,true,"focus returns to Delete account");
+  await el("accountDeleteRequest").emit("click",{currentTarget:el("accountDeleteRequest")});
+  await el("accountDeleteDismiss").emit("click");
+  assert.equal(el("accountDeleteDialog").open,false);
+  assert.ok(!page.requests.some(({path})=>path.startsWith("/api/account/delete/")),"nothing was requested");
+
+  await el("accountDeleteRequest").emit("click",{currentTarget:el("accountDeleteRequest")});
+  el("accountDeletePassword").value="typed-password";el("accountDeleteConfirmation").value="DELETE";await el("accountDeleteConfirmation").emit("input");
+  const submitted=el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
+  assert.equal(el("accountDeleteSubmit").dataset.busy,"true");assert.equal(el("accountDeleteSubmit").disabled,true);
+  prevented=false;await el("accountDeleteDialog").emit("cancel",{preventDefault:()=>{prevented=true;}});
+  assert.equal(prevented,true,"Escape waits for the answer");
+  await el("accountDeleteDismiss").emit("click");assert.equal(el("accountDeleteDialog").open,true);
+  el("accountDeleteDialog").close();await settle();
+  assert.equal(el("accountDeletePassword").value,"typed-password","a web view that still forces the dialog closed mid-request keeps the form");
+  pending.resolve(jsonResponse(409,{error:"Your Strata+ monthly subscription has not ended. Cancel it from subscription management first. Nothing was deleted.",code:"SUBSCRIPTION_ACTIVE"}));
+  await submitted;await settle();
+  assert.equal(el("accountDeleteDialog").open,true,"the outcome is shown again");
+  assert.equal(el("accountDeleteError").textContent,"Your Strata+ monthly subscription has not ended. Cancel it from subscription management first. Nothing was deleted.");
+  assert.equal(el("accountDeletePassword").value,"typed-password","a refusal that is not about the password keeps it");
+  assert.equal(el("accountDeleteSubmit").dataset.busy,undefined);assert.equal(el("accountDeleteSubmit").disabled,false);
+  assert.deepEqual(page.navigations,[]);
+
+  const browser=createPage({route:accountRoutes(user)});await settle();
+  await browser.elements.get("accountDeleteRequest").emit("click",{currentTarget:browser.elements.get("accountDeleteRequest")});await settle();
+  assert.notEqual(browser.elements.get("accountDeleteDialog").open,true,"browsers never open the in-app dialog");
+  assert.deepEqual(browser.requests.filter(({path})=>path.startsWith("/api/account/delete/")).map(({path})=>path),["/api/account/delete/request"]);
+  assert.match(browser.elements.get("accountSecurityStatus").textContent,/^A deletion confirmation link was sent to a\*\*\*@example\.test\./);
 });

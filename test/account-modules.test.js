@@ -113,6 +113,32 @@ test("account API owns endpoint details and attaches current CSRF",async()=>{
   assert.equal(calls[0].options.headers["X-CSRF-Token"],"csrf-current");
   assert.equal(calls[0].options.body,JSON.stringify({sessionId:"session-2"}));
   assert.equal(calls[1].options.body,"{}");
+  await client.deleteNow({password:"secret-password",confirmation:"DELETE",extra:"dropped"},"member-7");
+  assert.equal(calls[2].path,"/api/account/delete/now");
+  assert.equal(calls[2].options.method,"POST");
+  assert.equal(calls[2].options.headers["X-CSRF-Token"],"csrf-current");
+  assert.equal(calls[2].options.headers["X-Strata-User"],"member-7","the request is pinned to the account on screen");
+  assert.equal(calls[2].options.body,JSON.stringify({password:"secret-password",confirmation:"DELETE"}));
+});
+
+test("in-app deletion logic names Apple billing and turns every refusal into a short inline message",()=>{
+  assert.equal(logic.appleMayBill({discovery:{accessType:"apple",apple:null}}),true);
+  assert.equal(logic.appleMayBill({discovery:{accessType:"grant",apple:{active:true}}}),true);
+  assert.equal(logic.appleMayBill({discovery:{accessType:null,apple:{active:false,autoRenew:true}}}),true,"a lapsed subscription set to renew can still bill");
+  assert.equal(logic.appleMayBill({discovery:{accessType:"paid",apple:{active:false,autoRenew:false}}}),false);
+  assert.equal(logic.appleMayBill(null),false);
+  const cases=[
+    [{code:"network"},/^Could not reach STRATA\..*Nothing was deleted\.$/],
+    [{status:401,code:"PASSWORD_INCORRECT",message:"ignored"},/^That password is incorrect\.$/],
+    [{status:400,code:"DELETE_CONFIRMATION_REQUIRED"},/^Type DELETE exactly to confirm\.$/],
+    [{status:429,code:"ACCOUNT_DELETE_RATE_LIMIT"},/^Too many deletion attempts\. Wait 15 minutes/],
+    [{status:409,code:"ADMIN_ACCOUNT_PROTECTED",message:"The primary administrator account cannot be deleted while it owns site management."},/^The primary administrator account cannot be deleted/],
+    [{status:401},/^Your session expired\./],
+    [{status:403,code:"INVALID_CSRF"},/^The security check expired\./],
+    [{status:503,message:"database detail"},/^STRATA is temporarily unavailable\. Nothing was deleted/],
+    [{},/^Your account could not be deleted\. Please try again\.$/]
+  ];
+  for(const [error,expected] of cases)assert.match(logic.deleteNowError(error),expected,JSON.stringify(error));
 });
 
 test("account event module binds controls without owning business logic",async()=>{
@@ -130,7 +156,7 @@ test("account event module binds controls without owning business logic",async()
 
 test("account page loads modules in dependency order before its coordinator",()=>{
   const html=fs.readFileSync(require.resolve("../public/pages/account.html"),"utf8");
-  const expected=["devices-core.js","account-logic.js","account-state.js","account-api.js","account-render.js","account-events.js","account-devices.js","account.js"];
+  const expected=["devices-core.js","account-logic.js","account-state.js","account-api.js","account-render.js","account-events.js","account-devices.js","account-delete-dialog.js","account.js"];
   const positions=expected.map((asset)=>html.indexOf(`src="${asset}`));
   assert.ok(positions.every((position)=>position>=0));
   assert.deepEqual(positions,positions.slice().sort((a,b)=>a-b));

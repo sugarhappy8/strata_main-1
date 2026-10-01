@@ -189,7 +189,7 @@ const STATIC_FILES = new Map([
   ["discover-program.js","scripts/discover-program.js"],
   ["discover-coaching-meals.js","scripts/discover-coaching-meals.js"],
   ["discover.js","scripts/discover.js"],
-  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["discover-recovery.js","scripts/discover-recovery.js"],["discover-brief.js","scripts/discover-brief.js"],["workout-recovery.js","scripts/workout-recovery.js"],
+  ["devices-core.js","scripts/devices-core.js"],["account-devices.js","scripts/account-devices.js"],["account-delete-dialog.js","scripts/account-delete-dialog.js"],["discover-recovery.js","scripts/discover-recovery.js"],["discover-brief.js","scripts/discover-brief.js"],["workout-recovery.js","scripts/workout-recovery.js"],
   ["install.js","scripts/install.js"],
   ["offline.js","scripts/offline.js"],
   ["pricing-logic.js","scripts/pricing-logic.js"],

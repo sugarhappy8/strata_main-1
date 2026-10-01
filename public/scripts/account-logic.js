@@ -167,6 +167,25 @@
     return Number(error?.status)>=500?"Account email is temporarily unavailable. Please try again in a moment.":error?.message||"The account request could not be completed.";
   }
 
+  // In-app deletion: whether Apple may still bill this member (the server's own notice follows the same rule), and the
+  // inline message for a refused attempt. Every refusal means nothing was deleted.
+  function appleMayBill(user){
+    const discovery=user?.discovery||{},apple=appleSubscriptionFor(user);
+    return discovery.accessType==="apple"||apple?.active===true||apple?.autoRenew===true;
+  }
+  function deleteNowError(error){
+    const code=String(error?.code||"");
+    if(code==="network")return "Could not reach STRATA. Check your connection and try again. Nothing was deleted.";
+    if(code==="PASSWORD_INCORRECT")return "That password is incorrect.";
+    if(code==="DELETE_CONFIRMATION_REQUIRED")return "Type DELETE exactly to confirm.";
+    if(error?.status===429)return "Too many deletion attempts. Wait 15 minutes and try again.";
+    if(error?.status===409)return error.message||"Your account could not be deleted right now. Nothing was deleted.";
+    if(error?.status===401)return "Your session expired. Sign in again before deleting your account.";
+    if(error?.status===403)return "The security check expired. Close this, refresh the page, and try again.";
+    if(Number(error?.status)>=500)return "STRATA is temporarily unavailable. Nothing was deleted; please try again.";
+    return error?.message||"Your account could not be deleted. Please try again.";
+  }
+
   function selfServiceError(error,action){
     if(error?.code==="network")return "Could not reach STRATA. Check your connection and try again.";
     if(error?.status===401)return "Your session expired. Sign in again before continuing.";
@@ -193,6 +212,6 @@
 
   return{hasPlus,
     WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,
-    subscriptionFor,appleSubscriptionFor,APPLE_MANAGE_URL,safeAppleManageUrl,appleDeletionNotice,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,selfServiceError,safePortalUrl,billingError
+    subscriptionFor,appleSubscriptionFor,APPLE_MANAGE_URL,safeAppleManageUrl,appleDeletionNotice,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,appleMayBill,deleteNowError,selfServiceError,safePortalUrl,billingError
   };
 });

@@ -1,4 +1,4 @@
-/* global StrataAccountApi, StrataAccountDevices, StrataAccountEvents, StrataAccountLogic, StrataAccountRender, StrataAccountState, StrataDevicesCore */
+/* global StrataAccountApi, StrataAccountDeleteDialog, StrataAccountDevices, StrataAccountEvents, StrataAccountLogic, StrataAccountRender, StrataAccountState, StrataDevicesCore */
 "use strict";
 
 const logic=StrataAccountLogic;
@@ -16,7 +16,7 @@ const devices=StrataAccountDevices.createController({element:el,api,core:StrataD
 const authForms={signup:el("signupForm"),login:el("loginForm")};
 const authButtons={signup:el("signupSubmit"),login:el("loginSubmit")};
 const preferredPanel=el(mode==="login"?"loginPanel":"signupPanel");
-let foregroundRecheck=null;
+let foregroundRecheck=null,signedInUser=null;
 
 preferredPanel.classList.add("active");
 if(mode==="login")document.querySelector(".auth-grid").prepend(preferredPanel);
@@ -87,7 +87,7 @@ async function loadAccountSessions(user){
 }
 
 function showSignedIn(user,csrfToken=""){
-  state.setPrivateUser(user?.id);state.setCsrfToken(csrfToken);renderer.showSignedIn(user);
+  signedInUser=user||null;state.setPrivateUser(user?.id);state.setCsrfToken(csrfToken);renderer.showSignedIn(user);
   void loadAccountSessions(user);void devices.load(user);
 }
 
@@ -223,13 +223,26 @@ async function logout(event){
   }
 }
 
+// In the iOS app, Delete account opens the in-app deletion dialog; browsers (and an app web view without <dialog>)
+// keep the emailed deletion link, which the dialog also offers.
+const deleteDialog=StrataAccountDeleteDialog.createController({
+  element:el,api,logic,getUser:()=>signedInUser,
+  emailInstead:()=>requestSecurityEmail("delete",{currentTarget:el("accountDeleteRequest")}),
+  manageApple:(event,href)=>void manageAppleSubscription(event,href),
+  onDeleted:()=>{state.setNavigating();clearPrivateView();}
+});
+function requestSecurityAction(kind,event){
+  if(kind==="delete"&&deleteDialog.open(event?.currentTarget||null))return;
+  return requestSecurityEmail(kind,event);
+}
+
 StrataAccountEvents.bind({
   nodes:{
     passwordReset:el("accountPasswordReset"),deleteRequest:el("accountDeleteRequest"),manageSubscription:el("accountManageSubscription"),updatePayment:el("accountUpdatePayment"),cancelSubscription:el("accountCancelSubscription"),
     sessionList:el("accountSessionList"),revokeOtherSessions:el("accountRevokeOtherSessions"),exportData:el("accountExportData"),deleteCancel:el("accountDeleteCancel"),reload:el("accountReload"),logout:el("accountLogout"),
     signupPassword:el("signupPassword"),signupPasswordToggle:el("signupPasswordToggle"),loginPassword:el("loginPassword"),loginPasswordToggle:el("loginPasswordToggle")
   },
-  actions:{requestSecurityEmail,openBillingPortal,revokeSession,revokeOtherSessions,downloadExport,cancelDeletion,reload:()=>location.reload(),logout,enhanceForm,handleForeground,handlePageShow},
+  actions:{requestSecurityEmail:requestSecurityAction,openBillingPortal,revokeSession,revokeOtherSessions,downloadExport,cancelDeletion,reload:()=>location.reload(),logout,enhanceForm,handleForeground,handlePageShow},
   enhanceAuth:typeof globalThis.fetch==="function"&&typeof globalThis.FormData==="function"
 });
 

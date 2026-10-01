@@ -105,6 +105,7 @@
       "role": "Authentication and account lifecycle",
       "maxLines": 840,
       "allowedDependencies": [
+        "src/account-deletion.js",
         "src/account-self-service.js",
         "src/email.js",
         "src/plans.js",
@@ -136,6 +137,11 @@
       "allowedDependencies": [
         "src/account-export.js"
       ]
+    },
+    "src/account-deletion.js": {
+      "role": "In-app account deletion by password and the protections shared with the emailed link",
+      "maxLines": 110,
+      "allowedDependencies": []
     },
     "src/account-export.js": {
       "role": "Bounded streaming account export serialization",

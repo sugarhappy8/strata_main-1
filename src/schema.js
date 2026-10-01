@@ -260,6 +260,7 @@ const SQL = {
   activeAccountDeletion:"SELECT request_id,expires_at FROM account_action_requests WHERE user_id=? AND purpose='account_delete' AND delivery_state='sent' AND consumed_at IS NULL AND expires_at>?",
   activeCheckoutCreationForUser:"SELECT user_id,price_id,claim_id,transaction_id,expires_at,created_at,updated_at FROM paddle_checkout_claims WHERE user_id=? AND expires_at>?",
   cancelAccountDeletion:"DELETE FROM account_action_requests WHERE user_id=? AND purpose='account_delete' AND delivery_state='sent' AND consumed_at IS NULL RETURNING request_id",
+  discardAccountAction:"DELETE FROM account_action_requests WHERE token_hash=? AND consumed_at IS NULL",
   cancelStagedAccountDeletions:"DELETE FROM account_action_deliveries WHERE user_id=? AND purpose='account_delete' RETURNING request_id",
   cancelStagedAccountDeletionsIfAudit:"DELETE FROM account_action_deliveries WHERE user_id=? AND purpose='account_delete' AND EXISTS(SELECT 1 FROM admin_audit_events WHERE id=?) RETURNING request_id",
   completePasswordResetUser:"UPDATE users SET password_hash=?,password_salt=?,email_verified_at=COALESCE(email_verified_at,?),auth_version=auth_version+1 WHERE id=(SELECT user_id FROM account_action_requests WHERE token_hash=? AND purpose='password_reset' AND delivery_state='sent' AND consumed_at IS NULL AND expires_at>?) RETURNING id,name,email,created_at,email_verified_at,auth_version,suspended_at",

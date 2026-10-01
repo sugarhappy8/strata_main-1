@@ -167,6 +167,35 @@
       </section>
     </main>
     <dialog class="account-devices-dialog" id="devicesDisconnectDialog" aria-labelledby="devicesDisconnectTitle" aria-describedby="devicesDisconnectDetail"><form method="dialog"><h2 id="devicesDisconnectTitle">Disconnect Polar?</h2><p id="devicesDisconnectDetail">STRATA deletes the recovery, sleep, heart-rate, and workout data it imported from Polar, and tells Polar to stop sharing. Your STRATA workouts and plans stay.</p><div class="account-devices-dialog-actions"><button value="cancel" autofocus>Keep Polar connected</button><button class="danger-action" value="disconnect">Disconnect and delete Polar data</button></div></form></dialog>
+    <!-- In the iOS app, Delete account opens this dialog and deletes the account here; browsers keep the emailed link. -->
+    <dialog class="account-delete-dialog" id="accountDeleteDialog" aria-labelledby="accountDeleteTitle" aria-describedby="accountDeleteLede">
+      <form class="account-delete-form" id="accountDeleteForm" novalidate>
+        <h2 id="accountDeleteTitle" tabindex="-1">Delete your account?</h2>
+        <p id="accountDeleteLede">This permanently deletes your STRATA account now. It cannot be undone. Deleting removes:</p>
+        <ul class="account-delete-list"><li>Your account and every signed-in session</li><li>Your weekly and monthly plans, workouts, profile, and preferences</li><li>Your ratings and their contribution to community scores</li><li>Your Strata+ access and connected Polar data</li></ul>
+        <div class="account-delete-apple" id="accountDeleteApple" hidden>
+          <p><strong>Deleting your account does not cancel your App Store subscription.</strong> Apple keeps billing your Apple Account until you cancel it.</p>
+          <a class="account-delete-manage" id="accountDeleteManage" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer">Manage subscription</a>
+        </div>
+        <p class="account-delete-note">Deleting is not cancellation and is not a refund.</p>
+        <label for="accountDeletePassword">Your STRATA password</label>
+        <input id="accountDeletePassword" name="password" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false" maxlength="128" required />
+        <label for="accountDeleteConfirmation">Type DELETE to confirm</label>
+        <input id="accountDeleteConfirmation" name="confirmation" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" maxlength="6" required />
+        <p class="account-delete-error" id="accountDeleteError" role="alert" aria-live="assertive"></p>
+        <div class="account-delete-actions">
+          <button class="account-delete-submit" id="accountDeleteSubmit" type="submit" disabled><span class="button-idle">Delete account</span><span class="button-busy">Deleting account…</span></button>
+          <button class="account-delete-cancel" id="accountDeleteDismiss" type="button">Cancel</button>
+        </div>
+        <button class="account-delete-email" id="accountDeleteEmail" type="button">Email me a deletion link instead</button>
+      </form>
+      <div class="account-delete-done" id="accountDeleteDone" role="status" aria-live="polite" tabindex="-1" hidden>
+        <h2>Account deleted</h2>
+        <p id="accountDeleteDoneMessage"></p>
+        <a class="account-delete-manage" id="accountDeleteDoneManage" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage subscription</a>
+        <button class="account-delete-cancel" id="accountDeleteDoneContinue" type="button">Continue</button>
+      </div>
+    </dialog>
     <footer class="build-footer"><span>About STRATA · Build 9.1.0</span> · <a href="/pricing">Pricing</a> · <a href="/contact">Contact</a> · <a href="/policies">Policies</a> · <a href="/install.html">Install app</a></footer>
     <script src="/pwa.js?v=9.1.0"></script>
     <script src="/entitlements.js?v=9.1.0"></script>
@@ -179,6 +208,7 @@
     <script src="account-render.js?v=9.1.0"></script>
     <script src="account-events.js?v=9.1.0"></script>
     <script src="account-devices.js?v=9.1.0"></script>
+    <script src="account-delete-dialog.js?v=9.1.0"></script>
     <script src="account.js?v=9.1.0"></script>
   </body>
 </html>

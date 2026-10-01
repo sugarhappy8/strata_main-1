@@ -14,6 +14,7 @@ const {
 }=require("./email");
 const {cleanText}=require("./plans");
 const {createAccountSelfService}=require("./account-self-service");
+const {createAccountDeletion,deletedMessage}=require("./account-deletion");
 const {queueResponseCookie,renewedSessionExpiry}=require("./session-renewal");
 
 const scryptAsync=promisify(scrypt);
@@ -38,7 +39,7 @@ const PASSWORD_RESET_RESPONSE="If an account uses that email, a password-reset l
 const API_ROUTES=new Set([
   "/api/signup","/api/login","/api/verification-status","/api/verify-email","/api/resend-verification",
   "/api/password-reset/request","/api/account/password-reset/request","/api/password-reset/status","/api/password-reset/complete",
-  "/api/account/delete/request","/api/account/delete/cancel","/api/account/delete/status","/api/account/delete/complete",
+  "/api/account/delete/request","/api/account/delete/cancel","/api/account/delete/status","/api/account/delete/complete","/api/account/delete/now",
   "/api/account/sessions","/api/account/sessions/revoke","/api/account/sessions/revoke-others","/api/account/export",
   "/api/me","/api/logout"
 ]);
@@ -108,7 +109,7 @@ function createAuthService({
 
   function authAudit(event,{purpose="",email=""}={}){
     const entry={event:String(event),at:new Date().toISOString()};
-    if(["signup","login","password_reset","account_delete"].includes(purpose))entry.purpose=purpose;
+    if(["signup","login","password_reset","account_delete","account_delete_in_app"].includes(purpose))entry.purpose=purpose;
     if(email)entry.email=maskEmail(email);
     logger.info(`Auth audit ${JSON.stringify(entry)}`);
   }
@@ -190,6 +191,7 @@ function createAuthService({
     return (expectedUser===undefined||expectedUser===String(session?.id))&&safeTokenEqual(req.headers["x-csrf-token"],session?.csrf_token);
   }
   const accountSelfService=createAccountSelfService({store,http:{json,bodyJson,securityHeaders},requireSession,validCsrf,rateAllowed,logger});
+  const accountDeletion=createAccountDeletion({store,http:{json,bodyJson},requireSession,validCsrf,trustedAuthOrigin,rateAllowed,passwordMatches,accountEmailHash,accountActionError,storageUnavailable:accountStorageUnavailable,audit:authAudit,clearCookies:()=>[sessionCookie("",0),signupCookie("",0)],reconcileCheckoutCreationBeforeDeletion,reconcileUnsettledPurchases,appleDeletionNotice});
 
   function validateRegistration(input){
     const name=cleanText(input.name,40),email=normalizeEmail(input.email),password=String(input.password||"");
@@ -509,19 +511,10 @@ function createAuthService({
     if(String(input?.confirmation||"").trim()!=="DELETE")throw accountActionError("Type DELETE exactly to confirm permanent account deletion.",400,"DELETE_CONFIRMATION_REQUIRED");
     try{
       const action=await store.accountActionByTokenHash(hashToken(token));
-      if(!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=Date.now())throw accountActionError("This deletion link is invalid or expired. Request a new one from your account.",400,"INVALID_DELETE_LINK");
-      const principal=await store.adminPrincipal();
-      if(principal?.user_id===action.user_id)throw accountActionError("The primary administrator account cannot be deleted while it owns site management.",409,"ADMIN_ACCOUNT_PROTECTED");
-      if(await reconcileCheckoutCreationBeforeDeletion(action.user_id)>0)throw accountActionError("A Strata+ checkout is still being prepared. Nothing was deleted; please try again later.",409,"CHECKOUT_PREPARING");
-      if(await reconcileUnsettledPurchases(action.user_id)>0)throw accountActionError("A Strata+ payment is still being processed. Nothing was deleted; please try again later.",409,"PURCHASE_PENDING");
-      // An Apple subscription never blocks deletion (App Review 5.1.1(v)); the member is told Apple keeps billing.
-      const appleBilling=await appleDeletionNotice(action.user_id);
-      const result=await store.deleteAccount(hashToken(token),Date.now(),accountEmailHash(action.email));
-      if(result.status==="purchase_pending")throw accountActionError("A Strata+ payment is still being processed. Nothing was deleted; please try again later.",409,"PURCHASE_PENDING");
-      if(result.status==="checkout_pending")throw accountActionError("A Strata+ checkout is still being prepared. Nothing was deleted; please try again later.",409,"CHECKOUT_PREPARING");
-      if(result.status!=="deleted")throw accountActionError("This deletion link is invalid or expired. Request a new one from your account.",400,"INVALID_DELETE_LINK");
-      authAudit("account_deleted",{purpose:"account_delete",email:action.email});
-      return {user:result.user,appleBilling};
+      const invalid=()=>accountActionError("This deletion link is invalid or expired. Request a new one from your account.",400,"INVALID_DELETE_LINK");
+      if(!action||action.purpose!=="account_delete"||action.delivery_state!=="sent"||action.consumed_at!=null||Number(action.expires_at)<=Date.now())throw invalid();
+      // The in-app route (account-deletion.js) runs the same protections and the same store deletion.
+      return await accountDeletion.deleteProtectedAccount({userId:action.user_id,email:action.email,purpose:"account_delete",remove:(deletedAt,emailHash)=>store.deleteAccount(hashToken(token),deletedAt,emailHash),invalid});
     }catch(error){
       if(error.status)throw error;
       throw accountStorageUnavailable(error);
@@ -698,7 +691,7 @@ function createAuthService({
 
   async function handleApi(req,res,url){
     if(!API_ROUTES.has(url.pathname))return false;
-    if(await accountSelfService.handleApi(req,res,url))return true;
+    if(await accountSelfService.handleApi(req,res,url)||await accountDeletion.handleApi(req,res,url))return true;
     if(url.pathname==="/api/signup"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
       try{
@@ -799,7 +792,7 @@ function createAuthService({
       if(!rateAllowed(req,"account-delete-complete",10)){json(res,429,{error:"Too many attempts. Try again later.",code:"ACCOUNT_DELETE_RATE_LIMIT"});return true;}
       try{
         const {appleBilling}=await deleteAccountWithToken(await bodyJson(req));
-        json(res,200,{ok:true,message:`Your STRATA account was permanently deleted.${appleBilling?` ${appleBilling.message}`:""}`,...(appleBilling?{appleBilling}:{})},{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});
+        json(res,200,{ok:true,message:deletedMessage(appleBilling),...(appleBilling?{appleBilling}:{})},{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});
       }
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"ACCOUNT_DELETE_FAILED"});}
       return true;

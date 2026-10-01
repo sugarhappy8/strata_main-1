@@ -112,6 +112,7 @@ const PRECACHE_URLS=[
   "/discover.js?v=9.1.0",
   "/devices-core.js?v=9.1.0",
   "/account-devices.js?v=9.1.0",
+  "/account-delete-dialog.js?v=9.1.0",
   "/discover-recovery.js?v=9.1.0",
   "/discover-brief.js?v=9.1.0",
   "/workout-recovery.js?v=9.1.0",

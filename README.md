@@ -108,7 +108,7 @@ Before a release, audit managed version references with `npm run release:check`;
 
 - Passwords use scrypt with a unique random salt; plaintext and reversible passwords are never stored.
 - Sessions are random database-backed tokens in HttpOnly, SameSite cookies. Sensitive writes also require a same-session CSRF token and trusted origin.
-- Signup verification, password reset, and account deletion use time-limited email flows. Reset revokes every session; deletion requires a one-time registered-email confirmation.
+- Signup verification, password reset, and account deletion use time-limited email flows. Reset revokes every session; deletion on the website requires a one-time registered-email confirmation. In the iOS app, deletion completes in the app with the account password and DELETE (`POST /api/account/delete/now`), under the same protections.
 - Signed-in members can review active session times, sign out one or all other sessions without exposing token/IP/device details, and download a private `no-store` JSON export of their account training and support data.
 - Signed-out plans stay in that browser. Signed-in weekly and monthly plans are private account records and sync through the configured store.
 - Community plans publish validated structured workout data and a display name, never the member's email address or a binary upload.

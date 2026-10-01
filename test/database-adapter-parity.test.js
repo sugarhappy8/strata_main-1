@@ -462,3 +462,55 @@ test("Turso account deletion explicitly removes administrator controls when fore
     assert.equal(await store.adminControls(selfTarget),null);
   }finally{await pair.close();}
 });
+
+// In-app deletion (no emailed token) consumes an internal account_delete action through the same deletion path as an
+// emailed link. Both adapters must delete the same accounts, refuse the same ones, keep a live emailed link when they
+// refuse, and leave no internal action behind.
+async function inAppDeletionScenario(store) {
+  const now=Date.UTC(2026,8,20),summary={};
+  const account=async(id)=>{
+    await store.insertUser({id,name:id,email:`${id}@example.test`,passwordHash:"hash",passwordSalt:"salt",createdAt:now,emailVerifiedAt:now});
+    await store.insertSession({tokenHash:`${id}-session`,userId:id,csrfToken:`${id}-csrf`,expiresAt:now+100_000,createdAt:now,authVersion:1});
+  };
+  const link=(id,tokenHash)=>store.upsertAccountAction({requestId:`${id}-request`,userId:id,purpose:"account_delete",tokenHash,expiresAt:now+60_000,deliveryState:"sent",createdAt:now,updatedAt:now});
+  const pending=(id)=>store.insertPendingPurchase({transactionId:`txn_${id}`,userId:id,priceId:"price",productId:"product",paddleStatus:"ready",createdAt:now,updatedAt:now});
+  const state=async(id,internal)=>({
+    user:Boolean(await store.userById(id)),session:Boolean(await store.session(`${id}-session`,now+5)),
+    link:(await store.accountActionForUser(id,"account_delete"))?.token_hash||null,internal:Boolean(await store.accountActionByTokenHash(internal))
+  });
+
+  await account("in-app-plain");
+  summary.plain=await store.deleteAccountForUser("in-app-plain","internal-plain",now+1,"plain-hash");
+  summary.plainAfter=await state("in-app-plain","internal-plain");
+
+  await account("in-app-linked");await link("in-app-linked","emailed-linked");
+  summary.linked=(await store.deleteAccountForUser("in-app-linked","internal-linked",now+2,"linked-hash")).status;
+  summary.linkedAfter=await state("in-app-linked","internal-linked");
+
+  await account("in-app-refused");await pending("in-app-refused");await link("in-app-refused","emailed-refused");
+  summary.refused=await store.deleteAccountForUser("in-app-refused","internal-refused",now+3,"refused-hash");
+  summary.refusedAfter=await state("in-app-refused","internal-refused");
+
+  await account("in-app-unlinked");await pending("in-app-unlinked");
+  summary.unlinked=await store.deleteAccountForUser("in-app-unlinked","internal-unlinked",now+4,"unlinked-hash");
+  summary.unlinkedAfter=await state("in-app-unlinked","internal-unlinked");
+  return summary;
+}
+
+test("SQLite and Turso delete an account in the app through the emailed-link deletion path",{concurrency:false},async()=>{
+  const pair=await stores();
+  try{
+    const local=await inAppDeletionScenario(pair.local),turso=await inAppDeletionScenario(pair.turso);
+    assert.deepEqual(turso,local);
+    assert.deepEqual(local,{
+      plain:{status:"deleted",user:{id:"in-app-plain",email:"in-app-plain@example.test"}},
+      plainAfter:{user:false,session:false,link:null,internal:false},
+      linked:"deleted",
+      linkedAfter:{user:false,session:false,link:null,internal:false},
+      refused:{status:"purchase_pending"},
+      refusedAfter:{user:true,session:true,link:"emailed-refused",internal:false},
+      unlinked:{status:"purchase_pending"},
+      unlinkedAfter:{user:true,session:true,link:null,internal:false}
+    });
+  }finally{await pair.close();}
+});

@@ -413,7 +413,7 @@ export type AuthStoreMethod=
   |"accountActionByTokenHash"|"activateAccountAction"|"adminPrincipal"|"cancelAccountDeletion"
   |"claimAccountActionSend"|"claimVerificationAttempt"|"claimVerificationSend"
   |"completeLoginVerification"|"completePasswordReset"|"completeSignup"|"consumeVerification"
-  |"countVerificationSends"|"deleteAccount"|"deleteOldAccountActionData"|"deleteOldVerificationData"
+  |"countVerificationSends"|"deleteAccount"|"deleteAccountForUser"|"accountCredentialsById"|"deleteOldAccountActionData"|"deleteOldVerificationData"
   |"accountExport"|"accountSessions"|"deleteSession"|"discardStagedAccountAction"|"insertSession"|"insertUser"|"insertVerification"
   |"markVerificationDelivery"|"rotateVerification"|"session"|"stageAccountAction"|"userByEmail"
   |"userById"|"verificationByTokenHash"|"verificationSendByChallengeGeneration"
@@ -972,6 +972,43 @@ export interface AccountSelfServiceDependencies {
 
 export interface AccountSelfService {
   handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
+}
+
+export interface AccountDeletionResult {status:"deleted"|"invalid"|"purchase_pending"|"checkout_pending";user?:{id:string;email:string};}
+export interface DeletedAccount {user:AccountDeletionResult["user"];appleBilling:AppleDeletionNotice|null;}
+
+/** One account deletion, by emailed link or in the app: who, why (for the audit log), and how the store removes it. */
+export interface ProtectedAccountDeletion {
+  userId:string;
+  email:string;
+  purpose:"account_delete"|"account_delete_in_app";
+  remove:(deletedAt:number,emailHash:string)=>Promise<AccountDeletionResult>;
+  invalid:()=>Error;
+}
+
+export interface AccountDeletionDependencies {
+  store:StoreCapabilities<"adminPrincipal"|"accountCredentialsById"|"deleteAccountForUser">;
+  http:JsonHttpHelpers;
+  requireSession:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
+  validCsrf:(request:HttpRequest,session:SessionRow)=>boolean;
+  trustedAuthOrigin:(request:HttpRequest)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  passwordMatches:(password:string,user:CredentialUserRow)=>Promise<boolean>;
+  accountEmailHash:(email:string)=>string;
+  accountActionError:(message:string,status:number,code:string)=>Error&{status:number;code:string};
+  storageUnavailable:(error:unknown)=>Error;
+  audit:(event:string,details:{purpose:string;email:string})=>void;
+  clearCookies:()=>string[];
+  reconcileCheckoutCreationBeforeDeletion:(userId:string)=>Promise<number>;
+  reconcileUnsettledPurchases:(userId:string)=>Promise<number>;
+  appleDeletionNotice:(userId:string)=>Promise<AppleDeletionNotice|null>;
+  now?:()=>number;
+}
+
+export interface AccountDeletion {
+  handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
+  deleteProtectedAccount(request:ProtectedAccountDeletion):Promise<DeletedAccount>;
+  deleteSignedInAccount(session:SessionRow,input:unknown):Promise<DeletedAccount>;
 }
 
 export interface AuthService {
