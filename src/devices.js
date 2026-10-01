@@ -212,6 +212,13 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
     json(res,200,{...base,trends:{...trends,training}});
   }
 
+  /** Strata+ members, or anyone who still has a Polar connection (read-only after Strata+ ends). @param {any} req @param {any} res */
+  async function readOnlySession(req,res){
+    const session=await auth.requireSession(req,res);if(!session)return null;
+    if(await hasAccess(String(session.id))||await store.deviceConnection(String(session.id),PROVIDER))return session;
+    json(res,402,{error:"Strata+ purchase required.",code:"DISCOVERY_ACCESS_REQUIRED",feature:"plus.recovery"});return null;
+  }
+
   /** @param {any} req @param {any} res @param {URL} url */
   async function handleApi(req,res,url){
     const path=url.pathname,method=String(req.method);
@@ -229,7 +236,9 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
         if(!rateAllowed(req,`identity:devices:read:${session.id}`,240,60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many checks. Wait a moment.",429);
         json(res,200,{configured:settings.configured,plus:await hasAccess(String(session.id)),connection:publicConnection(await store.deviceConnection(String(session.id),PROVIDER)),csrfToken:session.csrf_token});return true;
       }
-      const session=await requireAccess(req,res);if(!session)return true;
+      // After Strata+ ends, syncing pauses but a member who still has a connection keeps read-only access to what was imported.
+      const lapsedRead=method!=="POST"&&method!=="PUT"&&path.startsWith("/api/wellness/");
+      const session=lapsedRead?await readOnlySession(req,res):await requireAccess(req,res);if(!session)return true;
       if(method==="GET"&&!rateAllowed(req,`identity:devices:read:${session.id}`,240,60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many checks. Wait a moment.",429);
       if(path==="/api/devices/polar/connect")await connect(req,res,session);
       else if(path==="/api/devices/polar/complete")await complete(req,res,session);

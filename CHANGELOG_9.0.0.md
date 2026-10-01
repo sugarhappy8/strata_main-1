@@ -173,6 +173,24 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   safety copies per account. The free device week and the homepage preview are single entries
   and stay as they are, so a signed-out visitor keeps their own week.
 
+## Phase 4 — Polar
+
+- **Polar data lands in the shared layer.** Sessions join the Training Log (linked to the
+  logged workout they duplicate, or completing a planned day), and sleep, recovery, and heart
+  rate join the Daily Snapshot. `POLAR_INTEGRATION.md` documents the flow, states, events, and
+  failure modes.
+- **Readiness on My Week.** The Plan view shows last night's Nightly Recharge as a badge, with a
+  link to a lighter session in Train after a poor night.
+- **Planned days completed by Polar.** Progress counts a Polar gym session on a planned day
+  with nothing logged as that day done, and says how many came from Polar.
+- **Downgrade rule.** When Strata+ ends, syncing pauses (as before) and the member keeps
+  read-only access to everything already imported, plus disconnect. Nothing extra is deleted on
+  lapse; the existing 400-day retention still applies.
+- **Not done, pending Polar's documentation:** webhooks, daily activity, and physical info.
+  Each needs AccessLink V4 endpoints and scopes confirmed against Polar's current docs, which
+  were not reachable from the build environment. Polling (first import, Sync now, daily pull
+  with a three-day re-check) stays the sync model until then.
+
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
 discovery_trials` restores the rows (the code that read them is in Build 8.9.0).

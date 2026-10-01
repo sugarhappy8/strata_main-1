@@ -20,7 +20,8 @@ function startPolar(){
     ["code-delta",{access:"access-delta",refresh:"refresh-delta",user:1003}],
     ["code-zeta",{access:"access-zeta",refresh:"refresh-zeta",user:1003}],
     ["code-delta2",{access:"access-delta2",refresh:"refresh-delta2",user:1003}],
-    ["code-epsilon",{access:"access-epsilon",refresh:"refresh-epsilon",user:1004,expires:1}]
+    ["code-epsilon",{access:"access-epsilon",refresh:"refresh-epsilon",user:1004,expires:1}],
+    ["code-lapsed",{access:"access-lapsed",refresh:"refresh-lapsed",user:1005}]
   ]);
   const state={calls:[],grants,usedCodes:new Set(),tokens:new Map([...grants.values()].map((grant)=>[grant.access,grant])),refreshed:[]};
   const today=isoDate(Date.now()),nights=()=>Array.from({length:10},(_,index)=>isoDate(Date.now()-index*DAY));
@@ -134,4 +135,18 @@ test("expiring grants rotate before reads, polling replaces the removed V4 webho
     const earlier=Date.now()-10*60*1000;database.prepare("UPDATE device_connections SET status='active',last_sync_at=? WHERE user_id=?").run(earlier,member.id);
     const started=await request("/api/devices/polar/sync",member,"POST",{});assert.equal(started.status,202);await until(()=>Number(database.prepare("SELECT last_sync_at FROM device_connections WHERE user_id=?").get(member.id).last_sync_at)>earlier,"the requested polling sync");
   }finally{database.close();}
+});
+
+test("after Strata+ ends, stored Polar data stays readable while syncing and new connections stop",async()=>{
+  const member=await account("lapsed"),{returnCookie}=await authorize(member,"code-lapsed");
+  assert.equal((await complete(member,returnCookie)).status,200);
+  await until(async()=>(await request("/api/devices",member)).data.connection?.lastSyncAt,"the first import before the lapse");
+  const database=new DatabaseSync(join(directory,"strata.sqlite"),{timeout:5000});
+  try{database.prepare("UPDATE admin_account_controls SET grant_revoked_at=? WHERE user_id=?").run(Date.now()-1000,member.id);}finally{database.close();}
+  const status=await request("/api/devices",member);assert.equal(status.data.plus,false);assert.equal(status.data.connection.status,"active");
+  const today=await request("/api/wellness/today",member);assert.equal(today.status,200,"read-only access to imported nights");assert.equal(today.data.connected,true);assert.ok(today.data.summary);
+  assert.equal((await request("/api/wellness/trends?weeks=4",member)).status,200);assert.equal((await request("/api/wellness/workouts?days=7",member)).status,200);
+  for(const [path,method,body] of [["/api/devices/polar/sync","POST",{}],["/api/devices/polar/connect","POST",{}],["/api/devices/settings","PUT",{}]]){const result=await request(path,member,method,body);assert.equal(result.status,402,path);assert.equal(result.data.code,"DISCOVERY_ACCESS_REQUIRED");}
+  assert.equal((await request("/api/devices/polar",member,"DELETE",{})).data.disconnected,true,"the member can still remove everything");
+  assert.equal((await request("/api/wellness/today",member)).status,402,"with no connection and no Strata+, nothing is left to read");
 });

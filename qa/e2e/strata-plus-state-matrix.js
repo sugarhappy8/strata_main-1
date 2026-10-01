@@ -48,6 +48,7 @@ async function fixture(t,{plan=scheduledWeek(),workouts=[],historyMode="ready",p
       return json({user:USER,csrfToken:CSRF,workouts,hasMore:false});
     }
     if(pathname==="/api/training")return json({user:USER,csrfToken:CSRF,block:null,adaptation:null});
+    if(pathname==="/api/training-log")return json({from:"",to:"",entries:[]});
     if(pathname==="/api/ratings/aggregates")return json({csrfToken:CSRF,aggregates:[]});
     if(pathname==="/api/wellness/today")return json({configured:false,connected:false,connection:null,csrfToken:CSRF});
     if(pathname==="/api/monthly-plan"&&request.method()==="PUT"){

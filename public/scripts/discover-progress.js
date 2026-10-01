@@ -81,13 +81,13 @@
     const [[unit,value]]=[...current],before=previous.get(unit);if(!(before>0))return"";
     const percent=Math.round((value-before)/before*100);return percent===0?"Level with last week.":`${percent>0?"+":"−"}${Math.abs(percent)}% vs last week.`;
   }
-  function snapshot({workouts,weeklyPlan,days,now=new Date(),hasMore=false}){
-    const completed=completedWorkouts(workouts),weekSessions=completedThisWeek(completed,days,now),planned=scheduledDays(weeklyPlan,days),completedDays=new Set(weekSessions.map((workout)=>String(workout.planDay||"")).filter((day)=>planned.includes(day)));
+  function snapshot({workouts,weeklyPlan,days,now=new Date(),hasMore=false,deviceDays=[]}){
+    const completed=completedWorkouts(workouts),weekSessions=completedThisWeek(completed,days,now),planned=scheduledDays(weeklyPlan,days),completedDays=new Set([...weekSessions.map((workout)=>String(workout.planDay||"")),...deviceDays.map(String)].filter((day)=>planned.includes(day))),polarOnly=[...completedDays].filter((day)=>!weekSessions.some((workout)=>String(workout.planDay||"")===day)).length;
     const currentMonday=weekContext(now,days).monday,volumes=weekSessions.reduce((total,workout)=>addVolume(total,workout),new Map()),previousVolumes=completed.filter((workout)=>weeksAgo(workout,currentMonday,days)===1).reduce((total,workout)=>addVolume(total,workout),new Map());
     return{
       completed,weekSessions,planned,records:exerciseRecords(completed),weeks:weeklyHistory(completed,days,now),
       adherence:planned.length?`${completedDays.size} / ${planned.length}`:`${weekSessions.length}`,
-      adherenceDetail:planned.length?`${completedDays.size} of ${planned.length} planned ${planned.length===1?"day":"days"} done this calendar week.`:`${weekSessions.length} completed ${weekSessions.length===1?"session":"sessions"} this week; no weekly plan is set.`,
+      adherenceDetail:planned.length?`${completedDays.size} of ${planned.length} planned ${planned.length===1?"day":"days"} done this calendar week.${polarOnly?` ${polarOnly} counted from Polar.`:""}`:`${weekSessions.length} completed ${weekSessions.length===1?"session":"sessions"} this week; no weekly plan is set.`,
       volume:volumeLabel(volumes)||"No load logged",volumeDetail:volumes.size?`Load × reps from completed sets. ${volumeChange(volumes,previousVolumes)||"No comparable load last week."}`:"Only completed sets with an external load count toward volume.",
       consistency:`${fourWeekConsistency(completed,days,now)} / 4 weeks`,consistencyDetail:"Calendar weeks with at least one completed workout.",
       sessions:`${completed.length}${hasMore?"+":""}`,sessionsDetail:hasMore?`${completed.length} completed in your 100 most recent sessions. Older history is in the workout log.`:`${weekSessions.length} this week · in-progress sessions are not counted.`

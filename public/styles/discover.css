@@ -1703,6 +1703,15 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
 /* Recovery (Build 8.8.6): the Overview card and the Recovery destination, from the member's own Polar data. */
 .today-support-grid:not(:has(#todayAlternativeWorkout:not([hidden]))) .today-recovery-card { grid-column:1/-1; }
 .today-recovery-card [hidden] { display:none; }
+.plan-readiness { display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin:0 0 22px; padding:12px 16px; border:1px solid var(--line); border-left:4px solid #327a31; border-radius:10px; background:var(--white); font-size:14px; }
+.plan-readiness[hidden] { display:none; }
+.plan-readiness[data-tone="mid"] { border-left-color:#9a6800; }
+.plan-readiness[data-tone="low"] { border-left-color:#c54835; }
+.plan-readiness-dot { width:9px; height:9px; border-radius:50%; background:#327a31; }
+.plan-readiness[data-tone="mid"] .plan-readiness-dot { background:#9a6800; }
+.plan-readiness[data-tone="low"] .plan-readiness-dot { background:#c54835; }
+.plan-readiness span:not(.plan-readiness-dot) { color:var(--muted); }
+.plan-readiness a { display:inline-flex; align-items:center; min-height:44px; font-weight:700; }
 .today-recovery-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; width:100%; margin:16px 0 18px; }
 .today-recovery-metrics:empty { display:none; }
 .today-recovery-metrics div { min-width:0; padding:10px 12px; border:1px solid #33392c; border-radius:10px; background:rgba(255,255,255,.03); }
