@@ -2,6 +2,7 @@
 
 const {createAdminUserActions}=require("./admin-user-actions");
 const {adminGrantState}=require("./access-controls");
+const {appleSubscriptionSummary}=require("./apple-billing");
 const {randomUUID}=require("node:crypto");
 const {cleanText,defaultPlan,sanitizePlan,planStats}=require("./plans");
 
@@ -111,7 +112,7 @@ function createAdminService({
 
   function numericAdminRow(row){
     const output={...row};
-    for(const key of ["created_at","email_verified_at","suspended_at","active_session_count","active_purchase_count","pending_purchase_count","purchase_count","rating_count","latest_purchase_at","deletion_expires_at","updated_at","last_response_at","bound_at"]){
+    for(const key of ["created_at","email_verified_at","suspended_at","active_session_count","active_purchase_count","pending_purchase_count","purchase_count","rating_count","latest_purchase_at","active_apple_count","apple_expires_at","deletion_expires_at","updated_at","last_response_at","bound_at"]){
       if(output[key]!=null)output[key]=Number(output[key]);
     }
     return output;
@@ -124,7 +125,8 @@ function createAdminService({
       controlsRevision:Number(output.controls_revision||0),checkoutBlocked:Boolean(output.checkout_blocked_at),
       id:output.id,name:output.name,email:output.email,createdAt:output.created_at,verifiedAt:output.email_verified_at??null,suspendedAt:output.suspended_at??null,
       activeSessions:Number(output.active_session_count||0),
-      discovery:{active:!output.suspended_at&&(Number(output.active_purchase_count||0)>0||grant.active),adminGrant:grant,activePurchaseCount:Number(output.active_purchase_count||0),pendingPurchaseCount:Number(output.pending_purchase_count||0),purchaseCount:Number(output.purchase_count||0),latestPurchaseAt:output.latest_purchase_at??null,transactionId:output.transaction_id||null,transactionStatus:output.transaction_status||null},
+      discovery:{active:!output.suspended_at&&(Number(output.active_purchase_count||0)>0||Number(output.active_apple_count||0)>0||grant.active),adminGrant:grant,activePurchaseCount:Number(output.active_purchase_count||0),pendingPurchaseCount:Number(output.pending_purchase_count||0),purchaseCount:Number(output.purchase_count||0),latestPurchaseAt:output.latest_purchase_at??null,transactionId:output.transaction_id||null,transactionStatus:output.transaction_status||null,
+        apple:{activeCount:Number(output.active_apple_count||0),expiresAt:output.apple_expires_at??null}},
       accountDeletion:{pending:Boolean(output.deletion_expires_at),expiresAt:output.deletion_expires_at??null}
     };
     if(detail){
@@ -168,7 +170,12 @@ function createAdminService({
       const session=await requireAdmin(req,res);if(!session)return true;
       const targetId=cleanAdminTarget(userDetailMatch[1]),user=targetId?await store.adminUserById(targetId,Date.now()):null;
       if(!user)json(res,404,{error:"Account not found.",code:"ADMIN_TARGET_NOT_FOUND"});
-      else json(res,200,{user:adminUserPayload(user,{detail:true})});
+      else{
+        // The detail view also carries the member's Apple subscription state beside the Paddle purchase state.
+        const payload=adminUserPayload(user,{detail:true});
+        payload.discovery.apple={...payload.discovery.apple,subscription:appleSubscriptionSummary(await store.appleSubscriptionsForUser(user.id),Date.now())};
+        json(res,200,{user:payload});
+      }
       return true;
     }
     const actionMatch=url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/actions$/);

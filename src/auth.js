@@ -14,6 +14,7 @@ const {
 }=require("./email");
 const {cleanText}=require("./plans");
 const {createAccountSelfService}=require("./account-self-service");
+const {queueResponseCookie,renewedSessionExpiry}=require("./session-renewal");
 
 const scryptAsync=promisify(scrypt);
 const SESSION_SECONDS=60*60*24*7;
@@ -70,6 +71,7 @@ function createAuthService({
   claimAdminForLogin=async(user)=>user,
   reconcileCheckoutCreationBeforeDeletion=async()=>0,
   reconcileUnsettledPurchases=async()=>0,
+  appleDeletionNotice=async()=>null,
   logger=console
 }){
   if(!store||!emailConfig||typeof trustedAuthOrigin!=="function"||typeof rateAllowed!=="function"||!http||typeof getUserPayload!=="function"){
@@ -128,10 +130,22 @@ function createAuthService({
   async function sessionFor(req){
     const token=cookieMap(req.headers.cookie)[SESSION_COOKIE];
     if(!token||token.length>200)return null;
-    const session=await store.session(hashToken(token),Date.now())||null;
+    const now=Date.now(),session=await store.session(hashToken(token),now)||null;
     // Once verification is requested, a provider misconfiguration must fail closed.
     if(session&&emailConfig.requestedEnabled&&!Number(session.email_verified_at))return null;
+    if(session)await slideSession(req,token,session,now);
     return session;
+  }
+
+  // Every authenticated request passes through sessionFor, so this is where an active session slides forward.
+  async function slideSession(req,token,session,now){
+    const expiresAt=renewedSessionExpiry(session,{now,sessionMs:SESSION_SECONDS*1000});
+    if(!expiresAt)return;
+    try{
+      if(!await store.renewSession(session.token_hash,expiresAt,now))return;
+      session.expires_at=expiresAt;
+      queueResponseCookie(req,sessionCookie(token,Math.floor((expiresAt-now)/1000)));
+    }catch(error){logger.error("Session renewal failed:",error);}
   }
 
   function secureCookie(name,token,maxAge){
@@ -407,16 +421,16 @@ function createAuthService({
     return {claimed,emailHash};
   }
 
-  async function createAndDeliverAccountAction(user,purpose){
+  async function createAndDeliverAccountAction(user,purpose,appleBilling=null){
     const token=randomBytes(32).toString("base64url"),now=Date.now();
     const staged=await store.stageAccountAction({requestId:randomUUID(),userId:user.id,purpose,tokenHash:hashToken(token),expiresAt:now+ACCOUNT_ACTION_MS,createdAt:now});
     if(!staged)throw new Error("Account action could not be staged.");
     try{
-      await sendAccountActionEmail(emailConfig,{to:user.email,name:user.name,token,requestId:staged.request_id,purpose,expiresInMinutes:Math.ceil(ACCOUNT_ACTION_MS/60000)});
+      await sendAccountActionEmail(emailConfig,{to:user.email,name:user.name,token,requestId:staged.request_id,purpose,expiresInMinutes:Math.ceil(ACCOUNT_ACTION_MS/60000),appleSubscription:Boolean(appleBilling)});
       const action=await store.activateAccountAction(staged.request_id,staged.token_hash,Date.now());
       if(!action)throw new Error("Delivered account action could not be activated.");
       authAudit("account_action_sent",{purpose,email:user.email});
-      return {expiresAt:Number(action.expires_at),maskedEmail:maskEmail(user.email)};
+      return {expiresAt:Number(action.expires_at),maskedEmail:maskEmail(user.email),...(appleBilling?{appleBilling}:{})};
     }catch(error){
       try{await store.discardStagedAccountAction(staged.request_id,staged.token_hash);}
       catch(discardError){logger.error("Staged account-action cleanup failed:",discardError);}
@@ -451,7 +465,7 @@ function createAuthService({
       if(principal?.user_id===session.id)throw accountActionError("The primary administrator account cannot be deleted while it owns site management.",409,"ADMIN_ACCOUNT_PROTECTED");
       const reservation=await claimAccountActionSend(session.email,purpose);
       if(!reservation.claimed)throw accountActionError("Too many account emails were requested. Please wait and try again.",429,"ACCOUNT_EMAIL_LIMIT");
-      return await createAndDeliverAccountAction(session,purpose);
+      return await createAndDeliverAccountAction(session,purpose,purpose==="account_delete"?await appleDeletionNotice(session.id):null);
     }catch(error){
       if(error.status)throw error;
       throw accountStorageUnavailable(error);
@@ -464,7 +478,9 @@ function createAuthService({
     try{
       const row=await store.accountActionByTokenHash(hashToken(token));
       const active=Boolean(row&&row.purpose===expectedPurpose&&row.delivery_state==="sent"&&row.consumed_at==null&&Number(row.expires_at)>Date.now());
-      return active?{active:true,expiresAt:Number(row.expires_at),maskedEmail:maskEmail(row.email)}:{active:false};
+      if(!active)return {active:false};
+      const appleBilling=expectedPurpose==="account_delete"?await appleDeletionNotice(row.user_id):null;
+      return {active:true,expiresAt:Number(row.expires_at),maskedEmail:maskEmail(row.email),...(appleBilling?{appleBilling}:{})};
     }catch(error){throw accountStorageUnavailable(error);}
   }
 
@@ -498,12 +514,14 @@ function createAuthService({
       if(principal?.user_id===action.user_id)throw accountActionError("The primary administrator account cannot be deleted while it owns site management.",409,"ADMIN_ACCOUNT_PROTECTED");
       if(await reconcileCheckoutCreationBeforeDeletion(action.user_id)>0)throw accountActionError("A Strata+ checkout is still being prepared. Nothing was deleted; please try again later.",409,"CHECKOUT_PREPARING");
       if(await reconcileUnsettledPurchases(action.user_id)>0)throw accountActionError("A Strata+ payment is still being processed. Nothing was deleted; please try again later.",409,"PURCHASE_PENDING");
+      // An Apple subscription never blocks deletion (App Review 5.1.1(v)); the member is told Apple keeps billing.
+      const appleBilling=await appleDeletionNotice(action.user_id);
       const result=await store.deleteAccount(hashToken(token),Date.now(),accountEmailHash(action.email));
       if(result.status==="purchase_pending")throw accountActionError("A Strata+ payment is still being processed. Nothing was deleted; please try again later.",409,"PURCHASE_PENDING");
       if(result.status==="checkout_pending")throw accountActionError("A Strata+ checkout is still being prepared. Nothing was deleted; please try again later.",409,"CHECKOUT_PREPARING");
       if(result.status!=="deleted")throw accountActionError("This deletion link is invalid or expired. Request a new one from your account.",400,"INVALID_DELETE_LINK");
       authAudit("account_deleted",{purpose:"account_delete",email:action.email});
-      return result.user;
+      return {user:result.user,appleBilling};
     }catch(error){
       if(error.status)throw error;
       throw accountStorageUnavailable(error);
@@ -779,7 +797,10 @@ function createAuthService({
     if(url.pathname==="/api/account/delete/complete"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
       if(!rateAllowed(req,"account-delete-complete",10)){json(res,429,{error:"Too many attempts. Try again later.",code:"ACCOUNT_DELETE_RATE_LIMIT"});return true;}
-      try{await deleteAccountWithToken(await bodyJson(req));json(res,200,{ok:true,message:"Your STRATA account was permanently deleted."},{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});}
+      try{
+        const {appleBilling}=await deleteAccountWithToken(await bodyJson(req));
+        json(res,200,{ok:true,message:`Your STRATA account was permanently deleted.${appleBilling?` ${appleBilling.message}`:""}`,...(appleBilling?{appleBilling}:{})},{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});
+      }
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"ACCOUNT_DELETE_FAILED"});}
       return true;
     }

@@ -1,0 +1,66 @@
+# Apple In-App Purchase for Strata+
+
+Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase as an auto-renewable subscription at $2.99 USD per month. The website keeps Paddle exactly as it is. Strata+ is one entitlement however it was paid for: Paddle, Apple, or an owner's complimentary grant.
+
+## How it works
+
+1. The app buys `online.stratafitness.app.plus.monthly` with StoreKit 2 and sets the purchase's `appAccountToken` to the signed-in member's STRATA user id (a UUID).
+2. The app posts the signed transaction (a JWS) to `POST /api/billing/apple/transactions` with the session cookie and CSRF token, the same way other signed-in writes work. It does this after a purchase, after **Restore Purchases**, at launch for `Transaction.currentEntitlements`, and for every `Transaction.updates` item. It finishes a transaction only after the server accepts it.
+3. The server verifies each JWS against Apple Root CA - G3 (`src/apple-jws.js`), then checks the bundle id, product id, environment, and that `appAccountToken` equals the signed-in account. It stores one row per `originalTransactionId` in `apple_subscriptions` and answers with the member's `discovery` (the same shape as `/api/me`) and the accepted transaction ids.
+4. Apple sends App Store Server Notifications V2 to `POST /api/billing/apple/notifications`. The server verifies the signed payload and the transaction and renewal info inside it, skips a `notificationUUID` it has already processed, and applies the change to the subscription by `originalTransactionId` (linking a new one by `appAccountToken`). It answers `200 {}` for handled or ignored notifications and `400` only for an invalid signature, so Apple retries only what can succeed.
+
+Access is active while the subscription is not revoked and either its expiry is in the future or Apple's billing grace period has not ended. Every Strata+ check goes through `billing.hasCurrentAccess`, which is Paddle or Apple or grant. `/api/me` reports `discovery.accessType` as `paid` (Paddle), then `apple`, then `grant`, and `discovery.apple` as `{active, productId, expiresAt, autoRenew, inGracePeriod, environment, revoked}` or `null`.
+
+State never moves backwards: each row remembers the `signedDate` of the newest App Store data applied, and older data is ignored. A refund of an earlier billing period does not end the current one. A subscription stays with the account that bought it; another account can take it over only after it has expired or been revoked and the newer purchase was made for that account. Otherwise the server answers `409 APPLE_PURCHASE_OTHER_ACCOUNT`.
+
+| Notification | Effect |
+| --- | --- |
+| `SUBSCRIBED`, `DID_RENEW`, `OFFER_REDEEMED`, `RENEWAL_EXTENDED` | New period and expiry |
+| `DID_CHANGE_RENEWAL_STATUS`, `DID_CHANGE_RENEWAL_PREF` | Auto-renew status |
+| `DID_FAIL_TO_RENEW` with `GRACE_PERIOD` | Access until the renewal info's `gracePeriodExpiresDate` |
+| `DID_FAIL_TO_RENEW` (billing retry), `GRACE_PERIOD_EXPIRED`, `EXPIRED` | Access ends at the expiry |
+| `REFUND`, `REVOKE` | Access ends now |
+| `REFUND_REVERSED` | Access returns |
+| `TEST` and anything else | Acknowledged, no change |
+
+Errors use `{error, code}`: `400 APPLE_SIGNATURE_INVALID`, `400 APPLE_ROOT_UNTRUSTED`, `400 APPLE_TRANSACTION_INVALID` (wrong bundle, unknown product, missing `appAccountToken`), `403 APPLE_ACCOUNT_MISMATCH`, `409 APPLE_PURCHASE_OTHER_ACCOUNT`. Both endpoints accept bodies up to 256 KiB and are rate limited (30 transaction posts per account and 600 notifications per address per 15 minutes).
+
+A purchase made outside the app without an `appAccountToken` (for example an offer code redeemed in the App Store) cannot be linked to a STRATA account and is rejected.
+
+## Accounts, export, and deletion
+
+- An Apple subscription never blocks account deletion (App Review Guideline 5.1.1(v)). Deleting removes the `apple_subscriptions` rows. Because Apple keeps billing until the member cancels, the deletion request, the deletion email, `/api/account/delete/status`, and `/api/account/delete/complete` include `appleBilling: {message, manageUrl}` (`https://apps.apple.com/account/subscriptions`) while a subscription is live or set to renew.
+- The account export includes `access.appleSubscriptions`.
+- The owner's Admin member list and detail include `discovery.apple`; the detail adds the same summary `/api/me` uses.
+- Sessions slide: once a session is past half of its seven days, the next request extends it and re-sends the cookie with the same token, never beyond 60 days after sign-in.
+
+## Settings
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `APPLE_BUNDLE_ID` | `online.stratafitness.app` | Must match the app's bundle id. |
+| `APPLE_IAP_PRODUCT_IDS` | `online.stratafitness.app.plus.monthly` | Comma list of accepted Strata+ products. |
+| `APPLE_ROOT_FINGERPRINT` | (unset) | Test-only root override; ignored unless `NODE_ENV=test`. |
+
+There is no shared secret or API key. Both the Production and Sandbox environments are accepted, because App Review and TestFlight purchase in Sandbox.
+
+## App Store Connect steps
+
+1. **Agreements, Tax, and Banking:** accept the Paid Apps agreement and complete the bank and tax forms. Purchases do not work until it is active.
+2. **Subscriptions:** create a subscription group named `Strata+`. In it, create an auto-renewable subscription with product id `online.stratafitness.app.plus.monthly`, duration 1 month, price $2.99 USD (let Apple fill other storefronts), and a display name and description. Add the review screenshot of the in-app purchase screen.
+3. **App Store Server Notifications:** under App Information, set Version 2 notifications with the URL `https://stratafitness.online/api/billing/apple/notifications` for both the Production and the Sandbox server. Use **Request a Test Notification** (or the App Store Server API) and expect a `200`; the server logs `apple.notification` with outcome `test`.
+4. **Submit the subscription with the app version** the first time; later changes can be submitted on their own.
+
+## Sandbox testing
+
+- Create Sandbox Apple Accounts under Users and Access > Sandbox, and sign in to one on the device under Settings > Developer (or App Store) > Sandbox Account.
+- TestFlight builds and development builds buy in Sandbox; renewals are accelerated (a month renews about every five minutes, up to 12 times a day).
+- Check: purchase unlocks Strata+ on the same STRATA account, Restore Purchases works after reinstalling, a second STRATA account on the same Apple Account gets `APPLE_ACCOUNT_MISMATCH` or `APPLE_PURCHASE_OTHER_ACCOUNT`, cancelling in the sandbox subscription settings ends access at expiry, and a refund requested through the Sandbox account (or a `REFUND` test) removes access.
+- Local tests sign with a throwaway chain from `test/support/apple-test-chain.js`; see `test/apple-billing.test.js` and `test/server-apple-billing.test.js`.
+
+## What App Review sees
+
+- The reviewer signs in with the demo STRATA account from the review notes and buys Strata+ with their Sandbox Apple Account; the server accepts Sandbox, so Strata+ unlocks on the demo account.
+- The purchase screen must show the price and period from StoreKit, that it renews monthly until cancelled, how to cancel, **Restore Purchases**, and links to the [Terms](https://stratafitness.online/terms) and [Privacy Policy](https://stratafitness.online/privacy), which cover purchases through Apple.
+- The app must link to no outside payment for Strata+ (Paddle stays on the website only).
+- Account deletion must be reachable in the app; the server never blocks it by the subscription; the member is told to cancel with Apple.

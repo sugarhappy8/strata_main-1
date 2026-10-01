@@ -82,10 +82,11 @@ function createBillingService({
     return store.hasEntitledPaidDiscoveryAccess(userId,entitledRecurringPrices(),paymentConfig.productId,timestamp);
   }
 
-  /** @param {string} userId @param {number} [timestamp] */
-  async function hasCurrentAccess(userId,timestamp=now()) {
-    const [paid,controls]=await Promise.all([hasCurrentPaidAccess(userId,timestamp),store.adminControls(userId)]);
-    return Boolean(paid||adminGrantState(controls,timestamp).active);
+  // Strata+ is one entitlement however it was paid for: Paddle, Apple In-App Purchase, or an owner's grant.
+  /** @param {string} userId @param {number} [timestamp] @param {import("./domain-types").AdminControlsRow|null} [knownControls] */
+  async function hasCurrentAccess(userId,timestamp=now(),knownControls) {
+    const [paid,apple,controls]=await Promise.all([hasCurrentPaidAccess(userId,timestamp),store.hasActiveAppleSubscription(userId,timestamp),knownControls===undefined?store.adminControls(userId):knownControls]);
+    return Boolean(paid||apple||adminGrantState(controls,timestamp).active);
   }
 
   /** @param {string} userId @param {number} [timestamp] */
@@ -499,7 +500,7 @@ function createBillingService({
     if(!rateAllowed(req,`checkout:${session.id}`,8)){
       json(res,429,{error:"Too many checkout attempts. Try again later."});return;
     }
-    if(await hasCurrentPaidAccess(session.id)||adminGrantState(await store.adminControls(session.id),now()).active){
+    if(await hasCurrentAccess(session.id)){
       json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return;
     }
     /** @param {number} status @param {import("./domain-types").JsonObject} data */
@@ -508,7 +509,7 @@ function createBillingService({
       if(!await auth.requireSession(req,res))return false;
       const controls=await store.adminControls(session.id);
       if(controls?.checkout_blocked_at!=null){json(res,403,{error:"New payment sessions are disabled for this account. Contact support.",code:"CHECKOUT_BLOCKED"});return false;}
-      if(await hasCurrentPaidAccess(session.id)||adminGrantState(controls,now()).active){json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return false;}
+      if(await hasCurrentAccess(session.id,now(),controls)){json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return false;}
       if(await store.activeAccountDeletion(session.id,now())){json(res,409,{error:"Cancel account deletion before starting checkout.",code:"ACCOUNT_DELETION_PENDING"});return false;}
       return true;
     };
@@ -548,7 +549,7 @@ function createBillingService({
       if(await store.activeAccountDeletion(session.id,now())){
         json(res,409,{error:"Cancel the pending account-deletion request before starting checkout.",code:"ACCOUNT_DELETION_PENDING"});return;
       }
-      if(await hasCurrentPaidAccess(session.id)||adminGrantState(await store.adminControls(session.id),now()).active){
+      if(await hasCurrentAccess(session.id)){
         json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return;
       }
       let pending=await store.pendingPurchaseForUser(session.id,paymentConfig.priceId);
@@ -557,7 +558,7 @@ function createBillingService({
       }
       if(await store.pendingPurchasesForUser(session.id)>0){
         await reconcileUnsettledPurchases(session.id,{reuseDraft:true});
-        if(await hasCurrentPaidAccess(session.id)||adminGrantState(await store.adminControls(session.id),now()).active){
+        if(await hasCurrentAccess(session.id)){
           json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});return;
         }
         pending=await store.pendingPurchaseForUser(session.id,paymentConfig.priceId);
