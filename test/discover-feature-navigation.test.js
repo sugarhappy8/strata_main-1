@@ -132,6 +132,7 @@ test("Strata+ explains its three score types once beside the relevant tools",()=
   assert.match(guide,/FitScore[\s\S]*STRATA’s fixed exercise score\. It does not change based on your profile\./);
   assert.match(guide,/Match for you[\s\S]*How well the exercise fits your goals, equipment, experience, and saved limitations\./);
   assert.match(guide,/Community rating[\s\S]*The average rating submitted by STRATA members\./);
+  assert.match(guide,/href="\/policies#methodology"/,"the guide stays short and hands off to the one public method page");
   assert.match(html,/Completed workouts, weekly volume, consistency, and how each exercise is moving\./);
 });
 

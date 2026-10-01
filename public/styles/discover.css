@@ -1132,6 +1132,8 @@ html{overflow-x:clip}:where(a,button,input,select){touch-action:manipulation}.st
 .score-guide summary > span { min-width:0; display:grid; gap:4px; }
 .score-guide summary .kicker { margin:0; color:var(--accent); }
 .score-guide summary strong { font-size:1rem; letter-spacing:-.015em; }
+.score-guide-more { margin:12px 0 0; font-size:14px; }
+.score-guide-more a { color:var(--accent); text-underline-offset:4px; }
 .score-guide summary > b { width:32px; height:32px; color:var(--accent); font-size:1rem; }
 .score-guide dl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); margin:13px 0 2px; border-top:1px solid var(--studio-line); border-left:1px solid var(--studio-line); }
 .score-guide dl div { min-width:0; padding:16px; border-right:1px solid var(--studio-line); border-bottom:1px solid var(--studio-line); }

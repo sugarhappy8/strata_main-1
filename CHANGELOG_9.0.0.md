@@ -78,6 +78,8 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   from recommendations, the library, and the detail view and still stays on the device
   (same four-movement limit, same storage key); "Compare saved" and "Clear saved" appear
   inside the Saved collection instead of on a separate board.
+- **One explainer.** The studio score guide is now a short "How we calculate" that hands
+  off to the public method page (`/policies#methodology`) instead of a second explanation.
 - **Share cards cut.** The PNG share-card generator (`discover-sharing.js`) and its three
   "Share card" buttons are gone. Weekly-plan sharing between members is untouched.
 - **One Compare.** The homepage's two-exercise compare tray and dialog are removed, with
@@ -85,6 +87,11 @@ bumped. Decisions and verdicts are in `AUDIT_BUILD9.md`; parked ideas are in
   exercise detail on the homepage offers one link, "Compare in Strata+", to the Library's
   side-by-side comparison (up to four exercises). Free visitors see no comparison control,
   as before.
+
+### Deferred from Phase 2c (recorded, not dropped)
+- Merging the three exercise-detail dialogs (homepage, studio, Train history) into one
+  module is a code-level duplication members never see at once; it moves to Phase 6.
+- The Nutrition "Behind the numbers" panel folds into Strata AI in Phase 5.
 
 ## Rollback
 Migration 008 is reversible by hand: `ALTER TABLE archive_discovery_trials RENAME TO
