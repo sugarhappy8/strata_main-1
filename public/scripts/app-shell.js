@@ -17,7 +17,7 @@
     return;
   }
   document.write(
-    '<link rel="stylesheet" href="/app-mode.css?v=9.4.0" /><script src="/app-mode.js?v=9.4.0"></script>',
+    '<link rel="stylesheet" href="/app-mode.css?v=9.5.0" /><script src="/app-mode.js?v=9.5.0"></script>',
   );
 
   function removeInstallLinks() {

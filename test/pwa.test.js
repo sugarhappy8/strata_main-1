@@ -246,7 +246,7 @@ test("release version, cache keys, asset URLs, and catalog claims stay aligned",
     "refunds.html",
   ];
 
-  assert.equal(version, "9.4.0");
+  assert.equal(version, "9.5.0");
   assert.match(serviceWorker, new RegExp(`const BUILD\\s*=\\s*"${versionPattern}";`));
   assert.match(serviceWorker, /const\s*CACHE_PREFIX\s*=\s*"strata-static-"\s*;/);
   assert.match(

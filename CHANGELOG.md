@@ -1,5 +1,16 @@
 # Changelog
 
+## 9.5.0 — Structure and maintainability
+
+- Every API route is declared in one table (`src/router.js`): `{ method, path, feature, handler }`. One dispatcher applies the checks to every route the same way: a trusted STRATA origin on each write, the session (or the Strata+ feature, or the bound owner), the session's CSRF token on each signed-in write, and a JSON body. A write is protected unless its route opts out by name with `public: true`, `auth: "optional"`, or `webhook: true`; a test lists the 14 writes that run without a session, so adding one is a reviewed change. `handleApi` no longer walks 15 modules, and the services no longer check CSRF or origin themselves.
+- These refusals have one code each on every route: `403 ORIGIN_REQUIRED`, `403 INVALID_CSRF`, `415 JSON_REQUIRED`, `405 METHOD_NOT_ALLOWED`. The module codes (`WORKOUT_ORIGIN_REQUIRED`, `ADMIN_ORIGIN_REQUIRED`, and the rest) are retired. A write with no `Origin` header is refused on every route, as it already was on most.
+- Browser code has one HTML escaper: `public/scripts/html.js` (`StrataHtml.escape`) and an `html` tagged template that escapes every value put into it. Every page loads it first. The 15 local copies are gone, every `innerHTML`, `outerHTML`, and `insertAdjacentHTML` write goes through `StrataHtml`, and ESLint rejects any other. Elements that were only cleared use `textContent`.
+- The code is formatted with Prettier (`printWidth` 100) in a commit with no other change, and `npm run check` starts with `prettier --check`. ESLint `max-len` (140, strings, templates, regexes, URLs, and type tags exempt) keeps lines from growing back. SQL that did not fit on one line is written one clause per line, including the 1,900-character admin queries.
+- Strata+ (`/discover.html`) loads one `<script type="module">` entry, `discover-page.js`, instead of 36 body script tags; the three scripts that must run before paint stay in `<head>`. The architecture check follows the entry's imports to verify the load order, and `discover-program.js` joins the offline cache.
+- Advance every asset version and the offline cache to 9.5.0.
+
+See the [9.5.0 release guide](docs/release-9.5.0.md).
+
 ## 9.4.0 — Hardening
 
 - Apple Sandbox purchases are still verified and saved, but in production they unlock Strata+ only for accounts listed in `APPLE_SANDBOX_ACCOUNTS` (put the App Review demo account there).

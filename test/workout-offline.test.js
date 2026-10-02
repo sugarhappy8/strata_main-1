@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 
-const BUILD = "9.4.0";
+const BUILD = "9.5.0";
 const ROOT = join(__dirname, ".."),
   read = (path) => readFileSync(join(ROOT, path), "utf8");
 

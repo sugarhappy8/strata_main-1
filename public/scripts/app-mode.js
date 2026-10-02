@@ -611,7 +611,7 @@
       }
       if (screen.id === "pricing") {
         const script = document.createElement("script");
-        script.src = "/app-paywall.js?v=9.4.0";
+        script.src = "/app-paywall.js?v=9.5.0";
         document.head.append(script);
       }
       const native = plugin();

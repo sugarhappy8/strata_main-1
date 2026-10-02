@@ -1325,7 +1325,7 @@ async function init({ guestOnly = false } = {}) {
     '<div class="planner-load-state">Loading your weekly plan…</div>',
   );
   try {
-    const exercises = await api("/exercises.json?v=9.4.0");
+    const exercises = await api("/exercises.json?v=9.5.0");
     if (!Array.isArray(exercises))
       throw new Error("STRATA returned an incomplete exercise library.");
     state.exercises = exercises;
