@@ -76,15 +76,3 @@ services:
         sync: false
       - key: GOOGLE_SIGN_IN_CLIENT_SECRET
         sync: false
-      - key: APPLE_SIGN_IN_SERVICES_ID
-        sync: false
-      - key: APPLE_SIGN_IN_TEAM_ID
-        sync: false
-      - key: APPLE_SIGN_IN_KEY_ID
-        sync: false
-      - key: APPLE_SIGN_IN_PRIVATE_KEY
-        sync: false
-      - key: SIGN_IN_TOKEN_KEY
-        sync: false
-      - key: SIGN_IN_TOKEN_KEY_PREVIOUS
-        sync: false

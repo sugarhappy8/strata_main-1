@@ -104,7 +104,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/access-controls-schema.js` | Admin grant and checkout hold schema and authorization guards | 22 | 22 | 2.4 KiB | 55 | — |
 | `src/access-controls-store.js` | Atomic audited account controls for SQLite and Turso | 34 | 34 | 2.1 KiB | 65 | `src/access-controls-schema.js` |
 | `src/access-controls.js` | Complimentary access state and duration validation | 35 | 34 | 2.1 KiB | 65 | — |
-| `src/account-deletion.js` | In-app account deletion by password and the protections shared with the emailed link | 100 | 91 | 6.6 KiB | 110 | — |
+| `src/account-deletion.js` | In-app account deletion by password and the protections shared with the emailed link | 100 | 91 | 6.5 KiB | 110 | — |
 | `src/account-export.js` | Bounded streaming account export serialization | 105 | 98 | 12.1 KiB | 120 | — |
 | `src/account-self-service-schema.js` | Account self-service query catalog | 51 | 49 | 6.9 KiB | 55 | — |
 | `src/account-self-service-store.js` | SQLite and Turso account self-service storage parity | 72 | 67 | 4.2 KiB | 95 | `src/account-self-service-schema.js` |
@@ -180,12 +180,12 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/service-composition.js` | Typed auth/admin/support composition | 41 | 39 | 2.0 KiB | 60 | — |
 | `src/session-renewal.js` | Sliding session renewal and the response cookie choke point | 64 | 57 | 3.3 KiB | 70 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 86 | 79 | 5.1 KiB | 105 | `src/plans.js` |
-| `src/social-auth-client.js` | OpenID Connect client: authorization URL, code exchange, ID-token verification, Apple revocation | 144 | 135 | 9.5 KiB | 170 | `src/devices-crypto.js` |
-| `src/social-auth-config.js` | Sign in with Google or Apple: provider settings | 97 | 89 | 5.3 KiB | 120 | `src/devices-config.js` |
-| `src/social-auth-messages.js` | Account-page messages for Google and Apple sign-in | 20 | 18 | 1.2 KiB | 30 | — |
-| `src/social-auth-schema.js` | Linked sign-in identities, sign-in states, and Apple revocation queue schema | 82 | 76 | 5.4 KiB | 90 | — |
-| `src/social-auth-store.js` | Local and Turso storage for linked sign-ins | 78 | 73 | 6.0 KiB | 90 | `src/social-auth-schema.js` |
-| `src/social-auth.js` | Sign up and sign in with Google or Apple | 230 | 215 | 15.6 KiB | 260 | `src/devices-crypto.js`, `src/plans.js`, `src/social-auth-client.js`, `src/social-auth-config.js`, `src/social-auth-messages.js` |
+| `src/social-auth-client.js` | OpenID Connect client: authorization URL with PKCE, code exchange, ID-token verification | 120 | 111 | 7.4 KiB | 170 | `src/devices-crypto.js` |
+| `src/social-auth-config.js` | Sign in with Google: provider settings | 58 | 52 | 2.8 KiB | 80 | — |
+| `src/social-auth-messages.js` | Account-page messages for Google sign-in | 20 | 18 | 1.2 KiB | 30 | — |
+| `src/social-auth-schema.js` | Linked sign-in identities and sign-in state schema | 65 | 59 | 4.1 KiB | 90 | — |
+| `src/social-auth-store.js` | Local and Turso storage for linked sign-ins | 70 | 65 | 5.1 KiB | 90 | `src/social-auth-schema.js` |
+| `src/social-auth.js` | Sign up and sign in with Google | 200 | 187 | 13.8 KiB | 260 | `src/devices-crypto.js`, `src/plans.js`, `src/social-auth-client.js`, `src/social-auth-config.js`, `src/social-auth-messages.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |
 | `src/store-contract.js` | Storage boundary contract | 169 | 166 | 5.6 KiB | 180 | — |
 | `src/support.js` | Public and administrative support workflow | 144 | 136 | 10.6 KiB | 160 | `src/email.js`, `src/plans.js` |

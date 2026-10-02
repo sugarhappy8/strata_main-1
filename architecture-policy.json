@@ -656,26 +656,24 @@
       "allowedDependencies": []
     },
     "src/social-auth-config.js": {
-      "role": "Sign in with Google or Apple: provider settings",
-      "maxLines": 120,
-      "allowedDependencies": [
-        "src/devices-config.js"
-      ]
+      "role": "Sign in with Google: provider settings",
+      "maxLines": 80,
+      "allowedDependencies": []
     },
     "src/social-auth-client.js": {
-      "role": "OpenID Connect client: authorization URL, code exchange, ID-token verification, Apple revocation",
+      "role": "OpenID Connect client: authorization URL with PKCE, code exchange, ID-token verification",
       "maxLines": 170,
       "allowedDependencies": [
         "src/devices-crypto.js"
       ]
     },
     "src/social-auth-messages.js": {
-      "role": "Account-page messages for Google and Apple sign-in",
+      "role": "Account-page messages for Google sign-in",
       "maxLines": 30,
       "allowedDependencies": []
     },
     "src/social-auth-schema.js": {
-      "role": "Linked sign-in identities, sign-in states, and Apple revocation queue schema",
+      "role": "Linked sign-in identities and sign-in state schema",
       "maxLines": 90,
       "allowedDependencies": []
     },
@@ -687,7 +685,7 @@
       ]
     },
     "src/social-auth.js": {
-      "role": "Sign up and sign in with Google or Apple",
+      "role": "Sign up and sign in with Google",
       "maxLines": 260,
       "allowedDependencies": [
         "src/devices-crypto.js",

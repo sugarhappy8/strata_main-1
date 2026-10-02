@@ -916,15 +916,15 @@ export interface TursoDeviceStoreDependencies {
   plainRow:(row:unknown,columns?:string[])=>any;
 }
 
-export type SocialProviderId="google"|"apple";
+export type SocialProviderId="google";
 export interface SocialSignInStateRecord {stateHash:string;provider:SocialProviderId;browserHash:string;nonce:string;codeVerifier:string;intent:"signup"|"login";nextPath:string;redirectUri:string;createdAt:number;expiresAt:number;}
 /** `at` is when the identity was linked or, for touchAccountIdentity, last used. */
-export interface AccountIdentityRecord {provider:SocialProviderId;subject:string;userId:string;email:string;tokenSealed:string|null;at:number;}
+export interface AccountIdentityRecord {provider:SocialProviderId;subject:string;userId:string;email:string;at:number;}
 export interface SocialAccountRecord {id:string;name:string;email:string;createdAt:number;}
 export interface SignInMethods {hasPassword:boolean;providers:string[];}
 export interface SocialAuthStore {
   insertSocialSignInState(record:SocialSignInStateRecord):Promise<boolean>;
-  recordSocialSignInReturn(stateHash:string,provider:SocialProviderId,code:string,profileName:string|null,now:number):Promise<any>;
+  recordSocialSignInReturn(stateHash:string,provider:SocialProviderId,code:string,now:number):Promise<any>;
   discardSocialSignInState(stateHash:string):Promise<any>;
   consumeSocialSignInState(stateHash:string,browserHash:string,now:number):Promise<any>;
   accountIdentity(provider:SocialProviderId,subject:string):Promise<any>;
@@ -933,10 +933,7 @@ export interface SocialAuthStore {
   linkAccountIdentity(identity:AccountIdentityRecord):Promise<boolean>;
   touchAccountIdentity(identity:AccountIdentityRecord):Promise<boolean>;
   createSocialAccount(account:SocialAccountRecord,identity:AccountIdentityRecord):Promise<AccountIdentityRow|null>;
-  pendingSignInRevocations(limit:number):Promise<any[]>;
-  completeSignInRevocation(id:number):Promise<void>;
-  retrySignInRevocation(id:number):Promise<void>;
-  deleteExpiredSocialSignInData(now:number,staleBefore:number):Promise<void>;
+  deleteExpiredSocialSignInData(now:number):Promise<void>;
 }
 export type LocalSocialAuthStoreDependencies=LocalDeviceStoreDependencies;
 export type TursoSocialAuthStoreDependencies=TursoDeviceStoreDependencies;
@@ -1077,7 +1074,7 @@ export interface SocialAuthService {
   handle(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
   renderAccountPage(html:string):string;
   enabledProviders():SocialProviderId[];
-  cleanup(now?:number):Promise<number>;
+  cleanup(now?:number):Promise<void>;
 }
 
 export interface AdminServiceDependencies {

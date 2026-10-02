@@ -107,7 +107,7 @@ Before a release, audit managed version references with `npm run release:check`;
 ## Accounts, plans, and administrator access
 
 - Passwords use scrypt with a unique random salt; plaintext and reversible passwords are never stored.
-- Members can also sign up and sign in with Google or Apple (OpenID Connect). ID tokens are verified against each provider's published keys, a provider account links to an existing account only when both sides have verified the email, and each provider stays off until it is configured. See [Sign in with Google or Apple](docs/deployment.md#sign-in-with-google-or-apple).
+- Members can also sign up and sign in with Google (OpenID Connect with PKCE). ID tokens are verified against Google's published keys, a Google account links to an existing account only when both sides have verified the email, and the button stays off until it is configured. See [Sign in with Google](docs/deployment.md#sign-in-with-google).
 - Sessions are random database-backed tokens in HttpOnly, SameSite cookies. Sensitive writes also require a same-session CSRF token and trusted origin.
 - Signup verification, password reset, and account deletion use time-limited email flows. Reset revokes every session; deletion on the website requires a one-time registered-email confirmation. In the iOS app, deletion completes in the app with the account password and DELETE (`POST /api/account/delete/now`), under the same protections.
 - Signed-in members can review active session times, sign out one or all other sessions without exposing token/IP/device details, and download a private `no-store` JSON export of their account training and support data.

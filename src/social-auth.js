@@ -1,12 +1,13 @@
 // @ts-check
 "use strict";
 
-// Sign up or sign in with Google or Apple (OpenID Connect, authorization-code flow).
+// Sign up or sign in with Google (OpenID Connect, authorization-code flow with PKCE).
 //
 // 1. POST /auth/social/start is a same-site form. It records a ten-minute state, binds it to this browser with a
 //    SameSite=Lax cookie, and sends the member to the provider.
-// 2. The provider returns to /auth/social/<provider>/callback. Apple returns with a cross-site form POST, which
-//    carries no SameSite cookie, so every callback only parks the one-time code on its state and moves on.
+// 2. The provider returns to /auth/social/<provider>/callback, which only parks the one-time code on its state and
+//    moves on. The callback relies on no STRATA cookie, so a provider that returns by cross-site form POST (as
+//    Sign in with Apple does) would need no different handling.
 // 3. GET /auth/social/finish is a top-level navigation, so the Lax cookie arrives. It checks that cookie, exchanges
 //    the code, verifies the ID token, then signs in, links, or creates the STRATA account.
 // 4. Session cookies are SameSite=Strict, and a navigation that began on the provider's site does not carry them.
@@ -15,22 +16,20 @@
 // A provider account is linked to an existing STRATA account only when both sides have verified the same email.
 
 const {randomUUID}=require("node:crypto");
-const {open,randomId,seal,sha256}=require("./devices-crypto");
+const {randomId,sha256}=require("./devices-crypto");
 const {cleanText}=require("./plans");
 const {SOCIAL_PROVIDER_IDS}=require("./social-auth-config");
 const {createSocialAuthClient}=require("./social-auth-client");
 const {SOCIAL_MESSAGES}=require("./social-auth-messages");
 
 const STATE_TTL_MS=10*60*1000;
-const REVOCATION_RETENTION_MS=7*24*60*60*1000;
 const BROWSER_COOKIE="strata_social";
 const BROWSER_COOKIE_PATH="/auth/social/finish";
 const TOKEN=/^[A-Za-z0-9_-]{43}$/;
-const CALLBACK=/^\/auth\/social\/(google|apple)\/callback$/;
+const CALLBACK=/^\/auth\/social\/(google)\/callback$/;
 const EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const CANCELED_ERRORS=new Set(["access_denied","user_cancelled_authorize","user_cancelled","consent_required"]);
+const CANCELED_ERRORS=new Set(["access_denied","consent_required"]);
 const FALLBACK_NAME="STRATA member";
-
 
 /** @param {string} message */
 function signInError(message){return Object.assign(new Error(message),{status:400,signIn:true});}
@@ -40,13 +39,6 @@ const text=(value)=>typeof value==="string"?value:"";
 const verified=(value)=>value===true||value==="true";
 /** @param {unknown} value */
 function displayName(value){const name=cleanText(text(value).replace(/[\u0000-\u001f\u007f<>]/g," ").replace(/\s+/g," "),40);return name.length>=2?name:"";}
-/** Apple sends the member's name once, as JSON in the `user` field of its first callback. @param {unknown} value */
-function appleName(value){
-  try{
-    const name=JSON.parse(text(value))?.name;
-    return displayName([text(name?.firstName),text(name?.lastName)].filter(Boolean).join(" "))||null;
-  }catch{return null;}
-}
 /** @param {string} value */
 function escapeHtml(value){return value.replace(/[&<>'"]/g,(char)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]||char);}
 
@@ -102,9 +94,8 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
 
   /** The provider sends the member back here. No STRATA cookie can be trusted to arrive, so nothing signs in yet. @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url @param {import("./domain-types").SocialProviderId} id */
   async function callback(req,res,url,id){
-    const expected=settings.providers[id].responseMode==="form_post"?"POST":"GET";
-    if(req.method!==expected){notAllowed(res,expected);return;}
-    const input=expected==="POST"?await bodyForm(req):Object.fromEntries(url.searchParams);
+    if(req.method!=="GET"){notAllowed(res,"GET");return;}
+    const input=Object.fromEntries(url.searchParams);
     const state=text(input.state),code=text(input.code),problem=text(input.error),issuer=text(input.iss);
     if(!TOKEN.test(state)||!rateAllowed(req,"social-sign-in-callback",60)){backToAccount(res,"login",SOCIAL_MESSAGES.expired,"");return;}
     const usable=!problem&&code&&code.length<=2048&&/^[\x21-\x7e]+$/.test(code)&&(!issuer||settings.providers[id].issuers.includes(issuer));
@@ -113,7 +104,7 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
       backToAccount(res,text(discarded?.intent),CANCELED_ERRORS.has(problem)?SOCIAL_MESSAGES.canceled:SOCIAL_MESSAGES.failed,text(discarded?.next_path));
       return;
     }
-    const recorded=await store.recordSocialSignInReturn(sha256(state),id,code,id==="apple"?appleName(input.user):null,now());
+    const recorded=await store.recordSocialSignInReturn(sha256(state),id,code,now());
     if(!recorded){backToAccount(res,"login",SOCIAL_MESSAGES.expired,"");return;}
     redirect(res,`/auth/social/finish?${new URLSearchParams({state})}`);
   }
@@ -124,17 +115,16 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
     const claims=await provider.verifyIdToken(id,tokens.idToken,{nonce:text(pending.nonce)});
     const email=text(claims.email).trim().toLowerCase(),emailVerified=verified(claims.email_verified);
     const name=displayName(claims.name)||displayName(`${text(claims.given_name)} ${text(claims.family_name)}`);
-    return {subject:String(claims.sub),email:EMAIL.test(email)&&email.length<=254?email:"",emailVerified,name:name||displayName(pending.profile_name)||FALLBACK_NAME,
-      refreshToken:id==="apple"?tokens.refreshToken:""};
+    return {subject:String(claims.sub),email:EMAIL.test(email)&&email.length<=254?email:"",emailVerified,name:name||FALLBACK_NAME};
   }
 
   /** Signs in the linked account, links a verified account with the same email, or creates one. @param {import("./domain-types").SocialProviderId} id @param {Awaited<ReturnType<typeof readProfile>>} profile */
   async function resolveAccount(id,profile){
-    const time=now(),tokenSealed=profile.refreshToken?seal(settings.keys,profile.refreshToken):null;
+    const time=now();
     const known=await store.accountIdentity(id,profile.subject);
     if(known){
       if(known.suspended_at)throw signInError(SOCIAL_MESSAGES.paused);
-      await store.touchAccountIdentity({provider:id,subject:profile.subject,userId:String(known.id),email:profile.email||String(known.identity_email),tokenSealed,at:time});
+      await store.touchAccountIdentity({provider:id,subject:profile.subject,userId:String(known.id),email:profile.email||String(known.identity_email),at:time});
       return {user:known,outcome:"signed_in"};
     }
     if(!profile.email||!profile.emailVerified)throw signInError(SOCIAL_MESSAGES.noEmail);
@@ -142,13 +132,13 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
     if(existing){
       if(existing.suspended_at)throw signInError(SOCIAL_MESSAGES.paused);
       if(!Number(existing.email_verified_at))throw signInError(SOCIAL_MESSAGES.unverified);
-      const identity={provider:id,subject:profile.subject,userId:String(existing.id),email:profile.email,tokenSealed,at:time};
+      const identity={provider:id,subject:profile.subject,userId:String(existing.id),email:profile.email,at:time};
       if(!await store.linkAccountIdentity(identity)&&(await store.accountIdentity(id,profile.subject))?.id!==existing.id)throw signInError(SOCIAL_MESSAGES.otherLinked);
       return {user:existing,outcome:"linked"};
     }
     const userId=randomUUID();
     try{
-      const user=await store.createSocialAccount({id:userId,name:profile.name,email:profile.email,createdAt:time},{provider:id,subject:profile.subject,userId,email:profile.email,tokenSealed,at:time});
+      const user=await store.createSocialAccount({id:userId,name:profile.name,email:profile.email,createdAt:time},{provider:id,subject:profile.subject,userId,email:profile.email,at:time});
       if(!user)throw new Error("The new account was not created.");
       return {user,outcome:"created"};
     }catch(error){
@@ -186,23 +176,6 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
     res.end(page);
   }
 
-  /** Revokes queued Sign in with Apple tokens of deleted accounts. @returns {Promise<number>} */
-  async function revokeQueued(){
-    if(!settings.providers.apple.configured)return 0;
-    let revoked=0;
-    for(const row of await store.pendingSignInRevocations(25)){
-      try{await provider.revoke(row.provider,open(settings.keys,String(row.token_sealed)));await store.completeSignInRevocation(Number(row.id));revoked+=1;}
-      catch(error){
-        const code=String(/** @type {any} */(error)?.code||"");
-        // A token sealed with a key that is gone can never be revoked; the member can still remove STRATA from their Apple Account.
-        if(code==="DEVICE_KEY_MISSING"||code==="DEVICE_TOKEN_UNREADABLE")await store.completeSignInRevocation(Number(row.id));
-        else await store.retrySignInRevocation(Number(row.id));
-        logger?.warn?.("auth.social_revocation_failed",{provider:String(row.provider),code:code||"SOCIAL_REVOKE_FAILED"});
-      }
-    }
-    return revoked;
-  }
-
   return Object.freeze({
     /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url */
     async handle(req,res,url){
@@ -220,10 +193,7 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
       return output;
     },
     enabledProviders:()=>[...settings.enabled],
-    async cleanup(time=now()){
-      await store.deleteExpiredSocialSignInData(time,time-REVOCATION_RETENTION_MS);
-      return revokeQueued();
-    }
+    async cleanup(time=now()){await store.deleteExpiredSocialSignInData(time);}
   });
 }
 

@@ -10,13 +10,13 @@ const MIN_GZIP_BYTES=1024;
 /**
  * Headers every response carries. HSTS is sent only in production, which is served over HTTPS (browsers ignore it
  * over plain HTTP); it omits includeSubDomains so other hosts under the domain are not forced onto HTTPS.
- * form-action names the Google and Apple sign-in pages: the sign-in form's answer redirects there.
+ * form-action names Google's sign-in page: the sign-in form's answer redirects there.
  * @param {boolean} [production]
  */
 function securityHeaders(production=process.env.NODE_ENV==="production") {
   return {
     ...(production?{"Strict-Transport-Security":"max-age=31536000"}:{}),
-    "Content-Security-Policy":"default-src 'self'; img-src 'self' https://*.paddle.com data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://cdn.paddle.com; connect-src 'self' https://*.paddle.com; manifest-src 'self'; worker-src 'self'; frame-src https://*.paddle.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com https://appleid.apple.com; frame-ancestors 'none'",
+    "Content-Security-Policy":"default-src 'self'; img-src 'self' https://*.paddle.com data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://cdn.paddle.com; connect-src 'self' https://*.paddle.com; manifest-src 'self'; worker-src 'self'; frame-src https://*.paddle.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'",
     "X-Content-Type-Options":"nosniff",
     "X-Frame-Options":"DENY",
     "Referrer-Policy":"strict-origin-when-cross-origin",

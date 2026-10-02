@@ -714,8 +714,8 @@ test("in the app, Delete account deletes the account in a dialog with the passwo
   assert.ok(!page.requests.some(({path})=>path==="/api/account/delete/request"),"no email is sent");
 });
 
-test("in the app, an account made with Apple or Google deletes with DELETE alone and says when to sign in again",async()=>{
-  const attempts=[],user=memberFixture({signIn:{hasPassword:false,providers:["apple"]}}),base=accountRoutes(user);
+test("in the app, an account made with Google deletes with DELETE alone and says when to sign in again",async()=>{
+  const attempts=[],user=memberFixture({signIn:{hasPassword:false,providers:["google"]}}),base=accountRoutes(user);
   let fresh=false;
   const page=createPage({app:{plugin:{}},route:async(path,options)=>{
     if(path!=="/api/account/delete/now")return base(path);
@@ -724,14 +724,14 @@ test("in the app, an account made with Apple or Google deletes with DELETE alone
   }});
   await settle();
   const el=(id)=>page.elements.get(id);
-  assert.equal(el("accountSignInMethods").textContent,"Signs in with Apple.");assert.equal(el("accountSignInMethods").hidden,false);
+  assert.equal(el("accountSignInMethods").textContent,"Signs in with Google.");assert.equal(el("accountSignInMethods").hidden,false);
   await el("accountDeleteRequest").emit("click",{currentTarget:el("accountDeleteRequest")});await settle();
   assert.equal(el("accountDeletePassword").hidden,true,"there is no STRATA password to ask for");assert.equal(el("accountDeleteRecentNote").hidden,false);
   el("accountDeleteConfirmation").value="DELETE";await el("accountDeleteConfirmation").emit("input");
   assert.equal(el("accountDeleteSubmit").disabled,false,"DELETE alone enables the button");
   await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
   assert.deepEqual(attempts[0],{confirmation:"DELETE"});
-  assert.match(el("accountDeleteError").textContent,/sign out and sign in again with Apple or Google/);
+  assert.match(el("accountDeleteError").textContent,/sign out and sign in again with Google/);
   fresh=true;await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
   assert.equal(el("accountDeleteDone").hidden,false);
 });

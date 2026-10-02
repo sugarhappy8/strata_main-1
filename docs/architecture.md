@@ -52,11 +52,11 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/coaching-store.js` | Focused SQLite and Turso coaching reads, optimistic writes, and account-deletion cleanup. |
 | `src/devices.js` | Authenticated Strata+ connected-device API: Polar V4 connect with consent and session-bound completion, sync requests, settings, local disconnect, and `/api/wellness` reads. |
 | `src/devices-config.js` | Polar and token-key settings; the feature stays off until the client credentials and a 32-byte key are present. |
-| `src/social-auth.js` | Sign up and sign in with Google or Apple: browser-bound start, provider callbacks (Apple's by form POST), finish, account linking, and Apple revocation from the deletion queue. |
-| `src/social-auth-client.js` | OpenID Connect client: authorization URLs (PKCE for Google), the code exchange, Apple's ES256 client secret, RS256 ID-token verification against cached provider keys, and Apple revocation. |
-| `src/social-auth-config.js` | Provider settings; each provider stays off until its credentials (and, for Apple, its key and `SIGN_IN_TOKEN_KEY`) are present. |
-| `src/social-auth-messages.js` | The account-page messages for provider sign-in, shared with the auth allowlist. |
-| `src/social-auth-schema.js` / `src/social-auth-store.js` | Linked identities, 10-minute sign-in states, the Apple revocation queue and its `BEFORE DELETE` trigger, for SQLite and Turso. |
+| `src/social-auth.js` | Sign up and sign in with Google: browser-bound start, the callback that parks the code, finish, and account linking. |
+| `src/social-auth-client.js` | OpenID Connect client: the authorization URL with PKCE, the code exchange, and RS256 ID-token verification against cached Google keys. |
+| `src/social-auth-config.js` | Google sign-in settings; it stays off until the client ID and secret are present. |
+| `src/social-auth-messages.js` | The account-page messages for Google sign-in, shared with the auth allowlist. |
+| `src/social-auth-schema.js` / `src/social-auth-store.js` | Linked identities, 10-minute sign-in states, and the `BEFORE DELETE` trigger that removes an account's linked sign-ins, for SQLite and Turso. |
 | `src/devices-crypto.js` | AES-256-GCM token sealing with key identifiers for rotation, plus hashing and constant-time comparison helpers. |
 | `src/devices-sync.js` | Scheduled V4 imports, refresh-token persistence, daily polling, pausing without Strata+, and reconnect detection. |
 | `src/polar-client.js` | Polar V4 OAuth, credential validation/refresh, range reads, timeouts, rate-limit backoff, and typed errors. |
@@ -106,7 +106,7 @@ Factories receive their dependencies explicitly instead of importing a global se
 2. Within `/api/`, the Paddle webhook reaches its raw-body signature boundary first. Other state-changing API requests pass the global same-origin guard before a domain service is offered the request.
 3. API services are offered requests in an explicit order: anonymous product signals, support, auth (including account self-service), admin, private training, private coaching, workouts, atomic setup, then billing. Each service returns whether it handled the request and still applies its own authentication, CSRF, entitlement, and validation rules as required.
 4. Remaining application APIs, plans, discovery data, and ratings are handled by the composition root and their focused helpers.
-5. `/auth/social/` requests (Google and Apple sign-in) go to the social sign-in service; other `/auth/` form submissions are delegated to the auth service. Static `GET` and `HEAD` requests are resolved through the explicit URL-to-file map. Unknown paths receive a controlled `404`; user input is never joined directly to the filesystem.
+5. `/auth/social/` requests (Google sign-in) go to the social sign-in service; other `/auth/` form submissions are delegated to the auth service. Static `GET` and `HEAD` requests are resolved through the explicit URL-to-file map. Unknown paths receive a controlled `404`; user input is never joined directly to the filesystem.
 6. Response helpers attach security and cache headers. Account and API responses use `no-store`; public versioned assets may use public caching.
 
 Route ordering matters. A new sensitive route must be placed behind its applicable session, owner, origin, and CSRF guards before any broad public or static handler.
@@ -203,7 +203,7 @@ The V4 access token, refresh token, expiry, and granted scopes form one versione
 
 ### Provider sign-in boundary
 
-Google and Apple sign-in uses the OpenID Connect authorization-code flow. `/auth/social/start` is a trusted-origin form that stores a hash of a random state, a nonce, and (for Google) a PKCE verifier for 10 minutes, and binds the state to the browser with an `HttpOnly`, `SameSite=Lax` cookie limited to `/auth/social/finish`. The provider's return (Apple's is a cross-site form POST) only parks the one-time code on the state. Finish consumes the state only with that browser cookie, exchanges the code server to server, and accepts the ID token only after checking its RS256 signature against the provider's published keys, its issuer, audience, expiry, and nonce. A provider subject signs in to the account it is linked to; otherwise a provider-verified email links to a STRATA-verified account with the same email or creates a verified account with no password. A STRATA account has at most one linked account per provider. Apple refresh tokens are sealed with AES-256-GCM under `SIGN_IN_TOKEN_KEY` and kept only for revocation: a `BEFORE DELETE` trigger on `users` moves them to a revocation queue on every deletion path, and the hourly cleanup revokes them. Exports list linked providers and emails, never subjects or tokens.
+Google sign-in uses the OpenID Connect authorization-code flow with PKCE. `/auth/social/start` is a trusted-origin form that stores a hash of a random state, a nonce, and a PKCE verifier for 10 minutes, and binds the state to the browser with an `HttpOnly`, `SameSite=Lax` cookie limited to `/auth/social/finish`. Google's return only parks the one-time code on the state. Finish consumes the state only with that browser cookie, exchanges the code server to server, and accepts the ID token only after checking its RS256 signature against Google's published keys, its issuer, audience, expiry, and nonce. A Google subject signs in to the account it is linked to; otherwise a Google-verified email links to a STRATA-verified account with the same email or creates a verified account with no password. A STRATA account has at most one linked Google account. A `BEFORE DELETE` trigger on `users` removes linked sign-ins on every deletion path. Exports list linked providers and emails, never subjects.
 
 ### Server to storage
 

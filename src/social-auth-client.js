@@ -1,11 +1,11 @@
 // @ts-check
 "use strict";
 
-// OpenID Connect for Google and Apple: the authorization address, the code exchange, and the ID-token
+// OpenID Connect for Google: the authorization address (with PKCE), the code exchange, and the ID-token
 // check. Every ID token is verified here against the provider's published RS256 keys (signature, issuer, audience,
 // expiry, and the nonce STRATA sent), so nothing a browser carries back is trusted on its own.
 
-const {createHash,createPublicKey,sign,verify}=require("node:crypto");
+const {createHash,createPublicKey,verify}=require("node:crypto");
 const {sameSecret}=require("./devices-crypto");
 
 const KEYS_TTL_MS=6*60*60*1000;
@@ -19,8 +19,6 @@ function socialError(code,message,status=502){return Object.assign(new Error(mes
 function discard(response){void response.body?.cancel().catch(()=>{});}
 /** @param {string} part */
 function decodeSegment(part){return JSON.parse(Buffer.from(part,"base64url").toString("utf8"));}
-/** @param {unknown} value */
-function encodeSegment(value){return Buffer.from(JSON.stringify(value)).toString("base64url");}
 /** The PKCE S256 challenge for a verifier. @param {string} verifier */
 function codeChallenge(verifier){return createHash("sha256").update(verifier).digest("base64url");}
 /** @param {unknown} value */
@@ -52,15 +50,6 @@ function createSocialAuthClient({settings,fetchImpl=globalThis.fetch,now=Date.no
     if(!response.ok){discard(response);throw socialError(response.status>=500?"SOCIAL_UNAVAILABLE":"SOCIAL_BAD_RESPONSE",`${name} answered with status ${response.status}.`,response.status>=500?503:502);}
     try{return await response.json();}catch{throw socialError("SOCIAL_BAD_RESPONSE",`${name} sent a response STRATA could not read.`);}
   }
-  /** Apple's client secret is a short-lived ES256 token signed with the Sign in with Apple key. */
-  function appleClientSecret(){
-    const issuedAt=Math.floor(now()/1000),apple=settings.apple;
-    if(!apple.privateKey)throw socialError("SOCIAL_NOT_CONFIGURED","This sign-in option is not available right now.",503);
-    const signingInput=`${encodeSegment({alg:"ES256",kid:apple.keyId,typ:"JWT"})}.${encodeSegment({iss:apple.teamId,iat:issuedAt,exp:issuedAt+300,aud:"https://appleid.apple.com",sub:settings.providers.apple.clientId})}`;
-    return `${signingInput}.${sign("sha256",Buffer.from(signingInput),{key:apple.privateKey,dsaEncoding:"ieee-p1363"}).toString("base64url")}`;
-  }
-  /** @param {ReturnType<typeof providerFor>} provider */
-  function clientCredentials(provider){return {client_id:provider.clientId,client_secret:provider.id==="apple"?appleClientSecret():provider.clientSecret};}
 
   /** The provider's current signing keys, fetched again when stale or when a token names an unknown key. @param {ReturnType<typeof providerFor>} provider @param {boolean} refresh */
   async function signingKeys(provider,refresh){
@@ -86,9 +75,7 @@ function createSocialAuthClient({settings,fetchImpl=globalThis.fetch,now=Date.no
     authorizeUrl(id,{state,nonce,codeVerifier,redirectUri}){
       const provider=providerFor(id),url=new URL(provider.authorizeUrl);
       const query=new URLSearchParams({response_type:"code",client_id:provider.clientId,redirect_uri:redirectUri,scope:provider.scope,state,nonce});
-      if(provider.responseMode!=="query")query.set("response_mode",provider.responseMode);
-      if(provider.pkce){query.set("code_challenge",codeChallenge(codeVerifier));query.set("code_challenge_method","S256");}
-      if(id==="google")query.set("prompt","select_account");
+      query.set("code_challenge",codeChallenge(codeVerifier));query.set("code_challenge_method","S256");query.set("prompt","select_account");
       url.search=query.toString();
       return url.toString();
     },
@@ -98,14 +85,13 @@ function createSocialAuthClient({settings,fetchImpl=globalThis.fetch,now=Date.no
      */
     async exchangeCode(id,{code,redirectUri,codeVerifier}){
       const provider=providerFor(id);
-      const form=new URLSearchParams({grant_type:"authorization_code",code,redirect_uri:redirectUri,...clientCredentials(provider)});
-      if(provider.pkce)form.set("code_verifier",codeVerifier);
+      const form=new URLSearchParams({grant_type:"authorization_code",code,redirect_uri:redirectUri,client_id:provider.clientId,client_secret:provider.clientSecret,code_verifier:codeVerifier});
       const response=await send(provider.name,provider.tokenUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded",Accept:"application/json"},body:form.toString()});
       if(response.status===400||response.status===401){discard(response);throw socialError("SOCIAL_CODE_REJECTED",`${provider.name} did not accept this sign-in. Try again.`,400);}
       const body=await readJson(provider.name,response);
-      const idToken=text(body?.id_token),accessToken=text(body?.access_token),refreshToken=text(body?.refresh_token);
-      if(!idToken||idToken.length>MAX_TOKEN_LENGTH||accessToken.length>MAX_TOKEN_LENGTH||refreshToken.length>MAX_TOKEN_LENGTH)throw socialError("SOCIAL_BAD_RESPONSE",`${provider.name} sent an incomplete sign-in response.`);
-      return {idToken,accessToken,refreshToken};
+      const idToken=text(body?.id_token);
+      if(!idToken||idToken.length>MAX_TOKEN_LENGTH)throw socialError("SOCIAL_BAD_RESPONSE",`${provider.name} sent an incomplete sign-in response.`);
+      return {idToken};
     },
     /**
      * Verifies an ID token and returns its claims.
@@ -127,16 +113,6 @@ function createSocialAuthClient({settings,fetchImpl=globalThis.fetch,now=Date.no
       if(!(typeof claims.nonce==="string"&&sameSecret(claims.nonce,nonce)))throw invalid();
       if(typeof claims.sub!=="string"||!claims.sub||claims.sub.length>255)throw invalid();
       return claims;
-    },
-    /** Ends STRATA's Sign in with Apple authorization; Apple requires this when the account is deleted. @param {import("./social-auth-config").SocialProviderId} id @param {string} refreshToken */
-    async revoke(id,refreshToken){
-      const provider=providerFor(id);
-      if(!provider.revokeUrl||!refreshToken)return false;
-      const form=new URLSearchParams({...clientCredentials(provider),token:refreshToken,token_type_hint:"refresh_token"});
-      const response=await send(provider.name,provider.revokeUrl,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:form.toString()});
-      discard(response);
-      if(!response.ok)throw socialError("SOCIAL_REVOKE_FAILED",`${provider.name} answered the revocation with status ${response.status}.`);
-      return true;
     }
   });
 }

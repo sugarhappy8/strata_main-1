@@ -2,7 +2,7 @@
 /* In the iOS app, Delete account deletes the account right here (App Review Guideline 5.1.1(v): App Review cannot open
    an email). The member re-enters the account password and types DELETE in a modal dialog; showModal keeps focus
    inside it and Escape closes it. Browsers never open it and keep the emailed deletion link, which the dialog still
-   offers as "Email me a deletion link instead". An account made with Apple or Google has no password: it
+   offers as "Email me a deletion link instead". An account made with Google has no password: it
    types DELETE only, and the server accepts that within 15 minutes of signing in. */
 (function(root,factory){
   const api=factory();
