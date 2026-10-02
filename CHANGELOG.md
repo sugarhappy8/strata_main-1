@@ -1,5 +1,16 @@
 # Changelog
 
+## 9.3.0 — Sign in with Google
+
+- Members can create an account or sign in with Google from Profile, next to email and password. STRATA uses Google's OpenID Connect sign-in with PKCE and a nonce, checks every ID token against Google's published keys, and finishes only in the browser that started. A Google account links to an existing STRATA account only when both have verified the same email; otherwise it creates a verified account without a password, which can add one through the emailed set-a-password link. The button stays off until `GOOGLE_SIGN_IN_CLIENT_ID` and `GOOGLE_SIGN_IN_CLIENT_SECRET` are set.
+- The iOS app keeps email sign-in only, because Google refuses sign-in inside embedded web views; its sign-in panel tells members who signed up with Google to set a password with Forgot password?. In the app, an account without a password deletes with DELETE alone within 15 minutes of signing in.
+- The Content-Security-Policy's `form-action` allows Google's sign-in page. Exports list a linked Google sign-in without Google's account identifier, and deleting an account removes it. The privacy policy describes what Google shares.
+- The Google logo carries its own size, so a stale cached stylesheet can no longer stretch it across the button.
+- A Strata AI test no longer races a slow signup against its 400 ms busy-queue window.
+- Advance every asset version and the offline cache to 9.3.0, so installed apps and returning browsers fetch the new account page styles and scripts instead of mixing them with cached 9.2.0 files.
+
+See the [9.3.0 release guide](docs/release-9.3.0.md).
+
 ## 9.2.0 — The STRATA iOS app
 
 - The website half of the STRATA iOS app (`sugarhappy8/strata-fitness-ios`). Inside the app (user agent `StrataApp/<n>`) every page gets one tab bar and top bar, app-style transitions and press feedback, and native extras through the app: haptics, the screen kept on during a workout, a "Rest is over" notification, Add to Calendar through iOS's New Event sheet, AirPrint, and downloads handed to the share sheet. Browsers see the site exactly as before.

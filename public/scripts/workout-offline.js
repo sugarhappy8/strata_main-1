@@ -88,7 +88,7 @@
   async function initialize(){
     const restored=readContext();if(!restored){unavailable("Reconnect, sign in to the original account, and open an active workout once before continuing it offline.");return;}
     state.context=restored.context;state.record=restored.record;
-    try{const response=await fetch("/exercises.json?v=9.2.0");if(response.ok){const catalog=await response.json();state.catalog=new Map(catalog.map((item)=>[item.id,item]));}}catch{/* Exercise IDs remain usable if the public catalog is unavailable. */}
+    try{const response=await fetch("/exercises.json?v=9.3.0");if(response.ok){const catalog=await response.json();state.catalog=new Map(catalog.map((item)=>[item.id,item]));}}catch{/* Exercise IDs remain usable if the public catalog is unavailable. */}
     const workout=state.record.workout,notices=restored.repairs.length?[repairNotice(restored.repairs)]:[];
     if(workout.status==="completed"&&!W.progress(workout).completed){workout.status="active";workout.completedAt=null;notices.push("This workout was finished on this device without a completed set, so it has been reopened. Complete at least one set before finishing it.");}
     $("offlineUnavailable").hidden=true;$("offlineSession").hidden=false;render();error(notices.join(" "));$("offlineSessionTitle").focus();

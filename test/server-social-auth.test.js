@@ -88,6 +88,8 @@ test("the account page offers each configured provider, and the CSP lets its for
   assert.equal(page.status,200);
   for(const id of ["google"])assert.equal((page.text.match(new RegExp(`data-social="${id}"(\\s+hidden)?>`,"g"))||[]).filter((match)=>!match.includes("hidden")).length,2,id);
   assert.doesNotMatch(page.text,/data-social-options\s+hidden/);
+  // The logo carries its own size, so a stale cached stylesheet can never let it fill the button.
+  assert.equal((page.text.match(/<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true" focusable="false">/g)||[]).length,2);
   assert.match(page.text,/<input id="socialSignupNext" type="hidden" name="next" value="\/discover\.html" \/>/);
   assert.match(page.headers.get("content-security-policy"),/form-action 'self' https:\/\/accounts\.google\.com;/);
   assert.deepEqual((await request("/api/status")).data.signInProviders,["google"]);
