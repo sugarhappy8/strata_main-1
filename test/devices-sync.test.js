@@ -107,3 +107,24 @@ test("the sync loop starts once, runs soon after start, and stops cleanly",async
   const failing=createDeviceSync({store:{...fakeStore(),dueDeviceConnections:async()=>{throw new Error("database offline");}},polar:fakePolar(),keys:KEYS,hasAccess:async()=>true,intervalMs:20,logger:{error:(name)=>errors.push(name)}});
   failing.start();await new Promise((resolve)=>setTimeout(resolve,60));failing.stop();assert.ok(errors.includes("device.sync_loop_failed"));
 });
+
+test("the Polar sync loop runs on one server at a time behind the database lock",async()=>{
+  let time=NOW;const lock={holder:null,expiresAt:0},released=[];
+  // The locks table's rule: free, expired, or already this holder's.
+  const locks={
+    async acquireLock(name,holder,expiresAt,now){if(lock.holder&&lock.holder!==holder&&lock.expiresAt>now)return false;Object.assign(lock,{holder,expiresAt});return true;},
+    async releaseLock(name,holder){released.push(holder);if(lock.holder===holder)lock.holder=null;}
+  };
+  const store=fakeStore({due:[connection()]});
+  const make=(holder)=>createDeviceSync({store,polar:fakePolar(),keys:KEYS,hasAccess:async()=>true,now:()=>time,intervalMs:60000,locks,holder});
+  const first=make("server-a"),second=make("server-b");
+  await first.tick();await second.tick();
+  assert.equal(lock.holder,"server-a");
+  assert.equal(store.calls.filter((call)=>call[0]==="due").length,1,"the second server skipped its tick");
+  assert.equal(store.synced.length,1);
+  time+=4*60*1000;await second.tick();
+  assert.equal(store.calls.filter((call)=>call[0]==="due").length,1,"the lock still holds before it expires");
+  time+=2*60*1000;await second.tick();
+  assert.equal(lock.holder,"server-b","after the first server goes quiet past the lock's life, another takes over");
+  second.stop();assert.deepEqual(released,["server-b"]);assert.equal(lock.holder,null,"stopping hands the lock back");
+});

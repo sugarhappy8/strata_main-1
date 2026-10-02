@@ -52,7 +52,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
   if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http||!settings||typeof hasAccess!=="function")throw new TypeError("Connected devices require storage, access guards, rate limiting, HTTP helpers, settings, and access checks.");
   const {json,bodyJson,redirect}=http;
   const client=polar||createPolarClient({settings,now,...(fetchImpl?{fetchImpl}:{})});
-  const worker=sync||createDeviceSync({store,polar:client,keys:settings.keys,hasAccess,logger,now,intervalMs:settings.syncIntervalMs,events});
+  const worker=sync||createDeviceSync({store,polar:client,keys:settings.keys,hasAccess,logger,now,intervalMs:settings.syncIntervalMs,events,locks:typeof store.acquireLock==="function"?store:null});
   const uniqueViolation=isUniqueViolation||((/** @type {any} */ error)=>/UNIQUE constraint failed/i.test(String(error?.message||"")));
 
   /** @param {any} req @param {any} session */
