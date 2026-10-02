@@ -11,7 +11,9 @@ const BUILD=RELEASE.strataBuild||RELEASE.version;
 const CATALOG_URL=`/exercises.json?v=${BUILD}`;
 const readPublic=(...parts)=>fs.readFileSync(join(PROJECT_ROOT,"public",...parts),"utf8");
 const html=readPublic("pages","planner.html");
-const plannerCss=readPublic("styles","planner.css");
+// The stylesheet is compared without layout whitespace, so these checks hold for dense and formatted CSS alike.
+const compactCss=(css)=>css.replace(/\s+/g," ").replace(/\s*([{}:;,>()])\s*/g,"$1").replace(/;\}/g,"}");
+const plannerCss=compactCss(readPublic("styles","planner.css"));
 const exercises=JSON.parse(readPublic("data","exercises.json"));
 const Discovery=require(join(PROJECT_ROOT,"public","scripts","discovery-core"));
 const ids=[...html.matchAll(/\bid="([^"]+)"/g)].map((match)=>match[1]);
@@ -132,7 +134,7 @@ function clickSelectDay(day){
   assert.match(finalMobileRule,/\.library-panel\{[^}]*\btop:auto\b/,"The final mobile cascade must cancel the desktop sticky offset");
   assert.doesNotMatch(finalMobileRule,/\.planner-day-chip\{[^}]*min-width:0/,"The final mobile cascade must preserve accessible day-chip targets");
   assert.match(plannerCss,/@media\(max-width:480px\)\{[^}]*\.library-panel\{[^}]*72svh[^}]*\}\.planner-day-chips\{grid-template-columns:repeat\(4,minmax\(44px,1fr\)\)/,"Small screens should expose four full-size day targets per row and enough room to read library results");
-  assert.match(plannerCss,/\.library-list \{[^}]*grid-auto-rows:max-content/,"Library rows must grow with wrapped exercise names instead of clipping them");
+  assert.match(plannerCss,/\.library-list\{[^}]*grid-auto-rows:max-content/,"Library rows must grow with wrapped exercise names instead of clipping them");
   assert.match(html,/id="exportWeeklyPlan"[^>]*>Export week/,"Export should use a short, familiar label");
   assert.match(html,/<a href="\/account\.html">Profile<\/a>/,"Signed-in planners reach their account through Profile in the site navigation");
   assert.match(html,/id="plannerSignIn"[^>]*>Sign in<\/a>/,"The guest sign-in link says what it does");

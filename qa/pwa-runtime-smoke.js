@@ -86,15 +86,15 @@ async function main() {
   assert.match(worker.response.headers.get("content-type"),/^text\/javascript/);
   assert.equal(worker.response.headers.get("service-worker-allowed"),"/");
   assert.match(worker.response.headers.get("cache-control"),/no-cache/);
-  assert.match(workerText,new RegExp(`const BUILD="${BUILD.replace(/\./g,"\\.")}"`));
-  assert.match(workerText,/const CACHE_PREFIX="strata-static-"/);
-  assert.match(workerText,/key\.startsWith\(CACHE_PREFIX\) && key!==STATIC_CACHE/);
-  assert.match(workerText,/const PUBLIC_ASSET_URLS=new Set/);
+  assert.match(workerText,new RegExp(`const BUILD\\s*=\\s*"${BUILD.replace(/\./g,"\\.")}"`));
+  assert.match(workerText,/const\s*CACHE_PREFIX\s*=\s*"strata-static-"/);
+  assert.match(workerText,/key\s*\.startsWith\s*\(\s*CACHE_PREFIX\s*,?\s*\)\s*&&\s*key\s*!==\s*STATIC_CACHE/);
+  assert.match(workerText,/const\s*PUBLIC_ASSET_URLS\s*=\s*new\s*Set/);
   assert.match(workerText,/PUBLIC_ASSET_URLS\.has\(url\.href\)/);
   assert.match(workerText,/pathname\.startsWith\("\/api\/"\)/);
   assert.match(workerText,/pathname\.startsWith\("\/auth\/"\)/);
-  assert.match(workerText,/pathname==="\/healthz"/);
-  const precacheBlock=workerText.match(/const PRECACHE_URLS=\[([\s\S]*?)\];/);
+  assert.match(workerText,/pathname\s*===\s*"\/healthz"/);
+  const precacheBlock=workerText.match(/const\s+PRECACHE_URLS\s*=\s*\[([\s\S]*?)\];/);
   assert.ok(precacheBlock,"service worker must expose a literal maintenance-auditable precache list");
   assert.doesNotMatch(precacheBlock[1],/account\.html|discover\.html|workout\.html|onboarding\.html|admin\.html|reset-password|delete-account|\/api\/|\/auth\//);
 
