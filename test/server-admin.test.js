@@ -269,7 +269,7 @@ test("the public status never reveals whether or how an admin is configured",asy
   const configured=await request("/api/status");
   assert.equal(configured.response.status,200);
   assert.deepEqual(Object.keys(configured.data).sort(),["ok","version"]);
-  assert.doesNotMatch(JSON.stringify(configured.data),/stratafitness\.official|ADMIN_EMAIL|admin-http-email-secret|fixture_key/i);
+  assert.doesNotMatch(JSON.stringify(configured.data),/stratafitness\s*\.official|ADMIN_EMAIL|admin-http-email-secret|fixture_key/i);
 
   for(const [label,value] of [
     ["unset",undefined],
@@ -281,7 +281,7 @@ test("the public status never reveals whether or how an admin is configured",asy
       const status=await requestAt(auxiliary.base,"/api/status");
       assert.equal(status.response.status,200);
       assert.deepEqual(Object.keys(status.data).sort(),["ok","version"],label);
-      assert.doesNotMatch(JSON.stringify(status.data),/stratafitness\.official|attacker|ADMIN_EMAIL|fixture_key/i);
+      assert.doesNotMatch(JSON.stringify(status.data),/stratafitness\s*\.official|attacker|ADMIN_EMAIL|fixture_key/i);
     }finally{
       await stopChild(auxiliary.child);
       rmSync(auxiliary.dataDir,{recursive:true,force:true});
@@ -841,7 +841,7 @@ test("Admin automatically pauses deletion targets and preserves accounts with li
   const deleted=await adminAction(admin,target.user.id,"delete-account");
   assert.equal(deleted.response.status,200);
   assert.match(deleted.data.message,/permanently deleted from STRATA/i);
-  assert.doesNotMatch(JSON.stringify(deleted.data),/delete-me@example\.test|ctm_retained_by_paddle/i);
+  assert.doesNotMatch(JSON.stringify(deleted.data),/delete-me@example\s*\.test|ctm_retained_by_paddle/i);
   assert.equal((await request("/api/me",{headers:{Cookie:target.cookie}})).response.status,401);
   assert.equal((await request("/api/admin/session",{headers:{Cookie:admin.cookie}})).response.status,200);
   assert.equal((await request("/api/me",{headers:{Cookie:nonAdmin.cookie}})).response.status,200);

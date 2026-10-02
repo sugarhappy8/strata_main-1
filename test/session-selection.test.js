@@ -133,7 +133,7 @@ test("My preferences uses repeated completed choices and names history as the ev
   assert.equal(result.items[0].exerciseId,preferred);
   assert.ok(result.items[0].reasons.some((reason)=>reason.includes("completed in 2 of your saved sessions")));
   assert.match(result.selectionNote,/older sessions may be missing/);
-  assert.doesNotMatch(result.items[0].reasons.join(" "),/you like|you love/);
+  assert.doesNotMatch(result.items[0].reasons.join(" "),/you\s*like|you\s*love/);
   const once=Core.buildSession({...base,workouts:[history[0]]});
   assert.match(once.selectionNote,/No shortlist, own ratings, or repeated completed choices/);
   const unavailable=Core.buildSession({...base,workoutHistoryAvailable:false,workouts:history,shortlist:["incline-dumbbell-press"]});
@@ -148,7 +148,7 @@ test("My preferences learns same-muscle choices from saved, highly rated and rep
   const rated=Core.buildSession(machineOnly);
   assert.equal(rated.items[0].exercise.sub,"Upper chest");
   assert.ok(rated.items[0].reasons.some((reason)=>reason.includes("targets you save or rate highly")));
-  assert.doesNotMatch(rated.selectionNote,/No shortlist/);
+  assert.doesNotMatch(rated.selectionNote,/No\s*shortlist/);
   const repeated=Core.buildSession({...machineOnly,userRatings:new Map(),workoutHistoryAvailable:true,workouts:[workout("one","2026-09-09",[["incline-dumbbell-press",3]]),workout("two","2026-09-10",[["incline-dumbbell-press",3]])]});
   assert.equal(repeated.items[0].exercise.sub,"Upper chest");
   assert.ok(repeated.items[0].reasons.some((reason)=>reason.includes("targets you repeatedly train")));
@@ -161,7 +161,7 @@ test("conflicting preference evidence never invents a shortage of alternatives",
   assert.equal(session.items[0].exerciseId,preferred);
   const reason=session.items[0].reasons.join(" ");
   assert.match(reason,/rating is 1\/5.*saved to your shortlist.*completed in 10/);
-  assert.doesNotMatch(reason,/limited|shortage|unavailable|no alternatives/);
+  assert.doesNotMatch(reason,/limited|shortage|unavailable|no\s*alternatives/);
 });
 
 test("lookahead reserves the only feasible exercise for a later required role",()=>{

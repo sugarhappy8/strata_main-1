@@ -18,7 +18,7 @@ test("historical target lookup never substitutes this week's calories for a miss
 
 test("historical diary renders intake without inventing a remaining target",()=>{
   const el=elements(),render=createRenderer({element:el,ui:Ui,diaryUi:Diary});render.renderLog({macroPreference:null,measurementSystem:"imperial"},week,[{date:"2026-09-07",calories:1800,morningWeightKg:300,complete:true}],"2026-09-07");
-  for(const prefix of ["coaching"]){const summary=el(prefix==="coaching"?"coachingProgressSummary":"progressCoachingSummary").innerHTML;assert.match(summary,/1,800 kcal/);assert.match(summary,/No target was saved/);assert.doesNotMatch(summary,/2,200|400 kcal/);assert.equal(el(`${prefix}LogDate`).value,"2026-09-07");assert.equal(el(`${prefix}MorningWeight`).value,661.4);assert.equal(el(`${prefix}MorningWeight`).max,"661.4");}
+  for(const prefix of ["coaching"]){const summary=el(prefix==="coaching"?"coachingProgressSummary":"progressCoachingSummary").innerHTML;assert.match(summary,/1,800 kcal/);assert.match(summary,/No target was saved/);assert.doesNotMatch(summary,/2\s*,\s*200|400\s*kcal/);assert.equal(el(`${prefix}LogDate`).value,"2026-09-07");assert.equal(el(`${prefix}MorningWeight`).value,661.4);assert.equal(el(`${prefix}MorningWeight`).max,"661.4");}
 });
 
 test("a historical save uses the original revision and omits hidden macros",async()=>{
@@ -39,7 +39,7 @@ test("a delayed coaching write cannot repopulate a reset account view",async()=>
 
 test("weight scenarios begin at their dated engine weight basis",()=>{
   const markup=projectionSvg({weightKg:100},[{weeks:4,startWeightKg:80,weightKg:79,rangeKg:[77,83]}],kg=>`${kg} kg`);
-  assert.match(markup,/Start/);assert.match(markup,/77 kg–83 kg/);assert.doesNotMatch(markup,/100 kg/);
+  assert.match(markup,/Start/);assert.match(markup,/77 kg–83 kg/);assert.doesNotMatch(markup,/100\s*kg/);
 });
 
 
@@ -66,7 +66,7 @@ test("a version 3 deficit keeps its percentage policy instead of displaying null
   try{
     const el=elements(),render=createRenderer({element:el,ui:Ui,diaryUi:Diary}),profile={version:3,measurementSystem:"metric",preferredLoadUnit:"kg",weightKg:82,experience:"intermediate",sessionMinutes:45,sessionsPerWeek:1,lifestyleActivity:"sedentary",usualExercises:[],trainingGoal:"balanced",goalPace:"gentle"};
     const model={...week,modelUpdateAvailable:true,nextWeekStart:"2026-09-21",training:{sessions:[]},nutrition:{...week.nutrition,rmrKcal:1650,selectedGoal:"fat_loss",goalPace:"gentle",weeklyTargetKcal:14_000,maintenance:{targetKcal:2250},deficit:{targetKcal:2000,policy:"10% below estimated maintenance",breakdown:{requestedWeightChangePercentPerWeek:null,actualWeightChangePercentPerWeek:null,actualDeficitKcal:250}},bulk:{targetKcal:2400,policy:"Conservative surplus"},weightScenarios:[]}};
-    render.renderDashboard(profile,model,[],"2026-09-16");assert.match(el("coachingTargetDetail").textContent,/10% below estimated maintenance/);assert.doesNotMatch(el("coachingTargetDetail").textContent,/0% body weight/);assert.match(el("coachingModelUpdate").textContent,/keep their existing calculation.*opt in/is);assert.doesNotMatch(el("coachingModelUpdate").textContent,/next weekly snapshot uses the new method/i);
+    render.renderDashboard(profile,model,[],"2026-09-16");assert.match(el("coachingTargetDetail").textContent,/10% below estimated maintenance/);assert.doesNotMatch(el("coachingTargetDetail").textContent,/0%\s*body\s*weight/);assert.match(el("coachingModelUpdate").textContent,/keep their existing calculation.*opt in/is);assert.doesNotMatch(el("coachingModelUpdate").textContent,/next\s*weekly\s*snapshot\s*uses\s*the\s*new\s*method/i);
     for(const maintenance of [2250,{baselineKcal:2250},{targetKcal:2250,baselineKcal:2500,estimateRangeKcal:[1900,2800]}]){
       render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,maintenance}},[],"2026-09-16");
       assert.equal(el("coachingTdee").textContent,"2,250 kcal/day");
@@ -94,8 +94,8 @@ test("version 4 dashboard explains each separate activity input and the bounded 
     assert.equal(el("coachingWeeklyCalories").textContent,"13,300 kcal/week");
     const comparison=el("coachingGoalComparison").innerHTML;
     for(const [label,calories] of [["Deficit","1,900"],["Maintenance","2,300"],["Surplus","2,450"]])assert.ok(comparison.includes(`<span>${label}</span><strong>${calories} kcal/day</strong>`));
-    assert.doesNotMatch(comparison,/<strong>about|<strong>.*–/);
-    assert.doesNotMatch(el("coachingCalorieWeek").innerHTML,/<strong>about/);
+    assert.doesNotMatch(comparison,/<\s*strong\s*>\s*about|<\s*strong\s*>\s*.*–/);
+    assert.doesNotMatch(el("coachingCalorieWeek").innerHTML,/<\s*strong\s*>\s*about/);
     render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,dailyTargets:[{day:"Tuesday",date:"2026-09-15",calories:2050},{day:"Wednesday",date:"2026-09-16",calories:2300}]}},[],"2026-09-16");
     assert.equal(el("coachingTarget").textContent,"2,175 kcal/day average");
     assert.equal(el("coachingTargetDays").textContent,"Every day 2,050–2,300");assert.equal(el("coachingTargetDays").hidden,false);
@@ -115,7 +115,7 @@ test("maintenance explains the movement multiplier separately from net exercise"
     assert.match(el("coachingTdeeDetail").textContent,/planned sessions: about 490 kcal\/week · other activity: about 0 kcal\/week\. Exercise totals exclude resting energy/);
     for(const [rmrKcal,movementPal] of [[1770,undefined],[1770,null],[1770,0],[1770,Infinity],[null,1.5],[0,1.5],[NaN,1.5]]){
       render.renderDashboard(profile,{...model,nutrition:{...model.nutrition,rmrKcal,activityBreakdown:{...model.nutrition.activityBreakdown,movementPal}}},[],"2026-09-16");
-      assert.doesNotMatch(el("coachingTdeeDetail").textContent,/×|movement factor/);
+      assert.doesNotMatch(el("coachingTdeeDetail").textContent,/×|movement\s*factor/);
     }
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
@@ -125,7 +125,7 @@ test("dashboard shows aligned evidence and exercise-specific units without inven
   try{
     const el=elements(),render=createRenderer({element:el,ui:Ui,diaryUi:Diary}),profile={version:3,measurementSystem:"metric",preferredLoadUnit:"lb",weightKg:82,experience:"intermediate",sessionMinutes:45,sessionsPerWeek:1,lifestyleActivity:"moderately_active",usualExercises:[],trainingGoal:"strength"};
     const model={...week,modelUpdateAvailable:true,nextWeekStart:"2026-09-21",training:{sessions:[{day:"Wednesday",label:"Full body",workingSets:3,estimatedDurationMinutes:12,exercises:[{name:"Plank",sets:3,reps:"20–30 s",rest:"75 sec",measurement:"timed",loadType:"bodyweight",unit:"kg",enteredCapability:{maxSets:3,maxReps:12,maxWeightKg:null},performance:{sourceDate:"2026-09-12",status:"repeat"},targetSets:[{seconds:25,reps:null,weight:null}]}]}]},nutrition:{...week.nutrition,weightBasis:{weightKg:80,date:"2026-09-13",source:"recent_morning_weights"},maintenance:{targetKcal:2300,calibration:{status:"trend_informed",windowStart:"2026-08-03",windowEnd:"2026-09-13",evidence:{completeCalorieDays:20,alignedIntakeDays:18,morningWeightDays:9,weightObservationSpanDays:18},interval:{start:"2026-08-24",lastIntakeDate:"2026-09-10",end:"2026-09-11"},quality:{label:"usable"},sensitivity:{rangeKcal:[2000,2600],basis:"Not a confidence interval."}}},weightScenarios:[{weeks:4,startWeightKg:80,weightKg:79,rangeKg:[77,83],includesGainAndLoss:true,caveat:"Scenario envelope, not a prediction interval."}]}};
-    render.renderDashboard(profile,model,[],"2026-09-16");assert.match(el("coachingWeekGrid").innerHTML,/3 working sets · about 12 minutes/);assert.match(el("coachingWeekGrid").innerHTML,/Optional set targets: 25 s/);assert.match(el("coachingWeekGrid").innerHTML,/Entered repetition reference; not a time or distance target: 3 sets × 12 reps/);assert.doesNotMatch(el("coachingWeekGrid").innerHTML,/null reps|25 reps|25 s · 0 kg/);assert.match(el("coachingCalibrationIntake").textContent,/20 logged · 18 aligned/);assert.match(el("coachingCalibrationAlignment").textContent,/final date is excluded/);assert.match(el("coachingCalibrationSensitivity").textContent,/2,000–2,600.*Not a confidence interval/);assert.match(el("coachingWeightBasis").textContent,/80 kg · recent morning weights/);assert.equal(el("coachingModelUpdate").hidden,false);assert.match(el("coachingProjectionNote").textContent,/both weight gain and weight loss/);
+    render.renderDashboard(profile,model,[],"2026-09-16");assert.match(el("coachingWeekGrid").innerHTML,/3 working sets · about 12 minutes/);assert.match(el("coachingWeekGrid").innerHTML,/Optional set targets: 25 s/);assert.match(el("coachingWeekGrid").innerHTML,/Entered repetition reference; not a time or distance target: 3 sets × 12 reps/);assert.doesNotMatch(el("coachingWeekGrid").innerHTML,/null\s*reps|25\s*reps|25\s*s\s*·\s*0\s*kg/);assert.match(el("coachingCalibrationIntake").textContent,/20 logged · 18 aligned/);assert.match(el("coachingCalibrationAlignment").textContent,/final date is excluded/);assert.match(el("coachingCalibrationSensitivity").textContent,/2,000–2,600.*Not a confidence interval/);assert.match(el("coachingWeightBasis").textContent,/80 kg · recent morning weights/);assert.equal(el("coachingModelUpdate").hidden,false);assert.match(el("coachingProjectionNote").textContent,/both weight gain and weight loss/);
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
 
@@ -138,8 +138,8 @@ test("partial and unavailable sessions disclose missing movements while calorie 
     const unavailable={day:"Thursday",status:"unavailable",label:"Workout unavailable",plannedLabel:"Full body B",workingSets:0,estimatedDurationMinutes:0,missingRoles:["Knee-dominant legs","Upper-body pull"],readinessWarning:"No compatible exercises fit the saved movement constraints.",exercises:[]};
     const model={...week,nextWeekStart:"2026-09-21",training:{sessions:[partial,unavailable],summary:{reviewNeeded:true,missingCoverage:["Wednesday: Upper-body pull","Thursday: Knee-dominant legs, Upper-body pull"],groups:[],coverageBasis:"Direct work only."}}};
     render.renderDashboard(profile,model,[],"2026-09-16");const markup=el("coachingWeekGrid").innerHTML,partialCard=markup.match(/<article class="coaching-day-card is-training is-partial">(.*?)<\/article>/)[1],unavailableCard=markup.match(/<article class="coaching-day-card is-training is-unavailable">(.*?)<\/article>/)[1];
-    assert.match(partialCard,/<h5>Partial session<\/h5>/);assert.match(partialCard,/Missing movements: Upper-body pull/);assert.match(partialCard,/Incline Push-up/);assert.match(partialCard,/2 working sets/);assert.doesNotMatch(partialCard,/Full body A/);
-    assert.match(unavailableCard,/<h5>Training unavailable<\/h5>/);assert.match(unavailableCard,/saved movement constraints/);assert.match(unavailableCard,/Knee-dominant legs, Upper-body pull/);assert.doesNotMatch(unavailableCard,/Recovery day|Full body B|0 minutes|<ol>/);
+    assert.match(partialCard,/<h5>Partial session<\/h5>/);assert.match(partialCard,/Missing movements: Upper-body pull/);assert.match(partialCard,/Incline Push-up/);assert.match(partialCard,/2 working sets/);assert.doesNotMatch(partialCard,/Full\s*body\s*A/);
+    assert.match(unavailableCard,/<h5>Training unavailable<\/h5>/);assert.match(unavailableCard,/saved movement constraints/);assert.match(unavailableCard,/Knee-dominant legs, Upper-body pull/);assert.doesNotMatch(unavailableCard,/Recovery\s*day|Full\s*body\s*B|0\s*minutes|<\s*ol\s*>/);
     assert.match(markup,/Recovery day/);assert.match(el("coachingWeekLabel").textContent,/2 scheduled days/);assert.match(el("coachingPlanMethod").textContent,/partial or unavailable sessions/);assert.match(el("coachingTrainingCoverage").textContent,/Thursday: Knee-dominant legs, Upper-body pull/);assert.match(el("coachingCalorieWeek").innerHTML,/2,200 kcal/);assert.match(el("coachingProgressSummary").innerHTML,/2,200 kcal/);assert.equal(el("coachingDashboard").hidden,false);
   }finally{if(previous===undefined)delete globalThis.document;else globalThis.document=previous;}
 });
@@ -151,7 +151,7 @@ test("the diary totals entered macros, flags a mismatch, and can copy the total 
   assert.equal(el("coachingMacroHint").hidden,false);assert.match(el("coachingMacroHintText").textContent,/add up to 1,200 kcal.*That is 50 kcal less than the 1,250 kcal entered\./);
   assert.equal(el("coachingUseMacroCalories").hidden,false);assert.equal(el("coachingUseMacroCalories").textContent,"Use 1,200 kcal");
   el("coachingUseMacroCalories").listeners.click({currentTarget:el("coachingUseMacroCalories")});
-  assert.equal(el("coachingCaloriesEaten").value,"1200");assert.equal(el("coachingUseMacroCalories").hidden,true);assert.doesNotMatch(el("coachingMacroHintText").textContent,/more than|less than/);
+  assert.equal(el("coachingCaloriesEaten").value,"1200");assert.equal(el("coachingUseMacroCalories").hidden,true);assert.doesNotMatch(el("coachingMacroHintText").textContent,/more\s*than|less\s*than/);
   el("coachingFatEaten").value="";el("coachingLogForm").listeners.input();assert.equal(el("coachingMacroHint").hidden,true,"incomplete macros show no total");
   controller.state.profile.macroPreference=null;el("coachingFatEaten").value="40";el("coachingLogForm").listeners.input();assert.equal(el("coachingMacroHint").hidden,true,"macro tracking off hides the total");
 });

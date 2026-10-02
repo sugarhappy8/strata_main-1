@@ -158,7 +158,7 @@ test("Strata+ ratings are private, CSRF-protected, and globally aggregated acros
   const visibleToSecond=await request("/api/ratings/aggregates",{headers:{Cookie:second.cookie}});
   assert.equal(visibleToSecond.response.status,200);
   assert.deepEqual(aggregateFor(visibleToSecond.data),{exercise_id:"flat-dumbbell-press",rating_count:1,...rating});
-  assert.doesNotMatch(JSON.stringify(visibleToSecond.data),/rating-first|example\.test|user_id|csrf/i,"aggregate refreshes never disclose the voter or a session credential");
+  assert.doesNotMatch(JSON.stringify(visibleToSecond.data),/rating-first|example\s*\.test|user_id|csrf/i,"aggregate refreshes never disclose the voter or a session credential");
 
   const replacement={comfort:4,pump:4,enjoyment:2,stability:2,setup:4,overall:4};
   const firstUpdate=await putRating(first,replacement);

@@ -143,7 +143,7 @@ test("Resend delivery uses server credentials, escaped HTML, and an idempotency 
   assert.match(body.text,/https:\/\/stratafitness\.online\/verify-email/);
   assert.match(body.text,/STRATA app or the browser where you started signup/i);
   assert.match(body.html,/Saeed &lt;Admin&gt;/);
-  assert.doesNotMatch(body.html,/<Admin>/);
+  assert.doesNotMatch(body.html,/<\s*Admin\s*>/);
   assert.equal(body.reply_to,"support@stratafitness.online");
 
   await assert.rejects(
@@ -219,8 +219,8 @@ test("support mail keeps ticket bodies in Admin and keys each distinct response 
   assert.deepEqual(notification.to,["support@stratafitness.online"]);
   assert.equal(notification.reply_to,"person@example.com");
   assert.match(notification.text,/https:\/\/stratafitness\.online\/admin#support/);
-  assert.doesNotMatch(notification.text,/Private ticket body|script/i,"support content belongs in the private dashboard, not the owner notification");
-  assert.doesNotMatch(notification.html,/Private ticket body|<script/i);
+  assert.doesNotMatch(notification.text,/Private\s*ticket\s*body|script/i,"support content belongs in the private dashboard, not the owner notification");
+  assert.doesNotMatch(notification.html,/Private\s*ticket\s*body|<\s*script/i);
 
   const firstKey=calls[2].options.headers["Idempotency-Key"];
   const secondKey=calls[3].options.headers["Idempotency-Key"];

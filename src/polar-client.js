@@ -14,7 +14,7 @@ function polarError(code,message,status=502,extra={}){return Object.assign(new E
 /** Releases the connection of a response STRATA will not read. @param {Response} response */
 function discard(response){void response.body?.cancel().catch(()=>{});}
 /** One number of a header such as "RateLimit-Usage: 50, 700", or null when it is missing. @param {string|null} value @param {number} index */
-function headerNumber(value,index){const part=String(value??"").split(",")[index]?.trim(),number=Number(part);return part&&Number.isFinite(number)?number:null;}
+function headerNumber(value,index){const part=String(value??"").split(",").at(index)?.trim(),number=Number(part);return part&&Number.isFinite(number)?number:null;}
 /** @param {unknown} value */
 function scopesOf(value){return [...new Set(String(value??"").split(/\s+/).filter(Boolean))];}
 /** @param {string} value */

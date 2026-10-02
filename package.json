@@ -13,6 +13,8 @@
     "test:e2e": "node scripts/run-test-layer.js e2e",
     "test:visual": "node --test qa/e2e/responsive-content.js qa/e2e/navigation-layout.js",
     "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.boundaries.json",
     "architecture:check": "node scripts/architecture-report.js && node scripts/frontend-architecture-report.js",
     "coverage": "node scripts/coverage-check.js",
@@ -40,6 +42,7 @@
     "espree": "11.2.0",
     "globals": "17.12.0",
     "playwright": "1.62.1",
+    "prettier": "3.9.9",
     "typescript": "7.0.2"
   },
   "engines": {

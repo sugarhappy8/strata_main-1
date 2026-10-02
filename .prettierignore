@@ -1,0 +1,12 @@
+# Generated, vendored, or data files keep their exact bytes.
+node_modules/
+coverage/
+test-runtime/
+package-lock.json
+SHA256SUMS
+public/data/
+src/data/
+docs/verification/
+# HTML pages and Markdown are matched by exact text in tests and the release check, so they keep their hand layout.
+*.html
+*.md

@@ -9,7 +9,7 @@
     },
     "src/server.js": {
       "role": "HTTP composition root",
-      "maxLines": 830,
+      "maxLines": 1410,
       "allowedDependencies": [
         "src/access-controls.js",
         "src/admin.js",
@@ -48,12 +48,12 @@
     },
     "src/service-composition.js": {
       "role": "Typed auth/admin/support composition",
-      "maxLines": 60,
+      "maxLines": 130,
       "allowedDependencies": []
     },
     "src/coaching.js": {
       "role": "Strata+ coaching profile, weekly snapshot, and daily-log API",
-      "maxLines": 180,
+      "maxLines": 650,
       "allowedDependencies": [
         "src/coaching-core.js",
         "src/meal-planning-core.js",
@@ -64,7 +64,7 @@
     },
     "src/coaching-core.js": {
       "role": "Validated coaching inputs and deterministic weekly training composition",
-      "maxLines": 300,
+      "maxLines": 1250,
       "allowedDependencies": [
         "src/energy-planning-core.js",
         "src/meal-planning-core.js",
@@ -74,7 +74,7 @@
     },
     "src/energy-planning-core.js": {
       "role": "Versioned energy estimation, bounded trend calibration, and nutrition planning",
-      "maxLines": 190,
+      "maxLines": 900,
       "allowedDependencies": [
         "src/plans.js",
         "src/energy-activity-core.js",
@@ -84,29 +84,29 @@
     },
     "src/energy-activity-core.js": {
       "role": "Profile-v4 non-workout and generated-session activity energy budget",
-      "maxLines": 100,
+      "maxLines": 240,
       "allowedDependencies": []
     },
     "src/meal-planning-core.js": {
       "role": "Validated dietary preferences and deterministic remaining-day food options",
-      "maxLines": 300,
+      "maxLines": 1630,
       "allowedDependencies": []
     },
     "src/coaching-schema.js": {
       "role": "Coaching profile, weekly snapshot, and daily-log schema",
-      "maxLines": 80,
+      "maxLines": 100,
       "allowedDependencies": []
     },
     "src/coaching-store.js": {
       "role": "SQLite and Turso coaching storage parity",
-      "maxLines": 80,
+      "maxLines": 250,
       "allowedDependencies": [
         "src/coaching-schema.js"
       ]
     },
     "src/auth.js": {
       "role": "Authentication and account lifecycle",
-      "maxLines": 840,
+      "maxLines": 1930,
       "allowedDependencies": [
         "src/account-deletion.js",
         "src/account-self-service.js",
@@ -118,7 +118,7 @@
     },
     "src/admin.js": {
       "role": "Administrative authorization and actions",
-      "maxLines": 280,
+      "maxLines": 580,
       "allowedDependencies": [
         "src/access-controls.js",
         "src/admin-user-actions.js",
@@ -129,7 +129,7 @@
     },
     "src/support.js": {
       "role": "Public and administrative support workflow",
-      "maxLines": 160,
+      "maxLines": 430,
       "allowedDependencies": [
         "src/email.js",
         "src/plans.js"
@@ -137,36 +137,36 @@
     },
     "src/account-self-service.js": {
       "role": "Authenticated session inventory, revocation, and privacy-safe data export",
-      "maxLines": 150,
+      "maxLines": 410,
       "allowedDependencies": [
         "src/account-export.js"
       ]
     },
     "src/account-deletion.js": {
       "role": "In-app account deletion by password and the protections shared with the emailed link",
-      "maxLines": 110,
+      "maxLines": 210,
       "allowedDependencies": []
     },
     "src/account-export.js": {
       "role": "Bounded streaming account export serialization",
-      "maxLines": 120,
+      "maxLines": 460,
       "allowedDependencies": []
     },
     "src/account-self-service-store.js": {
       "role": "SQLite and Turso account self-service storage parity",
-      "maxLines": 95,
+      "maxLines": 220,
       "allowedDependencies": [
         "src/account-self-service-schema.js"
       ]
     },
     "src/account-self-service-schema.js": {
       "role": "Account self-service query catalog",
-      "maxLines": 55,
+      "maxLines": 110,
       "allowedDependencies": []
     },
     "src/database.js": {
       "role": "SQLite and Turso store adapters",
-      "maxLines": 1200,
+      "maxLines": 2200,
       "allowedDependencies": [
         "src/access-controls-store.js",
         "src/account-self-service-store.js",
@@ -186,12 +186,12 @@
     },
     "src/store-contract.js": {
       "role": "Storage boundary contract",
-      "maxLines": 180,
+      "maxLines": 270,
       "allowedDependencies": []
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 220,
+      "maxLines": 510,
       "allowedDependencies": [
         "src/billing-schema.js",
         "src/product-signals-schema.js"
@@ -199,7 +199,7 @@
     },
     "src/schema.js": {
       "role": "Shared storage schema and statements",
-      "maxLines": 390,
+      "maxLines": 520,
       "allowedDependencies": [
         "src/access-controls-schema.js",
         "src/account-self-service-schema.js",
@@ -217,29 +217,29 @@
     },
     "src/product-signals-schema.js": {
       "role": "Aggregate product-activity schema, daily keys, and statements",
-      "maxLines": 60,
+      "maxLines": 70,
       "allowedDependencies": []
     },
     "src/product-signals.js": {
       "role": "Consent-gated aggregate product-activity boundary",
-      "maxLines": 170,
+      "maxLines": 280,
       "allowedDependencies": []
     },
     "src/training-loop-schema.js": {
       "role": "Check-in, training-block, and adaptation storage schema",
-      "maxLines": 70,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/training-loop-store.js": {
       "role": "SQLite and Turso training-loop adapter parity",
-      "maxLines": 140,
+      "maxLines": 290,
       "allowedDependencies": [
         "src/training-loop-schema.js"
       ]
     },
     "src/training.js": {
       "role": "Check-ins, deterministic progression, blocks, and approved adaptations",
-      "maxLines": 450,
+      "maxLines": 990,
       "allowedDependencies": [
         "src/plans.js",
         "src/progression.js"
@@ -247,12 +247,12 @@
     },
     "src/email.js": {
       "role": "Resend integration and email security",
-      "maxLines": 400,
+      "maxLines": 580,
       "allowedDependencies": []
     },
     "src/billing.js": {
       "role": "Commercial entitlement, checkout, webhook, and reconciliation service",
-      "maxLines": 720,
+      "maxLines": 1400,
       "allowedDependencies": [
         "src/access-controls.js",
         "src/apple-billing.js",
@@ -265,19 +265,19 @@
     },
     "src/legacy-checkout.js": {
       "role": "Strict retired-checkout migration and completion policy",
-      "maxLines": 75,
+      "maxLines": 240,
       "allowedDependencies": [
         "src/payments.js"
       ]
     },
     "src/billing-schema.js": {
       "role": "Commercial entitlement and recurring-subscription schema",
-      "maxLines": 140,
+      "maxLines": 190,
       "allowedDependencies": []
     },
     "src/billing-store.js": {
       "role": "SQLite and Turso commercial storage parity",
-      "maxLines": 240,
+      "maxLines": 770,
       "allowedDependencies": [
         "src/access-controls-schema.js",
         "src/billing-schema.js"
@@ -285,7 +285,7 @@
     },
     "src/payments.js": {
       "role": "Paddle integration boundary",
-      "maxLines": 430,
+      "maxLines": 690,
       "allowedDependencies": [
         "src/paddle-catalog.js",
         "src/paddle-checkout-retirement.js",
@@ -295,82 +295,82 @@
     },
     "src/paddle-catalog.js": {
       "role": "Paddle catalog, credential, exact checkout-price, and subscription-transition policy",
-      "maxLines": 80,
+      "maxLines": 170,
       "allowedDependencies": []
     },
     "src/paddle-checkout-retirement.js": {
       "role": "Interrupted Paddle checkout retirement policy",
-      "maxLines": 80,
+      "maxLines": 150,
       "allowedDependencies": []
     },
     "src/paddle-subscriptions.js": {
       "role": "Recurring subscription validation and temporary customer-portal links",
-      "maxLines": 165,
+      "maxLines": 300,
       "allowedDependencies": []
     },
     "src/paddle-webhooks.js": {
       "role": "Paddle signature and webhook source verification",
-      "maxLines": 150,
+      "maxLines": 180,
       "allowedDependencies": []
     },
     "src/plans.js": {
       "role": "Plan domain validation",
-      "maxLines": 380,
+      "maxLines": 630,
       "allowedDependencies": []
     },
     "src/static-assets.js": {
       "role": "Bounded public asset representations",
-      "maxLines": 65,
+      "maxLines": 80,
       "allowedDependencies": [
         "src/http.js"
       ]
     },
     "src/http.js": {
       "role": "HTTP transport helpers",
-      "maxLines": 180,
+      "maxLines": 220,
       "allowedDependencies": [
         "src/session-renewal.js"
       ]
     },
     "src/observability.js": {
       "role": "Structured request tracing and redacted operational logging",
-      "maxLines": 90,
+      "maxLines": 150,
       "allowedDependencies": []
     },
     "src/workouts.js": {
       "role": "Workout validation, history summaries, and authenticated lifecycle",
-      "maxLines": 230,
+      "maxLines": 520,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/setup.js": {
       "role": "Atomic weekly-plan and preference setup",
-      "maxLines": 105,
+      "maxLines": 240,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/access-controls.js": {
       "role": "Complimentary access state and duration validation",
-      "maxLines": 65,
+      "maxLines": 130,
       "allowedDependencies": []
     },
     "src/access-controls-schema.js": {
       "role": "Admin grant and checkout hold schema and authorization guards",
-      "maxLines": 55,
+      "maxLines": 80,
       "allowedDependencies": []
     },
     "src/access-controls-store.js": {
       "role": "Atomic audited account controls for SQLite and Turso",
-      "maxLines": 65,
+      "maxLines": 150,
       "allowedDependencies": [
         "src/access-controls-schema.js"
       ]
     },
     "src/admin-user-actions.js": {
       "role": "Audited administrator account and payment actions",
-      "maxLines": 160,
+      "maxLines": 550,
       "allowedDependencies": [
         "src/access-controls.js",
         "src/plans.js"
@@ -378,7 +378,7 @@
     },
     "src/checkout-reconciliation.js": {
       "role": "Validated checkout closure and settlement reconciliation",
-      "maxLines": 130,
+      "maxLines": 330,
       "allowedDependencies": [
         "src/legacy-checkout.js",
         "src/payments.js",
@@ -387,19 +387,19 @@
     },
     "src/progression.js": {
       "role": "Pure per-set performance progression and comparison rules",
-      "maxLines": 300,
+      "maxLines": 610,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/energy-calibration-core.js": {
       "role": "Aligned intake/weight estimation, quality diagnostics, and bounded weekly adaptation",
-      "maxLines": 220,
+      "maxLines": 910,
       "allowedDependencies": []
     },
     "src/coaching-training-core.js": {
       "role": "Repeatable goal-specific training composition with duration and coverage accounting",
-      "maxLines": 220,
+      "maxLines": 850,
       "allowedDependencies": [
         "src/plans.js",
         "src/coaching-prescription-core.js"
@@ -407,14 +407,14 @@
     },
     "src/coaching-prescription-core.js": {
       "role": "Measurement-aware prescriptions from comparable completed training history",
-      "maxLines": 180,
+      "maxLines": 750,
       "allowedDependencies": [
         "src/progression.js"
       ]
     },
     "src/coaching-evidence.js": {
       "role": "Owner-filtered coaching history and original-target diary assembly",
-      "maxLines": 130,
+      "maxLines": 420,
       "allowedDependencies": [
         "src/coaching-core.js",
         "src/energy-calibration-core.js"
@@ -422,12 +422,12 @@
     },
     "src/energy-scenarios-core.js": {
       "role": "Explicit dynamic sensitivity scenarios with propagated maintenance uncertainty",
-      "maxLines": 100,
+      "maxLines": 280,
       "allowedDependencies": []
     },
     "src/ai.js": {
       "role": "Strata AI request queue and review-only proposal API",
-      "maxLines": 275,
+      "maxLines": 820,
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/ai-core.js",
@@ -444,7 +444,7 @@
     },
     "src/ai-core.js": {
       "role": "Strata AI prompt rules and proposal validation",
-      "maxLines": 260,
+      "maxLines": 640,
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/coaching-core.js",
@@ -453,7 +453,7 @@
     },
     "src/ai-plan-edits.js": {
       "role": "Strata AI structured draft and plan-edit contracts",
-      "maxLines": 140,
+      "maxLines": 400,
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/plans.js"
@@ -461,33 +461,33 @@
     },
     "src/ai-plan-fallback.js": {
       "role": "Deterministic verified plan-edit fallback proposals",
-      "maxLines": 80,
+      "maxLines": 240,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/ai-provider.js": {
       "role": "Provider-neutral Strata AI client: Groq by default, structured outputs, and model fallback",
-      "maxLines": 130,
+      "maxLines": 350,
       "allowedDependencies": [
         "src/ai-response-schema.js"
       ]
     },
     "src/ai-response-schema.js": {
       "role": "Bounded grammar schema for Strata AI responses",
-      "maxLines": 80,
+      "maxLines": 240,
       "allowedDependencies": []
     },
     "src/ai-catalog.js": {
       "role": "Strata AI library search and per-request exercise shortlists",
-      "maxLines": 130,
+      "maxLines": 360,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/devices.js": {
       "role": "Strata+ connected devices: Polar V4 connect flow, settings, local disconnect, and wellness reads",
-      "maxLines": 280,
+      "maxLines": 690,
       "allowedDependencies": [
         "src/devices-config.js",
         "src/devices-crypto.js",
@@ -498,29 +498,29 @@
     },
     "src/devices-config.js": {
       "role": "Connected-device and Polar AccessLink settings",
-      "maxLines": 80,
+      "maxLines": 110,
       "allowedDependencies": []
     },
     "src/devices-crypto.js": {
       "role": "Sealed device tokens and connection secrets",
-      "maxLines": 60,
+      "maxLines": 110,
       "allowedDependencies": []
     },
     "src/devices-schema.js": {
       "role": "Connected-device, legacy-revocation, and wellness tables",
-      "maxLines": 170,
+      "maxLines": 200,
       "allowedDependencies": []
     },
     "src/devices-store.js": {
       "role": "Connected-device and wellness storage for SQLite and Turso",
-      "maxLines": 130,
+      "maxLines": 360,
       "allowedDependencies": [
         "src/devices-schema.js"
       ]
     },
     "src/devices-sync.js": {
       "role": "Polar V4 credential refresh, polling import, and legacy revocation cleanup",
-      "maxLines": 140,
+      "maxLines": 270,
       "allowedDependencies": [
         "src/devices-crypto.js",
         "src/polar-client.js",
@@ -529,58 +529,58 @@
     },
     "src/polar-client.js": {
       "role": "Polar AccessLink V4 OAuth, credential refresh, date ranges, and rate limits",
-      "maxLines": 160,
+      "maxLines": 440,
       "allowedDependencies": []
     },
     "src/polar-mapping.js": {
       "role": "Range-checked Polar V4 and legacy V3 payloads as wellness rows",
-      "maxLines": 210,
+      "maxLines": 410,
       "allowedDependencies": []
     },
     "src/wellness-core.js": {
       "role": "Usual ranges, overnight stress signals, recovery labels, and trends",
-      "maxLines": 150,
+      "maxLines": 350,
       "allowedDependencies": []
     },
     "src/entitlements.js": {
       "role": "Feature tiers and the can(user, feature) capability map",
-      "maxLines": 80,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/events.js": {
       "role": "In-process event bus with an outbox that retries failed reactions",
-      "maxLines": 140,
+      "maxLines": 220,
       "allowedDependencies": []
     },
     "src/athlete-profile.js": {
       "role": "Athlete Profile read model and the sync that keeps preferences and the coaching profile in step",
-      "maxLines": 150,
+      "maxLines": 230,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/data-layer-schema.js": {
       "role": "Training-link, Daily Snapshot, and plan-change storage schema",
-      "maxLines": 60,
+      "maxLines": 80,
       "allowedDependencies": []
     },
     "src/data-layer-store.js": {
       "role": "SQLite and Turso data-layer adapter parity",
-      "maxLines": 70,
+      "maxLines": 200,
       "allowedDependencies": [
         "src/data-layer-schema.js"
       ]
     },
     "src/training-log.js": {
       "role": "Training Log read model: logged, planned, and Polar sessions with source tags and links",
-      "maxLines": 150,
+      "maxLines": 390,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/daily-snapshot.js": {
       "role": "Daily Snapshot read model rebuilt from sleep, recovery, training, and nutrition events",
-      "maxLines": 110,
+      "maxLines": 340,
       "allowedDependencies": [
         "src/wellness-core.js",
         "src/training-log.js"
@@ -588,7 +588,7 @@
     },
     "src/data-service.js": {
       "role": "Shared data layer front door: read models, their routes, and derived-record listeners",
-      "maxLines": 120,
+      "maxLines": 280,
       "allowedDependencies": [
         "src/athlete-profile.js",
         "src/daily-snapshot.js",
@@ -597,48 +597,48 @@
     },
     "src/ai-schema.js": {
       "role": "Strata AI consent and daily usage storage schema",
-      "maxLines": 90,
+      "maxLines": 110,
       "allowedDependencies": []
     },
     "src/ai-store.js": {
       "role": "SQLite and Turso Strata AI storage parity",
-      "maxLines": 95,
+      "maxLines": 250,
       "allowedDependencies": [
         "src/ai-schema.js"
       ]
     },
     "src/ai-quota.js": {
       "role": "Organization-wide AI budget: brief reserve, per-minute cap, and per-member limits",
-      "maxLines": 90,
+      "maxLines": 170,
       "allowedDependencies": []
     },
     "src/ai-context.js": {
       "role": "Compact Strata AI context and care flags from the shared data layer",
-      "maxLines": 90,
+      "maxLines": 210,
       "allowedDependencies": [
         "src/plans.js"
       ]
     },
     "src/ai-daily-brief.js": {
       "role": "Daily Brief schema, validation, and the throttled morning job",
-      "maxLines": 160,
+      "maxLines": 390,
       "allowedDependencies": [
         "src/ai-context.js"
       ]
     },
     "src/ai-settings.js": {
       "role": "Strata AI consent, Daily Brief choice, note deletion, and the owner's usage view",
-      "maxLines": 70,
+      "maxLines": 160,
       "allowedDependencies": []
     },
     "src/apple-jws.js": {
       "role": "App Store JWS verification: Apple Root CA - G3 chain, marker extensions, ES256",
-      "maxLines": 100,
+      "maxLines": 150,
       "allowedDependencies": []
     },
     "src/apple-billing.js": {
       "role": "Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state",
-      "maxLines": 380,
+      "maxLines": 730,
       "allowedDependencies": [
         "src/apple-jws.js",
         "src/http.js"
@@ -646,70 +646,70 @@
     },
     "src/apple-billing-schema.js": {
       "role": "Apple subscription and notification-ledger schema",
-      "maxLines": 70,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/apple-billing-store.js": {
       "role": "SQLite and Turso Apple subscription storage parity",
-      "maxLines": 70,
+      "maxLines": 160,
       "allowedDependencies": [
         "src/apple-billing-schema.js"
       ]
     },
     "src/session-renewal.js": {
       "role": "Sliding session renewal and adding its cookie to the response",
-      "maxLines": 70,
+      "maxLines": 100,
       "allowedDependencies": []
     },
     "src/social-auth-config.js": {
       "role": "Sign in with Google: provider settings",
-      "maxLines": 80,
+      "maxLines": 130,
       "allowedDependencies": []
     },
     "src/social-auth-client.js": {
       "role": "OpenID Connect client: authorization URL with PKCE, code exchange, ID-token verification",
-      "maxLines": 170,
+      "maxLines": 370,
       "allowedDependencies": [
         "src/devices-crypto.js"
       ]
     },
     "src/social-auth-messages.js": {
       "role": "Account-page messages for Google sign-in",
-      "maxLines": 30,
+      "maxLines": 40,
       "allowedDependencies": []
     },
     "src/social-auth-schema.js": {
       "role": "Linked sign-in identities and sign-in state schema",
-      "maxLines": 90,
+      "maxLines": 110,
       "allowedDependencies": []
     },
     "src/social-auth-store.js": {
       "role": "Local and Turso storage for linked sign-ins",
-      "maxLines": 90,
+      "maxLines": 250,
       "allowedDependencies": [
         "src/social-auth-schema.js"
       ]
     },
     "src/server-state-schema.js": {
       "role": "Event outbox, rate-limit, and lock tables that keep server state in the database",
-      "maxLines": 80,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/server-state-store.js": {
       "role": "Local and Turso storage for the event outbox, rate limits, and locks",
-      "maxLines": 80,
+      "maxLines": 200,
       "allowedDependencies": [
         "src/server-state-schema.js"
       ]
     },
     "src/single-instance.js": {
       "role": "Heartbeat lock that logs a second server on the same database",
-      "maxLines": 50,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/social-auth.js": {
       "role": "Sign up and sign in with Google",
-      "maxLines": 260,
+      "maxLines": 540,
       "allowedDependencies": [
         "src/devices-crypto.js",
         "src/plans.js",

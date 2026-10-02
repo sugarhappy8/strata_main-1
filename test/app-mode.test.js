@@ -108,25 +108,27 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
   assert.match(topBarHtml(resolveScreen({pathname:"/privacy"})),/<a class="app-back" href="\/policies" data-app-back>[\s\S]*Back<\/span><\/a><p class="app-title" data-app-title>Privacy<\/p>/);
   assert.doesNotMatch(topBarHtml(resolveScreen({pathname:"/dashboard"})),/app-back/);
   // 44pt+ targets, safe areas, no live blur, and the bars stay put through view transitions.
-  assert.match(CSS,/\.app-tab \{[^}]*min-width:44px;[^}]*min-height:var\(--app-tabbar-h\)/);
-  assert.match(CSS,/--app-tabbar-h:56px;/);
-  assert.match(CSS,/\.app-back \{[^}]*min-width:44px; min-height:44px;/);
-  assert.match(CSS,/\.app-tabbar \{[^}]*padding:0 max\(4px,env\(safe-area-inset-right\)\) env\(safe-area-inset-bottom\)/);
+  assert.match(CSS,/\.app-tab\s*\{\s*[^}]*min-width\s*:\s*44px\s*;\s*[^}]*min-height\s*:\s*var\s*\(\s*--app-tabbar-h\s*,?\s*\)/);
+  assert.match(CSS,/--app-tabbar-h\s*:\s*56px\s*;/);
+  assert.match(CSS,/\.app-back\s*\{\s*[^}]*min-width\s*:\s*44px\s*;\s*min-height\s*:\s*44px\s*;/);
+  assert.match(CSS,/\.app-tabbar\s*\{\s*[^}]*padding\s*:\s*0\s*max\s*\(\s*4px\s*,\s*env\s*\(\s*safe-area-inset-right\s*,?\s*\)\s*,?\s*\)\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)/);
   assert.doesNotMatch(CSS.match(/\.app-tabbar \{[^}]*\}/)[0],/backdrop-filter/);
-  assert.match(CSS,/:root\[data-app="ios"\] \.app-tabbar \{ view-transition-name:app-tabbar; \}/);
-  assert.match(CSS,/::view-transition-old\(app-tabbar\) \{ display:none; \}/);
+  assert.match(CSS,/:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*\.app-tabbar\s*\{\s*view-transition-name\s*:\s*app-tabbar\s*;\s*[;,]?\s*\}/);
+  assert.match(CSS,/:\s*:\s*view-transition-old\s*\(\s*app-tabbar\s*,?\s*\)\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}/);
 });
 
 test("the app hides website chrome, blur, and reveals, and moves with transform and opacity only",()=>{
-  assert.match(CSS,/@view-transition \{ navigation:auto; \}/);
-  assert.match(CSS,/:root\[data-app-chrome="tabs"\] body > header:not\(\.app-topbar\),\n:root\[data-app-chrome="tabs"\] body > nav\.mobile-public-nav,\n:root\[data-app="ios"\] body > footer,\n:root\[data-app="ios"\] \.skip-link,\n:root\[data-app="ios"\] \.strata-scroll-progress \{ display:none !important; \}/);
-  assert.match(CSS,/backdrop-filter:none !important;/);
-  assert.match(CSS,/-webkit-tap-highlight-color:transparent;/);
-  assert.match(CSS,/:root\[data-app="ios"\] :is\(a,img\) \{ -webkit-touch-callout:none; \}/);
-  assert.match(CSS,/@media \(prefers-reduced-motion: reduce\) \{\n {2}::view-transition-group\(\*\),::view-transition-old\(\*\),::view-transition-new\(\*\) \{ animation:none !important; \}/);
-  for(const frames of CSS.matchAll(/@keyframes [\w-]+ \{([^\n]*)\}/g))assert.doesNotMatch(frames[1].replace(/transform:[^;]*;|opacity:[^;]*;/g,""),/:/,`keyframes animate only transform and opacity: ${frames[0]}`);
+  assert.match(CSS,/@view-transition\s*\{\s*navigation\s*:\s*auto\s*;\s*[;,]?\s*\}/);
+  assert.match(CSS,/:\s*root\s*\[\s*data-app-chrome\s*=\s*"tabs"\s*,?\s*\]\s*body\s*>\s*header\s*:\s*not\s*\(\.app-topbar\s*,?\s*\)\s*,\s*\n\s*:\s*root\s*\[\s*data-app-chrome\s*=\s*"tabs"\s*,?\s*\]\s*body\s*>\s*nav\s*\.mobile-public-nav\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*body\s*>\s*footer\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*\.skip-link\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*\.strata-scroll-progress\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/);
+  assert.match(CSS,/backdrop-filter\s*:\s*none\s*!\s*important\s*;/);
+  assert.match(CSS,/-webkit-tap-highlight-color\s*:\s*transparent\s*;/);
+  assert.match(CSS,/:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*:\s*is\s*\(\s*a\s*,\s*img\s*,?\s*\)\s*\{\s*-webkit-touch-callout\s*:\s*none\s*;\s*[;,]?\s*\}/);
+  assert.match(CSS,/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*,?\s*\)\s*\{\s*\n\s*:\s*:\s*view-transition-group\s*\(\s*\*\s*,?\s*\)\s*,\s*:\s*:\s*view-transition-old\s*\(\s*\*\s*,?\s*\)\s*,\s*:\s*:\s*view-transition-new\s*\(\s*\*\s*,?\s*\)\s*\{\s*animation\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/);
+  const keyframes=[...CSS.matchAll(/@keyframes [\w-]+\s*\{((?:[^{}]*\{[^{}]*\})*[^{}]*)\}/g)];
+  assert.ok(keyframes.length>0,"the app's keyframes are found");
+  for(const frames of keyframes)assert.doesNotMatch(frames[1].replace(/(?:transform|opacity)\s*:[^;]*;/g,""),/:/,`keyframes animate only transform and opacity: ${frames[0]}`);
   // Text and form fields stay selectable; only controls and chrome opt out.
-  const unselectable=CSS.match(/:root\[data-app="ios"\] :is\(([^)]*(?:\([^)]*\))?[^)]*)\) \{ -webkit-user-select:none; user-select:none; \}/)[1];
+  const unselectable=CSS.match(/:root\[data-app="ios"\]\s*:is\(([^)]*(?:\([^)]*\))?[^)]*)\)\s*\{\s*-webkit-user-select:\s*none;\s*user-select:\s*none;?\s*\}/)[1];
   assert.doesNotMatch(unselectable,/\b(?:input|textarea|select|p|main|body)\b/);
   assert.match(read("public/scripts/motion.js"),/if \(window\.StrataApp \|\| !window\.matchMedia/,"no scroll reveals or scroll progress in the app");
 });
@@ -190,9 +192,9 @@ test("the app opens members on Dashboard and everyone else on a welcome screen, 
   assert.equal(visitor.html.dataset.appHome,"rankings");
   const rankings=realm({pathname:"/",hash:"#rankings",signedIn:true});rankings.insertBody();rankings.ready();
   assert.deepEqual(rankings.replaced,[],"a member's Rankings tab stays on the rankings");assert.equal(rankings.html.dataset.appHome,"rankings");
-  assert.match(CSS,/:root\[data-app-screen="home"\] \.home-page main > section \{ display:none !important; \}/);
+  assert.match(CSS,/:\s*root\s*\[\s*data-app-screen\s*=\s*"home"\s*,?\s*\]\s*\.home-page\s*main\s*>\s*section\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/);
   assert.match(CSS,/:root\[data-app-home="rankings"\] \.home-page main > #rankings/);
-  assert.match(CSS,/:root:is\(\[data-app-home="start"\],\[data-app-home="welcome"\]\) :is\(\.app-topbar,\.app-tabbar\) \{ display:none !important; \}/);
+  assert.match(CSS,/:root:is\(\[data-app-home="start"\],\s*\[data-app-home="welcome"\]\)\s*:is\(\.app-topbar,\s*\.app-tabbar\)\s*\{\s*display:\s*none !important;?\s*\}/);
 });
 
 test("Profile keeps Strata+, support, and legal pages one tap away",()=>{
@@ -210,9 +212,9 @@ test("on /pricing the app loads its App Store paywall, and the website never loa
   const page=realm({pathname:"/pricing"});page.insertBody();page.ready();
   assert.equal(page.document.head.children.length,1);assert.equal(page.document.head.children[0].src,"/app-paywall.js?v=9.4.0");
   const pricing=read("public/scripts/pricing.js");
-  assert.match(pricing,/\(\(\) => \{\n {2}\/\/ Inside the iOS app[^\n]*\n {2}if\(globalThis\.StrataApp\)return;/);
-  assert.match(pricing,/function loadPaddle\(\)\{\n {4}if\(globalThis\.StrataApp\)return Promise\.reject/);
-  assert.doesNotMatch(read("public/pages/pricing.html"),/cdn\.paddle\.com/);
+  assert.match(pricing,/\(\s*\(\s*,?\s*\)\s*=>\s*\{\s*\n\s*\/\/\s*Inside\s*the\s*iOS\s*app[^\n]*\n\s*if\s*\(\s*globalThis\s*\.StrataApp\s*,?\s*\)\s*return\s*;/);
+  assert.match(pricing,/function\s*loadPaddle\s*\(\s*,?\s*\)\s*\{\s*\n\s*if\s*\(\s*globalThis\s*\.StrataApp\s*,?\s*\)\s*return\s*Promise\s*\.reject/);
+  assert.doesNotMatch(read("public/pages/pricing.html"),/cdn\s*\.paddle\s*\.com/);
 });
 
 test("printing in the app uses the native print sheet, and a missing plugin says so",async()=>{
@@ -221,9 +223,9 @@ test("printing in the app uses the native print sheet, and a missing plugin says
   assert.equal(await page.window.StrataAppMode.print({jobName:"Plan"}),true);assert.deepEqual(printed,[{jobName:"Plan"}]);
   assert.equal(await realm().window.StrataAppMode.print(),false);
   assert.doesNotThrow(()=>realm().window.StrataAppMode.haptic("success"),"haptics without the plugin do nothing");
-  assert.match(read("public/scripts/discover.js"),/if\(globalThis\.StrataApp\)\{\n {4}try\{if\(!await globalThis\.StrataAppMode\?\.print\?\.\(/);
-  assert.match(read("public/scripts/workout-events.js"),/if\(set\.completed\)globalThis\.StrataAppMode\?\.haptic\("light"\)/);
-  assert.match(read("public/scripts/workout-events.js"),/signal\("workout_completed"\);globalThis\.StrataAppMode\?\.haptic\("success"\)/);
+  assert.match(read("public/scripts/discover.js"),/if\s*\(globalThis\.StrataApp\)\s*\{\s*try\s*\{\s*if\s*\(\s*!\(?await globalThis\.StrataAppMode\?\.print\?\.\(/);
+  assert.match(read("public/scripts/workout-events.js"),/if\s*\(\s*set\s*\.completed\s*,?\s*\)\s*globalThis\s*\.StrataAppMode\s*\?\.haptic\s*\(\s*"light"\s*,?\s*\)/);
+  assert.match(read("public/scripts/workout-events.js"),/signal\s*\(\s*"workout_completed"\s*,?\s*\)\s*;\s*globalThis\s*\.StrataAppMode\s*\?\.haptic\s*\(\s*"success"\s*,?\s*\)/);
 });
 
 test("native extras forward to the app when its build has them and stay neutral when it does not",async()=>{
@@ -296,16 +298,17 @@ test("downloads keep their file for a minute, so the app's share sheet can still
     const revokes=[...source.matchAll(/revokeObjectURL\(([^)]*)\)/g)];
     assert.ok(revokes.length>0,`${file} creates a download`);
     for(const match of revokes){
-      const at=source.lastIndexOf("setTimeout(",match.index),delay=/^setTimeout\(\(\)=>URL\.revokeObjectURL\([^)]*\),(\d[\d_]*)\)/.exec(source.slice(at));
+      const at=source.lastIndexOf("setTimeout(",match.index),delay=/^setTimeout\(\(\)\s*=>\s*URL\.revokeObjectURL\([^)]*\),\s*(\d[\d_]*)\)/.exec(source.slice(at));
       assert.ok(delay&&Number(delay[1].replaceAll("_",""))>=60_000,`${file} revokes a download URL after at least a minute: ${source.slice(at,match.index+40)}`);
     }
   }
   const copy=Object.fromEntries(files);
-  assert.match(copy["account.js"],/globalThis\.StrataApp\?"Your JSON export is ready\. Choose where to save it\.":"Your JSON export was downloaded\."/);
-  assert.match(copy["planner.js"],/globalThis\.StrataApp\?"Weekly plan ready\. Choose where to save it\. Import it from Week templates or in Strata\+\.":"Weekly plan downloaded\./);
-  assert.match(copy["discover.js"],/globalThis\.StrataApp\?"Plan file ready\. Choose where to save it\.":"Share file downloaded\."/);
-  assert.match(copy["discover.js"],/globalThis\.StrataApp\?"Sharing was unavailable, so your plan is ready as a file\. Choose where to save it\.":"Sharing was unavailable, so a plan file was downloaded\."/);
-  for(const [file,source] of files)for(const line of source.split("\n").filter((text)=>/was downloaded|[^"]downloaded\./.test(text)))assert.match(line,/globalThis\.StrataApp\?/,`${file}: "downloaded" copy has an app version`);
+  assert.match(copy["account.js"],/globalThis\s*\.StrataApp\s*\?\s*"Your\s*JSON\s*export\s*is\s*ready\.\s*Choose\s*where\s*to\s*save\s*it\."\s*:\s*"Your\s*JSON\s*export\s*was\s*downloaded\."/);
+  assert.match(copy["planner.js"],/globalThis\s*\.StrataApp\s*\?\s*"Weekly\s*plan\s*ready\.\s*Choose\s*where\s*to\s*save\s*it\.\s*Import\s*it\s*from\s*Week\s*templates\s*or\s*in\s*Strata\s*\+\."\s*:\s*"Weekly\s*plan\s*downloaded\./);
+  assert.match(copy["discover.js"],/globalThis\s*\.StrataApp\s*\?\s*"Plan\s*file\s*ready\.\s*Choose\s*where\s*to\s*save\s*it\."\s*:\s*"Share\s*file\s*downloaded\."/);
+  assert.match(copy["discover.js"],/globalThis\s*\.StrataApp\s*\?\s*"Sharing\s*was\s*unavailable\s*,\s*so\s*your\s*plan\s*is\s*ready\s*as\s*a\s*file\.\s*Choose\s*where\s*to\s*save\s*it\."\s*:\s*"Sharing\s*was\s*unavailable\s*,\s*so\s*a\s*plan\s*file\s*was\s*downloaded\."/);
+  // Each "downloaded" message is the browser branch of a ternary whose app branch comes first.
+  for(const [file,source] of files)for(const copy of source.matchAll(/was downloaded|[^"]downloaded\./g))assert.match(source.slice(Math.max(0,copy.index-400),copy.index),/globalThis\.StrataApp\s*\?[^?]*$/,`${file}: "downloaded" copy has an app version`);
 });
 
 function billingRealm({routes,plugin={}}){

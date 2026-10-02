@@ -1,6 +1,7 @@
 "use strict";
 
 const test=require("node:test");
+const {frontendBudget,lineCount}=require("./support/size-budget");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
@@ -19,8 +20,8 @@ test("homepage modules expose one-way boundaries and keep the composition root s
   assert.equal(typeof Api.createClient,"function");
   assert.equal(typeof Render.createRenderer,"function");
   assert.equal(typeof Events.bindHomeEvents,"function");
-  const appLines=fs.readFileSync(path.join(PROJECT_ROOT,"public/scripts/app.js"),"utf8").split("\n").length;
-  assert.ok(appLines<180,`homepage composition root is ${appLines} lines`);
+  const appLines=lineCount(fs.readFileSync(path.join(PROJECT_ROOT,"public/scripts/app.js"),"utf8"));
+  assert.ok(appLines<=frontendBudget("app.js"),`homepage composition root is ${appLines} lines`);
 });
 
 test("homepage logic validates, filters, and ranks a catalog without DOM state",()=>{
@@ -76,7 +77,7 @@ test("homepage API normalizes transport and HTTP failures",async()=>{
 
 test("homepage rendering escapes preview content at its boundary",()=>{
   const html=Render.previewResultMarkup({rank:1,match:97,officialScore:94,reasons:["<reason>"],tradeoffText:'safe "tradeoff"',exercise:{name:"<script>",sub:"Chest",equipment:"Cable",why:"<b>why</b>"}});
-  assert.doesNotMatch(html,/<script>|<b>why<\/b>|<reason>/);
+  assert.doesNotMatch(html,/<\s*script\s*>|<\s*b\s*>\s*why\s*<\s*\/b\s*>|<\s*reason\s*>/);
   assert.match(html,/&lt;script&gt;/);
   assert.match(html,/&lt;reason&gt;/);
 });

@@ -70,7 +70,7 @@ test("valid saved profiles retain available training for every single equipment 
     for(const session of result.sessions){
       assert.ok(session.estimatedDurationMinutes<=30);
       for(const item of session.exercises){const catalog=EXERCISES.find(exercise=>exercise.id===item.exerciseId);assert.equal(catalog.equipment,available);assert.equal(catalog.level,"Beginner");assert.ok(movementLimitations.every(limit=>!catalog.traits.includes(limits[limit])));}
-      if(session.missingRoles.length){assert.notEqual(session.status,"ready");assert.equal(result.summary.reviewNeeded,true);assert.ok(result.summary.missingCoverage.some(message=>message.startsWith(`${session.day}:`)));assert.doesNotMatch(session.label,/Full body/);assert.match(session.readinessWarning,/actual experience level and movement limits/);}
+      if(session.missingRoles.length){assert.notEqual(session.status,"ready");assert.equal(result.summary.reviewNeeded,true);assert.ok(result.summary.missingCoverage.some(message=>message.startsWith(`${session.day}:`)));assert.doesNotMatch(session.label,/Full\s*body/);assert.match(session.readinessWarning,/actual experience level and movement limits/);}
     }
   }
 });

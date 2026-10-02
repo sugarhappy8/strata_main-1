@@ -1,6 +1,7 @@
 "use strict";
 
 const test=require("node:test");
+const {frontendBudget,lineCount}=require("./support/size-budget");
 const assert=require("node:assert/strict");
 const {readFileSync}=require("node:fs");
 const {join}=require("node:path");
@@ -97,7 +98,7 @@ test("planner rendering names the destination and safely escapes catalog content
   const markup=PlannerRender.libraryMarkup([{id:"safe-id",name:'Press <script>',sub:"Chest",equipment:"Dumbbell",youtube:"https://example.test",score:88}],{selectedDay:"Wednesday",visibleLimit:16,pageSize:16});
   assert.match(markup,/>Add to Wednesday<\/button>/);
   assert.match(markup,/aria-label="Add Press &lt;script&gt; to Wednesday"/);
-  assert.doesNotMatch(markup,/<script>/);
+  assert.doesNotMatch(markup,/<\s*script\s*>/);
   const navigation=PlannerRender.dayNavMarkup(Logic.DAYS,{selectedDay:"Wednesday",restDays:["Sunday"]});
   assert.equal((navigation.match(/aria-pressed="true"/g)||[]).length,1);
   assert.match(navigation,/Sunday, recovery day/);
@@ -129,18 +130,18 @@ test("planner API applies identity-bound mutation headers and reports typed fail
 test("planner entrypoint composes bounded modules in dependency order",()=>{
   const modules=["entitlements.js","planner-logic.js","planner-state.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-activation.js","planner-events.js"];
   const sources=Object.fromEntries(modules.map(file=>[file,readFileSync(join(ROOT,"public","scripts",file),"utf8")]));
-  for(const [file,source] of Object.entries(sources))assert.ok(source.split("\n").length<=180,`${file} should stay a focused browser module`);
+  for(const [file,source] of Object.entries(sources))assert.ok(lineCount(source)<=frontendBudget(file),`${file} should stay a focused browser module`);
   assert.match(sources["planner-state.js"],/require\("\.\/planner-logic"\)/,"state may depend on pure planner logic");
-  for(const file of ["planner-logic.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-activation.js","planner-events.js"])assert.doesNotMatch(sources[file],/require\("\.\/planner-/i,`${file} must not create a planner module cycle`);
+  for(const file of ["planner-logic.js","planner-api.js","planner-render.js","planner-conflicts.js","planner-templates.js","planner-activation.js","planner-events.js"])assert.doesNotMatch(sources[file],/require\s*\(\s*"\.\/planner-/i,`${file} must not create a planner module cycle`);
   const html=readFileSync(join(ROOT,"public","pages","planner.html"),"utf8"),entry=html.indexOf('src="planner.js');
   assert.ok(entry>0);
   for(const file of modules)assert.ok(html.indexOf(`src="/${file}`)>0&&html.indexOf(`src="/${file}`)<entry,`${file} must load before the planner entrypoint`);
   const main=readFileSync(join(ROOT,"public","scripts","planner.js"),"utf8");
-  assert.ok(main.split("\n").length<700,"planner orchestration should stay focused after workflow extraction");
+  assert.ok(lineCount(main)<=frontendBudget("planner.js"),"planner orchestration should stay focused after workflow extraction");
   for(const globalName of ["StrataPlannerConflicts","StrataPlannerTemplates","StrataPlannerActivation"])assert.match(main,new RegExp(`globalThis\\.${globalName}`),`entrypoint should explicitly compose ${globalName}`);
   assert.match(html,/id="resetWeeklyPlan"[^>]*aria-haspopup="dialog"[^>]*aria-controls="resetWeekDialog"/);
   assert.match(html,/<dialog class="planner-dialog reset-week-dialog"[^>]*aria-labelledby="resetWeekDialogTitle"[^>]*aria-describedby="resetWeekDialogDescription resetWeekImpact"/);
-  assert.match(main,/state\.plan=emptyPlan\(\);state\.selectedDay=STATE\.firstTrainingDay\(state\.plan\)/,"whole-week reset must reuse the canonical empty plan");
-  assert.match(sources["planner-events.js"],/window\.addEventListener\("focus",refreshEntitlement\)/,"returning to Plan must recheck Strata+ access");
-  assert.match(main,/state\.entitlementStatus="checking";renderSummary\(\);renderPlannerModeNotice\(\)/,"foreground checks must hide entitlement-bound UI before awaiting the network");
+  assert.match(main,/state\s*\.plan\s*=\s*emptyPlan\s*\(\s*,?\s*\)\s*;\s*state\s*\.selectedDay\s*=\s*STATE\s*\.firstTrainingDay\s*\(\s*state\s*\.plan\s*,?\s*\)/,"whole-week reset must reuse the canonical empty plan");
+  assert.match(sources["planner-events.js"],/window\s*\.addEventListener\s*\(\s*"focus"\s*,\s*refreshEntitlement\s*,?\s*\)/,"returning to Plan must recheck Strata+ access");
+  assert.match(main,/state\s*\.entitlementStatus\s*=\s*"checking"\s*;\s*renderSummary\s*\(\s*,?\s*\)\s*;\s*renderPlannerModeNotice\s*\(\s*,?\s*\)/,"foreground checks must hide entitlement-bound UI before awaiting the network");
 });

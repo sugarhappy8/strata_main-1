@@ -57,7 +57,7 @@ test("keeps credentials, databases, and private modules out of public",()=>{
       const body=readFileSync(file,"utf8");
       assert.doesNotMatch(body,/\b(?:ADMIN_EMAIL|SUPPORT_EMAIL|PADDLE_API_KEY|PADDLE_WEBHOOK_SECRET|TURSO_AUTH_TOKEN|TURSO_DATABASE_URL|STRATA_DATA_DIR|RESEND_API_KEY|EMAIL_VERIFICATION_SECRET)\b/,`${name} references a server-only environment variable`);
       assert.doesNotMatch(body,/pdl_(?:live|sandbox|sdbx)_apikey_[A-Za-z0-9_-]{16,}|pdl_ntfset_[A-Za-z0-9_-]{16,}/i,`${name} contains a Paddle secret`);
-      assert.doesNotMatch(body,/-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/,`${name} contains a private key`);
+      assert.doesNotMatch(body,/-----BEGIN\s*(?:RSA\s*|EC\s*|OPENSSH\s*)?PRIVATE\s*KEY-----/,`${name} contains a private key`);
     }
   }
 });
@@ -69,7 +69,7 @@ test("serves only explicitly mapped files from the public tree",()=>{
   const targets=[...block[1].matchAll(/\[\s*"[^"]+"\s*,\s*"([^"]+)"\s*\]/g)].map((match)=>match[1]).sort();
   const publicFiles=walk(PUBLIC_ROOT).map((file)=>slash(relative(PUBLIC_ROOT,file))).sort();
   assert.deepEqual(targets,publicFiles,"every public file must be explicitly mapped, with no unmapped clutter");
-  assert.match(source,/if \(!STATIC_FILES\.has\(requested\)\) \{ json\(res,404,/);
-  assert.match(source,/const publicFile=STATIC_FILES\.get\(requested\);[\s\S]*?join\(PUBLIC_ROOT,publicFile\)/);
-  assert.doesNotMatch(source,/join\(PROJECT_ROOT,\s*(?:requested|url\.pathname)/);
+  assert.match(source,/if\s*\(\s*!\s*STATIC_FILES\s*\.has\s*\(\s*requested\s*,?\s*\)\s*,?\s*\)\s*\{\s*json\s*\(\s*res\s*,\s*404\s*,/);
+  assert.match(source,/const\s*publicFile\s*=\s*STATIC_FILES\s*\.get\s*\(\s*requested\s*,?\s*\)\s*;\s*[\s\S]*?join\s*\(\s*PUBLIC_ROOT\s*,\s*publicFile\s*,?\s*\)/);
+  assert.doesNotMatch(source,/join\s*\(\s*PROJECT_ROOT\s*,\s*\s*(?:requested|url\s*\.pathname)/);
 });

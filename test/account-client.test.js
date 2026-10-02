@@ -117,7 +117,7 @@ test("native forms remain available without the JavaScript enhancement",()=>{
   assert.match(html,/<form id="signupForm" action="\/auth\/signup" method="post"/);
   assert.match(html,/<form id="loginForm" action="\/auth\/login" method="post"/);
   assert.match(html,/<section class="account-access" id="accountAccess"[^>]*>/);
-  assert.doesNotMatch(html,/<section class="account-access" id="accountAccess"[^>]*hidden/);
+  assert.doesNotMatch(html,/<\s*section\s*class\s*=\s*"account-access"\s*id\s*=\s*"accountAccess"[^>]*hidden/);
   assert.doesNotMatch(html,/accountRetry/);
   assert.doesNotMatch(script,/accountRetry/);
 });
@@ -139,7 +139,7 @@ test("a persisted account-page restore clears private DOM before reloading the c
   await page.emitWindow("pageshow",{persisted:true});assert.equal(page.reloads.length,1);
   assert.equal(page.elements.get("signedInCard").hidden,true);assert.equal(page.elements.get("accountLoading").hidden,false);
   const privateDom=[...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML} ${node.href}`).join(" ");
-  assert.doesNotMatch(privateDom,/PRIVATE ACCOUNT SENTINEL|private-sentinel@example\.test|PRIVATE WORKOUT SENTINEL|PRIVATE-SESSION-SENTINEL|sub-private/);
+  assert.doesNotMatch(privateDom,/PRIVATE\s*ACCOUNT\s*SENTINEL|private-sentinel@example\s*\.test|PRIVATE\s*WORKOUT\s*SENTINEL|PRIVATE-SESSION-SENTINEL|sub-private/);
 });
 
 test("Account foreground recheck supersedes a delayed initial identity without exposing it",async()=>{
@@ -159,7 +159,7 @@ test("Account foreground recheck supersedes a delayed initial identity without e
   assert.match(page.elements.get("signedInIdentity").textContent,/CURRENT ACCOUNT/);
   stale.resolve(jsonResponse(200,{csrfToken:"stale-csrf",user:staleUser}));await settle();
   const rendered=[...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML}`).join(" ");
-  assert.doesNotMatch(rendered,/STALE INITIAL ACCOUNT|stale-initial@example\.test/);assert.match(rendered,/CURRENT ACCOUNT/);
+  assert.doesNotMatch(rendered,/STALE\s*INITIAL\s*ACCOUNT|stale-initial@example\s*\.test/);assert.match(rendered,/CURRENT ACCOUNT/);
 });
 
 test("ordinary Account foreground restores purge first and reopen only the same user",async()=>{
@@ -180,12 +180,12 @@ test("ordinary Account foreground restores purge first and reopen only the same 
     if(scenario.event==="visibilitychange"){page.setHidden(true);await page.emitDocument("visibilitychange");assert.match(page.elements.get("signedInIdentity").textContent,/FOREGROUND PRIVATE SENTINEL/);page.setHidden(false);}
     const foreground=scenario.event==="focus"?page.emitWindow("focus"):page.emitDocument("visibilitychange");
     assert.equal(page.elements.get("signedInCard").hidden,true,`${scenario.name} must lock synchronously`);assert.equal(page.elements.get("accountLoading").hidden,false,scenario.name);
-    const lockedDom=[...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML} ${node.href}`).join(" ");assert.doesNotMatch(lockedDom,/FOREGROUND PRIVATE SENTINEL|foreground-private@example\.test|FOREGROUND WORKOUT SENTINEL|FOREGROUND-SESSION-SENTINEL/,scenario.name);
+    const lockedDom=[...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML} ${node.href}`).join(" ");assert.doesNotMatch(lockedDom,/FOREGROUND\s*PRIVATE\s*SENTINEL|foreground-private@example\s*\.test|FOREGROUND\s*WORKOUT\s*SENTINEL|FOREGROUND-SESSION-SENTINEL/,scenario.name);
     await settle();assert.equal(identityReads,identityReadsBeforeForeground+1,scenario.name);
     pending.resolve(jsonResponse(200,{csrfToken:"foreground-two",user:scenario.next}));await foreground;await settle();
     assert.equal(page.elements.get("signedInCard").hidden,!scenario.reopens,scenario.name);
     if(scenario.reopens)assert.match(page.elements.get("signedInIdentity").textContent,/FOREGROUND PRIVATE SENTINEL/,scenario.name);
-    else{assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.",scenario.name);assert.doesNotMatch([...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML}`).join(" "),/REPLACEMENT PRIVATE SENTINEL/,scenario.name);}
+    else{assert.equal(page.elements.get("accountLoadingTitle").textContent,"Account access changed.",scenario.name);assert.doesNotMatch([...page.elements.values()].map((node)=>`${node.textContent} ${node.innerHTML}`).join(" "),/REPLACEMENT\s*PRIVATE\s*SENTINEL/,scenario.name);}
   }
 });
 
@@ -284,7 +284,7 @@ test("login accepts existing password lengths while new passwords keep the stron
   const signupPassword=html.match(/<input\b[^>]*id="signupPassword"[^>]*>/)?.[0]||"";
   const loginPassword=html.match(/<input\b[^>]*id="loginPassword"[^>]*>/)?.[0]||"";
   assert.match(signupPassword,/minlength="10"/);
-  assert.doesNotMatch(loginPassword,/minlength=/,"login must not reject a valid legacy password in browser validation");
+  assert.doesNotMatch(loginPassword,/minlength\s*=/,"login must not reject a valid legacy password in browser validation");
   assert.match(loginPassword,/maxlength="128"/);
 });
 

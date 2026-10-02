@@ -90,7 +90,7 @@ test("zero-padded build revisions preserve npm-compatible package metadata",t=>{
   const dryRunOutput=[];
   const dryRun=runRelease({root,target:"1.2.3.008",dryRun:true,manifest:FIXTURE_MANIFEST,logger:{log(line){dryRunOutput.push(line);}}});
   assert.equal(dryRun.plans.some(({relative})=>relative==="package-lock.json"),false,"same-base revisions must not report an unchanged lockfile");
-  assert.doesNotMatch(dryRunOutput.join("\n"),/package-lock\.json/);
+  assert.doesNotMatch(dryRunOutput.join("\n"),/package-lock\s*\.json/);
   runRelease({root,target:"1.2.3.008",manifest:FIXTURE_MANIFEST,logger:{log(){}}});
   pkg=JSON.parse(fs.readFileSync(path.join(root,"package.json"),"utf8"));
   lock=JSON.parse(fs.readFileSync(path.join(root,"package-lock.json"),"utf8"));

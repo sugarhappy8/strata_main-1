@@ -148,7 +148,7 @@ test("new accounts require one delivered code while existing accounts remain saf
   assert.match(signup.setCookie,/strata_signup=/);
   assert.match(signup.setCookie,/HttpOnly/i);
   assert.match(signup.setCookie,/SameSite=Strict/i);
-  assert.doesNotMatch(signup.setCookie,/strata_session=/);
+  assert.doesNotMatch(signup.setCookie,/strata_session\s*=/);
   assert.doesNotMatch(JSON.stringify(signup.data),new RegExp(password));
 
   const signupCookie=cookieValue(signup.setCookie,"strata_signup");
@@ -232,7 +232,7 @@ test("new accounts require one delivered code while existing accounts remain saf
   assert.equal(unverifiedLogin.data.verificationRequired,true);
   assert.equal(unverifiedLogin.data.purpose,"login");
   assert.match(unverifiedLogin.setCookie,/strata_signup=/);
-  assert.doesNotMatch(unverifiedLogin.setCookie,/strata_session=/);
+  assert.doesNotMatch(unverifiedLogin.setCookie,/strata_session\s*=/);
   const loginCookie=cookieValue(unverifiedLogin.setCookie,"strata_signup");
   const loginChallenge=db.prepare("SELECT purpose,password_hash,password_salt FROM signup_verifications WHERE email=? ORDER BY created_at DESC LIMIT 1").get("verified@example.test");
   assert.equal(loginChallenge.purpose,"login");
@@ -252,7 +252,7 @@ test("new accounts require one delivered code while existing accounts remain saf
   assert.equal(duplicate.response.status,409);
   assert.equal(duplicate.data.code,"ACCOUNT_EXISTS");
   assert.equal(deliveries.length,beforeDuplicate,"existing-email signup must be rejected before sending a code");
-  assert.doesNotMatch(duplicate.setCookie,/strata_(?:signup|session)=/);
+  assert.doesNotMatch(duplicate.setCookie,/strata_(?:signup|session)\s*=/);
   assert.equal((await postJson("/api/login",{email:"verified@example.test",password})).response.status,200);
   assert.equal((await postJson("/api/login",{email:"verified@example.test",password:duplicatePassword})).response.status,401);
   db.close();
@@ -325,7 +325,7 @@ test("an expired code preserves the hard-lived challenge and consumes no attempt
   assert.equal(expired.data.verificationRequired,true);
   assert.equal(db.prepare("SELECT attempts_used FROM signup_verifications WHERE email=?").get(email).attempts_used,0);
   assert.equal(db.prepare("SELECT COUNT(*) AS count FROM users WHERE email=?").get(email).count,0);
-  assert.doesNotMatch(expired.setCookie,/strata_signup=;/);
+  assert.doesNotMatch(expired.setCookie,/strata_signup\s*=\s*;/);
 
   const resent=await postJson("/api/resend-verification",{},pendingCookie);
   assert.equal(resent.response.status,202);
@@ -397,7 +397,7 @@ test("concurrent resend keeps the winning challenge and sends only one replaceme
   const loser=results.find(({response})=>response.status!==202);
   assert.equal(loser.response.status,429);
   assert.ok(["VERIFICATION_COOLDOWN","VERIFICATION_EMAIL_LIMIT"].includes(loser.data.code));
-  assert.doesNotMatch(loser.setCookie,/strata_signup=;/);
+  assert.doesNotMatch(loser.setCookie,/strata_signup\s*=\s*;/);
   assert.equal(deliveries.length-before,1);
   assert.equal(db.prepare("SELECT generation FROM signup_verifications WHERE email=?").get(email).generation,2);
 
@@ -430,7 +430,7 @@ test("near-deadline resend states the real shortened expiry and never clears a l
   const rejected=await postJson("/api/resend-verification",{},pendingCookie);
   assert.equal(rejected.response.status,409);
   assert.equal(rejected.data.code,"VERIFICATION_EXPIRING");
-  assert.doesNotMatch(rejected.setCookie,/strata_signup=;/);
+  assert.doesNotMatch(rejected.setCookie,/strata_signup\s*=\s*;/);
   db.close();
 });
 

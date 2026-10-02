@@ -98,13 +98,13 @@ test("release version, cache keys, asset URLs, and catalog claims stay aligned",
   const pages=["index.html","account.html","verify-email.html","forgot-password.html","reset-password.html","delete-account.html","admin.html","planner.html","discover.html","onboarding.html","workout.html","workout-offline.html","install.html","offline.html","pricing.html","contact.html","policies.html","terms.html","privacy.html","refunds.html"];
 
   assert.equal(version,"9.4.0");
-  assert.match(serviceWorker,new RegExp(`const BUILD="${versionPattern}";`));
-  assert.match(serviceWorker,/const CACHE_PREFIX="strata-static-";/);
-  assert.match(serviceWorker,/const STATIC_CACHE=`\$\{CACHE_PREFIX\}\$\{BUILD\}`;/);
+  assert.match(serviceWorker,new RegExp(`const BUILD\\s*=\\s*"${versionPattern}";`));
+  assert.match(serviceWorker,/const\s*CACHE_PREFIX\s*=\s*"strata-static-"\s*;/);
+  assert.match(serviceWorker,/const\s*STATIC_CACHE\s*=\s*`\$\s*\{\s*CACHE_PREFIX\s*[;,]?\s*\}\s*\$\s*\{\s*BUILD\s*[;,]?\s*\}\s*`\s*;/);
   assert.match(serviceWorker,new RegExp(`"/exercises\\.json\\?v=${versionPattern}"`));
-  assert.doesNotMatch(serviceWorker,/"\/exercises\.json"/);
+  assert.doesNotMatch(serviceWorker,/"\/exercises\s*\.json"/);
   // Offline, the Dashboard section opens the cached planner with the week kept on the device.
-  assert.match(serviceWorker,/\["\/dashboard","\/planner\.html"\]/);
+  assert.match(serviceWorker,/\[\s*"\/dashboard"\s*,\s*"\/planner\s*\.html"\s*,?\s*\]/);
   assert.match(serviceWorker,/"\/planner\.html",/,"the planner is precached for the offline Dashboard");
 
   for(const page of pages){
@@ -124,7 +124,7 @@ test("release version, cache keys, asset URLs, and catalog claims stay aligned",
   }
   for(const [file,source] of [["app.js",read("scripts/app.js")],["planner.js",read("scripts/planner.js")]]){
     assert.match(source,new RegExp(`"/exercises\\.json\\?v=${versionPattern}"`),`${file} catalog version`);
-    assert.doesNotMatch(source,/"\/exercises\.json"/,`${file} must not request an unversioned catalog`);
+    assert.doesNotMatch(source,/"\/exercises\s*\.json"/,`${file} must not request an unversioned catalog`);
   }
 
   assert.equal(exercises.length,320);
@@ -205,7 +205,7 @@ test("every ordinary app page exposes consistent PWA and mobile metadata",()=>{
   assert.match(workoutOffline,/name="viewport"[^>]*viewport-fit=cover/i);
   assert.match(workoutOffline,/This shell contains no cached account page or private API response/i);
   assert.match(workoutOffline,/id="syncWorkout"[^>]*>Review &amp; sync</i);
-  assert.doesNotMatch(workoutOffline,/src="\/pwa\.js/i,"the cached recovery shell must not register another worker");
+  assert.doesNotMatch(workoutOffline,/src\s*=\s*"\/pwa\s*\.js/i,"the cached recovery shell must not register another worker");
 });
 
 test("bearer-link pages stay mobile friendly but do not initialize the PWA",()=>{
@@ -214,8 +214,8 @@ test("bearer-link pages stay mobile friendly but do not initialize the PWA",()=>
     assert.match(html,/<meta\s+name="viewport"\s+content="[^"]*width=device-width[^"]*viewport-fit=cover[^"]*"\s*\/>/i,`${page} viewport`);
     assert.match(html,/<meta\s+name="theme-color"\s+content="#[0-9a-f]{6}"\s*\/>/i,`${page} theme color`);
     assert.match(html,/<meta\s+name="referrer"\s+content="no-referrer"\s*\/>/i,`${page} referrer policy`);
-    assert.doesNotMatch(html,/href="\/manifest\.webmanifest"/i,`${page} manifest`);
-    assert.doesNotMatch(html,/src="\/pwa\.js/i,`${page} PWA registration`);
+    assert.doesNotMatch(html,/href\s*=\s*"\/manifest\s*\.webmanifest"/i,`${page} manifest`);
+    assert.doesNotMatch(html,/src\s*=\s*"\/pwa\s*\.js/i,`${page} PWA registration`);
     assert.match(html,new RegExp(`src="/account-recovery\\.js\\?v=${escapeRegExp(BUILD)}"`),`${page} recovery script`);
   }
 });
@@ -225,8 +225,8 @@ test("the private admin surface is versioned but never initialized as an offline
   assert.match(html,/<meta\s+name="viewport"\s+content="[^"]*width=device-width[^"]*viewport-fit=cover[^"]*"\s*\/>/i);
   assert.match(html,/<meta\s+name="robots"\s+content="[^"]*noindex[^"]*nofollow[^"]*"\s*\/>/i);
   assert.match(html,/<meta\s+name="referrer"\s+content="no-referrer"\s*\/>/i);
-  assert.doesNotMatch(html,/href="\/manifest\.webmanifest"/i);
-  assert.doesNotMatch(html,/src="\/pwa\.js/i);
+  assert.doesNotMatch(html,/href\s*=\s*"\/manifest\s*\.webmanifest"/i);
+  assert.doesNotMatch(html,/src\s*=\s*"\/pwa\s*\.js/i);
   assert.match(html,new RegExp(`src="/admin\\.js\\?v=${escapeRegExp(BUILD)}"`));
   assert.match(html,new RegExp(`href="/admin\\.css\\?v=${escapeRegExp(BUILD)}"`));
 });
@@ -349,7 +349,7 @@ test("install guide is beginner-friendly, device-specific, and progressively enh
   assert.match(html,/<main\s+id="installGuide">/);
   assert.match(html,/id="installStatus"\s+role="status"\s+aria-live="polite"/);
   assert.match(html,/id="installButton"[^>]*type="button"[^>]*hidden/);
-  assert.match(css,/\.install-actions \[hidden\]\s*\{\s*display:none;/,"A browser without an install prompt must not render the inactive install button");
+  assert.match(css,/\.install-actions\s*\[\s*hidden\s*,?\s*\]\s*\s*\{\s*\s*display\s*:\s*none\s*;/,"A browser without an install prompt must not render the inactive install button");
   assert.match(html,/no App Store download/i);
   assert.match(html,/No app-store account/);
   assert.match(html,/Updates automatically/);

@@ -62,7 +62,7 @@ test("checkout completion cannot confirm access from a different signed-in accou
   r.emitWindow("focus");await flush();
   r.checkout.event({name:"checkout.completed",data:{transaction_id:`txn_${"c".repeat(26)}`}});await flush();
   assert.match(r.node("purchaseStatus").textContent,/no longer signed in to that account/i);
-  assert.doesNotMatch(r.node("purchaseStatus").textContent,/Subscription confirmed|now unlocked/i);
+  assert.doesNotMatch(r.node("purchaseStatus").textContent,/Subscription\s*confirmed|now\s*unlocked/i);
   assert.equal(r.node("purchaseStatus").attrs.role,"status");
 });
 
@@ -137,7 +137,7 @@ test("checkout completion remains tied to its initiator after logout",async()=>{
   r.setAccountUser(null);
   r.checkout.event({name:"checkout.completed",data:{transaction_id:`txn_${"c".repeat(26)}`}});await flush();
   assert.match(r.node("purchaseStatus").textContent,/account that started checkout/i);
-  assert.doesNotMatch(r.node("purchaseStatus").textContent,/Subscription confirmed|now unlocked/i);
+  assert.doesNotMatch(r.node("purchaseStatus").textContent,/Subscription\s*confirmed|now\s*unlocked/i);
 });
 test("an unavailable checkout explains the problem without offering a trial",async()=>{
   const r=runtime({configFailure:true});await flush();
@@ -156,7 +156,7 @@ test("grant-only members are not told to manage nonexistent billing",async()=>{
   const user={id:"member",discovery:{active:true,accessType:"grant",adminGrant:{active:true,startedAt:Date.now(),expiresAt:null,revokedAt:null},subscription:null}};
   const r=runtime({userOverride:user});await flush();
   assert.match(r.node("purchaseStatus").textContent,/did not create a paid subscription/i);
-  assert.doesNotMatch(r.node("purchaseStatus").textContent,/manage it from Profile/i);
+  assert.doesNotMatch(r.node("purchaseStatus").textContent,/manage\s*it\s*from\s*Profile/i);
   assert.equal(r.node("manageSubscription").hidden,true);
 });
 test("lifetime members can see a concurrent complimentary grant",async()=>{

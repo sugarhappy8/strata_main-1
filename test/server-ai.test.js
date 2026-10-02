@@ -121,7 +121,7 @@ test("ordinary questions return a conversation reply without proposing account c
   model.replies.push({reply:"Longer sessions can help if recovery and schedule allow it; add time gradually.",week:{title:"Ignore this",days:[]},nutrition:null,suggestions:[]});
   const followUp=await settle(member,(await ask(member,{message:"Should I make sessions longer?",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
   assert.equal(followUp.data.request.result.week,null);assert.match(followUp.data.request.result.reply,/recovery/);
-  const questionPrompt=model.requests[1].messages[0].content;assert.match(questionPrompt,/Proposed week under discussion/);assert.doesNotMatch(questionPrompt,/Plan edit contract/);
+  const questionPrompt=model.requests[1].messages[0].content;assert.match(questionPrompt,/Proposed week under discussion/);assert.doesNotMatch(questionPrompt,/Plan\s*edit\s*contract/);
   model.replies.push({reply:"Pain needs an appropriate health professional before changing your plan.",week:week([{day:"Monday",name:"Unsafe",exercises:[["CH1",3,"8-12"],["BK1",3,"8-12"]]}]),nutrition:null,suggestions:[],search:[]});
   const safety=await settle(member,(await ask(member,{message:"My shoulder hurts, make my sessions longer",draftPlan:draftPlan(),draftPlanUpdatedAt:0})).data.request.id);
   assert.equal(safety.data.request.status,"done");assert.equal(safety.data.request.result.week,null);assert.match(safety.data.request.result.reply,/health professional/);
@@ -139,7 +139,7 @@ test("a week proposal uses only real exercises and saves through the normal plan
   // The model saw the member's data but never their name, email, or account id.
   const prompt=model.requests[0].messages.map((message)=>message.content).join("\n");
   assert.equal(model.requests[0].model,"test-model");assert.match(prompt,/Shortlist \(code name/);assert.match(prompt,/STRATA.s library has 320 exercises/);assert.match(prompt,/Three days, 45 minutes/);
-  assert.doesNotMatch(prompt,new RegExp(member.email));assert.doesNotMatch(prompt,/AI week/);assert.doesNotMatch(prompt,new RegExp(member.id));
+  assert.doesNotMatch(prompt,new RegExp(member.email));assert.doesNotMatch(prompt,/AI\s*week/);assert.doesNotMatch(prompt,new RegExp(member.id));
   const saved=await request("/api/plan",member,"PUT",{plan:result.week.plan,expectedPlanUpdatedAt:0,expectedUserId:member.id});
   assert.equal(saved.status,200,JSON.stringify(saved.data));assert.equal(saved.data.stats.workoutDays,3);assert.equal(saved.data.stats.planCount,9);
 });
@@ -153,7 +153,7 @@ test("follow-up edits use the structured draft and repair a wrong rest-day count
   assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.equal(result.reply,"Updated to 5 training days with 2 rest days: Monday, Tuesday, Wednesday, Friday, Saturday. Want matching calorie targets?");
   assert.deepEqual(result.week.trainingDays,["Monday","Tuesday","Wednesday","Friday","Saturday"]);assert.deepEqual(result.week.restDays,["Thursday","Sunday"]);
   assert.equal(model.requests.length,2);assert.match(model.requests[0].messages[0].content,/Base source: latest proposed week/);assert.match(model.requests[0].messages[0].content,/exactly 5 training days and 2 rest days/);
-  assert.doesNotMatch(model.requests[1].messages[0].content,/Correction required/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: Correction required: The edit needs exactly 5 training days; the proposal has 4/);
+  assert.doesNotMatch(model.requests[1].messages[0].content,/Correction\s*required/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: Correction required: The edit needs exactly 5 training days; the proposal has 4/);
 });
 
 test("longer-session edits keep the draft days and require every day to reach the next bucket",async()=>{
@@ -165,7 +165,7 @@ test("longer-session edits keep the draft days and require every day to reach th
   assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.deepEqual(result.week.trainingDays,["Monday","Wednesday","Friday"]);
   assert.equal(result.week.sessionMinutes,60);assert.ok(result.week.days.every((entry)=>entry.minutes===60));assert.equal(model.requests.length,2);
   assert.match(model.requests[0].messages[0].content,/Use exactly these training days: Monday, Wednesday, Friday/);assert.match(model.requests[0].messages[0].content,/60-minute bucket/);
-  assert.doesNotMatch(model.requests[1].messages[0].content,/Correction required/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: Correction required: Monday must estimate to the 60-minute bucket/);
+  assert.doesNotMatch(model.requests[1].messages[0].content,/Correction\s*required/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: Correction required: Monday must estimate to the 60-minute bucket/);
 });
 
 test("a stale proposed week falls back to the latest saved plan",async()=>{
@@ -298,7 +298,7 @@ test("context overflows and cut-off answers are retried in a smaller form",async
   model.truncateNext=true;model.replies.push({reply:"Short now.",week:null,nutrition:null,suggestions:[]});
   const shorter=await settle(member,(await ask(member)).data.request.id);
   assert.equal(shorter.data.request.status,"done");assert.equal(shorter.data.request.result.reply,"Short now.");
-  assert.equal(model.requests.length,2);assert.doesNotMatch(model.requests[1].messages[0].content,/previous answer was cut off/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification:.*previous answer was cut off/s);assert.equal(model.requests[1].temperature,0.1);
+  assert.equal(model.requests.length,2);assert.doesNotMatch(model.requests[1].messages[0].content,/previous\s*answer\s*was\s*cut\s*off/);assert.match(model.requests[1].messages.at(-1).content,/STRATA verification:.*previous answer was cut off/s);assert.equal(model.requests[1].temperature,0.1);
 });
 
 test("the model can search all 320 exercises once and use what it finds",async()=>{
@@ -310,7 +310,7 @@ test("the model can search all 320 exercises once and use what it finds",async()
   assert.equal(done.data.request.status,"done",JSON.stringify(done.data));assert.deepEqual(result.searched,["landmine press","nordic curl"]);
   assert.deepEqual(result.week.days[0].exercises.map((item)=>item.exerciseId).slice(0,2),["half-kneeling-landmine-press","nordic-hamstring-curl"]);
   assert.equal(model.requests.length,2,"one search, then one answer");
-  assert.doesNotMatch(model.requests[0].messages[0].content,/Half-Kneeling Landmine Press/,"the first shortlist did not include it");
+  assert.doesNotMatch(model.requests[0].messages[0].content,/Half-Kneeling\s*Landmine\s*Press/,"the first shortlist did not include it");
   assert.match(model.requests[1].messages.at(-1).content,/STRATA verification: STRATA searched its library for: landmine press, nordic curl/);
   model.requests.length=0;
   model.replies.push({reply:"Searching.",week:null,search:["underwater basket weaving"]},{reply:"STRATA has no exercise like that, but here are close options.",week:null,search:["asked again"]});

@@ -31,15 +31,15 @@ test("server composition keeps auth, admin, and support implementations behind m
   assert.match(composition,/createAuthService\(\{/);
   assert.match(composition,/createAdminService\(\{/);
   assert.match(composition,/createSupportService\(\{/);
-  assert.match(server,/await auth\.handleApi\(req,res,url\)/);
-  assert.match(server,/await admin\.handleApi\(req,res,url\)/);
-  assert.match(server,/await support\.handleApi\(req,res,url\)/);
-  assert.doesNotMatch(server,/function (?:passwordMatches|beginAccountRegistration|verifyAccountEmail|resetPassword|adminIdentity|performAdminUserAction|createSupportRequest)\b/);
+  assert.match(server,/await\s*auth\s*\.handleApi\s*\(\s*req\s*,\s*res\s*,\s*url\s*,?\s*\)/);
+  assert.match(server,/await\s*admin\s*\.handleApi\s*\(\s*req\s*,\s*res\s*,\s*url\s*,?\s*\)/);
+  assert.match(server,/await\s*support\s*\.handleApi\s*\(\s*req\s*,\s*res\s*,\s*url\s*,?\s*\)/);
+  assert.doesNotMatch(server,/function\s*(?:passwordMatches|beginAccountRegistration|verifyAccountEmail|resetPassword|adminIdentity|performAdminUserAction|createSupportRequest)\b/);
 
   for(const file of ["auth.js","admin.js","support.js"]){
     const source=readFileSync(join(PROJECT_ROOT,"src",file),"utf8");
-    assert.doesNotMatch(source,/require\(["']\.\/database["']\)/,`${file} must receive its store explicitly`);
-    assert.doesNotMatch(source,/require\(["']\.\/server["']\)/,`${file} must not depend on the application entry point`);
+    assert.doesNotMatch(source,/require\s*\(\s*["']\.\/database["']\s*,?\s*\)/,`${file} must receive its store explicitly`);
+    assert.doesNotMatch(source,/require\s*\(\s*["']\.\/server["']\s*,?\s*\)/,`${file} must not depend on the application entry point`);
   }
 });
 

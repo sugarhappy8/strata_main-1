@@ -120,7 +120,7 @@ test("homepage preserves its server-rendered account header while account state 
   assert.equal(elements.get("accountButton").textContent,"Saeed profile");
   assert.equal(elements.get("signupButton").hidden,true);
   assert.equal(elements.get("planCount").textContent,"4");
-  assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/);
+  assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare\s*=/);
 
   pending.reject(new TypeError("offline"));
   await settle();
@@ -130,7 +130,7 @@ test("homepage preserves its server-rendered account header while account state 
   assert.equal(elements.get("signupButton").hidden,true);
   assert.equal(elements.get("discoverButton").textContent,"Strata+");
   assert.equal(elements.get("planCount").textContent,"4");
-  assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/);
+  assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare\s*=/);
 });
 
 test("homepage treats a confirmed 401 as signed out and counts the saved guest plan",async()=>{
@@ -223,12 +223,12 @@ test("homepage ignores a stale initial identity response after a newer focus rec
 test("homepage rankings carry no comparison controls; Strata+ members get one link to the Library's Compare",async()=>{
   for(const meResponse of [jsonResponse(401,{error:"Not signed in."}),jsonResponse(200,{user:{id:"free",name:"Free Member",discovery:{active:false}}})]){
     const {context,elements}=createRuntime({meResponse});await settle();
-    assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/);
+    assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare\s*=/);
     vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)})`,context);
-    assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/,"members without Strata+ see no comparison hand-off");
+    assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\s*\.html#battle/,"members without Strata+ see no comparison hand-off");
   }
   const {context,elements}=createRuntime({meResponse:jsonResponse(200,{user:{id:"plus",name:"Plus Member",discovery:{active:true}}})});await settle();
-  assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare=/,"the homepage no longer runs its own two-exercise comparison");
+  assert.doesNotMatch(elements.get("exerciseList").innerHTML,/data-compare\s*=/,"the homepage no longer runs its own two-exercise comparison");
   assert.equal(elements.get("compareDock"),undefined);assert.equal(elements.get("compareDialog"),undefined);
   vm.runInContext(`openDetail(${JSON.stringify(catalog[0].id)})`,context);
   assert.match(elements.get("detailContent").innerHTML,/<a class="button"[^>]*href="\/discover\.html#battle">Compare in Strata\+/);
@@ -242,10 +242,10 @@ test("homepage hides the Strata+ hand-off during a recheck and removes it when a
   emitWindow("focus");
   assert.equal(vm.runInContext("state.accountStatus",context),"rechecking");
   assert.equal(elements.get("detailDialog").open,true,"the detail stays open; only account-bound controls disappear");
-  assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/);
+  assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\s*\.html#battle/);
   refreshed.resolve(jsonResponse(200,{user:{id:"member",name:"Member",discovery:{active:false}}}));await settle();
   assert.equal(vm.runInContext("state.accountStatus",context),"authenticated");
-  assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/);
+  assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\s*\.html#battle/);
 });
 
 test("homepage preserves focus inside an open detail while account access rerenders",async()=>{
@@ -256,7 +256,7 @@ test("homepage preserves focus inside an open detail while account access rerend
   const replacement={focused:false,getAttribute:name=>name==="data-add-planner"?catalog[0].id:null,focus(){this.focused=true;}};
   context.document.activeElement=focused;elements.get("detailDialog").contains=control=>control===focused;elements.get("detailDialog").querySelectorAll=selector=>selector==="[data-add-planner]"?[replacement]:[];
   emitWindow("focus");
-  assert.equal(replacement.focused,true);assert.equal(elements.get("detailDialog").open,true);assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\.html#battle/);
+  assert.equal(replacement.focused,true);assert.equal(elements.get("detailDialog").open,true);assert.doesNotMatch(elements.get("detailContent").innerHTML,/discover\s*\.html#battle/);
   refreshed.resolve(jsonResponse(200,{user:member}));await settle();
   assert.equal(elements.get("detailDialog").open,true);assert.match(elements.get("detailContent").innerHTML,/discover\.html#battle/);
 });
@@ -298,7 +298,7 @@ test("homepage has one score ring and lets JavaScript create the equipment defau
   assert.equal((html.match(/class="score-ring"/g)||[]).length,1);
   const equipmentSelect=html.match(/<select id="equipmentFilter">([\s\S]*?)<\/select>/);
   assert.ok(equipmentSelect,"equipment select");
-  assert.doesNotMatch(equipmentSelect[1],/All equipment/);
+  assert.doesNotMatch(equipmentSelect[1],/All\s*equipment/);
   assert.equal((homeRenderSource.match(/<option value="all">All equipment<\/option>/g)||[]).length,1);
 });
 

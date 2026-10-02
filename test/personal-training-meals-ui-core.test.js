@@ -72,8 +72,8 @@ test("Discover markup supplies accessible preference and suggestion surfaces wit
   for(const id of ["mealAllergyNone","mealAllergyListed","mealAllergyOther","mealOtherAllergies","mealDietaryPattern","mealDietGlutenFree","mealDietDairyFree","mealMealsPerDay","mealDailyBudget","coachingFoodStatus","coachingFoodRemaining","coachingFoodOptions","coachingFoodRefresh"])assert.match(html,new RegExp(`id="${id}"`),id);
   assert.equal((html.match(/name="mealAllergen"/g)||[]).length,9);assert.equal((html.match(/name="mealFavorite"/g)||[]).length,Ui.FAVORITE_FOODS.length);
   assert.equal((html.match(/aria-label="Meal suggestions"/g)||[]).length,1);assert.equal((html.match(/USDA FoodData Central reference data/g)||[]).length,1);assert.equal((html.match(/cross-contact risk/g)||[]).length,1);
-  assert.match(html,/id="coachingFoodOptions"[^>]*><\/ul>/);assert.doesNotMatch(html,/id="progressCoachingFoodOptions"/);
-  assert.match(css,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);assert.match(css,/@media\(max-width:560px\)/);assert.match(css,/\.coaching-meal-list[^}]*grid-template-columns:minmax\(0,1fr\)/);assert.match(css,/@media\(forced-colors:active\)/);
+  assert.match(html,/id="coachingFoodOptions"[^>]*><\/ul>/);assert.doesNotMatch(html,/id\s*=\s*"progressCoachingFoodOptions"/);
+  assert.match(css,/grid-template-columns\s*:\s*repeat\s*\(\s*3\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/);assert.match(css,/@media\s*\(\s*max-width\s*:\s*560px\s*,?\s*\)/);assert.match(css,/\.coaching-meal-list[^}]*grid-template-columns\s*:\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)/);assert.match(css,/@media\s*\(\s*forced-colors\s*:\s*active\s*,?\s*\)/);
 });
 
 

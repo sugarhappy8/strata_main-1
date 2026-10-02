@@ -26,14 +26,14 @@ test("homepage exposes pricing, contact, and the public policy directory without
   for(const route of ["/terms","/privacy","/refunds"])assert.match(policies,new RegExp(`href="${route}"`),`${route} policy-directory link`);
   assert.deepEqual(mobileLinks,[["#rankings","Rankings"],["/dashboard","Dashboard"],["/install.html","Install"]]);
   assert.equal((footer.match(/href="\/policies"/g)||[]).length,1,"homepage footer must expose one Policies destination");
-  assert.doesNotMatch(footer,/href="\/(?:terms|privacy|refunds)"/,"the policy hub replaces redundant legal links in the homepage footer");
+  assert.doesNotMatch(footer,/href\s*=\s*"\/(?:terms|privacy|refunds)"/,"the policy hub replaces redundant legal links in the homepage footer");
   assert.match(home,/mailto:stratafitness\.official@gmail\.com/i);
   assert.match(text("index.html"),/\$2\.99 USD/i);
-  assert.doesNotMatch(text("index.html"),/trial|7 days|no card/i,"the homepage no longer offers the retired free trial");
-  assert.doesNotMatch(text("index.html"),/Strata AI/,"Strata AI lives inside Strata+, not on the homepage");
+  assert.doesNotMatch(text("index.html"),/trial|7\s*days|no\s*card/i,"the homepage no longer offers the retired free trial");
+  assert.doesNotMatch(text("index.html"),/Strata\s*AI/,"Strata AI lives inside Strata+, not on the homepage");
   assert.match(text("index.html"),/\$2\.99 USD per month/i);
   assert.match(text("index.html"),/renews monthly until canceled/i);
-  assert.doesNotMatch(text("index.html"),/lifetime|one[- ]time|never a subscription/i);
+  assert.doesNotMatch(text("index.html"),/lifetime|one[- ]time|never\s*a\s*subscription/i);
 });
 
 test("the editorial homepage and the five-section navigation remain canonical",()=>{
@@ -42,7 +42,7 @@ test("the editorial homepage and the five-section navigation remain canonical",(
   assert.match(home,/<div class="hero-media" role="img" aria-label="Athlete performing a pull-up in a gym">/);
   assert.match(home,/<h1 id="hero-title">Your next<br \/>workout\.<br \/><em>Ready\.<\/em><\/h1>/);
   assert.ok(home.indexOf('class="hero"')<home.indexOf('id="rankings"'),"The editorial hero must lead instead of opening on the exercise catalog");
-  assert.doesNotMatch(home,/<title>Exercises\b/i,"The rejected Exercises-first shell must not replace the STRATA homepage");
+  assert.doesNotMatch(home,/<\s*title\s*>\s*Exercises\b/i,"The rejected Exercises-first shell must not replace the STRATA homepage");
   for(const removed of ["start-directory","class=\"ticker\"","system-section","editorial-section","discovery-offer"])assert.doesNotMatch(home,new RegExp(removed),`${removed} was cut: the homepage is hero, free preview, rankings, method, sources`);
 
   const expected=["Rankings","Dashboard","Train","Recovery","Profile"];
@@ -55,7 +55,7 @@ test("the editorial homepage and the five-section navigation remain canonical",(
   // One way to each section: no page keeps a separate Account link next to Profile, or the retired Strata+/Plan/Exercises labels.
   for(const [name,[html]] of Object.entries(pages)){
     const header=html.match(/<header\b[\s\S]*?<\/header>/)?.[0]||"";
-    assert.doesNotMatch(header,/>(?:Account|Exercises|Plan|Strata\+)<\/a>/,`${name} header keeps only the five sections`);
+    assert.doesNotMatch(header,/>\s*(?:Account|Exercises|Plan|Strata\s*\+)\s*<\s*\/a\s*>/,`${name} header keeps only the five sections`);
   }
   // Member-aware sections resolve on the server; the studio switches its own views in place.
   assert.match(planner,/<a href="\/rankings">Rankings<\/a><a href="\/dashboard" aria-current="page">Dashboard<\/a><a href="\/workout\.html">Train<\/a><a href="\/recovery">Recovery<\/a><a href="\/account\.html">Profile<\/a>/);
@@ -68,8 +68,8 @@ test("the public policies page publishes the founder story without cluttering th
   const home=read("index.html"),policies=read("policies.html");
   const founder=policies.match(/<section class="info-container policy-founder"[\s\S]*?<\/section>/)?.[0]||"";
   const copy=visibleText(founder);
-  assert.doesNotMatch(home,/class="founder-section"/);
-  assert.doesNotMatch(home,/href="#founder"/);
+  assert.doesNotMatch(home,/class\s*=\s*"founder-section"/);
+  assert.doesNotMatch(home,/href\s*=\s*"#founder"/);
   assert.match(home,/href="\/policies"/);
   assert.match(policies,/id="founder"/);
   assert.match(policies,/href="#founder"/);
@@ -79,15 +79,15 @@ test("the public policies page publishes the founder story without cluttering th
   assert.match(copy,/Born and raised in the UAE and based in Al Ain/i);
   assert.match(copy,/Chemical Engineering · UAEU/i);
   assert.match(policies,/<div class="policy-founder-mark"[^>]*>[\s\S]*?<span>SK<\/span>/);
-  assert.doesNotMatch(policies,/<div class="policy-founder-mark"[^>]*>[\s\S]*?<span>SA<\/span>/);
-  assert.doesNotMatch(copy,/Zahkir|Malad|street 13|st\.?\s*13/i);
+  assert.doesNotMatch(policies,/<\s*div\s*class\s*=\s*"policy-founder-mark"[^>]*\s*>\s*[\s\S]*?\s*<\s*span\s*>\s*SA\s*<\s*\/span\s*>/);
+  assert.doesNotMatch(copy,/Zahkir|Malad|street\s*13|st\.?\s*13/i);
 });
 
 test("core footers use the policy directory instead of repeating every legal page",()=>{
   for(const page of ["account.html","discover.html","planner.html","install.html","delete-account.html","forgot-password.html","reset-password.html","verify-email.html","workout.html","admin.html"]){
     const footer=read(page).match(/<footer\b[\s\S]*?<\/footer>/)?.[0]||"";
     assert.match(footer,/href="\/policies"/,`${page} policy-directory link`);
-    assert.doesNotMatch(footer,/href="\/(?:terms|privacy|refunds)"/,`${page} redundant policy link`);
+    assert.doesNotMatch(footer,/href\s*=\s*"\/(?:terms|privacy|refunds)"/,`${page} redundant policy link`);
   }
 });
 
@@ -96,7 +96,7 @@ test("published Strata+ price and refund promise are exact and consistent",()=>{
   const pricingHtml=read("pricing.html"),pricing=text("pricing.html"),refunds=text("refunds.html"),terms=text("terms.html");
   assert.match(pricing,/Strata\+/);
   assert.match(pricing,/\$2\.99 USD/i);
-  assert.doesNotMatch(pricing,/trial|no card/i,"the free trial is retired");
+  assert.doesNotMatch(pricing,/trial|no\s*card/i,"the free trial is retired");
   assert.match(pricing,/Renews until canceled/i);
   assert.match(pricing,/session building/i);
   assert.match(pricing,/31-day planner/i);
@@ -108,11 +108,11 @@ test("published Strata+ price and refund promise are exact and consistent",()=>{
   assert.match(pricingHtml,/Create my free account/);
   assert.match(pricingHtml,/Create an account or sign in to subscribe/);
   assert.match(pricingHtml,/without an account, and syncs once you sign in/);
-  assert.doesNotMatch(pricingHtml,/id="trialDiscovery"/);
+  assert.doesNotMatch(pricingHtml,/id\s*=\s*"trialDiscovery"/);
   assert.match(pricingHtml,/href="\/refunds"/);
   assert.match(pricingHtml,/id="buyDiscovery"/);
   // Paddle.js is requested by pricing.js on the website only, never inside the iOS app.
-  assert.doesNotMatch(pricingHtml,/cdn\.paddle\.com/);
+  assert.doesNotMatch(pricingHtml,/cdn\s*\.paddle\s*\.com/);
   assert.match(read("../scripts/pricing.js"),/"https:\/\/cdn\.paddle\.com\/paddle\/v2\/paddle\.js"/);
   assert.match(pricingHtml,new RegExp(`src="/pricing\\.js\\?v=${BUILD.replace(/\./g,"\\.")}"`));
   assert.match(pricing,/Paddle is the merchant of record/i);
@@ -180,7 +180,7 @@ test("public policies distinguish self-service from guarded administrator deleti
   }
   assert.match(terms,/one explicit review/i);
   assert.match(terms,/server-generated action-specific audit reason/i);
-  assert.doesNotMatch(terms,/exact account email and an audit reason/i);
+  assert.doesNotMatch(terms,/exact\s*account\s*email\s*and\s*an\s*audit\s*reason/i);
   assert.match(privacy,/re-checks Paddle and database blockers/i);
   assert.match(privacy,/cannot delete the primary owner/i);
 });
@@ -190,24 +190,24 @@ test("public copy describes recurring checkout, cancellation, and grandfathered 
   assert.match(publicCopy,/\$2\.99 USD per month/i);
   assert.match(publicCopy,/renews monthly/i);
   assert.match(publicCopy,/grandfathered/i);
-  assert.doesNotMatch(publicCopy,/permanent access/i);
-  assert.doesNotMatch(publicCopy,/prelaunch|until checkout is activated|when paid checkout launches|when purchasing is available/i);
+  assert.doesNotMatch(publicCopy,/permanent\s*access/i);
+  assert.doesNotMatch(publicCopy,/prelaunch|until\s*checkout\s*is\s*activated|when\s*paid\s*checkout\s*launches|when\s*purchasing\s*is\s*available/i);
   assert.match(text("privacy.html"),/Paddle handles checkout, recurring payment/i);
   assert.match(text("privacy.html"),/current billing-period end/i);
   assert.match(text("refunds.html"),/Refunding the charge may end the paid Strata\+ access/i);
   const pricingClient=["entitlements.js","pricing-logic.js","pricing-render.js","pricing.js"].map(name=>fs.readFileSync(path.join(PUBLIC_ROOT,"scripts",name),"utf8")).join("\n");
-  assert.doesNotMatch(pricingClient,/permanently unlocked/i);
+  assert.doesNotMatch(pricingClient,/permanently\s*unlocked/i);
   assert.doesNotMatch(pricingClient,/\/api\/discovery\/trial|startTrial|trialDiscovery/,"pricing never starts the retired trial");
-  assert.match(pricingClient,/buyButton\.hidden=!canSubscribe;/);
+  assert.match(pricingClient,/buyButton\s*\.hidden\s*=\s*!\s*canSubscribe\s*;/);
   assert.match(pricingClient,/monthly subscription is active and renews on/);
   assert.match(pricingClient,/previous monthly subscription is canceled and will not renew/);
-  assert.match(pricingClient,/error\.code==="CHECKOUT_PREPARING"/);
-  assert.doesNotMatch(pricingClient,/error\.status===409/,"a concurrent-checkout response must stay retryable instead of impersonating a completed payment");
+  assert.match(pricingClient,/error\s*\.code\s*===\s*"CHECKOUT_PREPARING"/);
+  assert.doesNotMatch(pricingClient,/error\s*\.status\s*===\s*409/,"a concurrent-checkout response must stay retryable instead of impersonating a completed payment");
 });
 
 test("Account leaves training progress to Strata+ and keeps its next action and controls",()=>{
   const account=read("account.html");
-  assert.doesNotMatch(account,/Weekly progress|Recent momentum|Training signal|accountWeekProgress|accountWinsList|accountAdaptationTitle/);
+  assert.doesNotMatch(account,/Weekly\s*progress|Recent\s*momentum|Training\s*signal|accountWeekProgress|accountWinsList|accountAdaptationTitle/);
   for(const id of ["accountAccessState","accountBilling","connectedDevices","accountSessionList","accountExportData","accountDeleteRequest"])assert.match(account,new RegExp(`id="${id}"`));
 });
 

@@ -1,6 +1,7 @@
 "use strict";
 
 const test=require("node:test");
+const {frontendBudget,lineCount}=require("./support/size-budget");
 const assert=require("node:assert/strict");
 const {readFileSync}=require("node:fs");
 const {join}=require("node:path");
@@ -81,18 +82,18 @@ test("the iOS app's Calendar sheet gets the same weekly schedule with Calendar's
 
 test("in the iOS app a workout keeps the screen awake, schedules its rest alert, and opens Calendar's sheet",()=>{
   const main=readFileSync(join(ROOT,"public/scripts/workout.js"),"utf8"),events=readFileSync(join(ROOT,"public/scripts/workout-events.js"),"utf8");
-  assert.match(main,/globalThis\.StrataAppMode\?\.createWorkoutBridge\?\.\(\{title:"Rest is over",body:"Time for your next set\."\}\)\|\|null/);
-  assert.match(main,/appBridge\.sync\(\{keepAwake:active&&!state\.pageHidden&&document\.visibilityState!=="hidden",restEndsAt:active\?state\.workout\.restEndsAt:0\}\)/,"only an active workout on screen keeps the screen awake");
-  assert.match(main,/function tick\(\)\{\n {4}syncApp\(\);/,"every timer tick (pause, reset, finish, replace) reconciles the native state");
-  assert.match(main,/state\.pausedSeconds=null;syncApp\(\);guidance\.reset\(\)/,"closing a session releases the screen at once");
-  assert.equal((main.match(/persistDraft\(\);syncApp\(\);/g)||[]).length,2,"a blocked session or ended access releases the screen and the alert");
-  assert.match(main,/Date\.now\(\)-workout\.restEndsAt<5000\)globalThis\.StrataAppMode\?\.haptic\("success"\)/,"a rest ending on screen taps once; a rest that ended long ago does not");
-  assert.match(main,/addWeeklyToCalendar\(options\)\)\?\.added===true\)toast\("Added to your calendar\."\);\}\n {4}catch\{const link=document\.createElement\("a"\);link\.href=\$\("calendarWeeklyLink"\)\.href;link\.download=/,"a refused sheet falls back to the .ics file");
-  assert.match(events,/\$\("calendarWeeklyLink"\)\?\.addEventListener\("click",\(event\)=>\{void actions\.addWeeklyToCalendar\?\.\(event\);\}\)/);
-  assert.match(events,/windowLike\.addEventListener\("pagehide",\(\)=>\{state\.pageHidden=true;tick\(\);\}\)/);
+  assert.match(main,/globalThis\s*\.StrataAppMode\s*\?\.createWorkoutBridge\s*\?\.\(\s*\{\s*title\s*:\s*"Rest\s*is\s*over"\s*,\s*body\s*:\s*"Time\s*for\s*your\s*next\s*set\."\s*[;,]?\s*\}\s*,?\s*\)\s*\|\|\s*null/);
+  assert.match(main,/appBridge\s*\.sync\s*\(\s*\{\s*keepAwake\s*:\s*active\s*&&\s*!\s*state\s*\.pageHidden\s*&&\s*document\s*\.visibilityState\s*!==\s*"hidden"\s*,\s*restEndsAt\s*:\s*active\s*\?\s*state\s*\.workout\s*\.restEndsAt\s*:\s*0\s*[;,]?\s*\}\s*,?\s*\)/,"only an active workout on screen keeps the screen awake");
+  assert.match(main,/function\s*tick\s*\(\s*,?\s*\)\s*\{\s*\n\s*syncApp\s*\(\s*,?\s*\)\s*;/,"every timer tick (pause, reset, finish, replace) reconciles the native state");
+  assert.match(main,/state\s*\.pausedSeconds\s*=\s*null\s*;\s*syncApp\s*\(\s*,?\s*\)\s*;\s*guidance\s*\.reset\s*\(\s*,?\s*\)/,"closing a session releases the screen at once");
+  assert.equal((main.match(/persistDraft\(\);\s*syncApp\(\);/g)||[]).length,2,"a blocked session or ended access releases the screen and the alert");
+  assert.match(main,/Date\.now\(\)\s*-\s*workout\.restEndsAt\s*<\s*5000\)\s*globalThis\.StrataAppMode\?\.haptic\("success"\)/,"a rest ending on screen taps once; a rest that ended long ago does not");
+  assert.match(main,/addWeeklyToCalendar\(options\)\)\?\.added\s*===\s*true\)\s*toast\("Added to your calendar\."\);\s*\}\s*catch\s*\{\s*const link\s*=\s*document\.createElement\("a"\);\s*link\.href\s*=\s*\$\("calendarWeeklyLink"\)\.href;\s*link\.download\s*=/,"a refused sheet falls back to the .ics file");
+  assert.match(events,/\$\("calendarWeeklyLink"\)\?\.addEventListener\("click",\s*\(event\)\s*=>\s*\{\s*void actions\.addWeeklyToCalendar\?\.\(event\);\s*\}\)/);
+  assert.match(events,/windowLike\s*\.addEventListener\s*\(\s*"pagehide"\s*,\s*\(\s*,?\s*\)\s*=>\s*\{\s*state\s*\.pageHidden\s*=\s*true\s*;\s*tick\s*\(\s*,?\s*\)\s*;\s*[;,]?\s*\}\s*,?\s*\)/);
   // A rest alert the online page scheduled must not fire after the workout is finished on the offline page.
   const offline=readFileSync(join(ROOT,"public/scripts/workout-offline.js"),"utf8");
-  assert.match(offline,/workout\.restEndsAt=null;const stored=persist\(\);render\(\);globalThis\.StrataAppMode\?\.cancelRestAlert\?\.\(\);/,"finishing offline cancels the rest alert");
+  assert.match(offline,/workout\s*\.restEndsAt\s*=\s*null\s*;\s*const\s*stored\s*=\s*persist\s*\(\s*,?\s*\)\s*;\s*render\s*\(\s*,?\s*\)\s*;\s*globalThis\s*\.StrataAppMode\s*\?\.cancelRestAlert\s*\?\.\(\s*,?\s*\)\s*;/,"finishing offline cancels the rest alert");
 });
 
 test("workout renderer keeps the training essentials visible and nests configuration under More",()=>{
@@ -155,10 +156,10 @@ test("workout context exposes exactly one truthful action for each plan state",(
 test("workout entry point is a bounded coordinator over dedicated modules",()=>{
   const main=readFileSync(join(ROOT,"public/scripts/workout.js"),"utf8"),html=readFileSync(join(ROOT,"public/pages/workout.html"),"utf8");
   const ordered=["workout-state.js","workout-api.js","workout-calendar.js","workout-render.js","workout-context.js","workout-guidance.js","workout-history.js","workout-events.js","workout.js"];
-  assert.ok(main.trimEnd().split("\n").length<=430,`workout.js coordinator is still too large: ${main.trimEnd().split("\n").length} lines`);
+  assert.ok(lineCount(main)<=frontendBudget("workout.js"),`workout.js coordinator is still too large: ${lineCount(main)} lines`);
   for(const [file,globalName] of [["workout-state.js","StrataWorkoutState"],["workout-api.js","StrataWorkoutApi"],["workout-calendar.js","StrataWorkoutCalendar"],["workout-render.js","StrataWorkoutRender"],["workout-context.js","StrataWorkoutContext"],["workout-guidance.js","StrataWorkoutGuidance"],["workout-history.js","StrataWorkoutHistory"],["workout-events.js","StrataWorkoutEvents"]]){
-    const source=readFileSync(join(ROOT,"public/scripts",file),"utf8");assert.ok(Buffer.byteLength(source)<18_000,`${file} should remain focused`);assert.match(source,new RegExp(globalName));
+    const source=readFileSync(join(ROOT,"public/scripts",file),"utf8");assert.ok(lineCount(source)<=frontendBudget(file),`${file} should remain focused`);assert.match(source,new RegExp(globalName));
   }
   for(let index=1;index<ordered.length;index++)assert.ok(html.indexOf(`/${ordered[index-1]}`)<html.indexOf(`/${ordered[index]}`),`${ordered[index-1]} must load before ${ordered[index]}`);
-  assert.match(main,/S\.create\(W,location\)/);assert.match(main,/A\.create\(/);assert.match(main,/R\.create\(/);assert.match(main,/T\.create\(/);assert.match(main,/Q\.create\(/);assert.match(main,/H\.create\(/);assert.match(main,/E\.bind\(/);assert.equal(typeof Context.create,"function");assert.equal(typeof Events.bind,"function");
+  assert.match(main,/S\s*\.create\s*\(\s*W\s*,\s*location\s*,?\s*\)/);assert.match(main,/A\.create\(/);assert.match(main,/R\.create\(/);assert.match(main,/T\.create\(/);assert.match(main,/Q\.create\(/);assert.match(main,/H\.create\(/);assert.match(main,/E\.bind\(/);assert.equal(typeof Context.create,"function");assert.equal(typeof Events.bind,"function");
 });

@@ -98,7 +98,7 @@ for (const kind of ["local","turso"]) {
     const db=database||new DatabaseSync(file);
     try {
       const queryPlan=db.prepare(`EXPLAIN QUERY PLAN ${SQL.workouts}`).all("other",21,0).map((row)=>row.detail).join(" ");
-      assert.match(queryPlan,/workouts_user_started/);assert.doesNotMatch(queryPlan,/TEMP B-TREE/);
+      assert.match(queryPlan,/workouts_user_started/);assert.doesNotMatch(queryPlan,/TEMP\s*B-TREE/);
     } finally {if (!database) db.close();}
   });
 }

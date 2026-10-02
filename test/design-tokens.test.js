@@ -28,14 +28,14 @@ test("one palette, type, radius, spacing, and motion scale live in tokens.css",(
 test("the shared light palette reads the tokens, and night pages keep their own palette where it applies",()=>{
   const experience=read("styles/experience.css");
   for(const [local,token] of [["--paper","--strata-paper"],["--white","--strata-surface"],["--line","--strata-line"],["--muted","--strata-muted"],["--ink","--strata-ink"],["--accent","--strata-accent"],["--body","--strata-font"]])
-    assert.match(experience,new RegExp(`${local}:var\\(${token}\\)`),`experience.css ${local}`);
+    assert.match(experience,new RegExp(`${local}:\\s*var\\(${token}\\)`),`experience.css ${local}`);
   // Page stylesheets that load before experience.css no longer carry copies of the light palette that never applied.
   for(const file of ["account.css","admin.css","install.css","planner.css","site-info.css","styles.css"]){
     const root=read(`styles/${file}`).match(/(?:^|\n)\s*:root\s*\{([^}]*)\}/)?.[1]||"";
-    assert.doesNotMatch(root,/--(?:paper|white|muted|line|ink|accent):/,`${file} leaves the light palette to the tokens`);
+    assert.doesNotMatch(root,/--(?:paper|white|muted|line|ink|accent)\s*:/,`${file} leaves the light palette to the tokens`);
   }
   // Setup renders at night: its palette is on the page body, where the later light palette cannot replace it.
   const onboarding=read("styles/onboarding.css");
-  assert.match(onboarding,/body\.setup-page \{[^}]*--muted:#b2b9aa;[^}]*--line:#383e31;|body\.setup-page \{[^}]*--line:#383e31;[^}]*--muted:#b2b9aa;/);
+  assert.match(onboarding,/body\s*\.setup-page\s*\{\s*[^}]*--muted\s*:\s*#b2b9aa\s*;\s*[^}]*--line\s*:\s*#383e31\s*;|body\s*\.setup-page\s*\{\s*[^}]*--line\s*:\s*#383e31\s*;\s*[^}]*--muted\s*:\s*#b2b9aa\s*;/);
   assert.doesNotMatch(onboarding.match(/^:root \{[^}]*\}/)?.[0]||"",/--muted|--line|--text/,"setup's night palette is not on :root");
 });

@@ -30,7 +30,7 @@ test("analysis flags only observable density and never invents recovery claims",
   const result=Core.analyzePlan(input,exercises),serialized=JSON.stringify(result);
   assert.ok(result.alerts.some(({id})=>id==="dense-days"));
   assert.ok(result.alerts.some(({id})=>id==="no-rest-day"));
-  assert.doesNotMatch(serialized,/readiness|injury|overtrain|fatigue score/i);
+  assert.doesNotMatch(serialized,/readiness|injury|overtrain|fatigue\s*score/i);
 });
 
 test("copy-day previews replace or merge without mutating the saved plan",()=>{

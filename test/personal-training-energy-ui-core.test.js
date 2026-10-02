@@ -44,7 +44,7 @@ test("missing or corrupt targets require review without inventing zero calories"
     assert.equal(EnergyUi.maintenanceDisplay({targetKcal:value}).label,"Review required");
   }
   assert.equal(EnergyUi.maintenanceDisplay({estimateRangeKcal:[2000,2800]}).label,"Review required","uncertainty bounds alone do not supply a target");
-  assert.doesNotMatch(EnergyUi.maintenanceDisplay({targetKcal:2325,estimateRangeKcal:[2800,2000]}).detail,/2,800–2,000/);
+  assert.doesNotMatch(EnergyUi.maintenanceDisplay({targetKcal:2325,estimateRangeKcal:[2800,2000]}).detail,/2\s*,\s*800–2\s*,\s*000/);
 });
 
 test("scheduled targets show one value for steady days and a labelled range only when days vary",()=>{

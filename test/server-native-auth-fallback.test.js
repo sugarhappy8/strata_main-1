@@ -63,7 +63,7 @@ test("server-rendered account forms preserve a safe native destination and error
   assert.match(body,/id="signupNext"[^>]*value="\/pricing"/);
   assert.match(body,/id="loginNext"[^>]*value="\/pricing"/);
   assert.match(body,/id="loginMessage"[^>]*>Email or password is incorrect\.<\/div>/);
-  assert.doesNotMatch(body,/id="loginMessage"[^>]*hidden/);
+  assert.doesNotMatch(body,/id\s*=\s*"loginMessage"[^>]*hidden/);
 });
 
 test("server-rendered verification forms preserve planner additions without JavaScript",async()=>{
@@ -73,7 +73,7 @@ test("server-rendered verification forms preserve planner additions without Java
   assert.match(body,/id="verificationPurpose"[^>]*value="login"/);
   assert.match(body,/id="resendPurpose"[^>]*value="login"/);
   assert.match(body,/id="verificationMessage"[^>]*>Please wait before requesting another code\.<\/div>/);
-  assert.doesNotMatch(body,/id="verificationMessage"[^>]*hidden/);
+  assert.doesNotMatch(body,/id\s*=\s*"verificationMessage"[^>]*hidden/);
 });
 
 test("native fallback messages never reflect arbitrary query content",async()=>{
@@ -81,7 +81,7 @@ test("native fallback messages never reflect arbitrary query content",async()=>{
   const body=await html(`/verify-email.html?next=pricing&error=${encodeURIComponent(attack)}&delivery=failed`);
   assert.match(body,/id="verificationNext"[^>]*value="\/pricing"/);
   assert.match(body,/Unable to complete the verification request\. Please try again\./);
-  assert.doesNotMatch(body,/<img src=x|onerror=|alert\(1\)/i);
+  assert.doesNotMatch(body,/<\s*img\s*src\s*=\s*x|onerror\s*=|alert\s*\(\s*1\s*,?\s*\)/i);
 
   const failed=await html("/verify-email.html?next=pricing&delivery=failed");
   assert.match(failed,/We could not send the verification email\. Please wait a moment, then request another code\./);

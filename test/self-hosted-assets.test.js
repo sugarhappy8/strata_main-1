@@ -45,7 +45,7 @@ test("font files, homepage photographs, credits, and licenses stay bundled",()=>
     assert.match(fonts,new RegExp(`url\\(["']?/fonts/${path.replace(".","\\.")}["']?\\)`),`${path} font-face source`);
   }
   assert.equal((fonts.match(/@font-face/g)||[]).length,3);
-  assert.doesNotMatch(fonts,/https?:\/\//);
+  assert.doesNotMatch(fonts,/https?\s*:\s*\/\//);
 
   const home=read("public/pages/index.html"),homeCss=read("public/styles/styles.css");
   assert.match(homeCss,/background-image:\s*url\(["']\/images\/hero-training\.jpg["']\)/);
@@ -74,7 +74,7 @@ test("privacy copy and the content policy describe and enforce same-origin asset
   assert.deepEqual(directives["font-src"],["'self'"]);
   assert.deepEqual(directives["style-src"],["'self'","'unsafe-inline'"]);
   assert.deepEqual(directives["img-src"],["'self'","https://*.paddle.com","data:"]);
-  assert.doesNotMatch(csp,/fonts\.googleapis|fonts\.gstatic|images\.unsplash/i);
+  assert.doesNotMatch(csp,/fonts\s*\.googleapis|fonts\s*\.gstatic|images\s*\.unsplash/i);
 });
 
 test("homepage source notes meet normal-text contrast",()=>{

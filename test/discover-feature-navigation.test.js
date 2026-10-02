@@ -1,6 +1,7 @@
 "use strict";
 
 const test=require("node:test");
+const {frontendBudget,lineCount}=require("./support/size-budget");
 const assert=require("node:assert/strict");
 const {readFileSync}=require("node:fs");
 const {join}=require("node:path");
@@ -28,13 +29,13 @@ test("Strata+ progressively enhances four primary destinations and focused suppo
     assert.match(tag,/\baria-controls="[^"]+"/);
     assert.match(tag,/\baria-expanded="false"/);
   }
-  assert.doesNotMatch(html,/class="studio-account"/,"Profile in the site navigation replaces the separate Account link");
+  assert.doesNotMatch(html,/class\s*=\s*"studio-account"/,"Profile in the site navigation replaces the separate Account link");
   assert.match(html,/aria-label="Primary navigation"><a href="#exerciseExplorer" data-section="rankings">Rankings<\/a><a class="active" href="\/dashboard" data-section="week" aria-current="page">Dashboard<\/a><a href="\/workout\.html" data-section="train">Train<\/a><a href="#recoveryWorkspace" data-section="recovery">Recovery<\/a><a href="\/account\.html" data-section="profile">Profile<\/a>/);
   assert.match(script,/account\.html\?mode=login&next=discover/);
-  assert.doesNotMatch(html,/id="exploreWorkspace"/,"the Exercises hub is gone; the destination opens the Library");
+  assert.doesNotMatch(html,/id\s*=\s*"exploreWorkspace"/,"the Exercises hub is gone; the destination opens the Library");
   const libraryTools=html.match(/<nav class="feature-grid explore-tool-grid library-tools"[\s\S]*?<\/nav>/)?.[0]||"";
   assert.equal((libraryTools.match(/class="feature-block"/g)||[]).length,3,"the Library carries its three tools");
-  assert.doesNotMatch(html,/<details class="explore-advanced-tools"/);
+  assert.doesNotMatch(html,/<\s*details\s*class\s*=\s*"explore-advanced-tools"/);
   const overview=html.match(/<section class="studio-hero feature-panel" id="todayWorkspace"[\s\S]*?<\/section>\n\n {6}<section class="plan-workspace/)?.[0]||"";
   const tools=overview.match(/<nav class="overview-tool-grid"[\s\S]*?<\/nav>/)?.[0]||"";
   assert.match(tools,/class="overview-tool" href="#planWorkspace" data-feature-target="plan" aria-controls="planWorkspace" aria-expanded="false"><span class="overview-tool-label">Plan<\/span>/);
@@ -46,7 +47,7 @@ test("Strata+ progressively enhances four primary destinations and focused suppo
     assert.ok(section,`${panel} offers a way back to Overview`);
   }
   assert.match(html,/<details class="plan-tool-disclosure" id="workoutBuilderDetails">/);
-  assert.doesNotMatch(html,/<details class="(?:explore-advanced-tools|plan-tool-disclosure)"[^>]*\bopen\b/,"secondary tools should start collapsed");
+  assert.doesNotMatch(html,/<\s*details\s*class\s*=\s*"(?:explore-advanced-tools|plan-tool-disclosure)"[^>]*\bopen\b/,"secondary tools should start collapsed");
 });
 
 test("the Strata AI chat launcher glows on every Strata+ view, names itself on hover or focus, and opens a chat panel",()=>{
@@ -63,16 +64,16 @@ test("the Strata AI chat launcher glows on every Strata+ view, names itself on h
   assert.ok(html.indexOf(launcher)>html.indexOf("</main>")&&html.indexOf(panel)>html.indexOf("</main>"),"the chat sits outside every feature panel so it never hides with one");
   assert.match(html,/data-ai-chat-open id="plusAskAi" href="\/ai"/,"Ask Strata AI to plan opens the chat and still links to the full page without JavaScript");
   assert.doesNotMatch(html+discoverCss,/ai-bubble/,"the old speech bubble is gone");
-  assert.match(css,/\.ai-launcher::before \{[^}]*animation:ai-launcher-glow 2\.8s ease-in-out infinite;/);
-  assert.match(css,/\.ai-launcher::after \{[^}]*animation:ai-launcher-ring 2\.8s [^;]*infinite;/);
-  assert.match(css,/@media \(hover:hover\) and \(pointer:fine\) \{[\s\S]*?\.ai-launcher:hover \.ai-launcher-tip \{ opacity:1; visibility:visible;/,"hover shows the label only where a pointer can hover, so a tap opens the chat");
-  assert.match(css,/\.ai-launcher:focus-visible \.ai-launcher-tip \{ opacity:1; visibility:visible;/);
-  assert.match(css,/@media \(prefers-reduced-motion:reduce\) \{\s*\.ai-launcher::before,\.ai-launcher::after,/);
-  assert.match(css,/\.ai-panel\[hidden\] \{ display:none; \}/);
-  assert.match(css,/@media print \{ \.ai-launcher,\.ai-panel \{ display:none !important; \} \}/);
+  assert.match(css,/\.ai-launcher\s*:\s*:\s*before\s*\{\s*[^}]*animation\s*:\s*ai-launcher-glow\s*2\.8s\s*ease-in-out\s*infinite\s*;/);
+  assert.match(css,/\.ai-launcher\s*:\s*:\s*after\s*\{\s*[^}]*animation\s*:\s*ai-launcher-ring\s*2\.8s\s*[^;]*infinite\s*;/);
+  assert.match(css,/@media\s*\(\s*hover\s*:\s*hover\s*,?\s*\)\s*and\s*\(\s*pointer\s*:\s*fine\s*,?\s*\)\s*\{\s*[\s\S]*?\.ai-launcher\s*:\s*hover\s*\.ai-launcher-tip\s*\{\s*opacity\s*:\s*1\s*;\s*visibility\s*:\s*visible\s*;/,"hover shows the label only where a pointer can hover, so a tap opens the chat");
+  assert.match(css,/\.ai-launcher\s*:\s*focus-visible\s*\.ai-launcher-tip\s*\{\s*opacity\s*:\s*1\s*;\s*visibility\s*:\s*visible\s*;/);
+  assert.match(css,/@media\s*\(\s*prefers-reduced-motion\s*:\s*reduce\s*,?\s*\)\s*\{\s*\s*\.ai-launcher\s*:\s*:\s*before\s*,\s*\.ai-launcher\s*:\s*:\s*after\s*,/);
+  assert.match(css,/\.ai-panel\s*\[\s*hidden\s*,?\s*\]\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}/);
+  assert.match(css,/@media\s*print\s*\{\s*\.ai-launcher\s*,\s*\.ai-panel\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}\s*[;,]?\s*\}/);
   const order=["ai-logic.js","ai-state.js","ai-api.js","ai-render.js","ai-events.js","ai-conversation.js","ai-widget.js","discover.js"].map((name)=>html.indexOf(`${name}?v=`));
   assert.ok(order.every((index,position)=>index>0&&(position===0||index>order[position-1])),"the chat modules load in dependency order before the Strata+ shell mounts them");
-  assert.match(read("scripts","discover.js"),/globalThis\.StrataAiWidget\?\.mount\(\{onApplied:/);
+  assert.match(read("scripts","discover.js"),/globalThis\s*\.StrataAiWidget\s*\?\.mount\s*\(\s*\{\s*onApplied\s*:/);
 });
 
 test("coaching profile setup presents four navigable cards and labels every capability input",()=>{
@@ -92,12 +93,12 @@ test("coaching profile setup presents four navigable cards and labels every capa
   assert.match(html,/id="coachingAdditionalActivityIntensity"[^>]*disabled>[\s\S]*?<option value="moderate" selected>/);
   assert.match(html,/Include normal work, chores, errands, and usual commuting\.[\s\S]*Exclude every STRATA session and any sport, cardio, or active-travel minutes you enter separately below\./);
   assert.match(html,/Add sport, cardio, or active travel only when those minutes are not already represented by your normal-day answer and are not part of the STRATA workout plan\./);
-  assert.match(script,/Number\(data\.profile\.version\)<4[\s\S]*?renderer\.show\("setup"\)/,"profiles from earlier energy models must open setup for explicit review");
+  assert.match(script,/Number\s*\(\s*data\s*\.profile\s*\.version\s*,?\s*\)\s*<\s*4[\s\S]*?renderer\s*\.show\s*\(\s*"setup"\s*,?\s*\)/,"profiles from earlier energy models must open setup for explicit review");
   assert.match(script,/coachingDiscardProfile[\s\S]*?renderer\.renderDashboard/,"discarding the required review must keep an existing dashboard available");
   assert.match(render,/previous activity answer remains in this saved week until you review daily movement and any activity outside STRATA/,"the dashboard must visibly disclose preserved legacy semantics");
-  assert.match(css,/\.coaching-form-section > legend \{ float:left; width:100%/);
-  assert.match(css,/\.coaching-capability-row > label > span \{ display:none/);
-  assert.match(css,/@media\(max-width:800px\)[\s\S]*\.coaching-capability-row > label > span \{ display:block/);
+  assert.match(css,/\.coaching-form-section\s*>\s*legend\s*\{\s*float\s*:\s*left\s*;\s*width\s*:\s*100%/);
+  assert.match(css,/\.coaching-capability-row\s*>\s*label\s*>\s*span\s*\{\s*display\s*:\s*none/);
+  assert.match(css,/@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*[\s\S]*\.coaching-capability-row\s*>\s*label\s*>\s*span\s*\{\s*display\s*:\s*block/);
 });
 
 test("Strata+ keeps the weekly Plan primary and explains secondary planning tools literally",()=>{
@@ -115,7 +116,7 @@ test("Strata+ keeps the weekly Plan primary and explains secondary planning tool
     assert.match(plan,new RegExp(`<details class="plan-tool-disclosure" id="${id}"`),id);
     assert.match(plan,new RegExp(`<strong[^>]*>${title}<\\/strong>`),title);
   }
-  assert.doesNotMatch(plan,/<details class="plan-tool-disclosure"[^>]*\bopen\b/,"secondary planning tools should start progressively disclosed");
+  assert.doesNotMatch(plan,/<\s*details\s*class\s*=\s*"plan-tool-disclosure"[^>]*\bopen\b/,"secondary planning tools should start progressively disclosed");
   assert.match(plan,/Create one workout when your available time, equipment, or target muscles are different today\./);
   assert.match(plan,/>Create a workout(?:\s|<)/);
   assert.match(plan,/Repeat and review your weekly plan over four to eight weeks\./);
@@ -140,9 +141,8 @@ test("Strata+ loads bounded state, API, navigation, feature controllers, renderi
   const html=read("pages","discover.html"),names=discoverModules;
   let previous=-1;
   for(const name of names){const index=html.indexOf(`src="${name}?v=`);assert.ok(index>previous,`${name} must load after its dependencies`);previous=index;}
-  const reviewedBudgets=new Map([["personal-training-energy-ui-core.js",110],["personal-training-ui-core.js",220],["personal-training-meals-ui-core.js",140]]);
-  for(const name of names.slice(0,-1))assert.ok(read("scripts",name).split("\n").length<=(reviewedBudgets.get(name)||120),`${name} should remain a small boundary module`);
-  assert.ok(read("scripts","discover.js").split("\n").length<=725,"the incremental shell should stay below the state-repair module budget");
+  for(const name of names.slice(0,-1))assert.ok(lineCount(read("scripts",name))<=frontendBudget(name),`${name} should remain a small boundary module`);
+  assert.ok(lineCount(read("scripts","discover.js"))<=frontendBudget("discover.js"),"the incremental shell should stay below the state-repair module budget");
 });
 
 test("session builder waits for an explicit build and adds the result with plan concurrency protection",()=>{
@@ -153,36 +153,37 @@ test("session builder waits for an explicit build and adds the result with plan 
   for(const focus of ["full","upper","lower","push","pull","core"])assert.match(html,new RegExp(`<option value="${focus}"`),focus);
   for(const minutes of [20,35,50])assert.match(html,new RegExp(`<option value="${minutes}"`),String(minutes));
   assert.match(html,/id="sessionResults"[^>]*aria-labelledby="sessionResultsTitle"/);
-  assert.match(script,/core\.buildSession\(\{exercises:state\.exercises,preferences:state\.preferences/);
-  assert.match(script,/core\.mergeSessionIntoPlan\(state\.weeklyPlan,day,state\.session\)/);
-  assert.match(script,/expectedPlanUpdatedAt:state\.weeklyPlanUpdatedAt/);
-  assert.match(script,/error\.status===409\|\|error\.code==="PLAN_CHANGED"/);
+  assert.match(script,/core\s*\.buildSession\s*\(\s*\{\s*exercises\s*:\s*state\s*\.exercises\s*,\s*preferences\s*:\s*state\s*\.preferences/);
+  assert.match(script,/core\s*\.mergeSessionIntoPlan\s*\(\s*state\s*\.weeklyPlan\s*,\s*day\s*,\s*state\s*\.session\s*,?\s*\)/);
+  assert.match(script,/expectedPlanUpdatedAt\s*:\s*state\s*\.weeklyPlanUpdatedAt/);
+  assert.match(script,/error\s*\.status\s*===\s*409\s*\|\|\s*error\s*\.code\s*===\s*"PLAN_CHANGED"/);
   assert.match(script,/latest plan is loaded; review the selected day, then add the session again/i);
   assert.match(script,/Time is an estimate; actual duration changes with setup, rest, and training pace/);
   assert.match(html,/id="sessionResultsTitle">Your session will appear here\./);
-  assert.match(script,/sessionBuilderForm"\)\?\.addEventListener\("submit",[^\n]+generateSession\(\{announce:true\}\)/);
-  assert.doesNotMatch(script,/sessionGroup"\)\?\.addEventListener\("change",[^\n]+generateSession/);
-  assert.doesNotMatch(script,/sessionLength"\)\?\.addEventListener\("change",[^\n]+generateSession/);
-  assert.doesNotMatch(script,/function initialize\(\)[^\n]+generate/);
-  assert.match(script,/preferredDay\(state\.sessionDayInitialized\?select\.value:""\)/,"The initial builder day must come from the saved week or today, not the first static Monday option");
+  // A listener's body runs up to the next listener, whatever its line breaks.
+  assert.match(script,/sessionBuilderForm"\)\?\.addEventListener\(\s*"submit",(?:(?!addEventListener\()[\s\S])*?generateSession\(\{\s*announce:\s*true\s*\}\)/);
+  assert.doesNotMatch(script,/sessionGroup"\s*,?\s*\)\s*\?\.addEventListener\s*\(\s*\s*"change"\s*,\s*(?:(?!addEventListener\s*\()[\s\S])*?generateSession/);
+  assert.doesNotMatch(script,/sessionLength"\s*,?\s*\)\s*\?\.addEventListener\s*\(\s*"change"\s*,\s*[^\n]+generateSession/);
+  assert.doesNotMatch(script,/function\s*initialize\s*\(\s*,?\s*\)\s*[^\n]+generate/);
+  assert.match(script,/preferredDay\s*\(\s*state\s*\.sessionDayInitialized\s*\?\s*select\s*\.value\s*:\s*""\s*,?\s*\)/,"The initial builder day must come from the saved week or today, not the first static Monday option");
   assert.ok((script.match(/id="sessionResultsTitle"/g)||[]).length>=2,"success and error rendering must retain the results label target");
 });
 
 test("Today distinguishes completed planned days from plan coverage and preserves the next action",()=>{
   const html=read("pages","discover.html"),script=discoverScript();
   for(const id of ["weeklyPulse","weeklyPulseEyebrow","weeklyPulseTitle","weeklyPulseDetail","weeklyPulseBar","weeklyPulseAction"])assert.match(html,new RegExp(`\\bid="${id}"`),id);
-  assert.match(script,/Core\.weeklyPulse\(state\.weeklyPlan,\{profileDays:state\.preferences\.days\}\)/);
+  assert.match(script,/Core\s*\.weeklyPulse\s*\(\s*state\s*\.weeklyPlan\s*,\s*\{\s*profileDays\s*:\s*state\s*\.preferences\s*\.days\s*[;,]?\s*\}\s*,?\s*\)/);
   assert.match(html,/planned days completed this week/);
   assert.match(script,/History unavailable/);
   assert.match(html,/id="plusStartWorkout"[^>]*>Start working out <span aria-hidden="true">↗<\/span>/);
-  assert.match(script,/start\.href=`\/workout\.html\?day=\$\{encodeURIComponent\(next\.day\)\}`;start\.innerHTML='Start workout <span aria-hidden="true">↗<\/span>'/);
-  assert.match(script,/start\.href=`\/workout\.html#resume=\$\{encodeURIComponent\(active\.id\)\}`;start\.innerHTML='Resume workout <span aria-hidden="true">↗<\/span>'/);
-  assert.match(script,/start\.href="\/planner\.html";start\.innerHTML='Build your first week <span aria-hidden="true">→<\/span>'/);
-  assert.match(script,/historyStatus==="loading"[\s\S]*start\.hidden=true/);
-  assert.match(script,/historyStatus==="error"[\s\S]*start\.hidden=true/);
-  assert.doesNotMatch(html,/id="plusRoutineAction"/);
-  assert.match(script,/planAction\.href="#planWorkspace"/);
-  assert.match(script,/planAction\.innerHTML='Review plan <span aria-hidden="true">→<\/span>'/);
+  assert.match(script,/start\s*\.href\s*=\s*`\/workout\s*\.html\s*\?\s*day\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*next\s*\.day\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*start\s*\.innerHTML\s*=\s*'Start\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/);
+  assert.match(script,/start\s*\.href\s*=\s*`\/workout\s*\.html#resume\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*active\s*\.id\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*start\s*\.innerHTML\s*=\s*'Resume\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/);
+  assert.match(script,/start\s*\.href\s*=\s*"\/planner\s*\.html"\s*;\s*start\s*\.innerHTML\s*=\s*'Build\s*your\s*first\s*week\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/);
+  assert.match(script,/historyStatus\s*===\s*"loading"[\s\S]*start\s*\.hidden\s*=\s*true/);
+  assert.match(script,/historyStatus\s*===\s*"error"[\s\S]*start\s*\.hidden\s*=\s*true/);
+  assert.doesNotMatch(html,/id\s*=\s*"plusRoutineAction"/);
+  assert.match(script,/planAction\s*\.href\s*=\s*"#planWorkspace"/);
+  assert.match(script,/planAction\s*\.innerHTML\s*=\s*'Review\s*plan\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/);
   assert.doesNotMatch(script,/weeklyPulse[^\n]*(?:recovered|readiness)/i);
 });
 
@@ -204,27 +205,27 @@ test("monthly workspace exposes private import, multi-muscle schedule, PDF, and 
 test("Strata+ feature navigation owns visibility, URL state, focus, and reduced motion",()=>{
   const html=read("pages","discover.html"),script=discoverScript(),css=read("styles","discover.css");
 
-  assert.match(script,/const FEATURE_DEFAULT="today"/);
-  assert.match(script,/candidatePanel\.hidden=candidate!==name/);
-  assert.match(script,/historyMode:"push"/);
-  assert.match(script,/function initialize\(\{scroll=true\}=\{\}\)\{\s*const requested=featureFromLocation\(\);\s*activate\(requested\|\|defaultFeature,\{scroll:scroll&&Boolean\(requested\),historyMode:"none"\}\);\s*\}/);
-  assert.match(script,/featureNavigation\.initialize\(\{scroll:false\}\)/,"a deep link must not scroll the loading layout");
-  assert.match(script,/revealPrivateWorkspace\(\);[^\n]*\n\s*activateFeature\(state\.activeFeature\|\|FEATURE_DEFAULT,\{scroll:!deepLinkPlaced&&Boolean\(featureNavigation\.featureFromLocation\(\)\)\}\);deepLinkPlaced=true;/,"a deep link is placed once, after the workspace is revealed");
-  assert.match(script,/"popstate",restore/);
-  assert.match(script,/"hashchange",restore/);
-  assert.match(script,/if\(rawHash&&!requested\)return/);
+  assert.match(script,/const\s*FEATURE_DEFAULT\s*=\s*"today"/);
+  assert.match(script,/candidatePanel\s*\.hidden\s*=\s*candidate\s*!==\s*name/);
+  assert.match(script,/historyMode\s*:\s*"push"/);
+  assert.match(script,/function\s*initialize\s*\(\s*\{\s*scroll\s*=\s*true\s*[;,]?\s*\}\s*=\s*\{\s*[;,]?\s*\}\s*,?\s*\)\s*\{\s*\s*const\s*requested\s*=\s*featureFromLocation\s*\(\s*,?\s*\)\s*;\s*\s*activate\s*\(\s*requested\s*\|\|\s*defaultFeature\s*,\s*\{\s*scroll\s*:\s*scroll\s*&&\s*Boolean\s*\(\s*requested\s*,?\s*\)\s*,\s*historyMode\s*:\s*"none"\s*[;,]?\s*\}\s*,?\s*\)\s*;\s*\s*[;,]?\s*\}/);
+  assert.match(script,/featureNavigation\s*\.initialize\s*\(\s*\{\s*scroll\s*:\s*false\s*[;,]?\s*\}\s*,?\s*\)/,"a deep link must not scroll the loading layout");
+  assert.match(script,/revealPrivateWorkspace\s*\(\s*,?\s*\)\s*;\s*[^\n]*\n\s*activateFeature\s*\(\s*state\s*\.activeFeature\s*\|\|\s*FEATURE_DEFAULT\s*,\s*\{\s*scroll\s*:\s*!\s*deepLinkPlaced\s*&&\s*Boolean\s*\(\s*featureNavigation\s*\.featureFromLocation\s*\(\s*,?\s*\)\s*,?\s*\)\s*[;,]?\s*\}\s*,?\s*\)\s*;\s*deepLinkPlaced\s*=\s*true\s*;/,"a deep link is placed once, after the workspace is revealed");
+  assert.match(script,/"popstate"\s*,\s*restore/);
+  assert.match(script,/"hashchange"\s*,\s*restore/);
+  assert.match(script,/if\s*\(\s*rawHash\s*&&\s*!\s*requested\s*,?\s*\)\s*return/);
   assert.match(html,/id="activeWorkspaceSkip"[^>]*href="#todayTitle"/);
-  assert.match(script,/skip\.setAttribute\?\.\("href",`#\$\{item\.headingId\}`\)/);
-  assert.match(script,/skip\.textContent=`Skip to \$\{item\.label\}`/);
-  assert.match(script,/focus:\s*true,scroll:\s*true,smooth:\s*true/);
-  assert.match(script,/event\.preventDefault\(\);actions\.hideToast\(\);actions\.activateFeature/,"destination navigation should clear a transient saved toast");
-  assert.match(script,/activateFeature\("battle"[^\n]+openComparison\(\)/);
+  assert.match(script,/skip\s*\.setAttribute\s*\?\.\(\s*"href"\s*,\s*`#\$\s*\{\s*item\s*\.headingId\s*[;,]?\s*\}\s*`\s*,?\s*\)/);
+  assert.match(script,/skip\s*\.textContent\s*=\s*`Skip\s*to\s*\$\s*\{\s*item\s*\.label\s*[;,]?\s*\}\s*`/);
+  assert.match(script,/focus\s*:\s*\s*true\s*,\s*scroll\s*:\s*\s*true\s*,\s*smooth\s*:\s*\s*true/);
+  assert.match(script,/event\s*\.preventDefault\s*\(\s*,?\s*\)\s*;\s*actions\s*\.hideToast\s*\(\s*,?\s*\)\s*;\s*actions\s*\.activateFeature/,"destination navigation should clear a transient saved toast");
+  assert.match(script,/activateFeature\("battle",(?:(?!addEventListener\()[\s\S])*?openComparison\(\)/);
   assert.match(script,/initializeFeatureNavigation\(\);[\s\S]{0,160}init\(\);/);
-  assert.doesNotMatch(script,/finally\{initializeFeatureNavigation\(\);\}/);
+  assert.doesNotMatch(script,/finally\s*\{\s*initializeFeatureNavigation\s*\(\s*,?\s*\)\s*;\s*[;,]?\s*\}/);
   assert.match(css,/\.feature-panel\[hidden\]\s*\{\s*display:\s*none\s*!important/);
   assert.match(css,/@media \(prefers-reduced-motion: reduce\)/);
-  assert.match(css,/\*,\*::before,\*::after\s*\{\s*animation:none\s*!important;\s*transition:none\s*!important/);
-  assert.match(css,/\.session-result-card:hover[^}]*\{\s*transform:none/);
+  assert.match(css,/\*\s*,\s*\*\s*:\s*:\s*before\s*,\s*\*\s*:\s*:\s*after\s*\{\s*\s*animation\s*:\s*none\s*!\s*important\s*;\s*\s*transition\s*:\s*none\s*!\s*important/);
+  assert.match(css,/\.session-result-card\s*:\s*hover[^}]*\s*\{\s*\s*transform\s*:\s*none/);
 });
 
 test("Today presents one primary action with an honest, comparable training brief",()=>{
@@ -238,8 +239,8 @@ test("Today presents one primary action with an honest, comparable training brie
   assert.match(script,/same format and unit/);
   assert.match(script,/estimatedSessionMinutes\(items\)/);
   assert.match(script,/The time is an estimate based on movements and working sets/);
-  assert.match(script,/todayDurationLabel"\)\.textContent="Elapsed"/);
-  assert.match(script,/equipment\.length>2\?`\$\{equipment\.slice\(0,2\)\.join\(" \+ "\)\} \+\$\{equipment\.length-2\} more`/);
+  assert.match(script,/todayDurationLabel"\s*,?\s*\)\s*\.textContent\s*=\s*"Elapsed"/);
+  assert.match(script,/equipment\s*\.length\s*>\s*2\s*\?\s*`\$\s*\{\s*equipment\s*\.slice\s*\(\s*0\s*,\s*2\s*,?\s*\)\s*\.join\s*\(\s*"\s*\+\s*"\s*,?\s*\)\s*[;,]?\s*\}\s*\+\s*\$\s*\{\s*equipment\s*\.length\s*-\s*2\s*[;,]?\s*\}\s*more`/);
 });
 
 test("Progress reports bounded log-derived measures without pretending to assess recovery",()=>{
@@ -251,12 +252,14 @@ test("Progress reports bounded log-derived measures without pretending to assess
   assert.match(html,/volume is load × reps from completed sets/);
   assert.equal((html.match(/class="progress-list"/g)||[]).length,1,"each exercise result is listed once, not as both an improvement and a best");
   assert.match(script,/\/api\/workouts\?limit=100&offset=0/);
-  assert.match(script,/summaryKey\(summary,metric\)/);
+  assert.match(script,/summaryKey\s*\(\s*summary\s*,\s*metric\s*,?\s*\)/);
   assert.match(html,/Calendar weeks with at least one completed workout/);
-  assert.match(script,/summary\.loadType!=="external"/,"assistance and bodyweight must not be added to external load volume");
-  const assistedMetricLine=script.split("\n").find((line)=>line.includes('summary.loadType==="assisted"'))||"";
+  assert.match(script,/summary\s*\.loadType\s*!==\s*"external"/,"assistance and bodyweight must not be added to external load volume");
+  // The assisted branch runs from its condition to the end of the object it returns.
+  const assistedStart=script.search(/summary\.loadType\s*===\s*"assisted"/);
+  const assistedMetricLine=assistedStart<0?"":script.slice(assistedStart,script.indexOf("}",script.indexOf("higher",assistedStart))+1);
   assert.match(assistedMetricLine,/summary\.minAssistance/,"assisted records must use the stored minimum assistance");
-  assert.doesNotMatch(assistedMetricLine,/summary\.maxWeight/,"null external-load records must not become zero-assistance records");
+  assert.doesNotMatch(assistedMetricLine,/summary\s*\.maxWeight/,"null external-load records must not become zero-assistance records");
   assert.match(script,/Nothing comparable in the 100 most recent sessions/);
   assert.match(script,/Within your 100 most recent sessions/);
   assert.match(script,/Rounding \(not flooring\) keeps a daylight-saving shift/);
@@ -265,8 +268,8 @@ test("Progress reports bounded log-derived measures without pretending to assess
   assert.match(html,/id="progressHistoryContent"/);
   assert.match(script,/progressFirstWorkout/);
   for(const id of ["progressLoadingState","progressLoadingMessage","progressLoadError","progressLoadErrorMessage","progressRetry","progressEmptyAction","progressHistoryAction"])assert.match(html,new RegExp(`\\bid="${id}"`),id);
-  assert.match(script,/status==="loading"/);
-  assert.match(script,/status==="error"/);
+  assert.match(script,/status\s*===\s*"loading"/);
+  assert.match(script,/status\s*===\s*"error"/);
 });
 
 test("training blocks and adaptations require explicit, concurrency-aware approval",()=>{
@@ -278,42 +281,42 @@ test("training blocks and adaptations require explicit, concurrency-aware approv
   assert.match(html,/saved weekly Plan is never changed automatically/);
   assert.match(script,/Accepting changes \$\{name\} from \$\{from\} to \$\{to\} sets on \$\{day\} in your saved weekly Plan/);
   assert.match(script,/It remains there until you edit Plan again/);
-  assert.doesNotMatch(`${html}\n${script}`,/next-session|next comparable session/i);
+  assert.doesNotMatch(`${html}\n${script}`,/next-session|next\s*comparable\s*session/i);
   assert.match(html,/Calculated from the start date/);
   assert.match(html,/This is a reminder only\. It never changes sets in your weekly Plan/);
   assert.match(html,/Skipped and replaced counts appear only when a saved workout explicitly records them/);
   assert.match(html,/Nothing is saved until you confirm/);
   assert.match(script,/api\("\/api\/training"\)/);
-  assert.match(script,/body:JSON\.stringify\(\{block:blockInput,expectedRevision:state\.trainingBlockRevision,expectedUserId\}\)/);
-  assert.match(script,/decision:"accept",expectedPlanUpdatedAt:suggestion\.expectedPlanUpdatedAt/);
-  assert.match(script,/decision:"dismiss"/);
-  assert.match(script,/await confirmDashboardIdentity\(expectedUserId,expectedCsrf\)/);
+  assert.match(script,/body\s*:\s*JSON\s*\.stringify\s*\(\s*\{\s*block\s*:\s*blockInput\s*,\s*expectedRevision\s*:\s*state\s*\.trainingBlockRevision\s*,\s*expectedUserId\s*[;,]?\s*\}\s*,?\s*\)/);
+  assert.match(script,/decision\s*:\s*"accept"\s*,\s*expectedPlanUpdatedAt\s*:\s*suggestion\s*\.expectedPlanUpdatedAt/);
+  assert.match(script,/decision\s*:\s*"dismiss"/);
+  assert.match(script,/await\s*confirmDashboardIdentity\s*\(\s*expectedUserId\s*,\s*expectedCsrf\s*,?\s*\)/);
   assert.match(script,/adaptationChangeLabel\(raw\.change\)/);
-  assert.doesNotMatch(script,/change:String\(raw\.change/);
+  assert.doesNotMatch(script,/change\s*:\s*String\s*\(\s*raw\s*\.change/);
   assert.match(script,/TRAINING_BLOCK_CHANGED/);
-  assert.match(script,/el\("trainingBlockStartDate"\)\.value=localIsoDate\(\)/);
-  assert.match(script,/block\.status==="completed"\?`Saved\. Completed/);
-  assert.match(script,/BlockCore\.deriveWeek\(\{weeks,startDate\}\)/);
-  assert.match(script,/currentWeek=status==="completed"\?weeks:timeline\.week/);
-  assert.match(script,/BlockCore\.actionProposal\(state\.trainingBlock,action\)/);
+  assert.match(script,/el\s*\(\s*"trainingBlockStartDate"\s*,?\s*\)\s*\.value\s*=\s*localIsoDate\s*\(\s*,?\s*\)/);
+  assert.match(script,/block\s*\.status\s*===\s*"completed"\s*\?\s*`Saved\.\s*Completed/);
+  assert.match(script,/BlockCore\s*\.deriveWeek\s*\(\s*\{\s*weeks\s*,\s*startDate\s*[;,]?\s*\}\s*,?\s*\)/);
+  assert.match(script,/currentWeek\s*=\s*status\s*===\s*"completed"\s*\?\s*weeks\s*:\s*timeline\s*\.week/);
+  assert.match(script,/BlockCore\s*\.actionProposal\s*\(\s*state\s*\.trainingBlock\s*,\s*action\s*,?\s*\)/);
   assert.match(script,/Your weekly Plan is unchanged/);
   assert.match(script,/Workout history is unavailable, so Strata\+ is not making progress, skip, or replacement claims/);
-  assert.equal((script.match(/select\.innerHTML=core\.WEEKDAYS/g)||[]).length,1,"session-day options must be rendered once");
-  assert.equal((script.match(/if\(previewError\)element\("sessionStatus"\)/g)||[]).length,1,"session preview conflicts must be announced once");
+  assert.equal((script.match(/select\.innerHTML\s*=\s*core\.WEEKDAYS/g)||[]).length,1,"session-day options must be rendered once");
+  assert.equal((script.match(/if\s*\(previewError\)\s*element\("sessionStatus"\)/g)||[]).length,1,"session preview conflicts must be announced once");
 });
 
 test("Strata+ clears private state before focus and visibility account revalidation",()=>{
   const script=discoverScript();
 
-  assert.match(script,/function clearPrivateWorkspace\(\)\{[\s\S]*?workspaceGeneration\+=1;workspaceReady=false;[\s\S]*?state\.user=null;state\.csrfToken="";[\s\S]*?main\.hidden=true;main\.inert=true/);
-  assert.match(script,/requestGeneration!==getGeneration\(\)[\s\S]*?STALE_WORKSPACE_RESPONSE/);
-  assert.match(script,/String\(data\.user\?\.id\|\|""\)!==String\(identity\.user\?\.id\|\|""\)/);
-  assert.match(script,/identity\.user\?\.discovery\?\.active!==true/);
-  assert.match(script,/async function revalidateMemberWorkspaceWhenVisible\(\)\{[\s\S]*?clearPrivateWorkspace\(\);[\s\S]*?await init\(\)/);
-  assert.match(script,/main\.inert=true;main\.style\.visibility="hidden"/,"the private view is hidden, not cleared, while the session is re-checked");
-  assert.match(script,/String\(identity\.csrfToken\|\|""\)===state\.csrfToken&&globalThis\.StrataEntitlements\.can\(identity\.user,"plus\.studio"\)\)\{[^}]*revealPrivateWorkspace\(\)/,"only the same session with active access gets its view back");
-  assert.match(script,/loadMemberDashboard\(generation,\{keepForms:true\}\)/);
-  assert.match(script,/if\(training&&!keepForms\)/,"a background refresh never rewrites the training-block form");
+  assert.match(script,/function\s*clearPrivateWorkspace\s*\(\s*,?\s*\)\s*\{\s*[\s\S]*?workspaceGeneration\s*\+=\s*1\s*;\s*workspaceReady\s*=\s*false\s*;\s*[\s\S]*?state\s*\.user\s*=\s*null\s*;\s*state\s*\.csrfToken\s*=\s*""\s*;\s*[\s\S]*?main\s*\.hidden\s*=\s*true\s*;\s*main\s*\.inert\s*=\s*true/);
+  assert.match(script,/requestGeneration\s*!==\s*getGeneration\s*\(\s*,?\s*\)\s*[\s\S]*?STALE_WORKSPACE_RESPONSE/);
+  assert.match(script,/String\s*\(\s*data\s*\.user\s*\?\.id\s*\|\|\s*""\s*,?\s*\)\s*!==\s*String\s*\(\s*identity\s*\.user\s*\?\.id\s*\|\|\s*""\s*,?\s*\)/);
+  assert.match(script,/identity\s*\.user\s*\?\.discovery\s*\?\.active\s*!==\s*true/);
+  assert.match(script,/async\s*function\s*revalidateMemberWorkspaceWhenVisible\s*\(\s*,?\s*\)\s*\{\s*[\s\S]*?clearPrivateWorkspace\s*\(\s*,?\s*\)\s*;\s*[\s\S]*?await\s*init\s*\(\s*,?\s*\)/);
+  assert.match(script,/main\s*\.inert\s*=\s*true\s*;\s*main\s*\.style\s*\.visibility\s*=\s*"hidden"/,"the private view is hidden, not cleared, while the session is re-checked");
+  assert.match(script,/String\s*\(\s*identity\s*\.csrfToken\s*\|\|\s*""\s*,?\s*\)\s*===\s*state\s*\.csrfToken\s*&&\s*globalThis\s*\.StrataEntitlements\s*\.can\s*\(\s*identity\s*\.user\s*,\s*"plus\s*\.studio"\s*,?\s*\)\s*,?\s*\)\s*\{\s*[^}]*revealPrivateWorkspace\s*\(\s*,?\s*\)/,"only the same session with active access gets its view back");
+  assert.match(script,/loadMemberDashboard\s*\(\s*generation\s*,\s*\{\s*keepForms\s*:\s*true\s*[;,]?\s*\}\s*,?\s*\)/);
+  assert.match(script,/if\s*\(\s*training\s*&&\s*!\s*keepForms\s*,?\s*\)/,"a background refresh never rewrites the training-block form");
   assert.match(script,/Unsaved changes stay in this tab until STRATA confirms your account\./);
   assert.match(script,/window\.addEventListener\?\.\("focus"/);
   assert.match(script,/document\.addEventListener\("visibilitychange"/);
@@ -324,39 +327,39 @@ test("Strata+ copy and visual polish remain resilient across content and breakpo
 
   assert.match(html,/id="todayTitle"[^>]*>Your next step\.<br \/><em>Ready when you are\.<\/em>/);
   assert.match(html,/id="recommendationTitle"[^>]*>Best exercises <em>for you\.<\/em>/);
-  assert.doesNotMatch(script,/recommendationTitle"\)\.innerHTML/,"A display name must not be interpolated into the recommendation heading");
+  assert.doesNotMatch(script,/recommendationTitle"\s*,?\s*\)\s*\.innerHTML/,"A display name must not be interpolated into the recommendation heading");
   assert.match(html,/>Find your strongest fits<\/strong>/);
   assert.match(html,/<span>Overview<\/span><small>Plan, train &amp; eat<\/small>/,"the Overview tab tells members where Plan, Train, and Nutrition live");
   assert.doesNotMatch(html,/feature-block-session/);
   assert.doesNotMatch(css,/feature-block-session/);
-  assert.match(css,/\.plus-studio \.profile-section,\.plus-studio \.recommendation-section\s*\{[^}]*color:var\(--ink\);[^}]*background:var\(--paper\)/);
-  assert.match(css,/\.plus-studio \.profile-card,[^\n]*\.plus-studio \.recommend-card,[^\n]*\.plus-studio \.session-builder/);
-  assert.doesNotMatch(css,/\.recommendation-card|\.session-brief|\.choice span/);
-  assert.match(css,/@media\(max-width:800px\)[\s\S]*?\.plus-studio \.studio-header\s*\{[^}]*grid-template-columns:auto minmax\(0,1fr\);[^}]*grid-template-rows:auto auto/);
-  assert.match(css,/\.section-heading h2,\.studio-hero \.studio-hero-title,\.weekly-pulse h2\{[^}]*overflow-wrap:normal;word-break:normal/);
+  assert.match(css,/\.plus-studio\s*\.profile-section\s*,\s*\.plus-studio\s*\.recommendation-section\s*\{\s*[^}]*color\s*:\s*var\s*\(\s*--ink\s*,?\s*\)\s*;\s*[^}]*background\s*:\s*var\s*\(\s*--paper\s*,?\s*\)/);
+  assert.match(css,/\.plus-studio \.profile-card,\s*\.plus-studio \.recommend-card,[^{]*\.plus-studio \.session-builder/);
+  assert.doesNotMatch(css,/\.recommendation-card|\.session-brief|\.choice\s*span/);
+  assert.match(css,/@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*[\s\S]*?\.plus-studio\s*\.studio-header\s*\{\s*[^}]*grid-template-columns\s*:\s*auto\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*;\s*[^}]*grid-template-rows\s*:\s*auto\s*auto/);
+  assert.match(css,/\.section-heading\s*h2\s*,\s*\.studio-hero\s*\.studio-hero-title\s*,\s*\.weekly-pulse\s*h2\s*\{\s*[^}]*overflow-wrap\s*:\s*normal\s*;\s*word-break\s*:\s*normal/);
 });
 
 test("Strata+ initial loading offers a normalized, retryable error without replacing auth redirects",()=>{
   const html=read("pages","discover.html"),script=discoverScript(),css=read("styles","discover.css");
   for(const id of ["discoveryLoadError","discoveryLoadErrorTitle","discoveryLoadErrorMessage","discoveryRetry"])assert.match(html,new RegExp(`\\bid="${id}"`));
   assert.match(html,/id="discoveryRetry"[^>]*>Try again/);
-  assert.match(script,/code:"NETWORK_ERROR"/);
-  assert.match(script,/error\.redirecting=true;redirect\("\/account\.html\?mode=login&next=discover"\)/);
-  assert.match(script,/redirect:\(path\)=>window\.location\.replace\(path\)/);
-  assert.match(script,/if\(!error\?\.redirecting&&!error\?\.stale\)showInitialLoadError\(error\)/);
-  assert.match(script,/const retryLoad=\(\)=>\{void\(state\.user\?actions\.revalidateMemberWorkspaceWhenVisible\(\):actions\.init\(\)\);\};/,"a signed-in view retries its account check; a failed first load reloads");
-  assert.match(script,/"discoveryRetry"\)\.addEventListener\("click",retryLoad\)/);
-  assert.match(script,/addEventListener\?\.\("online",\(\)=>\{if\(!el\("discoveryLoadError"\)\.hidden\)retryLoad\(\);\}\)/);
-  assert.match(css,/\.discovery-load-error\[hidden\]\s*\{\s*display:none/);
+  assert.match(script,/code\s*:\s*"NETWORK_ERROR"/);
+  assert.match(script,/error\s*\.redirecting\s*=\s*true\s*;\s*redirect\s*\(\s*"\/account\s*\.html\s*\?\s*mode\s*=\s*login\s*&\s*next\s*=\s*discover"\s*,?\s*\)/);
+  assert.match(script,/redirect\s*:\s*\(\s*path\s*,?\s*\)\s*=>\s*window\s*\.location\s*\.replace\s*\(\s*path\s*,?\s*\)/);
+  assert.match(script,/if\s*\(\s*!\s*error\s*\?\.redirecting\s*&&\s*!\s*error\s*\?\.stale\s*,?\s*\)\s*showInitialLoadError\s*\(\s*error\s*,?\s*\)/);
+  assert.match(script,/const\s*retryLoad\s*=\s*\(\s*,?\s*\)\s*=>\s*\{\s*void\s*\(\s*state\s*\.user\s*\?\s*actions\s*\.revalidateMemberWorkspaceWhenVisible\s*\(\s*,?\s*\)\s*:\s*actions\s*\.init\s*\(\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}\s*;/,"a signed-in view retries its account check; a failed first load reloads");
+  assert.match(script,/"discoveryRetry"\s*,?\s*\)\s*\.addEventListener\s*\(\s*"click"\s*,\s*retryLoad\s*,?\s*\)/);
+  assert.match(script,/addEventListener\s*\?\.\(\s*"online"\s*,\s*\(\s*,?\s*\)\s*=>\s*\{\s*if\s*\(\s*!\s*el\s*\(\s*"discoveryLoadError"\s*,?\s*\)\s*\.hidden\s*,?\s*\)\s*retryLoad\s*\(\s*,?\s*\)\s*;\s*[;,]?\s*\}\s*,?\s*\)/);
+  assert.match(css,/\.discovery-load-error\s*\[\s*hidden\s*,?\s*\]\s*\s*\{\s*\s*display\s*:\s*none/);
   assert.match(script,/class="loading-card load-error-card"/,"Failed requests should not keep showing the loading animation");
-  assert.match(css,/\.load-error-card::before\s*\{[^}]*content:"!"/,"Failed workspaces should show an unmistakable error state");
+  assert.match(css,/\.load-error-card\s*:\s*:\s*before\s*\{\s*[^}]*content\s*:\s*"\s*!\s*"/,"Failed workspaces should show an unmistakable error state");
 });
 
 test("open rating drafts survive aggregate-driven detail re-renders",()=>{
   const script=discoverScript();
   assert.match(script,/function openRatingDraft\(id\)/);
-  assert.match(script,/const ratingDraft=openRatingDraft\(id\);state\.activeExercise=id/);
-  assert.match(script,/ratingFormMarkup\(exercise,ratingDraft\)/);
+  assert.match(script,/const\s*ratingDraft\s*=\s*openRatingDraft\s*\(\s*id\s*,?\s*\)\s*;\s*state\s*\.activeExercise\s*=\s*id/);
+  assert.match(script,/ratingFormMarkup\s*\(\s*exercise\s*,\s*ratingDraft\s*,?\s*\)/);
 });
 
 test("Strata+ polish keeps filters legible and comparison details accessible",()=>{
@@ -365,15 +368,15 @@ test("Strata+ polish keeps filters legible and comparison details accessible",()
   assert.equal((html.match(/class="filter-label"/g)||[]).length,6);
   assert.match(html,/id="clearFilters"[^>]*>Clear all</);
   assert.match(script,/data-scroll-alternatives/);
-  assert.doesNotMatch(script,/href="#alternativeSection"/);
+  assert.doesNotMatch(script,/href\s*=\s*"#alternativeSection"/);
   assert.match(script,/<thead><tr><th scope="col">Measure<\/th>/);
   assert.match(script,/Best in this comparison/);
-  assert.match(script,/match-pill \$\{personal\.eligible\?"":"is-excluded"\}/);
+  assert.match(script,/match-pill\s*\$\s*\{\s*personal\s*\.eligible\s*\?\s*""\s*:\s*"is-excluded"\s*[;,]?\s*\}/);
   assert.match(css,/\.match-pill\.is-excluded/);
-  assert.match(css,/\.small-button \{ min-height: 44px/);
-  assert.match(css,/body:has\(\.compare-tray:not\(\[hidden\]\)\) \{ padding-bottom: 112px/);
-  assert.match(css,/@media \(max-width: 520px\)\s*\{\s*\.feature-grid \{ grid-template-columns: 1fr/);
-  assert.match(css,/@media \(max-width: 680px\)[\s\S]*?\.studio-header \{[^}]*backdrop-filter:none/,
+  assert.match(css,/\.small-button\s*\{\s*min-height\s*:\s*44px/);
+  assert.match(css,/body\s*:\s*has\s*\(\.compare-tray\s*:\s*not\s*\(\s*\[\s*hidden\s*,?\s*\]\s*,?\s*\)\s*,?\s*\)\s*\{\s*padding-bottom\s*:\s*112px/);
+  assert.match(css,/@media\s*\(\s*max-width\s*:\s*520px\s*,?\s*\)\s*\s*\{\s*\s*\.feature-grid\s*\{\s*grid-template-columns\s*:\s*1fr/);
+  assert.match(css,/@media\s*\(\s*max-width\s*:\s*680px\s*,?\s*\)\s*[\s\S]*?\.studio-header\s*\{\s*[^}]*backdrop-filter\s*:\s*none/,
     "Mobile navigation must escape the sticky header's backdrop-filter containing block");
 });
 
@@ -382,15 +385,15 @@ test("Strata+ keeps saved movements as a private, bounded Library collection wit
   for(const id of ["savedActions","movementBoardStatus","clearMovementBoard","compareMovementBoard","savedCollectionLabel"]){
     assert.match(html,new RegExp(`\\bid="${id}"`),id);
   }
-  assert.doesNotMatch(html,/movementBoardList|movementBoardCapacity|decision board/i,"the separate decision board is folded into the Library's Saved collection");
+  assert.doesNotMatch(html,/movementBoardList|movementBoardCapacity|decision\s*board/i,"the separate decision board is folded into the Library's Saved collection");
   assert.match(html,/data-collection="saved"/);
-  assert.match(script,/movementBoard:4/);
-  assert.match(script,/MOVEMENT_BOARD_LIMIT=StateCore\.LIMITS\.movementBoard/);
+  assert.match(script,/movementBoard\s*:\s*4/);
+  assert.match(script,/MOVEMENT_BOARD_LIMIT\s*=\s*StateCore\s*\.LIMITS\s*\.movementBoard/);
   assert.match(script,/localStorage\?\.getItem\(movementBoardStorageKey\(\)\)/);
-  assert.match(script,/localStorage\?\.setItem\(movementBoardStorageKey\(\),JSON\.stringify\(state\.shortlist\)\)/);
-  assert.match(script,/core\.normalizeShortlist\(state\.shortlist,state\.exercises,movementBoardLimit\)/);
+  assert.match(script,/localStorage\s*\?\.setItem\s*\(\s*movementBoardStorageKey\s*\(\s*,?\s*\)\s*,\s*JSON\s*\.stringify\s*\(\s*state\s*\.shortlist\s*,?\s*\)\s*,?\s*\)/);
+  assert.match(script,/core\s*\.normalizeShortlist\s*\(\s*state\s*\.shortlist\s*,\s*state\s*\.exercises\s*,\s*movementBoardLimit\s*,?\s*\)/);
   assert.match(script,/data-toggle-shortlist/);
-  assert.match(script,/savedActions"\)\.hidden=state\.collection!=="saved"/,"saved actions show only inside the Saved collection");
+  assert.match(script,/savedActions"\s*,?\s*\)\s*\.hidden\s*=\s*state\s*\.collection\s*!==\s*"saved"/,"saved actions show only inside the Saved collection");
   assert.match(core,/function normalizeShortlist/);
   assert.doesNotMatch(script,/\/api\/(?:shortlist|board|decision)/,"saving stays on the device");
 
@@ -402,9 +405,9 @@ test("each daily tool and plan approval has one canonical workspace",()=>{
   const progress=html.slice(html.indexOf('id="progressWorkspace"'),html.indexOf('id="coachingWorkspace" data-feature-panel'));
   const plan=html.slice(html.indexOf('id="planWorkspace" data-feature-panel'),html.indexOf('id="progressWorkspace" data-feature-panel'));
   const nutrition=html.slice(html.indexOf('id="nutritionWorkspace" data-feature-panel'),html.indexOf('id="profile" data-feature-panel'));
-  assert.doesNotMatch(progress,/<form\b/);assert.match(progress,/data-feature-target="nutrition"/);
+  assert.doesNotMatch(progress,/<\s*form\b/);assert.match(progress,/data-feature-target="nutrition"/);
   assert.match(plan,/id="programApply"/);assert.match(plan,/id="progressionAccept"/);assert.match(plan,/id="coachingWeekGrid"/);
-  assert.match(nutrition,/id="coachingLogForm"/);assert.match(nutrition,/id="coachingFoodOptions"/);assert.doesNotMatch(nutrition,/id="coachingWeekGrid"/);
+  assert.match(nutrition,/id="coachingLogForm"/);assert.match(nutrition,/id="coachingFoodOptions"/);assert.doesNotMatch(nutrition,/id\s*=\s*"coachingWeekGrid"/);
   for(const id of ["coachingProfileForm","coachingLogForm","coachingFoodOptions","programApply","progressionAccept"])assert.equal((html.match(new RegExp(`id="${id}"`,"g"))||[]).length,1,id);
-  assert.doesNotMatch(workout,/id="acceptAdaptation"/);assert.match(workout,/id="reviewAdaptation" href="\/discover\.html#planWorkspace"/);
+  assert.doesNotMatch(workout,/id\s*=\s*"acceptAdaptation"/);assert.match(workout,/id="reviewAdaptation" href="\/discover\.html#planWorkspace"/);
 });

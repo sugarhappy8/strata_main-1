@@ -38,6 +38,6 @@ test("production requires an explicit valid email-verification switch",async()=>
     const result=await rejectedStartup(flag);
     assert.notEqual(result.code,0);
     assert.match(result.stderr,/EMAIL_VERIFICATION_ENABLED must be set explicitly to true or false/i);
-    assert.doesNotMatch(result.stderr,/TURSO_DATABASE_URL is required/i,"flag validation must happen before storage startup");
+    assert.doesNotMatch(result.stderr,/TURSO_DATABASE_URL\s*is\s*required/i,"flag validation must happen before storage startup");
   }
 });

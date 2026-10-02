@@ -30,7 +30,7 @@ test("one check command owns the complete pre-release verification sequence",()=
   const workflow=read(".github/workflows/ci.yml");
   assert.match(workflow,/npx playwright install --with-deps chromium firefox webkit/);
   assert.match(workflow,/run: npm run check/);
-  assert.doesNotMatch(workflow,/run: npm run coverage/,"the release gate already owns coverage");
+  assert.doesNotMatch(workflow,/run\s*:\s*npm\s*run\s*coverage/,"the release gate already owns coverage");
 
   const release=read(".github/workflows/release.yml");
   assert.match(release,/tags:\s*\n\s*- "v\*\.\*\.\*"\s*\n\s*workflow_dispatch:/,"a version tag or a manual run publishes a release");
@@ -39,16 +39,16 @@ test("one check command owns the complete pre-release verification sequence",()=
   assert.match(release,/"\$REF_NAME" != "\$tag"/,"a pushed tag must match the package version");
   assert.match(release,/"\$REF_NAME" != "\$DEFAULT_BRANCH"/,"manual releases run only from the default branch");
   assert.match(release,/notes="docs\/release-\$\{version\}\.md"/,"release notes come from the reviewed release guide");
-  assert.doesNotMatch(release.slice(release.indexOf("run: |")),/\$\{\{/,"the publish script reads refs from the environment, never inline expressions");
+  assert.doesNotMatch(release.slice(release.indexOf("run: |")),/\$\s*\{\s*\{/,"the publish script reads refs from the environment, never inline expressions");
 });
 
 test("coverage reports application code and enforces calibrated regression floors",()=>{
   const command=JSON.parse(read("package.json")).scripts.coverage;
   assert.equal(command,"node scripts/coverage-check.js");
   const coverageRunner=read("scripts/coverage-check.js");
-  assert.match(coverageRunner,/lines:90/);
-  assert.match(coverageRunner,/branches:78/);
-  assert.match(coverageRunner,/functions:85/);
+  assert.match(coverageRunner,/lines\s*:\s*90/);
+  assert.match(coverageRunner,/branches\s*:\s*78/);
+  assert.match(coverageRunner,/functions\s*:\s*85/);
   assert.match(coverageRunner,/--test-coverage-include=server\.js/);
   assert.match(coverageRunner,/--test-coverage-include=src\/\*\*\/\*\.js/);
   assert.match(coverageRunner,/--test-coverage-include=public\/scripts\/discovery-core\.js/);
@@ -59,7 +59,7 @@ test("coverage reports application code and enforces calibrated regression floor
   assert.match(coverageRunner,/--test-coverage-include=public\/scripts\/activation-core\.js/);
   assert.match(coverageRunner,/--test-coverage-include=public\/scripts\/plan-insights-core\.js/);
   assert.match(coverageRunner,/--test-coverage-include=public\/scripts\/training-block-core\.js/);
-  assert.doesNotMatch(coverageRunner,/public\/scripts\/\*\*\/\*\.js/);
+  assert.doesNotMatch(coverageRunner,/public\/scripts\/\s*\*\*\s*\/\s*\*\.js/);
 });
 
 test("security and architecture guidance cover the maintained trust boundaries",()=>{

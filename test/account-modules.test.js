@@ -46,7 +46,7 @@ test("account pure logic explains App Store subscriptions and keeps Paddle read-
   assert.deepEqual(logic.appleDeletionNotice({appleBilling:{message:" Apple keeps billing. ",manageUrl:"javascript:alert(1)"}}),{message:"Apple keeps billing.",manageUrl:"https://apps.apple.com/account/subscriptions"});
   for(const result of [{},{appleBilling:null},{appleBilling:{message:""}},{appleBilling:{message:42}},null])assert.equal(logic.appleDeletionNotice(result),null);
   assert.deepEqual(logic.accountAccessSummary(apple({active:true})),{state:"Active",detail:"App Store · renews Nov 1, 2026",message:"Your Strata+ subscription is billed to your Apple Account and renews on Nov 1, 2026. Manage or cancel it in Settings › Apple Account › Subscriptions on your iPhone."});
-  assert.doesNotMatch(logic.accountAccessSummary(apple({active:true}),false,{app:true}).message,/on your iPhone/);
+  assert.doesNotMatch(logic.accountAccessSummary(apple({active:true}),false,{app:true}).message,/on\s*your\s*iPhone/);
   assert.equal(logic.accountAccessSummary(apple({active:true,inGracePeriod:true})).state,"Billing issue");
   assert.equal(logic.accountAccessSummary(apple({active:true,autoRenew:false})).detail,"Access through Nov 1, 2026");
   assert.equal(logic.accountAccessSummary(apple({active:true,expiresAt:null})).detail,"App Store subscription");

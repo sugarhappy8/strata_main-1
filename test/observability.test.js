@@ -14,7 +14,7 @@ test("structured logs redact secrets and provider/account identifiers",()=>{
 test("free-form log and Error content scrub inline credentials and addresses",()=>{
   const raw="Bearer bearer-secret-value api_key=pdl_live_apikey_private1234567890 token=action-private member@example.com";
   const sanitized=safeFields({message:raw,error:new Error(`Provider failed: ${raw}`)});
-  assert.doesNotMatch(JSON.stringify(sanitized),/bearer-secret-value|pdl_live_apikey_private|action-private|member@example\.com/);
+  assert.doesNotMatch(JSON.stringify(sanitized),/bearer-secret-value|pdl_live_apikey_private|action-private|member@example\s*\.com/);
   assert.match(sanitized.message,/\[redacted\]/);
   assert.match(sanitized.error.message,/\[redacted-email\]/);
 });

@@ -104,7 +104,7 @@ test("pricing sets sandbox before initialization and labels test checkout",async
 test("pricing preserves live behavior and refuses mixed client tokens and sandbox catalogs",async()=>{
   const config=publicPaymentConfig(getPaymentConfig(liveEnv()));
   const live=await runPricing(config);assert.deepEqual(live.calls,[["initialize",config.clientToken]]);
-  assert.doesNotMatch(live.nodes.get("purchaseStatus").textContent,/TEST MODE/);
+  assert.doesNotMatch(live.nodes.get("purchaseStatus").textContent,/TEST\s*MODE/);
   const replacementProduct=await runPricing({...config,productId:"pro_01differentlivecatalog000000"});
   assert.deepEqual(replacementProduct.calls,[["initialize",config.clientToken]],"the browser must accept the valid live product selected by the server");
   for(const change of [

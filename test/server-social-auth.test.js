@@ -93,7 +93,7 @@ test("the account page offers each configured provider, and the CSP lets its for
   assert.match(page.text,/<input id="socialSignupNext" type="hidden" name="next" value="\/discover\.html" \/>/);
   assert.match(page.headers.get("content-security-policy"),/form-action 'self' https:\/\/accounts\.google\.com;/);
   assert.equal((await request("/api/status")).data.signInProviders,undefined,"sign-in setup is not public");
-  assert.doesNotMatch(page.text,/samsung|data-social="apple"/i,"only Google is offered");
+  assert.doesNotMatch(page.text,/samsung|data-social\s*=\s*"apple"/i,"only Google is offered");
 });
 
 test("Google sign-up creates a verified account without a password, and signing in again finds it",async()=>{

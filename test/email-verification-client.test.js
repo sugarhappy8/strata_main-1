@@ -100,7 +100,7 @@ test("verification markup stays accessible and works without JavaScript",()=>{
   assert.match(verifyHtml,/<form id="resendForm" action="\/auth\/resend-verification" method="post"/);
   assert.match(verifyHtml,/id="verificationCode"[^>]*type="text"[^>]*inputmode="numeric"[^>]*autocomplete="one-time-code"[^>]*pattern="\[0-9\]\{6\}"[^>]*maxlength="6"/);
   assert.equal((verifyHtml.match(/name="code"/g)||[]).length,1,"the code must use one paste/autofill-friendly input");
-  assert.doesNotMatch(verifyHtml,/name="(?:email|challenge|token)"/i,"the verification page must rely on the HttpOnly challenge cookie");
+  assert.doesNotMatch(verifyHtml,/name\s*=\s*"(?:email|challenge|token)"/i,"the verification page must rely on the HttpOnly challenge cookie");
   assert.match(verifyHtml,/id="verificationSessionEnded"[^>]*role="status"[^>]*hidden/);
   assert.match(verifyHtml,/id="verificationRestart"[^>]*href="\/account\.html\?mode=signup"/);
   assert.match(verifyHtml,/id="verificationSignIn"[^>]*href="\/account\.html\?mode=login"/);
@@ -123,7 +123,7 @@ test("enhanced signup sends only a masked hint to verification and preserves leg
   assert.equal(page.requests.filter(({path})=>path==="/api/signup").length,1,"navigation lock prevents a duplicate signup request");
   assert.equal(page.sessionStorage.getItem("strata.verification.maskedEmail"),"n***@example.test");
   assert.equal(page.sessionStorage.getItem("strata.verification.purpose"),"signup");
-  assert.doesNotMatch(page.navigations[0],/new\.lifter|secure-password|code|challenge/i);
+  assert.doesNotMatch(page.navigations[0],/new\s*\.lifter|secure-password|code|challenge/i);
 });
 
 test("enhanced login continues an unverified account on the verification page",async()=>{
@@ -162,7 +162,7 @@ test("enhanced signup carries a safe delivery failure into the verification page
   form.values={name:"New Lifter",email:"new.lifter@example.test",password:"secure-password-123"};
   await form.emit("submit",{preventDefault(){}});
   assert.deepEqual(account.navigations,["/verify-email.html?next=pricing&purpose=signup&delivery=failed"]);
-  assert.doesNotMatch(account.navigations[0],/new\.lifter|secure-password|challenge/i);
+  assert.doesNotMatch(account.navigations[0],/new\s*\.lifter|secure-password|challenge/i);
 
   const verification=verificationPage(async(path)=>{
     if(path==="/api/verification-status")return response(200,{

@@ -78,10 +78,10 @@ function createAdminRuntime(initialRoutes={}){
 
 test("admin client modules keep server data out of HTML injection sinks and browser storage",()=>{
   const source=allAdminSource(),renderSource=sourceFor("admin-render.js"),controller=sourceFor("admin.js");
-  assert.match(renderSource,/function create\([\s\S]*?node\.textContent=String\(text\)/);
-  assert.match(renderSource,/ticketMessage"\)\.textContent=/);
-  assert.match(controller,/adminIdentity"\)\.textContent=/);
-  assert.doesNotMatch(source,/\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML\s*\(|document\.write\s*\(|\beval\s*\(|new Function\s*\(/);
+  assert.match(renderSource,/function\s*create\s*\(\s*[\s\S]*?node\s*\.textContent\s*=\s*String\s*\(\s*text\s*,?\s*\)/);
+  assert.match(renderSource,/ticketMessage"\s*,?\s*\)\s*\.textContent\s*=/);
+  assert.match(controller,/adminIdentity"\s*,?\s*\)\s*\.textContent\s*=/);
+  assert.doesNotMatch(source,/\.innerHTML\s*=|\.outerHTML\s*=|insertAdjacentHTML\s*\(|document\s*\.write\s*\(|\beval\s*\(|new\s*Function\s*\(/);
   assert.doesNotMatch(source,/localStorage|sessionStorage|indexedDB/,
     "private admin responses and authorization state must remain in memory only");
 });
@@ -103,24 +103,24 @@ test("admin API owns same-origin requests, CSRF attachment, and endpoint constru
   assert.equal(calls[2].path,"/api/admin/support/ticket%20two");
   assert.equal(calls[3].path,"/api/admin/users/user%2Ftwo/actions");
   assert.equal(calls[3].options.headers["X-CSRF-Token"],"csrf-two");
-  assert.doesNotMatch(sourceFor("admin-api.js"),/fetchImpl\(\s*[`'"]https?:\/\//i,"admin data must never be sent to a cross-origin endpoint");
+  assert.doesNotMatch(sourceFor("admin-api.js"),/fetchImpl\s*\(\s*\s*[`'"]https?\s*:\s*\/\//i,"admin data must never be sent to a cross-origin endpoint");
 });
 
 test("Admin removes step-up and typed friction while retaining one clear review click",()=>{
   const html=readPublic("pages/admin.html"),controller=sourceFor("admin.js"),logic=sourceFor("admin-logic.js");
-  assert.doesNotMatch(html,/id="elevation(?:Panel|Password|Code|Form|Submit|Restart)"/i);
-  assert.doesNotMatch(html,/id="action(?:Reason|Confirmation)"|id="confirmationPhrase"/i);
+  assert.doesNotMatch(html,/id\s*=\s*"elevation(?:Panel|Password|Code|Form|Submit|Restart)"/i);
+  assert.doesNotMatch(html,/id\s*=\s*"action(?:Reason|Confirmation)"|id\s*=\s*"confirmationPhrase"/i);
   assert.doesNotMatch(allAdminSource(),/\/api\/admin\/elevate|verifyElevation|submitElevation|showElevation/);
   for(const action of ["send-password-reset","send-delete-link","cancel-deletion","revoke-sessions","suspend","restore","delete-account","grant-plus","revoke-plus","close-checkouts","enable-checkouts"]){
-    assert.match(html,new RegExp(`data-user-action="${action}"`));assert.match(logic,new RegExp(`(?:"${action}"|${action}):\\{`));
+    assert.match(html,new RegExp(`data-user-action="${action}"`));assert.match(logic,new RegExp(`(?:"${action}"|${action}):\\s*\\{`));
   }
   assert.match(html,/<dialog class="confirm-dialog"[^>]*id="confirmDialog"/i);
   assert.match(html,/id="confirmDescription"/i);assert.match(html,/id="cancelAction"[^>]*>Cancel</i);assert.match(html,/id="submitAction"[^>]*type="submit"/i);
-  assert.match(controller,/const payload=\{action,expectedControlsRevision:Number\(user\.controlsRevision\|\|0\)\}/);
+  assert.match(controller,/const\s*payload\s*=\s*\{\s*action\s*,\s*expectedControlsRevision\s*:\s*Number\s*\(\s*user\s*\.controlsRevision\s*\|\|\s*0\s*,?\s*\)\s*[;,]?\s*\}/);
   assert.doesNotMatch(controller,/\b(?:reason|confirmation)\b\s*[:,=]/i);
   assert.match(html,/class="irreversible-zone"[^>]*aria-labelledby="permanentDeletionTitle"/i);
   assert.match(html,/does not cancel a live Paddle subscription|cannot be undone, cancel a live Paddle subscription/i);
-  assert.doesNotMatch(controller,/if\(action==="delete-account"&&!suspended\)/);
+  assert.doesNotMatch(controller,/if\s*\(\s*action\s*===\s*"delete-account"\s*&&\s*!\s*suspended\s*,?\s*\)/);
 });
 
 test("an authenticated bound owner opens the dashboard without another credential prompt",async()=>{
@@ -154,24 +154,24 @@ test("admin page declares a private, accessible management surface",()=>{
   assert.match(html,/<meta name="robots" content="noindex, nofollow, noarchive" \/>/i);assert.match(html,/<meta name="referrer" content="no-referrer" \/>/i);
   assert.match(html,/<a class="skip-link" href="#adminMain">/i);assert.match(html,/role="tablist"/i);assert.match(html,/role="status"[^>]*aria-live="polite"/i);
   assert.match(html,/<dialog[^>]+id="userDialog"/i);assert.match(html,/<dialog[^>]+id="confirmDialog"/i);assert.match(html,/<dialog[^>]+id="supportDialog"/i);
-  assert.doesNotMatch(html,/href="\/manifest\.webmanifest"|src="\/pwa\.js/i);
+  assert.doesNotMatch(html,/href\s*=\s*"\/manifest\s*\.webmanifest"|src\s*=\s*"\/pwa\s*\.js/i);
 });
 
 test("a persisted Admin restore purges and locks private state before reloading",()=>{
   const controller=sourceFor("admin.js"),session=sourceFor("admin-session.js");
-  assert.match(session,/if\(!event\.persisted\)return/);assert.match(session,/lockPrivateView\([^)]*\);\s*location\.reload\(\)/);
-  assert.match(controller,/function lockPrivateView[\s\S]*?clearAdminData\(\);state\.admin=null;state\.csrfToken="";state\.authorized=false/);
-  assert.match(controller,/dashboard"\)\.hidden=true/);assert.match(controller,/accessPanel"\)\.hidden=false/);assert.match(controller,/adminMain"\)\.setAttribute\("aria-busy","true"\)/);
+  assert.match(session,/if\s*\(\s*!\s*event\s*\.persisted\s*,?\s*\)\s*return/);assert.match(session,/lockPrivateView\([^)]*\);\s*location\.reload\(\)/);
+  assert.match(controller,/function\s*lockPrivateView[\s\S]*?clearAdminData\s*\(\s*,?\s*\)\s*;\s*state\s*\.admin\s*=\s*null\s*;\s*state\s*\.csrfToken\s*=\s*""\s*;\s*state\s*\.authorized\s*=\s*false/);
+  assert.match(controller,/dashboard"\s*,?\s*\)\s*\.hidden\s*=\s*true/);assert.match(controller,/accessPanel"\s*,?\s*\)\s*\.hidden\s*=\s*false/);assert.match(controller,/adminMain"\s*,?\s*\)\s*\.setAttribute\s*\(\s*"aria-busy"\s*,\s*"true"\s*,?\s*\)/);
 });
 
 test("ordinary foreground restore locks private data and revalidates the same administrator",()=>{
   const controller=sourceFor("admin.js"),events=sourceFor("admin-events.js"),handler=sourceFor("admin-session.js");
-  assert.match(events,/document\.addEventListener\("visibilitychange",handlers\.handleVisibilityChange\)/);
-  assert.match(events,/window\.addEventListener\("focus",handlers\.handleVisibilityChange\)/);
-  assert.match(handler,/if\(document\.hidden\)return/);assert.match(handler,/if\(revalidation\)return revalidation/);
-  assert.match(handler,/const expectedAdminId=userId\(state\.admin\)/);
+  assert.match(events,/document\s*\.addEventListener\s*\(\s*"visibilitychange"\s*,\s*handlers\s*\.handleVisibilityChange\s*,?\s*\)/);
+  assert.match(events,/window\s*\.addEventListener\s*\(\s*"focus"\s*,\s*handlers\s*\.handleVisibilityChange\s*,?\s*\)/);
+  assert.match(handler,/if\s*\(\s*document\s*\.hidden\s*,?\s*\)\s*return/);assert.match(handler,/if\s*\(\s*revalidation\s*,?\s*\)\s*return\s*revalidation/);
+  assert.match(handler,/const\s*expectedAdminId\s*=\s*userId\s*\(\s*state\s*\.admin\s*,?\s*\)/);
   assert.ok(handler.indexOf("lockPrivateView(")<handler.indexOf("await client.identity()"),"private DOM must be purged before the first foreground request");
-  assert.match(handler,/currentAdminId!==expectedAdminId/);
+  assert.match(handler,/currentAdminId\s*!==\s*expectedAdminId/);
   assert.match(handler,/await client\.adminSession\(\)/);
   assert.ok(handler.indexOf("currentAdminId!==expectedAdminId")<handler.indexOf("openDashboard()"),"a different account must never reopen the dashboard");
   assert.match(controller,/StrataAdminSession\.createSessionCoordinator/);
@@ -179,8 +179,8 @@ test("ordinary foreground restore locks private data and revalidates the same ad
 
 test("Admin invalidation prevents late reads and mutations from repainting a locked view",()=>{
   const controller=sourceFor("admin.js"),state=sourceFor("admin-state.js");
-  assert.match(state,/invalidatePrivateOperations\(\)\{privateGeneration\+=1/);
-  assert.match(controller,/function clearAdminData\(\)\{\s*state\.invalidatePrivateOperations\(\)/);
+  assert.match(state,/invalidatePrivateOperations\s*\(\s*,?\s*\)\s*\{\s*privateGeneration\s*\+=\s*1/);
+  assert.match(controller,/function\s*clearAdminData\s*\(\s*,?\s*\)\s*\{\s*\s*state\s*\.invalidatePrivateOperations\s*\(\s*,?\s*\)/);
   for(const request of ["productSignals", "overview", "users", "user", "userAction", "support", "updateSupport", "audit"]){
     assert.match(controller,new RegExp(`await client\\.${request}\\([^;]*[;)](?:if)?[\\s\\S]{0,180}privateOperationIsCurrent\\(operation\\)`),`${request} responses must be checked against the private-operation epoch`);
   }
@@ -207,7 +207,7 @@ test("Admin runtime discards every delayed private read and mutation after the v
   const forbidden=new Set(["overview","signals","users","user-detail","support","audit","global","updated"]);
   assert.deepEqual(page.trace.slice(purgeIndex+1).filter((entry)=>forbidden.has(entry.name)),[]);
   assert.equal(page.state.selectedUser,null);assert.equal(page.state.selectedTicket,null);assert.equal(page.state.authorized,false);
-  assert.doesNotMatch([...page.elements.values()].map((node)=>node.textContent).join(" "),/DELAYED PRIVATE/);
+  assert.doesNotMatch([...page.elements.values()].map((node)=>node.textContent).join(" "),/DELAYED\s*PRIVATE/);
 });
 
 test("Admin runtime purges before BFCache reload and rejects a different foreground identity",async()=>{
@@ -235,7 +235,7 @@ test("Admin foreground recheck supersedes a delayed initial identity",async()=>{
   assert.equal(identityReads,2,"paired foreground events share one fresh identity request");assert.equal(page.state.admin.id,current.id);assert.equal(page.state.csrfToken,"current-csrf");
   stale.resolve({user:page.admin,csrfToken:"stale-csrf"});await settle();
   assert.equal(page.state.admin.id,current.id);assert.equal(page.state.csrfToken,"current-csrf");
-  const rendered=[...page.elements.values()].map((node)=>node.textContent).join(" ");assert.match(rendered,/Current Admin|current-admin@example\.test/);assert.doesNotMatch(rendered,/Admin One|admin-one@example\.test/);
+  const rendered=[...page.elements.values()].map((node)=>node.textContent).join(" ");assert.match(rendered,/Current Admin|current-admin@example\.test/);assert.doesNotMatch(rendered,/Admin\s*One|admin-one@example\s*\.test/);
 });
 
 test("Admin product-signal ranges render only the latest response",async()=>{
@@ -250,9 +250,9 @@ test("Admin product-signal ranges render only the latest response",async()=>{
 
 test("account actions stay locked until authoritative detail loads",()=>{
   const html=readPublic("pages/admin.html"),controller=sourceFor("admin.js"),render=sourceFor("admin-render.js");
-  assert.match(html,/class="action-zone"[^>]*aria-describedby="userDetailStatus"/i);assert.match(controller,/renderUserDetails\(user,\{actionsReady:false\}\)/);
-  assert.match(render,/if\(!actionsReady\)\{disabled=true;title="Full account details are still loading\.";\}/);
-  assert.match(controller,/renderUserDetails\(result\.user,\{actionsReady:true\}\)/);assert.match(controller,/Account actions remain locked\. \$\{friendlyError\(error\)\}/);
+  assert.match(html,/class="action-zone"[^>]*aria-describedby="userDetailStatus"/i);assert.match(controller,/renderUserDetails\s*\(\s*user\s*,\s*\{\s*actionsReady\s*:\s*false\s*[;,]?\s*\}\s*,?\s*\)/);
+  assert.match(render,/if\s*\(\s*!\s*actionsReady\s*,?\s*\)\s*\{\s*disabled\s*=\s*true\s*;\s*title\s*=\s*"Full\s*account\s*details\s*are\s*still\s*loading\."\s*;\s*[;,]?\s*\}/);
+  assert.match(controller,/renderUserDetails\s*\(\s*result\s*\.user\s*,\s*\{\s*actionsReady\s*:\s*true\s*[;,]?\s*\}\s*,?\s*\)/);assert.match(controller,/Account actions remain locked\. \$\{friendlyError\(error\)\}/);
 });
 
 test("Admin deletion blockers explain payment holds without implying that closing restores the account",()=>{
@@ -261,21 +261,21 @@ test("Admin deletion blockers explain payment holds without implying that closin
   assert.match(logic,/CHECKOUT_PREPARING[\s\S]{0,300}in-flight checkout/);
   assert.match(logic,/PURCHASE_PENDING[\s\S]{0,320}revoking STRATA sign-in sessions do not cancel/);
   assert.match(controller,/To restore access, cancel this review and choose Restore account/);
-  assert.doesNotMatch(controller,/Close this dialog to restore it/);
+  assert.doesNotMatch(controller,/Close\s*this\s*dialog\s*to\s*restore\s*it/);
 });
 
 test("admin state changes move focus to stable visible targets",()=>{
   const html=readPublic("pages/admin.html"),controller=sourceFor("admin.js"),render=sourceFor("admin-render.js");
-  assert.match(html,/id="accessTitle" tabindex="-1"/i);assert.match(controller,/if\(focus\)requestAnimationFrame\(\(\)=>el\("accessTitle"\)\.focus/);
-  assert.match(render,/el\("supportDialog"\)\.showModal\(\);syncDialogLock\(\);requestFrame\(\(\)=>el\("supportDialogTitle"\)\.focus/);
-  assert.match(controller,/if\(adminSession\.admin!==true\)[\s\S]{0,200}openDashboard\(\)/);assert.match(render,/if\(message&&!persist&&!error&&!focus\)globalMessageTimer=/,
+  assert.match(html,/id="accessTitle" tabindex="-1"/i);assert.match(controller,/if\s*\(\s*focus\s*,?\s*\)\s*requestAnimationFrame\s*\(\s*\(\s*,?\s*\)\s*=>\s*el\s*\(\s*"accessTitle"\s*,?\s*\)\s*\.focus/);
+  assert.match(render,/el\s*\(\s*"supportDialog"\s*,?\s*\)\s*\.showModal\s*\(\s*,?\s*\)\s*;\s*syncDialogLock\s*\(\s*,?\s*\)\s*;\s*requestFrame\s*\(\s*\(\s*,?\s*\)\s*=>\s*el\s*\(\s*"supportDialogTitle"\s*,?\s*\)\s*\.focus/);
+  assert.match(controller,/if\s*\(\s*adminSession\s*\.admin\s*!==\s*true\s*,?\s*\)\s*[\s\S]{0,200}openDashboard\s*\(\s*,?\s*\)/);assert.match(render,/if\s*\(\s*message\s*&&\s*!\s*persist\s*&&\s*!\s*error\s*&&\s*!\s*focus\s*,?\s*\)\s*globalMessageTimer\s*=/,
     "a success message that receives focus must not disappear underneath it");
 });
 
 test("authenticated admin layout keeps dense desktop rows and readable controls",()=>{
   const css=readPublic("styles/admin.css");
-  assert.match(css,/body\.admin-ready \.record-card>button \{ min-height:72px;/);assert.match(css,/body\.admin-ready \.record-primary \{ display:grid; grid-template-columns:/);
-  assert.match(css,/\.pagination button \{ min-height:44px;/);assert.match(css,/\.field label \{[^}]*font:600 12px\/1\.5 var\(--body/);
+  assert.match(css,/body\s*\.admin-ready\s*\.record-card\s*>\s*button\s*\{\s*min-height\s*:\s*72px\s*;/);assert.match(css,/body\s*\.admin-ready\s*\.record-primary\s*\{\s*display\s*:\s*grid\s*;\s*grid-template-columns\s*:/);
+  assert.match(css,/\.pagination\s*button\s*\{\s*min-height\s*:\s*44px\s*;/);assert.match(css,/\.field\s*label\s*\{\s*[^}]*font\s*:\s*600\s*12px\/1\.5\s*var\s*\(\s*--body/);
 });
 
 function fakeDocument(){

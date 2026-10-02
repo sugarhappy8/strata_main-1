@@ -25,6 +25,6 @@ test("database adapters share one explicit store contract",()=>{
   );
 
   const source=readFileSync(join(__dirname,"..","src","database.js"),"utf8");
-  assert.match(source,/return defineStore\("local",\{/);
-  assert.match(source,/return defineStore\("turso",\{/);
+  assert.match(source,/return\s*defineStore\s*\(\s*"local"\s*,\s*\{/);
+  assert.match(source,/return\s*defineStore\s*\(\s*"turso"\s*,\s*\{/);
 });

@@ -39,7 +39,7 @@ test("the model sees a factual member summary without identity details",()=>{
   assert.match(text,/Completed workouts in the last 28 days: 1\./);assert.match(text,/average target 2200 kcal\/day; 5 of the last 7 days logged, averaging 2150 kcal; morning weight changing -0.4 kg per week/);
   const blank=core.memberContext({});
   assert.match(blank,/No personal setup yet/);assert.match(blank,/Saved weekly plan: empty\./);assert.match(blank,/No completed workouts/);
-  assert.doesNotMatch(blank,/Today is/);
+  assert.doesNotMatch(blank,/Today\s*is/);
 });
 
 test("conversation history is checked, trimmed, and always starts with the member",()=>{

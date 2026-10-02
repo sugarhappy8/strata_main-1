@@ -28,8 +28,8 @@ test("production service composition covers all three typed factories and their 
     assert.match(fixture,new RegExp(`${factory}\\(\\{`));
     assert.match(server,new RegExp(`\\b${factory}\\b`));
   }
-  assert.match(fixture,/claimAdminForLogin:async\(user\)=>admin\?admin\.maybeClaimAdminForLogin\(user\):user/);
-  assert.match(fixture,/http:\{json:http\.json,bodyJson:http\.bodyJson\}/);
+  assert.match(fixture,/claimAdminForLogin:\s*async\s*\(user\)\s*=>\s*\(?admin\s*\?\s*admin\.maybeClaimAdminForLogin\(user\)\s*:\s*user\)?/);
+  assert.match(fixture,/http\s*:\s*\{\s*json\s*:\s*http\s*\.json\s*,\s*bodyJson\s*:\s*http\s*\.bodyJson\s*[;,]?\s*\}/);
   assert.match(server,/composeServices\(\{/);
 });
 

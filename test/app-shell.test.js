@@ -55,7 +55,7 @@ test("inside the iOS app the app's stylesheet and chrome script are written into
   const page=harness();
   assert.deepEqual(page.written,['<link rel="stylesheet" href="/app-mode.css?v=9.4.0" /><script src="/app-mode.js?v=9.4.0"></script>']);
   assert.deepEqual(harness({pathname:"/install"}).written,[],"the install page leaves before anything loads");
-  assert.match(read("src/server.js"),/\["app-mode\.js","scripts\/app-mode\.js"\],\["app-mode\.css","styles\/app-mode\.css"\],\["app-paywall\.js","scripts\/app-paywall\.js"\]/);
+  assert.match(read("src/server.js"),/\[\s*"app-mode\s*\.js"\s*,\s*"scripts\/app-mode\s*\.js"\s*,?\s*\]\s*,\s*\[\s*"app-mode\s*\.css"\s*,\s*"styles\/app-mode\s*\.css"\s*,?\s*\]\s*,\s*\[\s*"app-paywall\s*\.js"\s*,\s*"scripts\/app-paywall\s*\.js"\s*,?\s*\]/);
   for(const asset of ["/app-mode.js","/app-mode.css","/app-paywall.js"])assert.match(read("public/service-worker.js"),new RegExp(`"${asset.replace(/[.]/g,"\\.")}\\?v=9\\.4\\.0"`));
   assert.match(read("scripts/release-version.js"),/"public\/scripts\/app-mode\.js",\n {4}"public\/scripts\/app-shell\.js",/,"a release bump updates the injected asset versions");
 });
@@ -94,11 +94,11 @@ test("every page loads the app shell first in its head, and the server and offli
     assert.equal(scripts[0],"/app-shell.js?v=9.4.0",`${page} must load app-shell.js before any other script`);
     assert.doesNotMatch(head.match(/<script\b[^>]*app-shell\.js[^>]*>/)[0],/\b(?:defer|async)\b/,`${page} must run app-shell.js before first paint`);
   }
-  assert.match(read("src/server.js"),/\["app-shell\.js","scripts\/app-shell\.js"\]/);
+  assert.match(read("src/server.js"),/\[\s*"app-shell\s*\.js"\s*,\s*"scripts\/app-shell\s*\.js"\s*,?\s*\]/);
   assert.match(read("public/service-worker.js"),/"\/app-shell\.js\?v=9\.4\.0"/);
-  assert.match(read("public/styles/tokens.css"),/:root\[data-app="ios"\] a\[href\^="\/install"\] \{ display:none !important; \}/);
+  assert.match(read("public/styles/tokens.css"),/:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*a\s*\[\s*href\^\s*=\s*"\/install"\s*,?\s*\]\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/);
   // The app shows light status bar icons, so the area under them stays dark even on light pages.
-  assert.match(read("public/styles/tokens.css"),/:root\[data-app="ios"\] body::before \{[^}]*position:fixed;[^}]*height:env\(safe-area-inset-top\);[^}]*background:var\(--strata-ink\);[^}]*pointer-events:none;/);
+  assert.match(read("public/styles/tokens.css"),/:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*body\s*:\s*:\s*before\s*\{\s*[^}]*position\s*:\s*fixed\s*;\s*[^}]*height\s*:\s*env\s*\(\s*safe-area-inset-top\s*,?\s*\)\s*;\s*[^}]*background\s*:\s*var\s*\(\s*--strata-ink\s*,?\s*\)\s*;\s*[^}]*pointer-events\s*:\s*none\s*;/);
 });
 
 test("inside the iOS app the PWA helper reports the site as installed",()=>{

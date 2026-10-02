@@ -24,7 +24,7 @@ test("homepage navigation and exercise controls expose 44px touch targets",()=>{
   const css=read("public/styles/styles.css");
   assert.match(css,/\.brand\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/);
   assert.match(css,/\.action-icon\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
-  assert.doesNotMatch(css,/\.exercise-row \.action-icon\s*\{[^}]*\b(?:width|height):\s*(?:3\d|4[0-3])px/);
+  assert.doesNotMatch(css,/\.exercise-row\s*\.action-icon\s*\{\s*[^}]*\b(?:width|height)\s*:\s*\s*(?:3\d|4[0-3])px/);
 });
 
 test("compact mobile navigation keeps account actions and every muscle group easy to reach",()=>{
@@ -35,8 +35,8 @@ test("compact mobile navigation keeps account actions and every muscle group eas
   assert.match(home,/class="group-tabs-hint"[^>]*>Swipe to explore all 8 muscle groups/);
   assert.match(homeCss,/\.group-tabs\s*\{[^}]*display:\s*flex;[^}]*overflow-x:\s*auto;[^}]*scroll-snap-type:\s*x proximity;/);
   assert.match(account,/class="account-choice-nav"[^>]*>[\s\S]*href="#signupPanel"[\s\S]*href="#loginPanel"/);
-  assert.match(accountCss,/\.account-choice-nav\{display:grid;grid-template-columns:1fr 1fr;/);
-  assert.match(accountCss,/\.signed-actions \[hidden\],\.security-actions \[hidden\]\{display:none\}/,"Account CSS must not expose privileged or inactive hidden actions");
+  assert.match(accountCss,/\.account-choice-nav\s*\{\s*display\s*:\s*grid\s*;\s*grid-template-columns\s*:\s*1fr\s*1fr\s*;/);
+  assert.match(accountCss,/\.signed-actions\s*\[\s*hidden\s*,?\s*\]\s*,\s*\.security-actions\s*\[\s*hidden\s*,?\s*\]\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/,"Account CSS must not expose privileged or inactive hidden actions");
 });
 
 test("the support honeypot stays outside the accessibility tree",()=>{
@@ -83,20 +83,20 @@ test("planner, workout, and the studio share the five-section navigation at mobi
     assert.ok(html.indexOf(desktop)<html.indexOf(user),`${name} desktop navigation must precede account controls in keyboard order`);
     assert.ok(html.indexOf(user)<html.indexOf(mobile),`${name} mobile account controls must precede the bottom navigation in keyboard order`);
   }
-  assert.match(plannerCss,/\.planner-primary-nav-mobile\{display:none\}/);
-  assert.match(plannerCss,/@media\(max-width:760px\)\{[\s\S]*?\.planner-primary-nav-desktop\{display:none\}[\s\S]*?\.planner-primary-nav-mobile\{display:grid\}/);
-  assert.match(workoutCss,/\.site-header \.workout-nav-mobile\{display:none\}/);
-  assert.match(workoutCss,/@media\(max-width:760px\)\{[\s\S]*?\.site-header \.workout-nav-desktop\{display:none\}[\s\S]*?\.site-header \.workout-nav-mobile\{display:grid\}/);
+  assert.match(plannerCss,/\.planner-primary-nav-mobile\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/);
+  assert.match(plannerCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.planner-primary-nav-desktop\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}\s*[\s\S]*?\.planner-primary-nav-mobile\s*\{\s*display\s*:\s*grid\s*[;,]?\s*\}/);
+  assert.match(workoutCss,/\.site-header\s*\.workout-nav-mobile\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/);
+  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.site-header\s*\.workout-nav-desktop\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}\s*[\s\S]*?\.site-header\s*\.workout-nav-mobile\s*\{\s*display\s*:\s*grid\s*[;,]?\s*\}/);
   const discoverCss=read("public/styles/discover.css");
-  assert.match(discoverCss,/\.studio-nav-mobile \{ display:none; \}/);
-  assert.match(discoverCss,/@media\(max-width:800px\)[\s\S]*?\.plus-studio \.studio-nav-desktop \{ display:none; \}[\s\S]*?\.plus-studio \.studio-nav-mobile \{ display:flex; \}/);
-  assert.match(plannerCss,/\.planner-primary-nav\{position:fixed;[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(plannerCss,/\.planner-primary-nav a\{[^}]*font-size:11px/);
-  assert.match(plannerCss,/@media\(max-width:760px\)\{[\s\S]*?\.planner-header\{background:var\(--ink\);backdrop-filter:none\}/);
-  assert.match(workoutCss,/@media\(max-width:760px\)\{[\s\S]*?\.site-header nav\{position:fixed/);
-  assert.match(discoverCss,/@media\(max-width:760px\)\s*\{[\s\S]*?\.plus-studio \.studio-nav\s*\{[^}]*position:fixed/);
-  assert.match(workoutCss,/\.site-header nav\{position:fixed;[^}]*grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
-  assert.match(workoutCss,/@media\(max-width:760px\)\{[\s\S]*?\.workout-page \.site-header\{[^}]*background:var\(--bg\);backdrop-filter:none\}/);
+  assert.match(discoverCss,/\.studio-nav-mobile\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}/);
+  assert.match(discoverCss,/@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*[\s\S]*?\.plus-studio\s*\.studio-nav-desktop\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}\s*[\s\S]*?\.plus-studio\s*\.studio-nav-mobile\s*\{\s*display\s*:\s*flex\s*;\s*[;,]?\s*\}/);
+  assert.match(plannerCss,/\.planner-primary-nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/);
+  assert.match(plannerCss,/\.planner-primary-nav\s*a\s*\{\s*[^}]*font-size\s*:\s*11px/);
+  assert.match(plannerCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.planner-header\s*\{\s*background\s*:\s*var\s*\(\s*--ink\s*,?\s*\)\s*;\s*backdrop-filter\s*:\s*none\s*[;,]?\s*\}/);
+  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.site-header\s*nav\s*\{\s*position\s*:\s*fixed/);
+  assert.match(discoverCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\s*\{\s*[\s\S]*?\.plus-studio\s*\.studio-nav\s*\{\s*[^}]*position\s*:\s*fixed/);
+  assert.match(workoutCss,/\.site-header\s*nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/);
+  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.workout-page\s*\.site-header\s*\{\s*[^}]*background\s*:\s*var\s*\(\s*--bg\s*,?\s*\)\s*;\s*backdrop-filter\s*:\s*none\s*[;,]?\s*\}/);
 });
 
 test("workout empty days and planner mobile hand-offs expose useful 44px actions",()=>{
@@ -104,21 +104,21 @@ test("workout empty days and planner mobile hand-offs expose useful 44px actions
   const workoutHtml=read("public/pages/workout.html"),workout=workoutClient(),context=read("public/scripts/workout-context.js"),workoutCss=read("public/styles/workout.css");
   assert.match(workoutHtml,/id="chooseScheduledDay" hidden/);assert.match(workoutHtml,/id="openPlannerFromEmpty"[^>]*hidden/);
   assert.match(context,/You have not built a weekly plan yet/);assert.match(context,/Nothing is scheduled for this day/);assert.match(context,/Scheduled in your weekly plan/);
-  assert.match(context,/start\.hidden=true;resume\.hidden=!active;choose\.hidden=true;build\.hidden=true;\$\("differentWorkout"\)\.hidden=true/);
-  assert.match(context,/if\(active\)[\s\S]*return;/);assert.match(context,/if\(!hasWeek\)[\s\S]*build\.hidden=false;return;/);assert.match(context,/if\(!items\.length\)[\s\S]*choose\.hidden=false/);
-  assert.match(workoutCss,/\.button\{[^}]*min-height:48px/);
-  assert.match(workout,/record\?\.dirty\)items\.push/);assert.match(workout,/status!=="active"\|\|!recoveryIds\.has/);assert.match(workout,/recoveryIndex>=0/);
-  assert.match(workoutCss,/\.mode-notice a,\.text-link,footer a\{[^}]*min-width:44px;min-height:44px/);
+  assert.match(context,/start\s*\.hidden\s*=\s*true\s*;\s*resume\s*\.hidden\s*=\s*!\s*active\s*;\s*choose\s*\.hidden\s*=\s*true\s*;\s*build\s*\.hidden\s*=\s*true\s*;\s*\$\s*\(\s*"differentWorkout"\s*,?\s*\)\s*\.hidden\s*=\s*true/);
+  assert.match(context,/if\s*\(\s*active\s*,?\s*\)\s*[\s\S]*return\s*;/);assert.match(context,/if\s*\(\s*!\s*hasWeek\s*,?\s*\)\s*[\s\S]*build\s*\.hidden\s*=\s*false\s*;\s*return\s*;/);assert.match(context,/if\s*\(\s*!\s*items\s*\.length\s*,?\s*\)\s*[\s\S]*choose\s*\.hidden\s*=\s*false/);
+  assert.match(workoutCss,/\.button\s*\{\s*[^}]*min-height\s*:\s*48px/);
+  assert.match(workout,/record\s*\?\.dirty\s*,?\s*\)\s*items\s*\.push/);assert.match(workout,/status\s*!==\s*"active"\s*\|\|\s*!\s*recoveryIds\s*\.has/);assert.match(workout,/recoveryIndex\s*>=\s*0/);
+  assert.match(workoutCss,/\.mode-notice\s*a\s*,\s*\.text-link\s*,\s*footer\s*a\s*\{\s*[^}]*min-width\s*:\s*44px\s*;\s*min-height\s*:\s*44px/);
   assert.match(workoutHtml,/id="anotherSession">Choose another workout<\/button>/);
-  assert.doesNotMatch(workoutHtml,/Back to my plan/);
+  assert.doesNotMatch(workoutHtml,/Back\s*to\s*my\s*plan/);
   assert.match(plannerHtml,/class="planner-mobile-switcher"[^>]*>[\s\S]*Exercise library[\s\S]*My week/);
   assert.match(plannerHtml,/id="libraryPanel"[^>]*tabindex="-1"/);
-  assert.match(plannerCss,/\.planner-mobile-switcher\{position:sticky;[^}]*display:grid/);
-  assert.match(plannerCss,/\.planner-jump-link\{[^}]*min-height:44px/);
-  assert.match(plannerCss,/\.planner-mode-notice a \{[^}]*min-height:44px/);
-  assert.match(plannerCss,/\.build-footer a\{min-width:44px;color:inherit/);
-  assert.match(workoutCss,/\.skip-link\{[^}]*z-index:100;/,"The focused workout skip link must paint above its sticky header");
-  assert.match(workoutCss,/@media\(max-width:760px\)\{\s*html\{scroll-padding-bottom:calc\(76px \+ env\(safe-area-inset-bottom\)\)\}/);
+  assert.match(plannerCss,/\.planner-mobile-switcher\s*\{\s*position\s*:\s*sticky\s*;\s*[^}]*display\s*:\s*grid/);
+  assert.match(plannerCss,/\.planner-jump-link\s*\{\s*[^}]*min-height\s*:\s*44px/);
+  assert.match(plannerCss,/\.planner-mode-notice\s*a\s*\{\s*[^}]*min-height\s*:\s*44px/);
+  assert.match(plannerCss,/\.build-footer\s*a\s*\{\s*min-width\s*:\s*44px\s*;\s*color\s*:\s*inherit/);
+  assert.match(workoutCss,/\.skip-link\s*\{\s*[^}]*z-index\s*:\s*100\s*;/,"The focused workout skip link must paint above its sticky header");
+  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*\s*html\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*76px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*[;,]?\s*\}/);
   assert.match(workoutHtml,/id="historyError"[^>]*role="alert"/);
   assert.match(workoutHtml,/href="\/pricing">Review Strata\+ access<\/a>/);
   assert.match(workoutHtml,/href="\/planner\.html">Open your free week<\/a>/);
@@ -129,40 +129,40 @@ test("workout empty days and planner mobile hand-offs expose useful 44px actions
   for(const id of ["checkInDifficulty","checkInEnergy","checkInComfort","checkInEnjoyment"])assert.match(workoutHtml,new RegExp(`id="${id}" required`));
   assert.match(workoutHtml,/STRATA does not detect recovery, fatigue, pain, or injury/);
   assert.match(workout,/\/api\/workouts\/\$\{encodeURIComponent\(workoutId\)\}\/check-in/);
-  assert.match(workout,/checkIn:\{difficulty:values\[0\],energy:values\[1\],comfort:values\[2\],enjoyment:values\[3\]\}/);
+  assert.match(workout,/checkIn\s*:\s*\{\s*difficulty\s*:\s*values\s*\[\s*0\s*,?\s*\]\s*,\s*energy\s*:\s*values\s*\[\s*1\s*,?\s*\]\s*,\s*comfort\s*:\s*values\s*\[\s*2\s*,?\s*\]\s*,\s*enjoyment\s*:\s*values\s*\[\s*3\s*,?\s*\]\s*[;,]?\s*\}/);
   assert.match(workoutHtml,/No change happens unless you approve it/);
   assert.match(workoutHtml,/id="reviewAdaptation" href="\/discover\.html#planWorkspace"/);
-  assert.doesNotMatch(workoutHtml,/id="(?:acceptAdaptation|dismissAdaptation)"/);
-  assert.match(read("public/scripts/discover.js"),/decision:"accept",expectedPlanUpdatedAt:suggestion\.expectedPlanUpdatedAt/);
-  assert.match(workoutCss,/\.exercise-guide>summary\{[^}]*min-height:46px/);
-  assert.match(workoutCss,/\.check-in-grid\{display:grid/);
+  assert.doesNotMatch(workoutHtml,/id\s*=\s*"(?:acceptAdaptation|dismissAdaptation)"/);
+  assert.match(read("public/scripts/discover.js"),/decision\s*:\s*"accept"\s*,\s*expectedPlanUpdatedAt\s*:\s*suggestion\s*\.expectedPlanUpdatedAt/);
+  assert.match(workoutCss,/\.exercise-guide\s*>\s*summary\s*\{\s*[^}]*min-height\s*:\s*46px/);
+  assert.match(workoutCss,/\.check-in-grid\s*\{\s*display\s*:\s*grid/);
 });
 
 test("planner keeps evidence collapsed and shows plan guidance only to active Strata+ accounts",()=>{
   const plannerHtml=read("public/pages/planner.html"),planner=read("public/scripts/planner.js"),plannerRender=read("public/scripts/planner-render.js");
   assert.match(plannerHtml,/<details class="plan-insights" id="planInsights">/);
-  assert.doesNotMatch(plannerHtml,/<details class="plan-insights" id="planInsights"[^>]*\sopen(?:\s|>)/);
-  assert.match(planner,/plusActive=STATE\.hasConfirmedPlusAccess\(state\)/);
-  assert.match(planner,/else if\(plusActive&&!total\)readiness=/);
-  assert.match(planner,/\$\{readiness\?`<section class="week-readiness/);
-  assert.match(planner,/href:`\/workout\.html\?day=/);
+  assert.doesNotMatch(plannerHtml,/<\s*details\s*class\s*=\s*"plan-insights"\s*id\s*=\s*"planInsights"[^>]*\sopen(?:\s|>)/);
+  assert.match(planner,/plusActive\s*=\s*STATE\s*\.hasConfirmedPlusAccess\s*\(\s*state\s*,?\s*\)/);
+  assert.match(planner,/else\s*if\s*\(\s*plusActive\s*&&\s*!\s*total\s*,?\s*\)\s*readiness\s*=/);
+  assert.match(planner,/\$\s*\{\s*readiness\s*\?\s*`\s*<\s*section\s*class\s*=\s*"week-readiness/);
+  assert.match(planner,/href\s*:\s*`\/workout\s*\.html\s*\?\s*day\s*=/);
   assert.match(plannerRender,/Free device plan/);
   assert.match(plannerRender,/Free synced plan/);
 });
 
 test("fixed mobile navigation reserves scroll space for keyboard focus",()=>{
   const css=read("public/styles/experience.css");
-  assert.match(css,/@media \(max-width: 800px\)\s*\{\s*html \{ scroll-padding-bottom: calc\(76px \+ env\(safe-area-inset-bottom\)\); \}\s*\}/);
+  assert.match(css,/@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*\s*\{\s*\s*html\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*76px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}\s*\s*[;,]?\s*\}/);
 });
 
 test("Strata AI keeps its starters and keyboard focus clear of the sticky composer",()=>{
   const css=read("public/styles/ai.css");
   assert.match(read("public/pages/ai.html"),/<body class="[^"]*\bai-page\b/);
-  assert.match(css,/\.ai-composer \{ position:sticky;[^}]*background:#151713;/,"The conversation must not show through the sticky composer");
-  assert.match(css,/\.ai-chat:has\(> \.ai-empty:not\(\[hidden\]\)\) \.ai-composer \{ position:static; \}/,"Before the first message the composer follows the starters");
-  assert.match(css,/html:has\(> body\.ai-page\) \{ scroll-padding-bottom:190px; \}/);
-  assert.match(css,/@media \(max-width:760px\) \{[^@]*html:has\(> body\.ai-page\) \{ scroll-padding-bottom:calc\(272px \+ env\(safe-area-inset-bottom\)\); \}/);
-  assert.match(css,/@media \(max-width:620px\) \{[^@]*html:has\(> body\.ai-page\) \{ scroll-padding-bottom:calc\(220px \+ env\(safe-area-inset-bottom\)\); \}/);
+  assert.match(css,/\.ai-composer\s*\{\s*position\s*:\s*sticky\s*;\s*[^}]*background\s*:\s*#151713\s*;/,"The conversation must not show through the sticky composer");
+  assert.match(css,/\.ai-chat\s*:\s*has\s*\(\s*>\s*\.ai-empty\s*:\s*not\s*\(\s*\[\s*hidden\s*,?\s*\]\s*,?\s*\)\s*,?\s*\)\s*\.ai-composer\s*\{\s*position\s*:\s*static\s*;\s*[;,]?\s*\}/,"Before the first message the composer follows the starters");
+  assert.match(css,/html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*190px\s*;\s*[;,]?\s*\}/);
+  assert.match(css,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[^@]*html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*272px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}/);
+  assert.match(css,/@media\s*\(\s*max-width\s*:\s*620px\s*,?\s*\)\s*\{\s*[^@]*html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*220px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}/);
 });
 
 test("every page keeps a top-level heading in each state",()=>{
@@ -172,8 +172,8 @@ test("every page keeps a top-level heading in each state",()=>{
   assert.match(read("public/pages/account.html"),/<section class="signed-in-card" id="signedInCard"[^>]*>\s*<h1 class="sr-only">Your STRATA account<\/h1>/,"Signing in hides the account intro, so the signed-in view needs its own heading");
   assert.match(read("public/pages/discover.html"),/<h1 class="sr-only" id="featureHubTitle">Strata\+ workspace<\/h1>/);
   const workoutCss=read("public/styles/workout.css");
-  assert.doesNotMatch(workoutCss,/\.workout-page\.has-workout-access \.hero\{display:none\}/,"The phone workout hero holds the page heading and the skip-link target");
-  assert.match(workoutCss,/\.workout-page\.has-workout-access \.hero\{position:absolute;width:1px;height:1px;[^}]*clip-path:inset\(50%\)/);
+  assert.doesNotMatch(workoutCss,/\.workout-page\s*\.has-workout-access\s*\.hero\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/,"The phone workout hero holds the page heading and the skip-link target");
+  assert.match(workoutCss,/\.workout-page\s*\.has-workout-access\s*\.hero\s*\{\s*position\s*:\s*absolute\s*;\s*width\s*:\s*1px\s*;\s*height\s*:\s*1px\s*;\s*[^}]*clip-path\s*:\s*inset\s*\(\s*50%\s*,?\s*\)/);
 });
 
 test("global motion progress tracks scroll and stays hidden for reduced motion and print",()=>{

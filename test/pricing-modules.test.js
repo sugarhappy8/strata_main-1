@@ -34,7 +34,7 @@ test("pricing names App Store access only for a member whose Strata+ comes from 
   assert.equal(Logic.appleAccess({discovery:{active:true,accessType:"apple",apple}}),apple);
   for(const user of [{discovery:{active:true,accessType:"paid",apple}},{discovery:{active:true,accessType:"apple",apple:null}},null])assert.equal(Logic.appleAccess(user),null);
   assert.equal(Logic.appleStatus(apple).tone,"good");assert.equal(Logic.appleStatus({...apple,autoRenew:false}).tone,"warn");
-  assert.doesNotMatch(Logic.appleStatus({...apple,expiresAt:null}).message,/Paddle|undefined|renews on/,"no invented or Paddle date");
+  assert.doesNotMatch(Logic.appleStatus({...apple,expiresAt:null}).message,/Paddle|undefined|renews\s*on/,"no invented or Paddle date");
   assert.equal(Logic.APPLE_MANAGE_URL,"https://apps.apple.com/account/subscriptions");
 });
 

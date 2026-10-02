@@ -75,7 +75,7 @@ test("a purchase carries the STRATA user id, is confirmed by STRATA, then finish
   assert.equal(page.view().owned,"apple");assert.equal(page.view().tone,"good");assert.match(page.view().status,/Welcome to Strata\+/);
   const html=page.html();
   assert.match(html,/You have Strata\+/);assert.match(html,/renews Nov 1, 2026/);assert.match(html,/data-paywall-action="manage">Manage subscription/);
-  assert.doesNotMatch(html,/data-paywall-action="subscribe"/);
+  assert.doesNotMatch(html,/data-paywall-action\s*=\s*"subscribe"/);
   await page.controller.manage();assert.deepEqual(page.calls.at(-1),["manageSubscriptions"]);
 });
 
@@ -146,10 +146,10 @@ test("members who already have Strata+ see it, never a buy button",async()=>{
     assert.equal(page.view().owned,owned);
     const html=page.html();
     assert.match(html,/You have Strata\+/);assert.match(html,detail);
-    assert.doesNotMatch(html,/data-paywall-action="(?:subscribe|restore)"/);
+    assert.doesNotMatch(html,/data-paywall-action\s*=\s*"(?:subscribe|restore)"/);
     assert.match(html,/href="\/discover\.html">Open Strata\+/);
     assert.equal(/Manage subscription/.test(html),owned==="apple",`only App Store subscribers manage in the app (${owned})`);
-    assert.doesNotMatch(html,/<a[^>]*href="https?:/,"no link out to web billing");
+    assert.doesNotMatch(html,/<\s*a[^>]*href\s*=\s*"https?\s*:/,"no link out to web billing");
     assert.equal(await page.controller.subscribe(),"ignored");assert.equal(page.calls.some((call)=>call[0]==="purchase"),false);
   }
   const ai=paywall({user:{id:USER_ID,discovery:{active:true,accessType:"grant"}},reason:"ai",server:accepted()});
@@ -161,7 +161,7 @@ test("signed-out people are asked to sign in first, and an old app build without
   await visitor.controller.load();
   const html=visitor.html();
   assert.match(html,/href="\/account\.html\?mode=signup&amp;next=pricing"/);assert.match(html,/href="\/account\.html\?mode=login&amp;next=pricing">Sign in to subscribe/);
-  assert.doesNotMatch(html,/data-paywall-action="subscribe"/);assert.match(html,/2,99 €/,"the price is visible before signing in");
+  assert.doesNotMatch(html,/data-paywall-action\s*=\s*"subscribe"/);assert.match(html,/2,99 €/,"the price is visible before signing in");
   assert.equal(await visitor.controller.restore(),"signed-out");assert.match(visitor.view().status,/Sign in to STRATA first/);
   assert.equal(visitor.calls.some((call)=>call[0]==="restore"||call[0]==="purchase"),false);
   const oldBuild=paywall({withPlugin:false,server:accepted()});
