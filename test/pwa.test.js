@@ -6,6 +6,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const { loadHtml } = require("./support/browser-html");
+const { pageScripts } = require("./support/page-scripts");
 
 const PROJECT_ROOT = path.join(__dirname, "..");
 const PUBLIC_ROOT = path.join(PROJECT_ROOT, "public");
@@ -431,11 +432,7 @@ test("every ordinary app page exposes consistent PWA and mobile metadata", () =>
       /<link\s+rel="apple-touch-icon"\s+href="\/icons\/apple-touch-icon\.png"\s*\/>/i,
       `${page} Apple icon`,
     );
-    assert.match(
-      html,
-      /<script\s+src="\/pwa\.js\?v=[^"]+"[^>]*><\/script>/i,
-      `${page} PWA registration`,
-    );
+    assert.ok(pageScripts(page).includes("pwa.js"), `${page} PWA registration`);
     if (page !== "install.html")
       assert.match(html, /href="\/install(?:\.html)?"/, `${page} install guide link`);
   }

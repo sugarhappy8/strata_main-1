@@ -7,6 +7,7 @@ const { join } = require("node:path");
 const vm = require("node:vm");
 const Ui = require("../public/scripts/personal-training-meals-ui-core");
 const { version: BUILD } = require("../package.json");
+const { pageScripts } = require("./support/page-scripts");
 
 const ROOT = join(__dirname, "..");
 function validDraft(overrides = {}) {
@@ -177,16 +178,13 @@ test("meal presentation formatters are deliberate about units and missing data",
 test("Discover markup supplies accessible preference and suggestion surfaces without example meals", () => {
   const html = readFileSync(join(ROOT, "public", "pages", "discover.html"), "utf8"),
     css = readFileSync(join(ROOT, "public", "styles", "discover-coaching-meals.css"), "utf8");
-  for (const asset of [
+  assert.match(
+    html,
+    new RegExp(`discover-coaching-meals\\.css\\?v=${BUILD.replaceAll(".", "\\.")}`),
     "discover-coaching-meals.css",
-    "personal-training-meals-ui-core.js",
-    "discover-coaching-meals.js",
-  ])
-    assert.match(
-      html,
-      new RegExp(`${asset.replaceAll(".", "\\.")}\\?v=${BUILD.replaceAll(".", "\\.")}`),
-      asset,
-    );
+  );
+  for (const asset of ["personal-training-meals-ui-core.js", "discover-coaching-meals.js"])
+    assert.ok(pageScripts("discover.html").includes(asset), asset);
   for (const id of [
     "mealAllergyNone",
     "mealAllergyListed",

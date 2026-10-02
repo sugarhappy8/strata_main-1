@@ -1,0 +1,40 @@
+// Strata+ (discover.html) loads this one module instead of a script tag per file. Its imports run in this
+// order, each after the one before it, so every script still finds the globals published by the scripts
+// above it, exactly as the old list of tags did. html.js, app-shell.js and motion.js stay in <head> because
+// they must run before the first paint. The ?v= query keeps each import on this release's cached copy.
+import "./pwa.js?v=9.4.0";
+import "./product-signals.js?v=9.4.0";
+import "./session-selection-core.js?v=9.4.0";
+import "./entitlements.js?v=9.4.0";
+import "./discovery-core.js?v=9.4.0";
+import "./monthly-plan-core.js?v=9.4.0";
+import "./training-block-core.js?v=9.4.0";
+import "./devices-core.js?v=9.4.0";
+import "./personal-training-energy-ui-core.js?v=9.4.0";
+import "./personal-training-ui-core.js?v=9.4.0";
+import "./personal-training-diary-ui.js?v=9.4.0";
+import "./personal-training-meals-ui-core.js?v=9.4.0";
+import "./discover-state.js?v=9.4.0";
+import "./discover-api.js?v=9.4.0";
+import "./discover-navigation.js?v=9.4.0";
+import "./discover-progress.js?v=9.4.0";
+import "./discover-render.js?v=9.4.0";
+import "./discover-coaching-render.js?v=9.4.0";
+import "./discover-coaching-trend.js?v=9.4.0";
+import "./discover-catalog.js?v=9.4.0";
+import "./discover-detail.js?v=9.4.0";
+import "./discover-session.js?v=9.4.0";
+import "./discover-events.js?v=9.4.0";
+import "./discover-coaching-meals.js?v=9.4.0";
+import "./discover-coaching.js?v=9.4.0";
+import "./discover-program.js?v=9.4.0";
+import "./discover-recovery.js?v=9.4.0";
+import "./discover-brief.js?v=9.4.0";
+import "./ai-logic.js?v=9.4.0";
+import "./ai-state.js?v=9.4.0";
+import "./ai-api.js?v=9.4.0";
+import "./ai-render.js?v=9.4.0";
+import "./ai-events.js?v=9.4.0";
+import "./ai-conversation.js?v=9.4.0";
+import "./ai-widget.js?v=9.4.0";
+import "./discover.js?v=9.4.0";

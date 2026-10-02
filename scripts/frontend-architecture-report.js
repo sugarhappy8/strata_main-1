@@ -27,10 +27,45 @@ function fileStats(file, root = PROJECT_ROOT) {
     bytes: Buffer.byteLength(source),
   };
 }
-function htmlScripts(source) {
-  return [...source.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi)].map((match) =>
-    cleanAsset(match[1]),
+// A page may load one <script type="module"> entry whose side-effect imports name its scripts in order.
+// Given a way to read an asset, the entry stands for its imports followed by itself, which is the order the
+// browser runs them in.
+function moduleImports(source) {
+  return [...source.matchAll(/^\s*import\s+["']([^"']+)["']\s*;?\s*$/gm)].map((match) =>
+    cleanAsset(match[1]).replace(/^\.\//, ""),
   );
+}
+function moduleScripts(asset, readAsset, seen = new Set()) {
+  if (seen.has(asset)) return [];
+  seen.add(asset);
+  return [
+    ...moduleImports(readAsset(asset)).flatMap((name) => moduleScripts(name, readAsset, seen)),
+    asset,
+  ];
+}
+function moduleEntries(source) {
+  return [...source.matchAll(/<script\b([^>]*)>/gi)]
+    .filter((match) => /\btype=["']module["']/i.test(match[1]))
+    .map((match) => cleanAsset(/\bsrc=["']([^"']+)["']/i.exec(match[1])?.[1]))
+    .filter(Boolean);
+}
+// An entry holds nothing but comments and its ordered imports, so all page logic stays in reviewed modules.
+function strayEntryLines(source) {
+  return source
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("//") && !/^import\s+["'][^"']+["'];?$/.test(line));
+}
+function htmlScripts(source, readAsset = null) {
+  return [...source.matchAll(/<script\b([^>]*)>/gi)].flatMap((match) => {
+    const src = /\bsrc=["']([^"']+)["']/i.exec(match[1])?.[1];
+    if (!src) return [];
+    const asset = cleanAsset(src);
+    return readAsset && /\btype=["']module["']/i.test(match[1])
+      ? moduleScripts(asset, readAsset)
+      : [asset];
+  });
 }
 function localRequires(source, file, root = PROJECT_ROOT) {
   return [...source.matchAll(/\brequire\(["'](\.[^"']+)["']\)/g)].map((match) => {
@@ -77,11 +112,17 @@ function analyzeFrontend(root = PROJECT_ROOT, policy = loadPolicy()) {
   return {
     definitions,
     modules,
-    pages: Object.entries(policy.pages || {}).map(([name, pagePolicy]) => ({
-      name,
-      ...pagePolicy,
-      scripts: htmlScripts(readFileSync(join(root, pagePolicy.html), "utf8")),
-    })),
+    pages: Object.entries(policy.pages || {}).map(([name, pagePolicy]) => {
+      const html = readFileSync(join(root, pagePolicy.html), "utf8"),
+        readAsset = (asset) =>
+          readFileSync(join(root, "public/scripts", asset.split("/").at(-1)), "utf8");
+      return {
+        name,
+        ...pagePolicy,
+        scripts: htmlScripts(html, readAsset),
+        moduleEntries: moduleEntries(html).map((asset) => ({ asset, source: readAsset(asset) })),
+      };
+    }),
   };
 }
 
@@ -119,6 +160,11 @@ function validateFrontend(analysis, policy) {
   const errors = [],
     byFile = new Map(analysis.modules.map((module) => [module.file, module]));
   for (const page of analysis.pages) {
+    if ((page.moduleEntries || []).length > 1)
+      errors.push(`${page.html} must load at most one module entry.`);
+    for (const entry of page.moduleEntries || [])
+      if (strayEntryLines(entry.source).length)
+        errors.push(`${entry.asset} must only import ${page.name}'s scripts in order.`);
     const roles = new Set(page.modules.map((module) => module.role));
     for (const role of REQUIRED_ROLES)
       if (!roles.has(role)) errors.push(`${page.name} has no ${role} boundary.`);
@@ -209,6 +255,8 @@ module.exports = {
   htmlScripts,
   loadPolicy,
   localRequires,
+  moduleEntries,
+  moduleImports,
   markdownReport,
   validateFrontend,
 };

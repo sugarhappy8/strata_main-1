@@ -7,6 +7,7 @@ const { join } = require("node:path");
 const vm = require("node:vm");
 const { EVENTS: SERVER_EVENTS } = require("../src/product-signals");
 const { loadHtml } = require("./support/browser-html");
+const { pageScripts } = require("./support/page-scripts");
 
 const ROOT = join(__dirname, "..");
 const SCRIPT = readFileSync(join(ROOT, "public/scripts/product-signals.js"), "utf8");
@@ -392,9 +393,8 @@ test("funnel pages load both isolated signal assets and use the strict event con
   ];
   for (const page of pages) {
     const html = readFileSync(join(ROOT, "public/pages", page), "utf8");
-    assert.match(
-      html,
-      /product-signals\.js\?v=/,
+    assert.ok(
+      pageScripts(page).includes("product-signals.js"),
       `${page} must load the isolated product-signal module`,
     );
     assert.match(

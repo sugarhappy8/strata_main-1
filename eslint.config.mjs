@@ -88,6 +88,11 @@ export default [
     },
   },
   {
+    // A page's one module entry imports its scripts in order.
+    files: ["public/scripts/*-page.js"],
+    languageOptions: { sourceType: "module" },
+  },
+  {
     files: ["public/**/*.js"],
     ignores: ["public/scripts/html.js"],
     rules: htmlSinkRules,

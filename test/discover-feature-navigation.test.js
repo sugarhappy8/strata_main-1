@@ -5,6 +5,7 @@ const { frontendBudget, lineCount } = require("./support/size-budget");
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
+const { pageScripts } = require("./support/page-scripts");
 
 const PROJECT_ROOT = join(__dirname, "..");
 const read = (...parts) => readFileSync(join(PROJECT_ROOT, "public", ...parts), "utf8");
@@ -242,9 +243,9 @@ test("the Strata AI chat launcher glows on every Strata+ view, names itself on h
     "ai-conversation.js",
     "ai-widget.js",
     "discover.js",
-  ].map((name) => html.indexOf(`${name}?v=`));
+  ].map((name) => pageScripts("discover.html").indexOf(name));
   assert.ok(
-    order.every((index, position) => index > 0 && (position === 0 || index > order[position - 1])),
+    order.every((index, position) => index >= 0 && (position === 0 || index > order[position - 1])),
     "the chat modules load in dependency order before the Strata+ shell mounts them",
   );
   assert.match(
@@ -409,11 +410,11 @@ test("Strata+ explains its three score types once beside the relevant tools", ()
 });
 
 test("Strata+ loads bounded state, API, navigation, feature controllers, rendering, events, and shell files in dependency order", () => {
-  const html = read("pages", "discover.html"),
+  const scripts = pageScripts("discover.html"),
     names = discoverModules;
   let previous = -1;
   for (const name of names) {
-    const index = html.indexOf(`src="${name}?v=`);
+    const index = scripts.indexOf(name);
     assert.ok(index > previous, `${name} must load after its dependencies`);
     previous = index;
   }

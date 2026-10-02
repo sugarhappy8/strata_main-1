@@ -28,6 +28,19 @@ test("frontend checks reject missing roles, budget drift, load-order regressions
     "a.js",
     "b.js",
   ]);
+  const assets = {
+    "page.js": '// Entry.\nimport "./a.js?v=1";\nimport "./b.js?v=1";\n',
+    "a.js": "",
+    "b.js": "",
+  };
+  assert.deepEqual(
+    htmlScripts(
+      '<script src="/shell.js"></script><script type="module" src="/page.js?v=1"></script>',
+      (asset) => assets[asset],
+    ),
+    ["shell.js", "a.js", "b.js", "page.js"],
+    "a module entry stands for its imports, in order, and then itself",
+  );
   const analysis = {
     definitions: [],
     modules: [
@@ -39,6 +52,7 @@ test("frontend checks reject missing roles, budget drift, load-order regressions
         name: "fixture",
         html: "fixture.html",
         scripts: ["entry.js", "state.js"],
+        moduleEntries: [{ asset: "page.js", source: 'import "./a.js";\nglobalThis.extra = 1;\n' }],
         modules: [
           { file: "public/scripts/entry.js", role: "entry", maxLines: 10 },
           { file: "public/scripts/state.js", role: "state", maxLines: 20 },
@@ -51,4 +65,5 @@ test("frontend checks reject missing roles, budget drift, load-order regressions
   assert.ok(errors.some((error) => /reviewed entry budget/.test(error)));
   assert.ok(errors.some((error) => /dependency direction/.test(error)));
   assert.ok(errors.some((error) => /dependency cycle/.test(error)));
+  assert.ok(errors.some((error) => /page\.js must only import fixture's scripts/.test(error)));
 });
