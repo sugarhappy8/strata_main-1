@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { loadHtml } = require("./support/browser-html");
 
 const ROOT = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(ROOT, file), "utf8");
@@ -159,6 +160,7 @@ function realm({
   };
   window.globalThis = window;
   vm.createContext(window);
+  loadHtml(window);
   vm.runInContext(SOURCE, window, { filename: "app-mode.js" });
   return {
     window,
@@ -849,6 +851,7 @@ function billingRealm({ routes, plugin = {} }) {
   const context = { URL, URLSearchParams, Capacitor: { Plugins: { StrataNative: plugin } } };
   context.globalThis = context;
   vm.createContext(context);
+  loadHtml(context);
   vm.runInContext(SOURCE, context, { filename: "app-mode.js" });
   const requests = [],
     events = [],

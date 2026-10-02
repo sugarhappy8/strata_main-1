@@ -16,11 +16,7 @@
     previousDownload = null,
     savedPreferenceTags = [],
     activationIntent = null;
-  const escape = (value) =>
-    String(value ?? "").replace(
-      /[&<>"']/g,
-      (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
-    );
+  const escape = StrataHtml.escape;
   const signal = (name) => globalThis.StrataSignals?.record?.(name);
   function status(message, { tone = "", focus = false } = {}) {
     const node = $("setupStatus");
@@ -146,17 +142,23 @@
       $("goal").value = String(saved.goal);
     if ([...$("level").options].some((option) => option.value === String(saved.level)))
       $("level").value = String(saved.level);
-    $("equipmentChoices").innerHTML = [...new Set(exercises.map((e) => e.equipment))]
-      .sort()
-      .map(
-        (value) =>
-          `<label><input type="checkbox" name="equipment" value="${escape(value)}" ${saved.equipment.includes(value) ? "checked" : ""} /> ${escape(value)}</label>`,
-      )
-      .join("");
-    $("dayChoices").innerHTML = core.DAYS.map(
-      (day) =>
-        `<label><input type="checkbox" name="days" value="${day}" ${saved.availability.includes(day) ? "checked" : ""} /> ${day.slice(0, 3)}</label>`,
-    ).join("");
+    StrataHtml.setHtml(
+      $("equipmentChoices"),
+      [...new Set(exercises.map((e) => e.equipment))]
+        .sort()
+        .map(
+          (value) =>
+            `<label><input type="checkbox" name="equipment" value="${escape(value)}" ${saved.equipment.includes(value) ? "checked" : ""} /> ${escape(value)}</label>`,
+        )
+        .join(""),
+    );
+    StrataHtml.setHtml(
+      $("dayChoices"),
+      core.DAYS.map(
+        (day) =>
+          `<label><input type="checkbox" name="days" value="${day}" ${saved.availability.includes(day) ? "checked" : ""} /> ${day.slice(0, 3)}</label>`,
+      ).join(""),
+    );
     document.querySelectorAll('input[name="limitations"]').forEach((input) => {
       input.checked = saved.limitations.includes(input.value);
     });
@@ -262,13 +264,18 @@
   function renderPreview() {
     $("previewTitle").textContent = "Review your week.";
     const snapshot = core.trainingSnapshot(profile(), preview);
-    $("previewSummary").innerHTML =
-      `<div><strong>${snapshot.trainingDays}</strong><span>training day${snapshot.trainingDays === 1 ? "" : "s"}</span></div><div><strong>${snapshot.movementCount}</strong><span>movements</span></div><div><strong>${snapshot.workingSets}</strong><span>working sets</span></div>`;
+    StrataHtml.setHtml(
+      $("previewSummary"),
+      `<div><strong>${snapshot.trainingDays}</strong><span>training day${snapshot.trainingDays === 1 ? "" : "s"}</span></div><div><strong>${snapshot.movementCount}</strong><span>movements</span></div><div><strong>${snapshot.workingSets}</strong><span>working sets</span></div>`,
+    );
     $("previewSummary").hidden = false;
-    $("weekPreview").innerHTML = core.DAYS.map((day) => {
-      const session = preview.sessions.find((item) => item.day === day);
-      return `<section class="preview-day"><h3>${day} ${session ? `<small> / ${escape(session.focusLabel)}</small>` : ""}</h3>${session ? `<small>${escape(session.summary)}</small><details><summary>Review ${session.items.length} movements</summary><ul>${session.items.map((item) => `<li>${escape(item.exercise.name)} · ${item.sets} × ${escape(item.reps)}<br /><small>${escape(item.roleLabel)} · ${escape(item.exercise.equipment)}</small></li>`).join("")}</ul></details>` : "<small>Recovery / no planned session</small>"}</section>`;
-    }).join("");
+    StrataHtml.setHtml(
+      $("weekPreview"),
+      core.DAYS.map((day) => {
+        const session = preview.sessions.find((item) => item.day === day);
+        return `<section class="preview-day"><h3>${day} ${session ? StrataHtml.html`<small> / ${session.focusLabel}</small>` : ""}</h3>${session ? `<small>${escape(session.summary)}</small><details><summary>Review ${session.items.length} movements</summary><ul>${session.items.map((item) => `<li>${escape(item.exercise.name)} · ${item.sets} × ${escape(item.reps)}<br /><small>${escape(item.roleLabel)} · ${escape(item.exercise.equipment)}</small></li>`).join("")}</ul></details>` : "<small>Recovery / no planned session</small>"}</section>`;
+      }).join(""),
+    );
     $("replaceNotice").textContent = hasItems(original)
       ? "You already have a saved week. Saving this preview replaces it; download a copy of your current week first."
       : "Your first week is ready. Save it, then adjust any movement, sets, or reps in the planner.";

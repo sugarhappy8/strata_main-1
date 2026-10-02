@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
+const { loadHtml } = require("./support/browser-html");
 
 const html = fs.readFileSync(require.resolve("../public/pages/account.html"), "utf8");
 const script = fs.readFileSync(require.resolve("../public/scripts/account.js"), "utf8");
@@ -225,6 +226,7 @@ function createPage({ search = "", route, app = null }) {
   }
   context.globalThis = context;
   vm.createContext(context);
+  loadHtml(context);
   for (const moduleScript of moduleScripts)
     vm.runInContext(moduleScript.source, context, { filename: `${moduleScript.name}.js` });
   vm.runInContext(script, context, { filename: "account.js" });

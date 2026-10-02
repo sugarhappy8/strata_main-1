@@ -6,6 +6,7 @@ const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
 const vm = require("node:vm");
 const { EVENTS: SERVER_EVENTS } = require("../src/product-signals");
+const { loadHtml } = require("./support/browser-html");
 
 const ROOT = join(__dirname, "..");
 const SCRIPT = readFileSync(join(ROOT, "public/scripts/product-signals.js"), "utf8");
@@ -156,6 +157,7 @@ function harness({
     };
   context.globalThis = context;
   vm.createContext(context);
+  loadHtml(context);
   vm.runInContext(SCRIPT, context, { filename: "product-signals.js" });
   return {
     api: context.StrataSignals,

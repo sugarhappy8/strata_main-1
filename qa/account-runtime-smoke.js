@@ -149,6 +149,7 @@ const context = {
 };
 context.globalThis = context;
 vm.createContext(context);
+vm.runInContext(readPublic("scripts", "html.js"), context, { filename: "html.js" }); // Every page loads it first.
 for (let index = 0; index < homeModuleSources.length; index += 1)
   vm.runInContext(homeModuleSources[index], context, { filename: homeModuleNames[index] });
 vm.runInContext(appSource, context, { filename: "app.js" });

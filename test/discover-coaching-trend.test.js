@@ -3,11 +3,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createTrend } = require("../public/scripts/discover-coaching-trend");
+const { fakeElement } = require("./support/browser-html");
 
 function elements() {
   const nodes = new Map();
   return (id) => {
-    if (!nodes.has(id)) nodes.set(id, { id, textContent: "", innerHTML: "", hidden: false });
+    if (!nodes.has(id)) nodes.set(id, fakeElement({ id, hidden: false }));
     return nodes.get(id);
   };
 }

@@ -1,9 +1,11 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataPlannerConflicts = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   const DRAFT_PREFIX = "strata_plan_draft_v1:";
@@ -122,16 +124,19 @@
         panel.hidden = true;
         return;
       }
-      el("latestPlanSummary").innerHTML = planConflictSummary(state.conflictLatest);
-      el("localPlanSummary").innerHTML = planConflictSummary(local);
+      StrataHtml.setHtml(el("latestPlanSummary"), planConflictSummary(state.conflictLatest));
+      StrataHtml.setHtml(el("localPlanSummary"), planConflictSummary(local));
       el("reviewLocalPlan").hidden = state.conflictReview;
       el("draftRecoveryLabel").hidden = state.recoveredDrafts.length < 2 || state.conflictReview;
-      el("draftRecoverySelect").innerHTML = state.recoveredDrafts
-        .map(
-          (entry, index) =>
-            `<option value="${escapeHtml(entry.key)}">Draft ${index + 1} · ${escapeHtml(new Date(entry.data.updatedAt).toLocaleString())} · ${planMovementCount(entry.data.plan)} movements</option>`,
-        )
-        .join("");
+      StrataHtml.setHtml(
+        el("draftRecoverySelect"),
+        state.recoveredDrafts
+          .map(
+            (entry, index) =>
+              `<option value="${escapeHtml(entry.key)}">Draft ${index + 1} · ${escapeHtml(new Date(entry.data.updatedAt).toLocaleString())} · ${planMovementCount(entry.data.plan)} movements</option>`,
+          )
+          .join(""),
+      );
       el("draftRecoverySelect").value = state.recoverySource?.key || "";
       panel.hidden = false;
     }

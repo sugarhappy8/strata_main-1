@@ -1,9 +1,11 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDiscoverSession = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   function createSession({
@@ -52,16 +54,19 @@
       if (!available()) return;
       const select = element("sessionDay"),
         selected = preferredDay(state.sessionDayInitialized ? select.value : "");
-      select.innerHTML = core.WEEKDAYS.filter(
-        (day) => !(state.weeklyPlan?.restDays || [state.weeklyPlan?.restDay]).includes(day),
-      )
-        .map((day) => {
-          const count = Array.isArray(state.weeklyPlan?.days?.[day])
-            ? state.weeklyPlan.days[day].length
-            : 0;
-          return `<option value="${day}" ${day === selected ? "selected" : ""}>${day}${count ? ` · ${count} scheduled` : ""}</option>`;
-        })
-        .join("");
+      StrataHtml.setHtml(
+        select,
+        core.WEEKDAYS.filter(
+          (day) => !(state.weeklyPlan?.restDays || [state.weeklyPlan?.restDay]).includes(day),
+        )
+          .map((day) => {
+            const count = Array.isArray(state.weeklyPlan?.days?.[day])
+              ? state.weeklyPlan.days[day].length
+              : 0;
+            return `<option value="${day}" ${day === selected ? "selected" : ""}>${day}${count ? ` · ${count} scheduled` : ""}</option>`;
+          })
+          .join(""),
+      );
       select.value = selected;
       state.sessionDayInitialized = true;
     }
@@ -73,18 +78,24 @@
         minutes = Object.hasOwn(core.SESSION_LENGTHS, element("sessionLength").value)
           ? Number(element("sessionLength").value)
           : 35;
-      element("sessionGroup").innerHTML = Object.entries(core.SESSION_FOCUSES)
-        .map(
-          ([value, config]) =>
-            `<option value="${value}" ${value === focus ? "selected" : ""}>${escapeHtml(config.label)}</option>`,
-        )
-        .join("");
-      element("sessionLength").innerHTML = Object.values(core.SESSION_LENGTHS)
-        .map(
-          (config) =>
-            `<option value="${config.minutes}" ${config.minutes === minutes ? "selected" : ""}>${escapeHtml(config.label)} · ${config.minutes} min</option>`,
-        )
-        .join("");
+      StrataHtml.setHtml(
+        element("sessionGroup"),
+        Object.entries(core.SESSION_FOCUSES)
+          .map(
+            ([value, config]) =>
+              `<option value="${value}" ${value === focus ? "selected" : ""}>${escapeHtml(config.label)}</option>`,
+          )
+          .join(""),
+      );
+      StrataHtml.setHtml(
+        element("sessionLength"),
+        Object.values(core.SESSION_LENGTHS)
+          .map(
+            (config) =>
+              `<option value="${config.minutes}" ${config.minutes === minutes ? "selected" : ""}>${escapeHtml(config.label)} · ${config.minutes} min</option>`,
+          )
+          .join(""),
+      );
       element("sessionGroup").value = focus;
       element("sessionLength").value = String(minutes);
       populateDay();
@@ -108,23 +119,24 @@
           ),
         ),
         group = groups.includes(groupSelect.value) ? groupSelect.value : "all";
-      groupSelect.innerHTML =
+      StrataHtml.setHtml(
+        groupSelect,
         '<option value="all">All muscles in this focus</option>' +
-        groups
-          .map((value) => `<option value="${value}">${escapeHtml(labels[value])}</option>`)
-          .join("");
+          groups
+            .map((value) => `<option value="${value}">${escapeHtml(labels[value])}</option>`)
+            .join(""),
+      );
       groupSelect.value = group;
       const targets =
           group === "all" ? [] : core.sessionMuscleTargets(state.exercises, focus, group),
         target = targets.includes(targetSelect.value) ? targetSelect.value : "all";
-      targetSelect.innerHTML =
+      StrataHtml.setHtml(
+        targetSelect,
         `<option value="all">${group === "all" ? "Choose a muscle group first" : "All muscles in this group"}</option>` +
-        targets
-          .map(
-            (value) =>
-              `<option value="${escapeHtml(value)}">${escapeHtml(titleCase(value))}</option>`,
-          )
-          .join("");
+          targets
+            .map((value) => StrataHtml.html`<option value="${value}">${titleCase(value)}</option>`)
+            .join(""),
+      );
       targetSelect.value = target;
       targetSelect.disabled = state.sessionSaving || group === "all";
     }
@@ -180,9 +192,12 @@
         button.title = preview.changed
           ? `Add ${preview.added} new movement${preview.added === 1 ? "" : "s"}${preview.skipped ? ` and skip ${preview.skipped} already on this day` : ""}`
           : "Every movement in this session is already on the selected day.";
-        button.innerHTML = preview.changed
-          ? `Add ${preview.added} movement${preview.added === 1 ? "" : "s"} to ${escapeHtml(dayLabel)} <span aria-hidden="true">→</span>`
-          : `Already in ${escapeHtml(dayLabel)} <span aria-hidden="true">✓</span>`;
+        StrataHtml.setHtml(
+          button,
+          preview.changed
+            ? `Add ${preview.added} movement${preview.added === 1 ? "" : "s"} to ${escapeHtml(dayLabel)} <span aria-hidden="true">→</span>`
+            : StrataHtml.html`Already in ${dayLabel} <span aria-hidden="true">✓</span>`,
+        );
         return null;
       } catch (error) {
         button.disabled = true;
@@ -194,8 +209,10 @@
     function render(session, { announce = false } = {}) {
       if (!available()) return;
       state.session = session;
-      element("sessionResults").innerHTML =
-        `<div class="session-result-summary"><div><p>${escapeHtml(session.selectionLabel || "Personalized")} · ${escapeHtml(session.timeLabel)} session</p><h3 id="sessionResultsTitle">${escapeHtml(session.focusLabel)} · ${session.minutes} min</h3></div><strong>${escapeHtml(session.summary)}</strong></div>${session.selectionNote ? `<p class="session-selection-note">${escapeHtml(session.selectionNote)}</p>` : ""}<ol class="session-result-list">${session.items.map(cardMarkup).join("")}</ol><p class="session-time-note">Time is an estimate; actual duration changes with setup, rest, and training pace.</p>`;
+      StrataHtml.setHtml(
+        element("sessionResults"),
+        `<div class="session-result-summary"><div><p>${escapeHtml(session.selectionLabel || "Personalized")} · ${escapeHtml(session.timeLabel)} session</p><h3 id="sessionResultsTitle">${escapeHtml(session.focusLabel)} · ${session.minutes} min</h3></div><strong>${escapeHtml(session.summary)}</strong></div>${session.selectionNote ? StrataHtml.html`<p class="session-selection-note">${session.selectionNote}</p>` : ""}<ol class="session-result-list">${session.items.map(cardMarkup).join("")}</ol><p class="session-time-note">Time is an estimate; actual duration changes with setup, rest, and training pace.</p>`,
+      );
       element("sessionStatus").textContent =
         `${session.selectionLabel || "Personalized"} · ${session.focusLabel} session ready · ${session.summary}. Review every movement before adding it.`;
       element("sessionOpenPlan") && (element("sessionOpenPlan").hidden = true);
@@ -214,8 +231,10 @@
     function showBuildError(error) {
       if (!available()) return;
       state.session = null;
-      element("sessionResults").innerHTML =
-        `<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Session needs an adjustment.</h3><p>${escapeHtml(error.message)}</p></div></div>`;
+      StrataHtml.setHtml(
+        element("sessionResults"),
+        StrataHtml.html`<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Session needs an adjustment.</h3><p>${error.message}</p></div></div>`,
+      );
       element("sessionStatus").textContent = error.message;
       element("sessionAddAll").hidden = true;
       element("sessionAddAll").disabled = true;
@@ -265,7 +284,8 @@
         if (element(id)) element(id).disabled = busy;
       if (element("sessionAddAll")) {
         element("sessionAddAll").disabled = busy;
-        if (busy) element("sessionAddAll").innerHTML = 'Saving… <span aria-hidden="true">→</span>';
+        if (busy)
+          StrataHtml.setHtml(element("sessionAddAll"), 'Saving… <span aria-hidden="true">→</span>');
       }
       if (!busy) {
         populateMuscles();
@@ -276,8 +296,10 @@
       if (!available()) return;
       state.session = null;
       element("sessionResults").setAttribute("aria-busy", "false");
-      element("sessionResults").innerHTML =
-        '<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Your session will appear here.</h3><p>Choose Random, Not in my week, Needs focus, or My preferences. Every method respects your equipment and movement limits.</p></div></div>';
+      StrataHtml.setHtml(
+        element("sessionResults"),
+        '<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Your session will appear here.</h3><p>Choose Random, Not in my week, Needs focus, or My preferences. Every method respects your equipment and movement limits.</p></div></div>',
+      );
       element("sessionStatus").textContent = message;
       element("sessionAddAll").hidden = true;
       element("sessionAddAll").disabled = true;

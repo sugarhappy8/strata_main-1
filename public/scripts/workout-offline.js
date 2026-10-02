@@ -7,12 +7,7 @@
     "This browser could not keep the latest device changes. Keep this page open and download a draft before leaving.";
   // saveError stays set until a device write succeeds, so no later render or message can report a failed save as saved.
   const state = { context: null, record: null, catalog: new Map(), locked: false, saveError: "" };
-  const esc = (value) =>
-    String(value ?? "").replace(
-      /[&<>"']/g,
-      (character) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
-    );
+  const esc = StrataHtml.escape;
   // Inside the iOS app the screen stays awake while an unfinished workout is open here; browsers have no StrataAppMode.
   const appBridge = globalThis.StrataAppMode?.createWorkoutBridge?.() || null;
   let leaving = false;
@@ -107,23 +102,26 @@
     $("offlineSessionTitle").textContent = workout.title;
     $("offlineSessionMeta").textContent =
       `${W.displayDate(workout.date)} · ${counts.completed}/${counts.total} sets · authorized on this device`;
-    $("offlineEntries").innerHTML = workout.entries
-      .map((entry) => {
-        const movement = exercise(entry.exerciseId),
-          timed = entry.measurement === "timed",
-          weighted = entry.loadType !== "bodyweight",
-          effort = ["rir", "rpe"].includes(entry.effortType);
-        // Completed sets and finished workouts are read-only; uncheck a set to reopen it for editing.
-        return `<article class="offline-entry" data-entry="${esc(entry.id)}"><h3>${esc(movement.name)}</h3><p>${esc(entry.prescribedReps)} planned · ${timed ? "time" : "reps"}${weighted ? ` · ${esc(entry.loadType)} load in ${esc(entry.unit)}` : " · bodyweight"}</p><div class="offline-sets">${entry.sets
-          .map((set, index) => {
-            const locked = set.completed || !active;
-            return `<div class="offline-set${set.completed ? " is-complete" : ""}" data-set="${index}"><span>Set ${index + 1}</span>${weighted ? input(entry, set, "weight", entry.loadType === "assisted" ? `Assist (${entry.unit})` : `Load (${entry.unit})`, locked) : ""}${timed ? input(entry, set, "seconds", "Seconds", locked) : input(entry, set, "reps", "Reps", locked)}${effort ? input(entry, set, "effort", entry.effortType.toUpperCase(), locked) : ""}<label class="offline-complete"><input type="checkbox" data-complete ${set.completed ? "checked" : ""}${active ? "" : " disabled"} /> Completed</label></div>`;
-          })
-          .join(
-            "",
-          )}</div><label class="offline-note">Private note<textarea maxlength="500" data-note${active ? "" : " disabled"}>${esc(entry.note || "")}</textarea></label></article>`;
-      })
-      .join("");
+    StrataHtml.setHtml(
+      $("offlineEntries"),
+      workout.entries
+        .map((entry) => {
+          const movement = exercise(entry.exerciseId),
+            timed = entry.measurement === "timed",
+            weighted = entry.loadType !== "bodyweight",
+            effort = ["rir", "rpe"].includes(entry.effortType);
+          // Completed sets and finished workouts are read-only; uncheck a set to reopen it for editing.
+          return `<article class="offline-entry" data-entry="${esc(entry.id)}"><h3>${esc(movement.name)}</h3><p>${esc(entry.prescribedReps)} planned · ${timed ? "time" : "reps"}${weighted ? StrataHtml.html` · ${entry.loadType} load in ${entry.unit}` : " · bodyweight"}</p><div class="offline-sets">${entry.sets
+            .map((set, index) => {
+              const locked = set.completed || !active;
+              return `<div class="offline-set${set.completed ? " is-complete" : ""}" data-set="${index}"><span>Set ${index + 1}</span>${weighted ? input(entry, set, "weight", entry.loadType === "assisted" ? `Assist (${entry.unit})` : `Load (${entry.unit})`, locked) : ""}${timed ? input(entry, set, "seconds", "Seconds", locked) : input(entry, set, "reps", "Reps", locked)}${effort ? input(entry, set, "effort", entry.effortType.toUpperCase(), locked) : ""}<label class="offline-complete"><input type="checkbox" data-complete ${set.completed ? "checked" : ""}${active ? "" : " disabled"} /> Completed</label></div>`;
+            })
+            .join(
+              "",
+            )}</div><label class="offline-note">Private note<textarea maxlength="500" data-note${active ? "" : " disabled"}>${esc(entry.note || "")}</textarea></label></article>`;
+        })
+        .join(""),
+    );
     $("finishOffline").disabled = !active;
     setStates();
     syncApp();

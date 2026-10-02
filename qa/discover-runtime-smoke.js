@@ -332,6 +332,7 @@ const context = {
 };
 context.globalThis = context;
 vm.createContext(context);
+vm.runInContext(readPublic("scripts", "html.js"), context, { filename: "html.js" }); // Every page loads it first.
 vm.runInContext(readPublic("scripts", "session-selection-core.js"), context, {
   filename: "session-selection-core.js",
 });

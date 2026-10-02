@@ -217,6 +217,7 @@ context.globalThis = context;
 context.window.document = document;
 context.window.location = location;
 vm.createContext(context);
+vm.runInContext(read("scripts", "html.js"), context, { filename: "html.js" }); // Every page loads it first.
 for (const [name, source] of sources) vm.runInContext(source, context, { filename: name });
 
 (async () => {

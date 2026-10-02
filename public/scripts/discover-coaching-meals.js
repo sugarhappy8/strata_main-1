@@ -1,17 +1,14 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDiscoverCoachingMeals = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
-  const escape = (value) =>
-    String(value ?? "").replace(
-      /[&<>'"]/g,
-      (character) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character],
-    );
+  const escape = StrataHtml.escape;
   const title = (value) =>
     String(value || "")
       .replaceAll("_", " ")
@@ -185,13 +182,13 @@
           )
           .join(""),
         allergens = [...new Set(option.meals.flatMap((meal) => meal.allergens))];
-      return `<li class="coaching-meal-card"><header><div><span class="kicker">Option ${index + 1}</span><h5>${option.meals.length} meal${option.meals.length === 1 ? "" : "s"} for what remains</h5></div></header><p>${escape(fitLabel)}. ${escape(budget)}.${favoriteCount ? ` ${favoriteCount} saved favorite match${favoriteCount === 1 ? "" : "es"}.` : ""}</p><p class="coaching-meal-fit"><strong>Calories:</strong> ${escape(fit.calories)}. ${fit.macros ? escape(fit.macros) : "Macro differences are unavailable; this is a calorie-only comparison."}</p><ol class="coaching-meal-components">${meals}</ol><dl><div><dt>Est. calories</dt><dd>${ui.formatCalories(option.totals.calories)}</dd></div><div><dt>Est. protein</dt><dd>${ui.formatGrams(option.totals.proteinG)}</dd></div><div><dt>Est. carbs</dt><dd>${ui.formatGrams(option.totals.carbsG)}</dd></div><div><dt>Est. fat</dt><dd>${ui.formatGrams(option.totals.fatG)}</dd></div><div><dt>Est. cost</dt><dd>${ui.formatUsd(option.totals.estimatedCostCents)}</dd></div></dl><p class="coaching-meal-allergens">${allergens.length ? `Catalog allergen tags: ${escape(allergens.map(title).join(", "))}.` : `No major allergens are tagged in these listed ingredients.`} Verify labels and cross-contact.</p></li>`;
+      return `<li class="coaching-meal-card"><header><div><span class="kicker">Option ${index + 1}</span><h5>${option.meals.length} meal${option.meals.length === 1 ? "" : "s"} for what remains</h5></div></header><p>${escape(fitLabel)}. ${escape(budget)}.${favoriteCount ? ` ${favoriteCount} saved favorite match${favoriteCount === 1 ? "" : "es"}.` : ""}</p><p class="coaching-meal-fit"><strong>Calories:</strong> ${escape(fit.calories)}. ${fit.macros ? escape(fit.macros) : "Macro differences are unavailable; this is a calorie-only comparison."}</p><ol class="coaching-meal-components">${meals}</ol><dl><div><dt>Est. calories</dt><dd>${ui.formatCalories(option.totals.calories)}</dd></div><div><dt>Est. protein</dt><dd>${ui.formatGrams(option.totals.proteinG)}</dd></div><div><dt>Est. carbs</dt><dd>${ui.formatGrams(option.totals.carbsG)}</dd></div><div><dt>Est. fat</dt><dd>${ui.formatGrams(option.totals.fatG)}</dd></div><div><dt>Est. cost</dt><dd>${ui.formatUsd(option.totals.estimatedCostCents)}</dd></div></dl><p class="coaching-meal-allergens">${allergens.length ? StrataHtml.html`Catalog allergen tags: ${allergens.map(title).join(", ")}.` : `No major allergens are tagged in these listed ingredients.`} Verify labels and cross-contact.</p></li>`;
     }
     function render(result) {
       renderRemaining(result.remaining);
       const count = result.options?.length || 0;
       for (const surface of surfaces()) {
-        surface.options.innerHTML = (result.options || []).map(mealCard).join("");
+        StrataHtml.setHtml(surface.options, (result.options || []).map(mealCard).join(""));
         surface.options.setAttribute("aria-busy", "false");
         surface.status.textContent =
           result.status === "ready"

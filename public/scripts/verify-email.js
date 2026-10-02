@@ -98,15 +98,19 @@ function setVerificationPurpose(value) {
   el("verificationBack").textContent =
     verificationPurpose === "login" ? "← Back to sign in" : "← Back to signup";
   el("verificationRestart").href = accountLocation(next, verificationPurpose);
-  el("verificationRestart").innerHTML =
+  StrataHtml.setHtml(
+    el("verificationRestart"),
     verificationPurpose === "login"
       ? 'Start sign-in again <span aria-hidden="true">→</span>'
-      : 'Restart signup <span aria-hidden="true">→</span>';
+      : 'Restart signup <span aria-hidden="true">→</span>',
+  );
   el("verificationSignIn").href = accountLocation(next, "login");
-  el("verificationSignIn").innerHTML =
+  StrataHtml.setHtml(
+    el("verificationSignIn"),
     verificationPurpose === "login"
       ? 'Use another account <span aria-hidden="true">→</span>'
-      : 'Sign in instead <span aria-hidden="true">→</span>';
+      : 'Sign in instead <span aria-hidden="true">→</span>',
+  );
 }
 
 function rememberMaskedEmail(value) {

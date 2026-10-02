@@ -4,10 +4,12 @@
     typeof module === "object" && module.exports
       ? require("./entitlements")
       : root.StrataEntitlements;
-  const api = factory(entitlements);
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(entitlements, StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataHomeLogic = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements, StrataHtml) {
   "use strict";
 
   const GROUPS = {
@@ -76,12 +78,7 @@
     barbell: { equipment: "Barbell / Smith", level: "Intermediate", minutes: 50, goal: "strength" },
   };
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(
-      /[&<>'"]/g,
-      (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char],
-    );
-  }
+  const escapeHtml = StrataHtml.escape;
 
   function normalizeExercise(exercise) {
     if (!exercise || typeof exercise !== "object" || !GROUPS[exercise.group])

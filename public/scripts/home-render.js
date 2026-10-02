@@ -1,17 +1,20 @@
 /* global module, require */
 (function (root, factory) {
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
   const api = factory(
     typeof module === "object" && module.exports ? require("./home-logic") : root.StrataHomeLogic,
+    StrataHtml,
   );
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataHomeRender = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (logic) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (logic, StrataHtml) {
   "use strict";
 
   function previewResultMarkup(item) {
     const exercise = item.exercise,
       escape = logic.escapeHtml;
-    return `<li class="preview-result"><span class="preview-rank" aria-label="Rank ${item.rank}">${String(item.rank).padStart(2, "0")}</span><div class="preview-result-copy"><div class="preview-result-title"><h3>${escape(exercise.name)}</h3><span>${escape(exercise.sub)} · ${escape(exercise.equipment)}</span></div><p>${escape(exercise.why)}</p><ul class="preview-reasons" aria-label="Why this moved up">${item.reasons.map((reason) => `<li>${escape(reason)}</li>`).join("")}</ul><p class="preview-tradeoff"><strong>Trade-off:</strong> ${escape(item.tradeoffText)}.</p></div><div class="preview-scores" aria-label="${item.match} percent personal match and ${item.officialScore} official FitScore"><span><b>${item.match}%</b><small>Personal match</small></span><span><b>${item.officialScore}</b><small>FitScore</small></span></div></li>`;
+    return `<li class="preview-result"><span class="preview-rank" aria-label="Rank ${item.rank}">${String(item.rank).padStart(2, "0")}</span><div class="preview-result-copy"><div class="preview-result-title"><h3>${escape(exercise.name)}</h3><span>${escape(exercise.sub)} · ${escape(exercise.equipment)}</span></div><p>${escape(exercise.why)}</p><ul class="preview-reasons" aria-label="Why this moved up">${item.reasons.map((reason) => StrataHtml.html`<li>${reason}</li>`).join("")}</ul><p class="preview-tradeoff"><strong>Trade-off:</strong> ${escape(item.tradeoffText)}.</p></div><div class="preview-scores" aria-label="${item.match} percent personal match and ${item.officialScore} official FitScore"><span><b>${item.match}%</b><small>Personal match</small></span><span><b>${item.officialScore}</b><small>FitScore</small></span></div></li>`;
   }
 
   function createRenderer({ document, window, state, readPreviewProfile, guestPlanCount }) {
@@ -30,12 +33,15 @@
       activeDetailId = null;
 
     function renderTabs() {
-      groupTabs.innerHTML = groupOrder
-        .map((key) => {
-          const selected = state.group === key;
-          return `<button class="group-tab" id="group-tab-${key}" type="button" role="tab" aria-selected="${selected}" aria-controls="rankingsPanel" tabindex="${selected ? "0" : "-1"}" data-group="${key}">${groups[key].name}</button>`;
-        })
-        .join("");
+      StrataHtml.setHtml(
+        groupTabs,
+        groupOrder
+          .map((key) => {
+            const selected = state.group === key;
+            return `<button class="group-tab" id="group-tab-${key}" type="button" role="tab" aria-selected="${selected}" aria-controls="rankingsPanel" tabindex="${selected ? "0" : "-1"}" data-group="${key}">${groups[key].name}</button>`;
+          })
+          .join(""),
+      );
       el("rankingsPanel").setAttribute("aria-labelledby", `group-tab-${state.group}`);
     }
     function renderPanel() {
@@ -45,21 +51,30 @@
             ? state.exercises.filter((exercise) => exercise.group === state.group).length
             : "—",
         index = String(groupOrder.indexOf(state.group) + 1).padStart(2, "0");
-      musclePanel.innerHTML = `<div class="panel-index"><span>Region ${index}</span><span>Target layers</span></div><div class="panel-number">${index}</div><h3>${group.name}</h3><p>${group.description}</p><div class="target-matrix">${group.subs.map((sub, itemIndex) => `<span><i>${String(itemIndex + 1).padStart(2, "0")}</i>${sub}</span>`).join("")}</div><div class="panel-stat"><span>Targets <b>${group.subs.length}</b></span><span>Movements <b>${count}</b></span></div>`;
+      StrataHtml.setHtml(
+        musclePanel,
+        `<div class="panel-index"><span>Region ${index}</span><span>Target layers</span></div><div class="panel-number">${index}</div><h3>${group.name}</h3><p>${group.description}</p><div class="target-matrix">${group.subs.map((sub, itemIndex) => `<span><i>${String(itemIndex + 1).padStart(2, "0")}</i>${sub}</span>`).join("")}</div><div class="panel-stat"><span>Targets <b>${group.subs.length}</b></span><span>Movements <b>${count}</b></span></div>`,
+      );
     }
     function renderSubfilters() {
-      submuscleFilters.innerHTML = ["all", ...groups[state.group].subs]
-        .map((sub) => {
-          const active = state.sub === sub;
-          return `<button type="button" class="filter-chip ${active ? "active" : ""}" aria-pressed="${active}" data-sub="${sub}">${sub === "all" ? "All targets" : sub}</button>`;
-        })
-        .join("");
+      StrataHtml.setHtml(
+        submuscleFilters,
+        ["all", ...groups[state.group].subs]
+          .map((sub) => {
+            const active = state.sub === sub;
+            return `<button type="button" class="filter-chip ${active ? "active" : ""}" aria-pressed="${active}" data-sub="${sub}">${sub === "all" ? "All targets" : sub}</button>`;
+          })
+          .join(""),
+      );
     }
     function updateEquipmentOptions() {
       const select = el("equipmentFilter"),
         values = logic.equipmentOptions(state.exercises, state.group);
       if (state.equipment !== "all" && !values.includes(state.equipment)) state.equipment = "all";
-      select.innerHTML = `<option value="all">All equipment</option>${values.map((value) => `<option value="${logic.escapeHtml(value)}">${logic.escapeHtml(value)}</option>`).join("")}`;
+      StrataHtml.setHtml(
+        select,
+        `<option value="all">All equipment</option>${values.map((value) => StrataHtml.html`<option value="${value}">${value}</option>`).join("")}`,
+      );
       select.value = state.equipment;
     }
     function setEmptyStateCopy(title, message, buttonLabel, buttonHidden) {
@@ -80,7 +95,7 @@
         el("activeTarget").textContent =
           `${groups[state.group].name} · ${failed ? "Library unavailable" : "Loading library"}`;
         el("resetActiveFilters").hidden = true;
-        exerciseList.innerHTML = "";
+        exerciseList.textContent = "";
         el("emptyState").hidden = false;
         setEmptyStateCopy(
           failed ? "Exercise library unavailable." : "Loading exercise library…",
@@ -117,24 +132,30 @@
         el("exerciseListMore").hidden = visible.length === rows.length;
         el("showAllExercises").textContent = `Show all ${rows.length} exercises`;
       }
-      exerciseList.innerHTML = visible
-        .map((exercise, index) => {
-          const escape = logic.escapeHtml,
-            id = escape(exercise.id),
-            name = escape(exercise.name);
-          return `<div class="exercise-row" role="listitem"><div class="rank-number"><span aria-hidden="true">${String(index + 1).padStart(2, "0")}</span><span class="sr-only">Rank ${index + 1}</span></div><div class="exercise-title"><button type="button" data-detail="${id}"><h3>${name}</h3><p>${escape(exercise.pattern)} · ${escape(exercise.level)}</p><p class="mobile-exercise-meta">${escape(exercise.sub)} · ${escape(exercise.equipment)}</p><span class="details-cue">View details <span aria-hidden="true">↘</span></span></button></div><div><span class="target-pill">${escape(exercise.sub)}</span></div><div class="exercise-cell"><small>Equipment</small><strong>${escape(exercise.equipment)}</strong></div><div class="score-badge ${exercise.score >= 94 ? "top" : ""}" role="img" aria-label="FitScore ${exercise.score} out of 100" style="--score:${exercise.score}%"><strong>${exercise.score}</strong><span aria-hidden="true">/100</span></div><div class="row-actions"><a class="action-icon youtube-action" href="${escape(exercise.youtube)}" target="_blank" rel="noreferrer" title="Watch tutorials" aria-label="Find ${name} tutorials on YouTube"><span aria-hidden="true">▶</span></a><button class="action-icon" data-add-planner="${id}" type="button" title="Add to planner" aria-label="Add ${name} to weekly planner"><span aria-hidden="true">+</span></button></div></div>`;
-        })
-        .join("");
+      StrataHtml.setHtml(
+        exerciseList,
+        visible
+          .map((exercise, index) => {
+            const escape = logic.escapeHtml,
+              id = escape(exercise.id),
+              name = escape(exercise.name);
+            return `<div class="exercise-row" role="listitem"><div class="rank-number"><span aria-hidden="true">${String(index + 1).padStart(2, "0")}</span><span class="sr-only">Rank ${index + 1}</span></div><div class="exercise-title"><button type="button" data-detail="${id}"><h3>${name}</h3><p>${escape(exercise.pattern)} · ${escape(exercise.level)}</p><p class="mobile-exercise-meta">${escape(exercise.sub)} · ${escape(exercise.equipment)}</p><span class="details-cue">View details <span aria-hidden="true">↘</span></span></button></div><div><span class="target-pill">${escape(exercise.sub)}</span></div><div class="exercise-cell"><small>Equipment</small><strong>${escape(exercise.equipment)}</strong></div><div class="score-badge ${exercise.score >= 94 ? "top" : ""}" role="img" aria-label="FitScore ${exercise.score} out of 100" style="--score:${exercise.score}%"><strong>${exercise.score}</strong><span aria-hidden="true">/100</span></div><div class="row-actions"><a class="action-icon youtube-action" href="${escape(exercise.youtube)}" target="_blank" rel="noreferrer" title="Watch tutorials" aria-label="Find ${name} tutorials on YouTube"><span aria-hidden="true">▶</span></a><button class="action-icon" data-add-planner="${id}" type="button" title="Add to planner" aria-label="Add ${name} to weekly planner"><span aria-hidden="true">+</span></button></div></div>`;
+          })
+          .join(""),
+      );
     }
 
     function previewPlaceholder(message) {
       el("quickPreviewSummary").textContent = "Ready when you are";
-      el("quickPreviewResults").innerHTML = ["Recommendation", "Recommendation", "Recommendation"]
-        .map(
-          (label, index) =>
-            `<li class="preview-placeholder"><span>${String(index + 1).padStart(2, "0")}</span><div><strong>${label}</strong><p>${logic.escapeHtml(message)}</p></div></li>`,
-        )
-        .join("");
+      StrataHtml.setHtml(
+        el("quickPreviewResults"),
+        ["Recommendation", "Recommendation", "Recommendation"]
+          .map(
+            (label, index) =>
+              `<li class="preview-placeholder"><span>${String(index + 1).padStart(2, "0")}</span><div><strong>${label}</strong><p>${logic.escapeHtml(message)}</p></div></li>`,
+          )
+          .join(""),
+      );
       if (window.StrataHomeActivation?.hide) window.StrataHomeActivation.hide();
       else el("quickWeekPreview").hidden = true;
       el("quickPreviewActions").hidden = true;
@@ -147,7 +168,10 @@
       if (state.catalogStatus !== "ready") {
         select.disabled = true;
         submit.disabled = true;
-        select.innerHTML = `<option>${state.catalogStatus === "error" ? "Library unavailable" : "Loading equipment…"}</option>`;
+        StrataHtml.setHtml(
+          select,
+          `<option>${state.catalogStatus === "error" ? "Library unavailable" : "Loading equipment…"}</option>`,
+        );
         return;
       }
       const sample = readPreviewProfile(),
@@ -169,12 +193,12 @@
             : options.includes("Bodyweight")
               ? "Bodyweight"
               : options[0];
-      select.innerHTML = options
-        .map(
-          (value) =>
-            `<option value="${logic.escapeHtml(value)}">${logic.escapeHtml(value)}</option>`,
-        )
-        .join("");
+      StrataHtml.setHtml(
+        select,
+        options
+          .map((value) => StrataHtml.html`<option value="${value}">${value}</option>`)
+          .join(""),
+      );
       select.value = preferred || "";
       select.disabled = options.length === 0;
       submit.disabled = options.length === 0;
@@ -209,11 +233,15 @@
         ? "/planner.html"
         : "/account.html?mode=signup&next=planner";
       if (state.user)
-        previewContinue.innerHTML =
-          "<strong>Compare with my account</strong><span>Choose which week to keep →</span>";
+        StrataHtml.setHtml(
+          previewContinue,
+          "<strong>Compare with my account</strong><span>Choose which week to keep →</span>",
+        );
       else
-        previewContinue.innerHTML =
-          "<strong>Keep this exact week</strong><span>Create an account, then choose what to save →</span>";
+        StrataHtml.setHtml(
+          previewContinue,
+          "<strong>Keep this exact week</strong><span>Create an account, then choose what to save →</span>",
+        );
       const planCount = state.user ? Number(state.user.planCount) || 0 : guestCount();
       el("planCount").textContent = planCount;
       el("planButton").href = "/planner.html";
@@ -314,15 +342,17 @@
       const alternatives = guidance.alternatives
         .map(
           ({ exercise: alternative, reason }) =>
-            `<li><button type="button" data-detail="${escape(alternative.id)}"><strong>${escape(alternative.name)}</strong><span>${escape(alternative.equipment)}</span></button><small>${escape(reason)}</small></li>`,
+            StrataHtml.html`<li><button type="button" data-detail="${alternative.id}"><strong>${alternative.name}</strong><span>${alternative.equipment}</span></button><small>${reason}</small></li>`,
         )
         .join("");
       // Side-by-side comparison lives in one place: the Strata+ Library.
       const compareAction = logic.hasPlus(state.user)
         ? `<a class="button" style="border-color:var(--ink)" href="/discover.html#battle">Compare in Strata+<span aria-hidden="true">↗</span></a>`
         : "";
-      el("detailContent").innerHTML =
-        `<div class="detail-hero"><button class="icon-button detail-close" data-close-dialog="detailDialog" type="button" aria-label="Close details">×</button><div class="detail-hero-copy"><p class="kicker">${groups[exercise.group].name} / ${escape(exercise.sub)}</p><h2 id="detailTitle">${escape(exercise.name)}</h2><p>${escape(exercise.why)}</p></div><div class="detail-score" role="img" aria-label="FitScore ${exercise.score} out of 100"><span>FitScore</span><strong>${exercise.score}</strong><span>out of 100</span></div></div><div class="detail-body"><div class="detail-meta"><div><span>Sets</span><strong>${escape(exercise.sets)}</strong></div><div><span>Reps</span><strong>${escape(exercise.reps)}</strong></div><div><span>Rest</span><strong>${escape(exercise.rest)}</strong></div><div><span>Level</span><strong>${escape(exercise.level)}</strong></div></div><div class="metric-grid">${metricMarkup(exercise)}</div><p class="detail-score-build"><strong>Score build</strong><span>Weighted baseline ${exercise.weightedBaseline}</span><span>Editorial adjustment ${logic.adjustmentLabel(exercise.editorialAdjustment)}</span></p><div class="detail-columns exercise-guidance"><div><h3>Set up</h3><p class="detail-rationale">${escape(guidance.setup)}</p><h3>Technique cues</h3><ul>${guidance.cues.map((cue) => `<li>${escape(cue)}</li>`).join("")}</ul></div><div><h3>Purpose &amp; working range</h3><p class="detail-rationale">${escape(guidance.purpose)}</p><p class="guidance-prescription"><strong>General catalog range</strong><span>${escape(guidance.prescription)}</span></p><p class="detail-note"><strong>Caution / Common mistake:</strong> ${escape(guidance.mistake)}</p></div></div><section class="guidance-alternatives" aria-labelledby="guidanceAlternativesTitle"><div><h3 id="guidanceAlternativesTitle">Same target, different equipment</h3><p>Equivalent purpose does not mean identical feel. Review the setup and choose the option that matches your available equipment.</p></div><ul>${alternatives}</ul></section><div class="detail-footer"><button class="button button-dark" data-add-planner="${escape(exercise.id)}" type="button">Add to weekly planner<span aria-hidden="true">+</span></button><a class="button detail-youtube" href="${escape(exercise.youtube)}" target="_blank" rel="noreferrer">YouTube tutorials <span aria-hidden="true">▶</span></a>${compareAction}</div></div>`;
+      StrataHtml.setHtml(
+        el("detailContent"),
+        `<div class="detail-hero"><button class="icon-button detail-close" data-close-dialog="detailDialog" type="button" aria-label="Close details">×</button><div class="detail-hero-copy"><p class="kicker">${groups[exercise.group].name} / ${escape(exercise.sub)}</p><h2 id="detailTitle">${escape(exercise.name)}</h2><p>${escape(exercise.why)}</p></div><div class="detail-score" role="img" aria-label="FitScore ${exercise.score} out of 100"><span>FitScore</span><strong>${exercise.score}</strong><span>out of 100</span></div></div><div class="detail-body"><div class="detail-meta"><div><span>Sets</span><strong>${escape(exercise.sets)}</strong></div><div><span>Reps</span><strong>${escape(exercise.reps)}</strong></div><div><span>Rest</span><strong>${escape(exercise.rest)}</strong></div><div><span>Level</span><strong>${escape(exercise.level)}</strong></div></div><div class="metric-grid">${metricMarkup(exercise)}</div><p class="detail-score-build"><strong>Score build</strong><span>Weighted baseline ${exercise.weightedBaseline}</span><span>Editorial adjustment ${logic.adjustmentLabel(exercise.editorialAdjustment)}</span></p><div class="detail-columns exercise-guidance"><div><h3>Set up</h3><p class="detail-rationale">${escape(guidance.setup)}</p><h3>Technique cues</h3><ul>${guidance.cues.map((cue) => StrataHtml.html`<li>${cue}</li>`).join("")}</ul></div><div><h3>Purpose &amp; working range</h3><p class="detail-rationale">${escape(guidance.purpose)}</p><p class="guidance-prescription"><strong>General catalog range</strong><span>${escape(guidance.prescription)}</span></p><p class="detail-note"><strong>Caution / Common mistake:</strong> ${escape(guidance.mistake)}</p></div></div><section class="guidance-alternatives" aria-labelledby="guidanceAlternativesTitle"><div><h3 id="guidanceAlternativesTitle">Same target, different equipment</h3><p>Equivalent purpose does not mean identical feel. Review the setup and choose the option that matches your available equipment.</p></div><ul>${alternatives}</ul></section><div class="detail-footer"><button class="button button-dark" data-add-planner="${escape(exercise.id)}" type="button">Add to weekly planner<span aria-hidden="true">+</span></button><a class="button detail-youtube" href="${escape(exercise.youtube)}" target="_blank" rel="noreferrer">YouTube tutorials <span aria-hidden="true">▶</span></a>${compareAction}</div></div>`,
+      );
       if (focus) openModal(detailDialog);
       else syncDialogState();
     }

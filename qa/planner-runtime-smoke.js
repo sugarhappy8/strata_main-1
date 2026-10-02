@@ -192,6 +192,7 @@ const context = {
 context.globalThis = context;
 context.StrataDiscovery = Discovery;
 vm.createContext(context);
+vm.runInContext(readPublic("scripts", "html.js"), context, { filename: "html.js" }); // Every page loads it first.
 for (const script of [
   "activation-core.js",
   "entitlements.js",

@@ -1,10 +1,12 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
   "use strict";
-  const recovery = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const recovery = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = recovery;
   else root.StrataWorkoutRecovery = recovery;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   // Train's recovery line from the member's own Polar data, and the optional lighter session. A lighter session
@@ -32,7 +34,7 @@
           summary.state !== "no-data";
       if (!active) {
         box.hidden = true;
-        box.innerHTML = "";
+        box.textContent = "";
         return;
       }
       const stress = core.stressView(summary.stress),
@@ -53,7 +55,10 @@
               .join(" · ");
       box.hidden = false;
       box.dataset.tone = core.recoveryTone(summary.recovery?.status);
-      box.innerHTML = `<div><strong>${esc(summary.recovery?.label ? `Polar recovery: ${summary.recovery.label}` : "Polar recovery")}</strong><span>${esc(facts)}</span>${note ? `<p>${esc(note)}</p>` : ""}</div><div class="device-recovery-actions">${offer ? '<button class="button secondary" type="button" id="startLighterWorkout">Start a lighter session</button>' : ""}<a class="text-link" href="/discover.html#recoveryWorkspace">Recovery details ↗</a></div>`;
+      StrataHtml.setHtml(
+        box,
+        `<div><strong>${esc(summary.recovery?.label ? `Polar recovery: ${summary.recovery.label}` : "Polar recovery")}</strong><span>${esc(facts)}</span>${note ? StrataHtml.html`<p>${note}</p>` : ""}</div><div class="device-recovery-actions">${offer ? '<button class="button secondary" type="button" id="startLighterWorkout">Start a lighter session</button>' : ""}<a class="text-link" href="/discover.html#recoveryWorkspace">Recovery details ↗</a></div>`,
+      );
     }
     /** The Start button runs this on every new workout; only the lighter-session button asks for the change. */
     function prepare(workout) {

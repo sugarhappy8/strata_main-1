@@ -28,6 +28,7 @@ const catalog = JSON.parse(
 );
 const Discovery = require(path.join(PROJECT_ROOT, "public", "scripts", "discovery-core"));
 const Preview = require(path.join(PROJECT_ROOT, "public", "scripts", "preview-core"));
+const { loadHtml } = require("./support/browser-html");
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 
 class ClassList {
@@ -192,6 +193,7 @@ function createRuntime({
   };
   context.globalThis = context;
   vm.createContext(context);
+  loadHtml(context);
   if (activation) {
     context.StrataDiscovery = Discovery;
     context.StrataPreview = Preview;

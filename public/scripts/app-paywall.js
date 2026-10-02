@@ -1,15 +1,17 @@
-/* global module */
+/* global module, require */
 /* Strata+ in the iOS app is sold through the App Store, never Paddle. On /pricing inside the app, app-mode.js loads
    this file and pricing.js stands down. The paywall shows what Strata+ includes (the page's own copy), the price and
    period StoreKit reports for this storefront, and the auto-renewal terms. A purchase carries the signed-in STRATA
    user id as its appAccountToken; the signed transaction goes to STRATA, and the app finishes it only after STRATA
    accepted it, so a rejected or unreachable confirmation is retried by StoreKit instead of being lost. */
 (function (root, factory) {
-  const api = factory(root);
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(root, StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   else if (root.StrataApp && root.document) api.mount();
   root.StrataAppPaywall = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (root, StrataHtml) {
   "use strict";
 
   const PRODUCT_ID = "online.stratafitness.app.plus.monthly";
@@ -20,12 +22,6 @@
     month: ["month", "months"],
     year: ["year", "years"],
   });
-  const escapeHtml = (value) =>
-    String(value ?? "").replace(
-      /[&<>'"]/g,
-      (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char],
-    );
-
   // "per month", "every 3 months": always from the product StoreKit returned, never assumed.
   function periodLabel(period) {
     const names = UNITS[period?.unit],
@@ -308,7 +304,7 @@
       apple = view.apple,
       signedIn = Boolean(view.user?.id);
     const price = product
-      ? `<p class="app-paywall-price"><strong>${escapeHtml(product.displayPrice)}</strong><span>${escapeHtml(periodLabel(product.period))}</span></p>`
+      ? StrataHtml.html`<p class="app-paywall-price"><strong>${product.displayPrice}</strong><span>${periodLabel(product.period)}</span></p>`
       : "";
     const open =
       view.reason === "ai"
@@ -346,7 +342,7 @@
       !owned && view.nativeAvailable
         ? `<button class="app-paywall-restore" type="button" data-paywall-action="restore"${view.busy ? " disabled" : ""}>Restore Purchases</button>`
         : "";
-    return `${view.note ? `<p class="app-paywall-note">${escapeHtml(view.note)}</p>` : ""}<p class="app-paywall-kicker">Strata+</p><h2 id="appPaywallTitle">${owned ? "You have Strata+" : "Unlock Strata+"}</h2>${owned ? "" : price}${detail ? `<p class="app-paywall-detail">${escapeHtml(detail)}</p>` : ""}<div class="app-paywall-actions">${actions}${restore}</div>`;
+    return `${view.note ? StrataHtml.html`<p class="app-paywall-note">${view.note}</p>` : ""}<p class="app-paywall-kicker">Strata+</p><h2 id="appPaywallTitle">${owned ? "You have Strata+" : "Unlock Strata+"}</h2>${owned ? "" : price}${detail ? StrataHtml.html`<p class="app-paywall-detail">${detail}</p>` : ""}<div class="app-paywall-actions">${actions}${restore}</div>`;
   }
   const benefitsHtml = (benefits) =>
     `<ul class="app-paywall-benefits">${benefits.map((item) => `<li>${item}</li>`).join("")}</ul>`;
@@ -365,7 +361,10 @@
     section.className = "app-paywall";
     section.setAttribute("aria-labelledby", "appPaywallTitle");
     // The price, Subscribe, and Restore come first; what Strata+ includes, the renewal terms, and the legal links follow.
-    section.innerHTML = `<div data-paywall-body></div><p class="app-paywall-status" role="status" aria-live="polite" data-paywall-status></p><div data-paywall-benefits>${benefitsHtml(benefits)}</div><p class="app-paywall-terms" data-paywall-terms></p><p class="app-paywall-links"><a href="/terms">Terms of Use</a><a href="/privacy">Privacy Policy</a></p>`;
+    StrataHtml.setHtml(
+      section,
+      `<div data-paywall-body></div><p class="app-paywall-status" role="status" aria-live="polite" data-paywall-status></p><div data-paywall-benefits>${benefitsHtml(benefits)}</div><p class="app-paywall-terms" data-paywall-terms></p><p class="app-paywall-links"><a href="/terms">Terms of Use</a><a href="/privacy">Privacy Policy</a></p>`,
+    );
     panel.before(section);
     const body = section.querySelector("[data-paywall-body]"),
       status = section.querySelector("[data-paywall-status]"),
@@ -374,7 +373,7 @@
     function render(view) {
       const focused = documentImpl.activeElement?.dataset?.paywallAction;
       section.setAttribute("aria-busy", String(view.phase === "loading" || view.busy));
-      body.innerHTML = bodyHtml(view);
+      StrataHtml.setHtml(body, bodyHtml(view));
       status.textContent = view.status;
       status.dataset.tone = view.tone;
       included.hidden = Boolean(view.owned);

@@ -228,12 +228,15 @@
   }
   function renderRecovery() {
     $("recoveryPanel").hidden = !state.recoveries.length || !!state.workout || state.blocked;
-    $("recoveryList").innerHTML = state.recoveries
-      .map((record, index) => {
-        const counts = W.progress(record.workout);
-        return `<div class="recovery-item"><div><strong>${esc(record.workout.title)}</strong><small>${esc(W.displayDate(record.workout.date))} · ${counts.completed}/${counts.total} sets · ${record.dirty ? "Unsaved device changes" : "Previously saved session"}</small></div><div class="actions"><button class="button secondary compact" data-recover="${index}" type="button">Review &amp; recover</button><button class="button quiet compact" data-discard="${index}" type="button">Remove device draft</button></div></div>`;
-      })
-      .join("");
+    StrataHtml.setHtml(
+      $("recoveryList"),
+      state.recoveries
+        .map((record, index) => {
+          const counts = W.progress(record.workout);
+          return `<div class="recovery-item"><div><strong>${esc(record.workout.title)}</strong><small>${esc(W.displayDate(record.workout.date))} · ${counts.completed}/${counts.total} sets · ${record.dirty ? "Unsaved device changes" : "Previously saved session"}</small></div><div class="actions"><button class="button secondary compact" data-recover="${index}" type="button">Review &amp; recover</button><button class="button quiet compact" data-discard="${index}" type="button">Remove device draft</button></div></div>`;
+        })
+        .join(""),
+    );
   }
   function selectWorkout(workout, { dirty = false, pausedSeconds = null } = {}) {
     progression.reset();
@@ -411,7 +414,7 @@
     $("sessionTitle").textContent = workout.title;
     $("sessionDate").textContent =
       `${W.displayDate(workout.date)} · ${workout.planDay || "Training"}${workout.adjustment === "recovery" ? " · Lighter session" : ""}${workout.status === "completed" ? " · awaiting save" : ""}`;
-    $("sessionEntries").innerHTML = workout.entries.map(view.renderEntry).join("");
+    StrataHtml.setHtml($("sessionEntries"), workout.entries.map(view.renderEntry).join(""));
     updateSessionMeta();
     tick();
     if (workout.status === "active") {
@@ -502,8 +505,10 @@
     if (!entry || !candidate.id) return;
     const current = exercise(entry.exerciseId),
       comparison = W.swapComparison(current, candidate);
-    $("swapComparison").innerHTML =
-      `<div><span>Current</span><strong>${esc(current.name)}</strong><small>${esc(current.sub || current.group)} · ${esc(current.equipment)} · FitScore ${Number(current.score)} · Stability ${Number(current.metrics?.stability || 0)}</small></div><span class="swap-arrow" aria-hidden="true">→</span><div><span>Alternative</span><strong>${esc(candidate.name)}</strong><small>${esc(candidate.sub || candidate.group)} · ${esc(candidate.equipment)} · FitScore ${Number(candidate.score)} · Stability ${Number(candidate.metrics?.stability || 0)}</small></div><p>${esc(comparison.explanation)}</p>`;
+    StrataHtml.setHtml(
+      $("swapComparison"),
+      `<div><span>Current</span><strong>${esc(current.name)}</strong><small>${esc(current.sub || current.group)} · ${esc(current.equipment)} · FitScore ${Number(current.score)} · Stability ${Number(current.metrics?.stability || 0)}</small></div><span class="swap-arrow" aria-hidden="true">→</span><div><span>Alternative</span><strong>${esc(candidate.name)}</strong><small>${esc(candidate.sub || candidate.group)} · ${esc(candidate.equipment)} · FitScore ${Number(candidate.score)} · Stability ${Number(candidate.metrics?.stability || 0)}</small></div><p>${esc(comparison.explanation)}</p>`,
+    );
     $("planSwapReview").hidden = true;
     state.swapProposal = null;
     $("swapError").hidden = true;
@@ -520,12 +525,15 @@
     state.swapCandidateId = choices[0].id;
     state.swapProposal = null;
     state.swapTrigger = button;
-    $("swapExercise").innerHTML = choices
-      .map(
-        (candidate) =>
-          `<option value="${esc(candidate.id)}">${esc(candidate.name)} · ${esc(candidate.equipment)} · FitScore ${Number(candidate.score)}</option>`,
-      )
-      .join("");
+    StrataHtml.setHtml(
+      $("swapExercise"),
+      choices
+        .map(
+          (candidate) =>
+            `<option value="${esc(candidate.id)}">${esc(candidate.name)} · ${esc(candidate.equipment)} · FitScore ${Number(candidate.score)}</option>`,
+        )
+        .join(""),
+    );
     $("swapExercise").value = state.swapCandidateId;
     $("swapTitle").textContent = `Replace ${exercise(entry.exerciseId).name}`;
     renderSwapComparison();
@@ -693,8 +701,10 @@
         "This session changed in another tab or device. Choose the latest saved version, or explicitly save your changes as a separate session. Neither version has been overwritten.";
     const mine = W.progress(state.workout),
       saved = latest ? W.progress(latest) : null;
-    $("conflictComparison").innerHTML =
-      `<div><strong>Latest saved version</strong><span>${latest ? `${esc(latest.title)} · ${saved.completed}/${saved.total} sets · revision ${Number(latest.revision)}` : "This session is no longer in saved history."}</span></div><div><strong>Your device draft</strong><span>${esc(state.workout.title)} · ${mine.completed}/${mine.total} sets · ${esc(state.workout.status)}</span></div>`;
+    StrataHtml.setHtml(
+      $("conflictComparison"),
+      `<div><strong>Latest saved version</strong><span>${latest ? `${esc(latest.title)} · ${saved.completed}/${saved.total} sets · revision ${Number(latest.revision)}` : "This session is no longer in saved history."}</span></div><div><strong>Your device draft</strong><span>${esc(state.workout.title)} · ${mine.completed}/${mine.total} sets · ${esc(state.workout.status)}</span></div>`,
+    );
     $("useLatest").disabled = !latest;
     status("Conflict — Review", "error");
     updateSessionMeta();
@@ -981,8 +991,10 @@
       if (!state.plan?.days)
         throw new Error("Your account plan could not be loaded. Retry to continue.");
       document.body.classList.add("has-workout-access");
-      $("modeNotice").innerHTML =
-        `<strong>${esc(state.user.name || "Your account")} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Profile</a>`;
+      StrataHtml.setHtml(
+        $("modeNotice"),
+        StrataHtml.html`<strong>${state.user.name || "Your account"} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Profile</a>`,
+      );
       $("trainingRoom").hidden = false;
       $("historySection").hidden = false;
       scanDrafts();

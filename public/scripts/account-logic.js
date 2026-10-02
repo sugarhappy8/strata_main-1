@@ -4,10 +4,12 @@
     typeof module === "object" && module.exports
       ? require("./entitlements")
       : root.StrataEntitlements;
-  const api = factory(entitlements);
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(entitlements, StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataAccountLogic = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements, StrataHtml) {
   "use strict";
 
   function hasPlus(user) {
@@ -110,13 +112,7 @@
       : "Could not sign in. Check the details and try again.";
   }
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(
-      /[&<>"']/g,
-      (character) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
-    );
-  }
+  const escapeHtml = StrataHtml.escape;
 
   function localDateKey(date) {
     const year = date.getFullYear(),

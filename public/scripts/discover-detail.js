@@ -1,9 +1,11 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDiscoverDetail = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   function createDetail({
@@ -133,15 +135,17 @@
           : "Why it does not match your profile",
         profileSummary = personal.eligible
           ? `<strong>${personal.match}% rules-based match.</strong> ${escapeHtml(profileReason(personal))}.`
-          : `<strong>Excluded by your saved rules.</strong> ${escapeHtml(profileReason(personal))}.`;
-      element("detailContent").innerHTML = `
+          : StrataHtml.html`<strong>Excluded by your saved rules.</strong> ${profileReason(personal)}.`;
+      StrataHtml.setHtml(
+        element("detailContent"),
+        `
         <div class="detail-hero"><div class="dialog-head" style="position:static;padding:0 0 24px;background:transparent;border-color:rgba(255,255,255,.18)"><p class="kicker">Exercise intelligence / ${escapeHtml(labels[exercise.group] || titleCase(exercise.group))}</p><button class="icon-button" data-close-dialog="detailDialog" type="button" aria-label="Close exercise details">×</button></div><div class="detail-hero-grid"><div><h2 class="detail-title" id="detailTitle">${escapeHtml(exercise.name)}</h2><p>${escapeHtml(exercise.why)}</p><span class="match-pill ${personal.eligible ? "" : "is-excluded"}">${escapeHtml(personalLabel(personal))}</span></div><div class="detail-score"><strong>${exercise.score}</strong><span>Official FitScore</span></div></div><div class="detail-quick-actions">${movementBoardButton(exercise)}<button data-toggle-compare="${exercise.id}" type="button" aria-pressed="${state.compare.includes(id)}">${state.compare.includes(id) ? "Remove from battle" : "Add to battle"}</button><button data-scroll-alternatives type="button" aria-controls="alternativeSection">Find alternative ↓</button><a href="/planner.html?add=${encodeURIComponent(id)}">Add to plan <span aria-hidden="true">→</span></a><a href="${exercise.youtube}" target="_blank" rel="noreferrer">YouTube search ↗</a></div></div>
         <div class="detail-body"><div class="detail-grid"><div>
           <section class="detail-section"><h3>${profileHeading}</h3><p>${profileSummary} This selection is an editorial rules engine, not an AI prediction or medical recommendation.</p><p><strong>Target:</strong> ${escapeHtml(exercise.sub)} · <strong>Pattern:</strong> ${escapeHtml(exercise.pattern)} · <strong>Equipment:</strong> ${escapeHtml(exercise.equipment)} · <strong>Level:</strong> ${escapeHtml(exercise.level)}</p></section>
           <section class="detail-section"><h3>FitScore audit</h3><div class="metric-list">${metricMarkup(exercise)}</div><div class="adjustment-row"><strong>Weighted baseline: ${round(baseline, 1)}</strong> · Published score: ${exercise.score} · Editorial adjustment: ${adjustment > 0 ? "+" : ""}${adjustment}.<br/>${escapeHtml(state.methodology.adjustment)}</div><p>${escapeHtml(state.methodology.evidenceNote)}</p></section>
           <section class="detail-section"><h3>Evidence and boundaries</h3><span class="confidence">${confidence} exercise-specific confidence</span><p><strong>Evidence:</strong> the links below support broad training principles. <strong>STRATA interpretation:</strong> applying those principles to this exact exercise and score is editorial judgment.</p>${sources.map((source) => `<article class="source-card"><a href="${source.url}" target="_blank" rel="noreferrer">${escapeHtml(source.title)} ↗</a><span>${escapeHtml(source.type)} · ${escapeHtml(source.publisher)} · ${source.year}</span><p><strong>Supports:</strong> ${escapeHtml(source.supports)}</p><p class="source-boundary"><strong>Does not support:</strong> ${escapeHtml(source.doesNotSupport)}</p></article>`).join("")}</section>
         </div><aside>
-          <section class="detail-section"><h3>Practical decision</h3><p><strong>Stability:</strong> ${exercise.metrics.stability}/100 · <strong>Effective range:</strong> ${exercise.metrics.range}/100</p><p><strong>Resistance profile:</strong> ${escapeHtml(resistanceProfile(exercise))}</p><p><strong>Progression:</strong> ${exercise.metrics.progression}/100 · <strong>Setup:</strong> ${escapeHtml(setupLabel(exercise))}</p><p><strong>Editorial practicality:</strong> ${practicality(exercise)}/100</p><h4>Programming starting point</h4><p>${escapeHtml(exercise.sets)} sets · ${escapeHtml(exercise.reps)} reps · ${escapeHtml(exercise.rest)} rest</p><h4>Technique cues</h4><ul>${exercise.cues.map((cue) => `<li>${escapeHtml(cue)}</li>`).join("")}</ul><h4>Consideration</h4><p>${escapeHtml(exercise.caution)}</p></section>
+          <section class="detail-section"><h3>Practical decision</h3><p><strong>Stability:</strong> ${exercise.metrics.stability}/100 · <strong>Effective range:</strong> ${exercise.metrics.range}/100</p><p><strong>Resistance profile:</strong> ${escapeHtml(resistanceProfile(exercise))}</p><p><strong>Progression:</strong> ${exercise.metrics.progression}/100 · <strong>Setup:</strong> ${escapeHtml(setupLabel(exercise))}</p><p><strong>Editorial practicality:</strong> ${practicality(exercise)}/100</p><h4>Programming starting point</h4><p>${escapeHtml(exercise.sets)} sets · ${escapeHtml(exercise.reps)} reps · ${escapeHtml(exercise.rest)} rest</p><h4>Technique cues</h4><ul>${exercise.cues.map((cue) => StrataHtml.html`<li>${cue}</li>`).join("")}</ul><h4>Consideration</h4><p>${escapeHtml(exercise.caution)}</p></section>
           <section class="detail-section" id="alternativeSection"><h3 id="alternativeTitle" tabindex="-1">Find an alternative</h3><div class="alternative-list">${alternatives.length ? alternatives.map(({ exercise: candidate, match }) => `<div class="alternative-item"><div><strong>${escapeHtml(candidate.name)}</strong><small>${escapeHtml(gainsAndLosses(exercise, candidate))}</small></div><span>${match}%</span><div class="alternative-actions"><button data-open-detail="${candidate.id}" type="button" aria-label="Open ${escapeHtml(candidate.name)} details">Open</button><a href="/planner.html?add=${encodeURIComponent(candidate.id)}" aria-label="Add ${escapeHtml(candidate.name)} to weekly plan">Add to plan</a></div></div>`).join("") : "<p>No eligible same-target alternative under your saved profile.</p>"}</div><p>Match percentages are transparent editorial similarity scores based on target, pattern, resistance profile, equipment, skill, and factor profile.</p></section>
           <section class="detail-section"><h3>Community score</h3><div class="rating-summary"><strong>${escapeHtml(community.hasRatings ? `${community.score}/10` : community.label)}</strong><span>${escapeHtml(community.attribution)}</span></div>${
             community.hasRatings
@@ -160,7 +164,8 @@
                   .join("")}</div>`
               : ""
           }${ownRating ? `<p><strong>Your rating:</strong> ${Number(ownRating.overall)}/5 overall</p>` : "<p>Be the first Strata+ user to rate this exercise.</p>"}<p>Your rating is tied to your account and replaces your prior rating. It never changes the official FitScore.</p>${ratingFormMarkup(exercise, ratingDraft)}</section>
-        </aside></div></div>`;
+        </aside></div></div>`,
+      );
       openDialog(dialog, dialog.querySelector?.('[data-close-dialog="detailDialog"]'));
     }
     function comparisonWinner(exercises) {
@@ -234,7 +239,7 @@
           "Starting point",
           exercises,
           (exercise) =>
-            `${escapeHtml(exercise.sets)} × ${escapeHtml(exercise.reps)}<br>${escapeHtml(exercise.rest)} rest`,
+            StrataHtml.html`${exercise.sets} × ${exercise.reps}<br>${exercise.rest} rest`,
         ),
         tableRow("STRATA interpretation", exercises, (exercise) => escapeHtml(exercise.why)),
         tableRow(
@@ -247,11 +252,13 @@
       const columnHeaders = exercises
         .map(
           (exercise) =>
-            `<th scope="col"><strong>${escapeHtml(exercise.name)}</strong><span>${escapeHtml(exercise.sub)}</span></th>`,
+            StrataHtml.html`<th scope="col"><strong>${exercise.name}</strong><span>${exercise.sub}</span></th>`,
         )
         .join("");
-      element("battleResults").innerHTML =
-        `<div class="battle-results-head"><h3>Side-by-side result</h3><div class="battle-results-actions"><a class="small-button" href="/planner.html">Open planner ↗</a></div></div><div class="battle-verdict"><strong>${verdict.winner ? `${escapeHtml(verdict.winner.name)} leads` : "No universal winner"}</strong><p>${escapeHtml(verdict.text)}</p></div><div class="comparison-scroll" role="region" aria-label="Exercise comparison table. Scroll horizontally to see every exercise." tabindex="0"><table class="comparison-table"><caption class="sr-only">Exercise comparison across FitScore, targets, mechanics, progression, setup, equipment, and practicality</caption><thead><tr><th scope="col">Measure</th>${columnHeaders}</tr></thead><tbody>${rows.join("")}</tbody></table></div><p class="field-note">Highlighted cells lead this selected set on that factor. Rankings are editorial and do not predict individual results.</p>`;
+      StrataHtml.setHtml(
+        element("battleResults"),
+        `<div class="battle-results-head"><h3>Side-by-side result</h3><div class="battle-results-actions"><a class="small-button" href="/planner.html">Open planner ↗</a></div></div><div class="battle-verdict"><strong>${verdict.winner ? StrataHtml.html`${verdict.winner.name} leads` : "No universal winner"}</strong><p>${escapeHtml(verdict.text)}</p></div><div class="comparison-scroll" role="region" aria-label="Exercise comparison table. Scroll horizontally to see every exercise." tabindex="0"><table class="comparison-table"><caption class="sr-only">Exercise comparison across FitScore, targets, mechanics, progression, setup, equipment, and practicality</caption><thead><tr><th scope="col">Measure</th>${columnHeaders}</tr></thead><tbody>${rows.join("")}</tbody></table></div><p class="field-note">Highlighted cells lead this selected set on that factor. Rankings are editorial and do not predict individual results.</p>`,
+      );
       element("battleResults").hidden = false;
       element("battleStatus").textContent = `Compared ${exercises.length} exercises.`;
     }

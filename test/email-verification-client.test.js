@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
+const { loadHtml } = require("./support/browser-html");
 
 const accountHtml = fs.readFileSync(require.resolve("../public/pages/account.html"), "utf8");
 const accountScript = fs.readFileSync(require.resolve("../public/scripts/account.js"), "utf8");
@@ -158,6 +159,7 @@ function accountPage(route) {
   };
   context.globalThis = context;
   vm.createContext(context);
+  loadHtml(context);
   for (const moduleScript of accountModules)
     vm.runInContext(moduleScript.source, context, { filename: `${moduleScript.name}.js` });
   vm.runInContext(accountScript, context, { filename: "account.js" });
@@ -203,6 +205,7 @@ function verificationPage(route, { search = "?next=planner&add=flat-dumbbell-pre
   };
   context.globalThis = context;
   vm.createContext(context);
+  loadHtml(context);
   vm.runInContext(verifyScript, context, { filename: "verify-email.js" });
   return { elements, requests, navigations, replacements, sessionStorage, timers };
 }

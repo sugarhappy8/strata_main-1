@@ -1,17 +1,14 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataPlannerRender = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
-  function escapeHtml(value) {
-    return String(value ?? "").replace(
-      /[&<>'"]/g,
-      (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char],
-    );
-  }
+  const escapeHtml = StrataHtml.escape;
 
   function filterMarkup(groups, activeGroup) {
     return groups
@@ -120,7 +117,7 @@
           ? items
               .map((item) => {
                 const exercise = exerciseById(item.exerciseId);
-                return `${escapeHtml(exercise?.name || "Unknown movement")} <span>${escapeHtml(item.sets)} × ${escapeHtml(item.reps)}</span>`;
+                return StrataHtml.html`${exercise?.name || "Unknown movement"} <span>${item.sets} × ${item.reps}</span>`;
               })
               .join(", ")
           : "No movements";

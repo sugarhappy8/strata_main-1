@@ -24,7 +24,11 @@ test("one check command owns the complete pre-release verification sequence", ()
   assert.equal(manifest.scripts.qa, "npm run check");
   assert.equal(manifest.scripts.lint, "eslint . --max-warnings=0");
   assert.equal(manifest.scripts["format:check"], "prettier --check .");
-  assert.equal(JSON.parse(read(".prettierrc.json")).printWidth, 100);
+  // Prettier never rewrites the inside of a template literal, so html`` markup keeps its bytes.
+  assert.deepEqual(JSON.parse(read(".prettierrc.json")), {
+    printWidth: 100,
+    embeddedLanguageFormatting: "off",
+  });
   assert.match(read("eslint.config.mjs"), /"max-len":\s*\[\s*"error",\s*\{\s*code:\s*140,/);
   assert.match(manifest.devDependencies.eslint, /^10\./);
   for (const layer of ["unit", "integration", "contract", "e2e"]) {

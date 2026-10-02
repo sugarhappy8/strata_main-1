@@ -163,7 +163,7 @@ test("inside the iOS app a fully parsed page is cleaned at once, and the install
   assert.deepEqual(harness({ pathname: "/installer-guide" }).replaced, []);
 });
 
-test("every page loads the app shell first in its head, and the server and offline cache serve it", () => {
+test("every page loads html.js and then the app shell first in its head, and the server and offline cache serve both", () => {
   const pages = fs
     .readdirSync(path.join(ROOT, "public/pages"))
     .filter((file) => file.endsWith(".html"));
@@ -172,22 +172,26 @@ test("every page loads the app shell first in its head, and the server and offli
     const html = read(`public/pages/${page}`),
       head = html.slice(0, html.indexOf("</head>"));
     const scripts = [...head.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((match) => match[1]);
-    assert.equal(
-      scripts[0],
-      "/app-shell.js?v=9.4.0",
-      `${page} must load app-shell.js before any other script`,
+    // app-mode.js, which app-shell.js writes in, builds markup with html.js.
+    assert.deepEqual(
+      scripts.slice(0, 2),
+      ["/html.js?v=9.4.0", "/app-shell.js?v=9.4.0"],
+      `${page} must load html.js and then app-shell.js before any other script`,
     );
-    assert.doesNotMatch(
-      head.match(/<script\b[^>]*app-shell\.js[^>]*>/)[0],
-      /\b(?:defer|async)\b/,
-      `${page} must run app-shell.js before first paint`,
-    );
+    for (const name of ["html", "app-shell"])
+      assert.doesNotMatch(
+        head.match(new RegExp(`<script\\b[^>]*${name}\\.js[^>]*>`))[0],
+        /\b(?:defer|async)\b/,
+        `${page} must run ${name}.js before first paint`,
+      );
   }
   assert.match(
     read("src/server.js"),
     /\[\s*"app-shell\s*\.js"\s*,\s*"scripts\/app-shell\s*\.js"\s*,?\s*\]/,
   );
+  assert.match(read("src/server.js"), /\[\s*"html\.js"\s*,\s*"scripts\/html\.js"\s*,?\s*\]/);
   assert.match(read("public/service-worker.js"), /"\/app-shell\.js\?v=9\.4\.0"/);
+  assert.match(read("public/service-worker.js"), /"\/html\.js\?v=9\.4\.0"/);
   assert.match(
     read("public/styles/tokens.css"),
     /:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*a\s*\[\s*href\^\s*=\s*"\/install"\s*,?\s*\]\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/,

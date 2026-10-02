@@ -522,15 +522,15 @@ test("Today distinguishes completed planned days from plan coverage and preserve
   );
   assert.match(
     script,
-    /start\s*\.href\s*=\s*`\/workout\s*\.html\s*\?\s*day\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*next\s*\.day\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*start\s*\.innerHTML\s*=\s*'Start\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/,
+    /start\s*\.href\s*=\s*`\/workout\s*\.html\s*\?\s*day\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*next\s*\.day\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*'Start\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/,
   );
   assert.match(
     script,
-    /start\s*\.href\s*=\s*`\/workout\s*\.html#resume\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*active\s*\.id\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*start\s*\.innerHTML\s*=\s*'Resume\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/,
+    /start\s*\.href\s*=\s*`\/workout\s*\.html#resume\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*active\s*\.id\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*'Resume\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/,
   );
   assert.match(
     script,
-    /start\s*\.href\s*=\s*"\/planner\s*\.html"\s*;\s*start\s*\.innerHTML\s*=\s*'Build\s*your\s*first\s*week\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/,
+    /start\s*\.href\s*=\s*"\/planner\s*\.html"\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*'Build\s*your\s*first\s*week\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/,
   );
   assert.match(script, /historyStatus\s*===\s*"loading"[\s\S]*start\s*\.hidden\s*=\s*true/);
   assert.match(script, /historyStatus\s*===\s*"error"[\s\S]*start\s*\.hidden\s*=\s*true/);
@@ -538,7 +538,7 @@ test("Today distinguishes completed planned days from plan coverage and preserve
   assert.match(script, /planAction\s*\.href\s*=\s*"#planWorkspace"/);
   assert.match(
     script,
-    /planAction\s*\.innerHTML\s*=\s*'Review\s*plan\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/,
+    /StrataHtml\s*\.setHtml\s*\(\s*planAction\s*,\s*'Review\s*plan\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/,
   );
   assert.doesNotMatch(script, /weeklyPulse[^\n]*(?:recovered|readiness)/i);
 });
@@ -819,7 +819,7 @@ test("training blocks and adaptations require explicit, concurrency-aware approv
     /Workout history is unavailable, so Strata\+ is not making progress, skip, or replacement claims/,
   );
   assert.equal(
-    (script.match(/select\.innerHTML\s*=\s*core\.WEEKDAYS/g) || []).length,
+    (script.match(/setHtml\(\s*select\s*,\s*core\.WEEKDAYS/g) || []).length,
     1,
     "session-day options must be rendered once",
   );
@@ -883,7 +883,7 @@ test("Strata+ copy and visual polish remain resilient across content and breakpo
   assert.match(html, /id="recommendationTitle"[^>]*>Best exercises <em>for you\.<\/em>/);
   assert.doesNotMatch(
     script,
-    /recommendationTitle"\s*,?\s*\)\s*\.innerHTML/,
+    /recommendationTitle"\s*,?\s*\)\s*(?:\.innerHTML|,)/,
     "A display name must not be interpolated into the recommendation heading",
   );
   assert.match(html, />Find your strongest fits<\/strong>/);

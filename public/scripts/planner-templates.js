@@ -1,9 +1,11 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataPlannerTemplates = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   const TEMPLATE_PREFIX = "strata_week_template_v1:";
@@ -15,7 +17,6 @@
     storage,
     days,
     makeId,
-    escapeHtml,
     validateWeekPlan,
     planConflictSummary,
     firstTrainingDay,
@@ -61,14 +62,15 @@
     }
     function renderTemplates() {
       const templates = weekTemplates();
-      el("weekTemplateSelect").innerHTML =
+      StrataHtml.setHtml(
+        el("weekTemplateSelect"),
         '<option value="">Choose a saved week</option>' +
-        templates
-          .map(
-            (entry) =>
-              `<option value="${escapeHtml(entry.key)}">${escapeHtml(entry.data.name)}</option>`,
-          )
-          .join("");
+          templates
+            .map(
+              (entry) => StrataHtml.html`<option value="${entry.key}">${entry.data.name}</option>`,
+            )
+            .join(""),
+      );
       el("weekTemplateSelect").value = "";
       el("previewWeekTemplate").disabled = true;
       el("templateStatus").textContent = templates.length
@@ -139,7 +141,10 @@
           revision: state.revision,
         };
         el("templatePreviewTitle").textContent = state.templatePreview.name;
-        el("templatePreviewSummary").innerHTML = planConflictSummary(state.templatePreview.plan);
+        StrataHtml.setHtml(
+          el("templatePreviewSummary"),
+          planConflictSummary(state.templatePreview.plan),
+        );
         el("confirmUseTemplate").checked = false;
         el("applyWeekTemplate").disabled = true;
         el("deleteWeekTemplate").hidden = !key;

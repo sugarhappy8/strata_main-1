@@ -222,6 +222,7 @@ const STATIC_FILES = new Map([
   ["admin-events.js", "scripts/admin-events.js"],
   ["admin.js", "scripts/admin.js"],
   ["pwa.js", "scripts/pwa.js"],
+  ["html.js", "scripts/html.js"],
   ["app-shell.js", "scripts/app-shell.js"],
   ["app-mode.js", "scripts/app-mode.js"],
   ["app-mode.css", "styles/app-mode.css"],

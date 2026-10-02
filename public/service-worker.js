@@ -56,6 +56,7 @@ const PRECACHE_URLS = [
   "/pricing.js?v=9.4.0",
   "/contact.js?v=9.4.0",
   "/pwa.js?v=9.4.0",
+  "/html.js?v=9.4.0",
   "/app-shell.js?v=9.4.0",
   "/app-mode.js?v=9.4.0",
   "/app-mode.css?v=9.4.0",

@@ -1,4 +1,4 @@
-/* global module */
+/* global module, require */
 /* The STRATA iOS app's chrome. Only the app loads this file (app-shell.js writes it into <head> when the user agent
    carries "StrataApp/<n>"), so browsers never see any of it. It runs before the body exists and:
    - draws one persistent top bar (title, Back on child screens) and bottom tab bar the moment <body> appears, so they
@@ -11,11 +11,13 @@
      per launch, the current entitlements are sent to STRATA, and a transaction is finished only after STRATA accepted
      it. */
 (function (root, factory) {
-  const api = factory(root);
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(root, StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataAppMode = api;
   if (root.StrataApp && root.document) api.start();
-})(typeof globalThis !== "undefined" ? globalThis : this, function (root) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (root, StrataHtml) {
   "use strict";
 
   const NAV_KEY = "strata-app-nav",
@@ -152,11 +154,7 @@
   });
   const STUDIO_TITLES = Object.freeze({ rankings: "Rankings", recovery: "Recovery" });
 
-  const escapeHtml = (value) =>
-    String(value ?? "").replace(
-      /[&<>'"]/g,
-      (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char],
-    );
+  const escapeHtml = StrataHtml.escape;
   const clean = (pathname) => {
     const path = String(pathname || "/");
     return path.length > 1 ? path.replace(/\/+$/, "") : path;
@@ -235,7 +233,7 @@
       ["/terms", "Terms of Service", ""],
       ["/privacy", "Privacy Policy", ""],
     ];
-    return `<section class="app-more" aria-labelledby="appMoreTitle"><h2 id="appMoreTitle">More</h2><ul class="app-list">${links.map(([href, label, detail]) => `<li><a href="${href}"><span>${label}</span>${detail ? `<small>${detail}</small>` : ""}</a></li>`).join("")}</ul>${build ? `<p class="app-more-build">${escapeHtml(build)}</p>` : ""}</section>`;
+    return `<section class="app-more" aria-labelledby="appMoreTitle"><h2 id="appMoreTitle">More</h2><ul class="app-list">${links.map(([href, label, detail]) => `<li><a href="${href}"><span>${label}</span>${detail ? `<small>${detail}</small>` : ""}</a></li>`).join("")}</ul>${build ? StrataHtml.html`<p class="app-more-build">${build}</p>` : ""}</section>`;
   }
 
   // Native bridge. Every call is optional: an older app build has no StrataNative plugin and nothing may break.
@@ -510,7 +508,7 @@
       if (title) title.textContent = text;
     }
     function mountChrome() {
-      document.body.insertAdjacentHTML("afterbegin", topBarHtml(screen) + tabBarHtml(screen));
+      StrataHtml.insertHtml(document.body, "afterbegin", topBarHtml(screen) + tabBarHtml(screen));
       tabBar = document.body.querySelector(".app-tabbar");
       title = document.body.querySelector("[data-app-title]");
       tabBar.addEventListener("click", (event) => {
@@ -581,7 +579,8 @@
           return true;
         };
         if (screen.view === "start" && !openHome()) return;
-        document.querySelector("main")?.insertAdjacentHTML("afterbegin", welcomeHtml());
+        const main = document.querySelector("main");
+        if (main) StrataHtml.insertHtml(main, "afterbegin", welcomeHtml());
         root.addEventListener("hashchange", () => {
           screen = resolveScreen(location);
           if (screen.view === "start") {
@@ -601,7 +600,8 @@
       }
       if (screen.id === "profile") {
         const build = document.querySelector("body > footer > span")?.textContent?.trim() || "";
-        document.getElementById("accountPage")?.insertAdjacentHTML("beforeend", moreHtml(build));
+        const accountPage = document.getElementById("accountPage");
+        if (accountPage) StrataHtml.insertHtml(accountPage, "beforeend", moreHtml(build));
         // Support asks which app build someone runs; newer builds can say.
         void info().then((app) => {
           const line = document.querySelector(".app-more-build");

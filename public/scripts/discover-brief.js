@@ -1,9 +1,11 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDiscoverBrief = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   // The Overview's Daily Brief: Strata AI's note for today, stored on today's Daily Snapshot so opening the page
@@ -43,12 +45,15 @@
       text("todayBriefCare", brief.careNote);
       const list = element("todayBriefAdjustments"),
         items = Array.isArray(brief.planAdjustments) ? brief.planAdjustments : [];
-      list.innerHTML = items
-        .map(
-          (item) =>
-            `<li><strong>${core.escapeHtml(item.day)}</strong> ${core.escapeHtml(item.change)}<small>${core.escapeHtml(item.reason)}</small></li>`,
-        )
-        .join("");
+      StrataHtml.setHtml(
+        list,
+        items
+          .map(
+            (item) =>
+              StrataHtml.html`<li><strong>${item.day}</strong> ${item.change}<small>${item.reason}</small></li>`,
+          )
+          .join(""),
+      );
       list.hidden = !items.length;
       card.dataset.level = String(brief.readiness?.level || "unknown");
       card.hidden = false;

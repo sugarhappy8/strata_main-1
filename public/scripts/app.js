@@ -128,7 +128,10 @@ function generateQuickPreview() {
         limit: 3,
       });
       el("quickPreviewSummary").textContent = fallback.summary;
-      el("quickPreviewResults").innerHTML = fallback.items.map(previewResultMarkup).join("");
+      StrataHtml.setHtml(
+        el("quickPreviewResults"),
+        fallback.items.map(previewResultMarkup).join(""),
+      );
       el("quickPreviewActions").hidden = false;
       el("quickPreviewStatus").textContent =
         "Shortlist ready. Reload before continuing if the complete-week preview does not appear.";

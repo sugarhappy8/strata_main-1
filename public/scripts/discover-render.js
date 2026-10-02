@@ -4,10 +4,12 @@
     typeof module === "object" && module.exports
       ? require("./discover-progress")
       : root.StrataDiscoverProgress;
-  const api = factory(progress);
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(progress, StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDiscoverRender = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (Progress) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (Progress, StrataHtml) {
   "use strict";
 
   const weekLabel = (date) =>
@@ -34,13 +36,16 @@
       if (!node) return;
       const top = Math.max(2, ...weeks.map((week) => week.workouts)),
         note = element("progressWeeksNote");
-      node.innerHTML = weeks
-        .map((week) => {
-          const label = week.current ? "This week" : `Week of ${weekLabel(week.start)}`,
-            summary = `${label}: ${week.workouts} workout${week.workouts === 1 ? "" : "s"}${week.volume ? ` · ${week.volume}` : ""}`;
-          return `<li class="progress-week${week.current ? " is-current" : ""}${week.workouts ? "" : " is-empty"}" tabindex="0" aria-label="${escapeHtml(summary)}" title="${escapeHtml(summary)}"><span class="progress-week-track" aria-hidden="true"><span class="progress-week-bar" style="--value:${(week.workouts / top).toFixed(3)}"><b>${week.workouts}</b></span></span><small aria-hidden="true">${escapeHtml(weekLabel(week.start))}</small></li>`;
-        })
-        .join("");
+      StrataHtml.setHtml(
+        node,
+        weeks
+          .map((week) => {
+            const label = week.current ? "This week" : `Week of ${weekLabel(week.start)}`,
+              summary = `${label}: ${week.workouts} workout${week.workouts === 1 ? "" : "s"}${week.volume ? ` · ${week.volume}` : ""}`;
+            return `<li class="progress-week${week.current ? " is-current" : ""}${week.workouts ? "" : " is-empty"}" tabindex="0" aria-label="${escapeHtml(summary)}" title="${escapeHtml(summary)}"><span class="progress-week-track" aria-hidden="true"><span class="progress-week-bar" style="--value:${(week.workouts / top).toFixed(3)}"><b>${week.workouts}</b></span></span><small aria-hidden="true">${escapeHtml(weekLabel(week.start))}</small></li>`;
+          })
+          .join(""),
+      );
       const axis = element("progressWeeksMax");
       if (axis) axis.textContent = String(top);
       if (note)
@@ -52,16 +57,22 @@
       const node = element("progressRecordList");
       if (!node) return;
       if (!records.length) {
-        node.innerHTML = `<p class="progress-empty">${hasMore ? "No comparable exercise result appears in the 100 most recent sessions. Open full history for older records." : "Complete a workout with a recorded load, reps, or time to start your exercise records."}</p>`;
+        StrataHtml.setHtml(
+          node,
+          `<p class="progress-empty">${hasMore ? "No comparable exercise result appears in the 100 most recent sessions. Open full history for older records." : "Complete a workout with a recorded load, reps, or time to start your exercise records."}</p>`,
+        );
         return;
       }
-      node.innerHTML = records
-        .map((record) => {
-          const change = record.change,
-            best = `${escapeHtml(record.best.metric.formatted)}${record.newBest ? " <em>New best</em>" : ""}`;
-          return `<article class="progress-record${record.newBest ? " is-new-best" : ""}"><div class="progress-record-name"><strong>${escapeHtml(exerciseName(record.exerciseId))}</strong><small>${escapeHtml(record.latest.metric.label)} · ${escapeHtml(readableDate(record.latest.workout.date))}</small></div><dl><div><dt>Latest</dt><dd>${escapeHtml(record.latest.metric.formatted)}</dd></div><div class="progress-change is-${change.direction}"><dt>vs last time</dt><dd><span aria-hidden="true">${change.direction === "up" ? "↑" : change.direction === "down" ? "↓" : change.direction === "same" ? "=" : "•"}</span> ${escapeHtml(change.text)}</dd></div><div><dt>Best</dt><dd>${best}</dd></div></dl></article>`;
-        })
-        .join("");
+      StrataHtml.setHtml(
+        node,
+        records
+          .map((record) => {
+            const change = record.change,
+              best = `${escapeHtml(record.best.metric.formatted)}${record.newBest ? " <em>New best</em>" : ""}`;
+            return `<article class="progress-record${record.newBest ? " is-new-best" : ""}"><div class="progress-record-name"><strong>${escapeHtml(exerciseName(record.exerciseId))}</strong><small>${escapeHtml(record.latest.metric.label)} · ${escapeHtml(readableDate(record.latest.workout.date))}</small></div><dl><div><dt>Latest</dt><dd>${escapeHtml(record.latest.metric.formatted)}</dd></div><div class="progress-change is-${change.direction}"><dt>vs last time</dt><dd><span aria-hidden="true">${change.direction === "up" ? "↑" : change.direction === "down" ? "↓" : change.direction === "same" ? "=" : "•"}</span> ${escapeHtml(change.text)}</dd></div><div><dt>Best</dt><dd>${best}</dd></div></dl></article>`;
+          })
+          .join(""),
+      );
     }
     function render({
       workouts,

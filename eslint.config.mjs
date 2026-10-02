@@ -40,6 +40,23 @@ const layoutRules = {
   ],
 };
 
+// Markup reaches the page only through public/scripts/html.js, which escapes what goes into it.
+const htmlSinkRules = {
+  "no-restricted-syntax": [
+    "error",
+    {
+      selector:
+        "AssignmentExpression > MemberExpression.left[property.name=/^(innerHTML|outerHTML)$/]",
+      message:
+        "Use StrataHtml.setHtml or StrataHtml.replaceHtml (public/scripts/html.js), or textContent.",
+    },
+    {
+      selector: "CallExpression > MemberExpression.callee[property.name='insertAdjacentHTML']",
+      message: "Use StrataHtml.insertHtml (public/scripts/html.js).",
+    },
+  ],
+};
+
 export default [
   {
     ignores: ["node_modules/**", "coverage/**", "data/**", "test-runtime/**"],
@@ -66,8 +83,14 @@ export default [
     files: ["public/scripts/**/*.js"],
     languageOptions: {
       sourceType: "script",
-      globals: { ...globals.browser },
+      // html.js loads first on every page.
+      globals: { ...globals.browser, StrataHtml: "readonly" },
     },
+  },
+  {
+    files: ["public/**/*.js"],
+    ignores: ["public/scripts/html.js"],
+    rules: htmlSinkRules,
   },
   {
     files: [

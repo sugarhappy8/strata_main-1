@@ -1,10 +1,12 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
   "use strict";
-  const context = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const context = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = context;
   else root.StrataWorkoutContext = context;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   function activeWorkout(state) {
@@ -33,10 +35,13 @@
         brief = $("planBrief"),
         preview = $("planPreviewDetails"),
         waiting = state.historyBusy || !state.historyLoaded;
-      $("planDay").innerHTML = W.DAYS.map(
-        (day) =>
-          `<option value="${day}"${day === state.day ? " selected" : ""}>${day}${day === W.today() ? " · today" : ""}</option>`,
-      ).join("");
+      StrataHtml.setHtml(
+        $("planDay"),
+        W.DAYS.map(
+          (day) =>
+            `<option value="${day}"${day === state.day ? " selected" : ""}>${day}${day === W.today() ? " · today" : ""}</option>`,
+        ).join(""),
+      );
       $("todayLabel").textContent = active
         ? "Workout in progress"
         : state.day === W.today()
@@ -58,8 +63,8 @@
       preview.hidden = true;
       preview.open = false;
       brief.hidden = true;
-      brief.innerHTML = "";
-      $("planPreview").innerHTML = "";
+      brief.textContent = "";
+      $("planPreview").textContent = "";
       $("startHint").textContent = "";
 
       if (active) {
@@ -95,7 +100,7 @@
         if (scheduledDay) {
           choose.hidden = false;
           choose.dataset.day = scheduledDay;
-          choose.innerHTML = `Go to ${scheduledDay} <span aria-hidden="true">→</span>`;
+          StrataHtml.setHtml(choose, `Go to ${scheduledDay} <span aria-hidden="true">→</span>`);
         } else delete choose.dataset.day;
         return;
       }
@@ -103,12 +108,15 @@
       const summary = W.planDaySummary(state.plan, state.day);
       $("planStatus").textContent = "Scheduled in your weekly plan.";
       start.hidden = false;
-      start.innerHTML = 'Start workout <span aria-hidden="true">↗</span>';
+      StrataHtml.setHtml(start, 'Start workout <span aria-hidden="true">↗</span>');
       $("differentWorkout").hidden = false;
       preview.hidden = false;
       brief.hidden = false;
-      brief.innerHTML = `<div><span>Exercises</span><strong>${summary.movements}</strong></div><div><span>Working sets</span><strong>${summary.workingSets}</strong></div><div><span>Plan day</span><strong>${esc(summary.day)}</strong></div>`;
-      $("planPreview").innerHTML = view.planPreview(items);
+      StrataHtml.setHtml(
+        brief,
+        `<div><span>Exercises</span><strong>${summary.movements}</strong></div><div><span>Working sets</span><strong>${summary.workingSets}</strong></div><div><span>Plan day</span><strong>${esc(summary.day)}</strong></div>`,
+      );
+      StrataHtml.setHtml($("planPreview"), view.planPreview(items));
       $("startHint").textContent = state.historyLoadError
         ? ""
         : waiting

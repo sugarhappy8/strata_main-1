@@ -4,18 +4,15 @@
     typeof module === "object" && module.exports
       ? require("./personal-training-diary-ui")
       : root.StrataPersonalTrainingDiaryUi;
-  const api = factory(diary);
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(diary, StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDiscoverCoachingTrend = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (diary) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (diary, StrataHtml) {
   "use strict";
   const KG_PER_LB = 0.45359237;
-  const escape = (value) =>
-    String(value ?? "").replace(
-      /[&<>'"]/g,
-      (character) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character],
-    );
+  const escape = StrataHtml.escape;
   const dateLabel = (value) => {
     const date = new Date(`${value}T12:00:00`);
     return Number.isNaN(date.getTime())
@@ -96,7 +93,7 @@
         : null;
     function draw(figure) {
       drawn.width = figure.clientWidth || 640;
-      figure.innerHTML = chart(drawn.points, drawn.unit, drawn.convert, drawn.width);
+      StrataHtml.setHtml(figure, chart(drawn.points, drawn.unit, drawn.convert, drawn.width));
     }
     function clear() {
       drawn = null;
@@ -130,7 +127,7 @@
         drawn = null;
         summary.textContent =
           "Log a morning weight on two or more days to see your trend. Daily weights swing with water and food; the seven-day average shows the direction.";
-        figure.innerHTML = "";
+        figure.textContent = "";
         return;
       }
       summary.textContent = `Seven-day average ${decimal(convert(trend.averageKg))} ${unit}${trend.weeklyChangeKg == null ? "" : `, trending ${signed(convert(trend.weeklyChangeKg))} ${unit} per week`}. Latest weigh-in ${decimal(convert(trend.latestKg))} ${unit}.`;

@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { loadHtml } = require("./support/browser-html");
 
 const PROJECT_ROOT = path.join(__dirname, "..");
 const PUBLIC_ROOT = path.join(PROJECT_ROOT, "public");
@@ -182,6 +183,7 @@ function browserHarness(scriptName, { userAgent = "Mozilla/5.0", maxTouchPoints 
     registrations,
     run() {
       vm.createContext(context);
+      loadHtml(context);
       vm.runInContext(read(`scripts/${scriptName}`), context, { filename: scriptName });
     },
   };

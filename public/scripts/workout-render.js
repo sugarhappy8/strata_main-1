@@ -1,17 +1,14 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
   "use strict";
-  const render = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const render = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = render;
   else root.StrataWorkoutRender = render;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
-  const esc = (value) =>
-    String(value ?? "").replace(
-      /[&<>"']/g,
-      (character) =>
-        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character],
-    );
+  const esc = StrataHtml.escape;
   const number = (value) =>
     Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: 2 });
   const option = (value, label, current) =>
@@ -55,18 +52,18 @@
     function guideMarkup(item) {
       const guidance = G?.exerciseGuidance?.(item, state.catalog);
       if (!guidance) return "";
-      return `<details class="exercise-guide"><summary>Setup, cues &amp; equipment swaps</summary><div class="exercise-guide-grid"><section><span>Set up</span><p>${esc(guidance.setup)}</p></section><section><span>Purpose</span><p>${esc(guidance.purpose)}</p></section><section><span>Technique cues</span><ul>${guidance.cues.map((cue) => `<li>${esc(cue)}</li>`).join("")}</ul></section><section class="guide-warning"><span>Caution / Common mistake</span><p>${esc(guidance.mistake)}</p></section><section><span>General catalog range</span><p>${esc(guidance.prescription)}</p></section><section><span>Same target · other equipment</span><ul>${guidance.alternatives.map(({ exercise: alternative }) => `<li><strong>${esc(alternative.name)}</strong> · ${esc(alternative.equipment)}</li>`).join("")}</ul></section></div></details>`;
+      return `<details class="exercise-guide"><summary>Setup, cues &amp; equipment swaps</summary><div class="exercise-guide-grid"><section><span>Set up</span><p>${esc(guidance.setup)}</p></section><section><span>Purpose</span><p>${esc(guidance.purpose)}</p></section><section><span>Technique cues</span><ul>${guidance.cues.map((cue) => StrataHtml.html`<li>${cue}</li>`).join("")}</ul></section><section class="guide-warning"><span>Caution / Common mistake</span><p>${esc(guidance.mistake)}</p></section><section><span>General catalog range</span><p>${esc(guidance.prescription)}</p></section><section><span>Same target · other equipment</span><ul>${guidance.alternatives.map(({ exercise: alternative }) => StrataHtml.html`<li><strong>${alternative.name}</strong> · ${alternative.equipment}</li>`).join("")}</ul></section></div></details>`;
     }
     function memoryMarkup(entry) {
       if (!state.memoryReady) {
         const failed = !!state.memoryError;
-        return `<section class="workout-memory" aria-label="Previous performance"${failed ? "" : ' aria-busy="true"'}><div class="memory-previous empty"><span>${failed ? "Couldn’t check older history" : "Checking previous performance…"}</span><p>${failed ? `${esc(state.memoryError)} Refresh history to retry; no result has been assumed.` : "Looking through your saved sessions for the latest exact match."}</p></div></section>`;
+        return `<section class="workout-memory" aria-label="Previous performance"${failed ? "" : ' aria-busy="true"'}><div class="memory-previous empty"><span>${failed ? "Couldn’t check older history" : "Checking previous performance…"}</span><p>${failed ? StrataHtml.html`${state.memoryError} Refresh history to retry; no result has been assumed.` : "Looking through your saved sessions for the latest exact match."}</p></div></section>`;
       }
       const memory = memoryFor(entry),
         canApply =
           memory?.sets.length > 0 && !W.hasSetValues(entry) && state.workout.status === "active";
       if (memory && !memory.sets.length)
-        return `<section class="workout-memory" aria-label="Previous performance"><div class="memory-previous empty"><span>Previous session · ${esc(W.displayDate(memory.date))}</span><p>No sets were completed for this exercise in the latest matching session. Enter today’s values to establish a fresh baseline.</p></div></section>`;
+        return StrataHtml.html`<section class="workout-memory" aria-label="Previous performance"><div class="memory-previous empty"><span>Previous session · ${W.displayDate(memory.date)}</span><p>No sets were completed for this exercise in the latest matching session. Enter today’s values to establish a fresh baseline.</p></div></section>`;
       return memory
         ? `<section class="workout-memory" aria-label="Previous performance"><div class="memory-previous"><span>Previous performance · ${esc(W.displayDate(memory.date))}</span><ol>${memory.sets.map((set, index) => `<li><b>Set ${index + 1}</b> ${esc(setValue(entry, set))}</li>`).join("")}</ol><button class="button secondary compact" type="button" data-use-last${canApply ? "" : " disabled"}>Use previous values</button></div></section>`
         : `<section class="workout-memory" aria-label="Previous performance"><div class="memory-previous empty"><span>No previous performance yet</span><p>Complete this logging format once and Training Memory will bring it back here.</p></div></section>`;
@@ -76,7 +73,7 @@
         return `<section class="memory-target" aria-label="Today’s target"><span>Today’s target</span><p>${state.memoryError ? "Enter today’s values manually while history is unavailable." : "Checking saved performance before recommending a weight."}</p></section>`;
       const proposal = nextTarget(entry);
       if (proposal && !["ready", "baseline"].includes(proposal.status))
-        return `<section class="memory-target" aria-label="Today’s target"><span>Today’s target</span><p>${esc(proposal.explanation)}</p></section>`;
+        return StrataHtml.html`<section class="memory-target" aria-label="Today’s target"><span>Today’s target</span><p>${proposal.explanation}</p></section>`;
       const memory = memoryFor(entry),
         suggestion = proposal?.status === "ready" ? proposal : W.suggestedTargets(entry, memory),
         canApply = !W.hasSetValues(entry) && state.workout.status === "active" && !state.blocked;
@@ -88,7 +85,7 @@
           increase_time: "Build time",
           repeat: "Repeat this target",
         }[proposal?.suggestion?.action] || "Your starting target";
-      return `<section class="memory-target" aria-label="Today’s target"><span>Today’s target</span><h4>${esc(action)}</h4>${proposal?.sourceDate ? `<small>Based on ${esc(W.displayDate(proposal.sourceDate))}</small>` : ""}<ol>${suggestion.sets.map((set, index) => `<li><b>Set ${index + 1}</b> ${esc(setValue(entry, set))}</li>`).join("")}</ol><p>${esc(suggestion.explanation)}</p><button class="button secondary compact" type="button" data-apply-target${canApply ? "" : " disabled"}>Apply suggested target</button><small>Review before each set. Applying a target does not mark any set complete.</small></section>`;
+      return `<section class="memory-target" aria-label="Today’s target"><span>Today’s target</span><h4>${esc(action)}</h4>${proposal?.sourceDate ? StrataHtml.html`<small>Based on ${W.displayDate(proposal.sourceDate)}</small>` : ""}<ol>${suggestion.sets.map((set, index) => `<li><b>Set ${index + 1}</b> ${esc(setValue(entry, set))}</li>`).join("")}</ol><p>${esc(suggestion.explanation)}</p><button class="button secondary compact" type="button" data-apply-target${canApply ? "" : " disabled"}>Apply suggested target</button><small>Review before each set. Applying a target does not mark any set complete.</small></section>`;
     }
     function advancedTools(entry, ex) {
       if (entry.loadType !== "external") return "";
@@ -125,7 +122,7 @@
         )
         .join("");
       const formatNote = `${locked ? "Logging format is locked while actual values are present. Clear uncompleted values to change it." : "Check the logging format before your first set. Enter 0 explicitly if an external or assisted set has no added load."}${entry.loadType === "assisted" ? " Assistance is not lifted weight; it does not create weight or volume records." : ""} Effort is optional and never inferred.`;
-      return `<article class="exercise-card${grouped ? " is-superset" : ""}" data-entry="${esc(entry.id)}"><div class="exercise-heading"><span class="exercise-index">${String(index + 1).padStart(2, "0")}</span><div>${grouped ? `<span class="superset-badge">${supersetLabel(entry)}</span>` : ""}<h3>${esc(ex.name)}</h3><p>Planned: ${entry.sets.length} × ${esc(entry.prescribedReps)}${ex.equipment ? ` · ${esc(ex.equipment)}` : ""}${entry.replacedFromExerciseId ? ` · Replaced ${esc(exercise(entry.replacedFromExerciseId).name)} for this session` : ""}</p></div><span class="exercise-progress">${completedSets}/${entry.sets.length} sets</span></div>${memoryMarkup(entry)}${targetMarkup(entry)}<div class="sets-scroll"><table class="sets-table"><thead><tr><th scope="col">Set</th>${weighted ? `<th scope="col">${entry.loadType === "assisted" ? "Assist" : "Load"} (${entry.unit})</th>` : ""}<th scope="col">${timed ? "Seconds" : "Reps"}</th>${effort ? `<th scope="col">${entry.effortType.toUpperCase()}</th>` : ""}<th scope="col">Complete</th></tr></thead><tbody>${setRows}</tbody></table></div><details class="exercise-more"><summary><span>More options</span><small>Swap, setup, logging format, notes &amp; tools</small></summary><div class="exercise-more-body"><div class="exercise-actions"><button class="button secondary compact" type="button" data-open-swap${locked ? ' disabled title="Clear logged values before swapping this exercise"' : ""}>Swap exercise</button>${nextEntry || grouped ? `<button class="button quiet compact" type="button" data-toggle-superset>${grouped ? "Unpair superset" : "Pair with next"}</button>` : ""}</div>${guideMarkup(ex)}<div class="format-controls"><label class="field">Record<select data-format="measurement" aria-label="Measurement for ${esc(ex.name)}"${disabled}>${option("reps", "Repetitions", entry.measurement)}${option("timed", "Time in seconds", entry.measurement)}</select></label><label class="field">Load type<select data-format="loadType" aria-label="Load type for ${esc(ex.name)}"${disabled}>${option("external", "External load", entry.loadType)}${option("bodyweight", "Bodyweight", entry.loadType)}${option("assisted", "Assistance", entry.loadType)}</select></label><label class="field">Unit<select data-format="unit" aria-label="Load unit for ${esc(ex.name)}"${disabled}${!weighted && !locked ? " disabled" : ""}>${option("kg", "kg", entry.unit)}${option("lb", "lb", entry.unit)}</select></label><label class="field">Effort (optional)<select data-format="effortType" aria-label="Effort scale for ${esc(ex.name)}"${effortLocked ? " disabled" : ""}>${option("none", "Off", entry.effortType)}${option("rir", "RIR", entry.effortType)}${option("rpe", "RPE", entry.effortType)}</select></label></div><p class="format-note">${formatNote}</p><button class="button secondary compact add-set" type="button" data-add-set${entry.sets.length >= 10 || state.workout.status === "completed" ? " disabled" : ""}>+ Add set</button><label class="exercise-note">Exercise note <span>Optional · private to this session</span><textarea rows="2" maxlength="500" data-entry-note placeholder="Setup, cue, or anything you want to remember"${state.workout.status === "completed" ? " disabled" : ""}>${esc(entry.note)}</textarea></label>${advancedTools(entry, ex)}</div></details></article>`;
+      return `<article class="exercise-card${grouped ? " is-superset" : ""}" data-entry="${esc(entry.id)}"><div class="exercise-heading"><span class="exercise-index">${String(index + 1).padStart(2, "0")}</span><div>${grouped ? `<span class="superset-badge">${supersetLabel(entry)}</span>` : ""}<h3>${esc(ex.name)}</h3><p>Planned: ${entry.sets.length} × ${esc(entry.prescribedReps)}${ex.equipment ? StrataHtml.html` · ${ex.equipment}` : ""}${entry.replacedFromExerciseId ? StrataHtml.html` · Replaced ${exercise(entry.replacedFromExerciseId).name} for this session` : ""}</p></div><span class="exercise-progress">${completedSets}/${entry.sets.length} sets</span></div>${memoryMarkup(entry)}${targetMarkup(entry)}<div class="sets-scroll"><table class="sets-table"><thead><tr><th scope="col">Set</th>${weighted ? `<th scope="col">${entry.loadType === "assisted" ? "Assist" : "Load"} (${entry.unit})</th>` : ""}<th scope="col">${timed ? "Seconds" : "Reps"}</th>${effort ? `<th scope="col">${entry.effortType.toUpperCase()}</th>` : ""}<th scope="col">Complete</th></tr></thead><tbody>${setRows}</tbody></table></div><details class="exercise-more"><summary><span>More options</span><small>Swap, setup, logging format, notes &amp; tools</small></summary><div class="exercise-more-body"><div class="exercise-actions"><button class="button secondary compact" type="button" data-open-swap${locked ? ' disabled title="Clear logged values before swapping this exercise"' : ""}>Swap exercise</button>${nextEntry || grouped ? `<button class="button quiet compact" type="button" data-toggle-superset>${grouped ? "Unpair superset" : "Pair with next"}</button>` : ""}</div>${guideMarkup(ex)}<div class="format-controls"><label class="field">Record<select data-format="measurement" aria-label="Measurement for ${esc(ex.name)}"${disabled}>${option("reps", "Repetitions", entry.measurement)}${option("timed", "Time in seconds", entry.measurement)}</select></label><label class="field">Load type<select data-format="loadType" aria-label="Load type for ${esc(ex.name)}"${disabled}>${option("external", "External load", entry.loadType)}${option("bodyweight", "Bodyweight", entry.loadType)}${option("assisted", "Assistance", entry.loadType)}</select></label><label class="field">Unit<select data-format="unit" aria-label="Load unit for ${esc(ex.name)}"${disabled}${!weighted && !locked ? " disabled" : ""}>${option("kg", "kg", entry.unit)}${option("lb", "lb", entry.unit)}</select></label><label class="field">Effort (optional)<select data-format="effortType" aria-label="Effort scale for ${esc(ex.name)}"${effortLocked ? " disabled" : ""}>${option("none", "Off", entry.effortType)}${option("rir", "RIR", entry.effortType)}${option("rpe", "RPE", entry.effortType)}</select></label></div><p class="format-note">${formatNote}</p><button class="button secondary compact add-set" type="button" data-add-set${entry.sets.length >= 10 || state.workout.status === "completed" ? " disabled" : ""}>+ Add set</button><label class="exercise-note">Exercise note <span>Optional · private to this session</span><textarea rows="2" maxlength="500" data-entry-note placeholder="Setup, cue, or anything you want to remember"${state.workout.status === "completed" ? " disabled" : ""}>${esc(entry.note)}</textarea></label>${advancedTools(entry, ex)}</div></details></article>`;
     }
     function planPreview(items) {
       return items
@@ -142,7 +139,7 @@
       )
         .entries.map(
           (entry) =>
-            `<section class="detail-exercise"><h3>${esc(exercise(entry.exerciseId).name)}</h3><p>${esc(formatLabel(entry))} · planned ${esc(entry.prescribedReps)}${entry.supersetGroup ? " · Superset pair" : ""}${entry.replacedFromExerciseId ? ` · Replaced ${esc(exercise(entry.replacedFromExerciseId).name)}` : ""}</p>${entry.note ? `<blockquote>${esc(entry.note)}</blockquote>` : ""}${entry.sets.map((set, index) => `<div class="detail-set${set.completed ? "" : " unfinished"}"><span>Set ${index + 1}</span><span>${set[entry.measurement === "timed" ? "seconds" : "reps"] ?? "—"} ${entry.measurement === "timed" ? "sec" : "reps"}${entry.loadType !== "bodyweight" ? ` · ${set.weight ?? "—"} ${entry.unit}${entry.loadType === "assisted" ? " assistance" : ""}` : ""}${set.effort != null && entry.effortType !== "none" ? ` · ${set.effort} ${entry.effortType.toUpperCase()}` : ""}</span><span class="${set.completed ? "done" : ""}">${set.completed ? "✓ Done" : "Unfinished"}</span></div>`).join("")}</section>`,
+            `<section class="detail-exercise"><h3>${esc(exercise(entry.exerciseId).name)}</h3><p>${esc(formatLabel(entry))} · planned ${esc(entry.prescribedReps)}${entry.supersetGroup ? " · Superset pair" : ""}${entry.replacedFromExerciseId ? StrataHtml.html` · Replaced ${exercise(entry.replacedFromExerciseId).name}` : ""}</p>${entry.note ? StrataHtml.html`<blockquote>${entry.note}</blockquote>` : ""}${entry.sets.map((set, index) => `<div class="detail-set${set.completed ? "" : " unfinished"}"><span>Set ${index + 1}</span><span>${set[entry.measurement === "timed" ? "seconds" : "reps"] ?? "—"} ${entry.measurement === "timed" ? "sec" : "reps"}${entry.loadType !== "bodyweight" ? ` · ${set.weight ?? "—"} ${entry.unit}${entry.loadType === "assisted" ? " assistance" : ""}` : ""}${set.effort != null && entry.effortType !== "none" ? ` · ${set.effort} ${entry.effortType.toUpperCase()}` : ""}</span><span class="${set.completed ? "done" : ""}">${set.completed ? "✓ Done" : "Unfinished"}</span></div>`).join("")}</section>`,
         )
         .join("")}`;
     }
@@ -150,7 +147,7 @@
       for (const card of container.querySelectorAll("[data-entry]")) {
         const entry = state.workout?.entries.find((item) => item.id === card.dataset.entry),
           target = card.querySelector(".memory-target");
-        if (entry && target) target.outerHTML = targetMarkup(entry);
+        if (entry && target) StrataHtml.replaceHtml(target, targetMarkup(entry));
       }
     }
     return {

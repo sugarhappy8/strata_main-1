@@ -5,6 +5,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { HTML_SOURCE, loadHtml } = require("./support/browser-html");
 
 const ROOT = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(ROOT, file), "utf8");
@@ -88,6 +89,7 @@ function paywall({
   };
   context.globalThis = context;
   vm.createContext(context);
+  loadHtml(context);
   for (const file of ["entitlements", "app-mode", "app-paywall"])
     vm.runInContext(read(`public/scripts/${file}.js`), context, { filename: `${file}.js` });
   const billing = context.StrataAppMode.createBilling({
@@ -461,7 +463,7 @@ test("pricing never requests Paddle in the app, and still loads it on the websit
       },
       ...extra,
     };
-    vm.runInNewContext(sources, context);
+    vm.runInNewContext(`${HTML_SOURCE}\n${sources}`, context);
     return { appended, requests };
   };
   const app = run({ StrataApp: Object.freeze({ platform: "ios", shellVersion: 1 }) });

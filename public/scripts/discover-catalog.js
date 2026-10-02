@@ -1,9 +1,11 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDiscoverCatalog = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   function createCatalog({
@@ -84,21 +86,40 @@
       element("levelSelect").value = state.preferences.level;
       element("daysInput").value = state.preferences.days;
       const equipment = [...new Set(state.exercises.map((exercise) => exercise.equipment))];
-      element("equipmentChoices").innerHTML = equipment
-        .map((value) =>
-          choiceMarkup("equipment", value, value, state.preferences.equipment.includes(value)),
-        )
-        .join("");
-      element("preferenceChoices").innerHTML = Object.entries(preferenceOptions)
-        .map(([value, label]) =>
-          choiceMarkup("preferences", value, label, state.preferences.preferences.includes(value)),
-        )
-        .join("");
-      element("limitationChoices").innerHTML = Object.entries(limitationOptions)
-        .map(([value, label]) =>
-          choiceMarkup("limitations", value, label, state.preferences.limitations.includes(value)),
-        )
-        .join("");
+      StrataHtml.setHtml(
+        element("equipmentChoices"),
+        equipment
+          .map((value) =>
+            choiceMarkup("equipment", value, value, state.preferences.equipment.includes(value)),
+          )
+          .join(""),
+      );
+      StrataHtml.setHtml(
+        element("preferenceChoices"),
+        Object.entries(preferenceOptions)
+          .map(([value, label]) =>
+            choiceMarkup(
+              "preferences",
+              value,
+              label,
+              state.preferences.preferences.includes(value),
+            ),
+          )
+          .join(""),
+      );
+      StrataHtml.setHtml(
+        element("limitationChoices"),
+        Object.entries(limitationOptions)
+          .map(([value, label]) =>
+            choiceMarkup(
+              "limitations",
+              value,
+              label,
+              state.preferences.limitations.includes(value),
+            ),
+          )
+          .join(""),
+      );
       element("profileStatus").textContent = "Saved";
       renderRankingLens();
     }
@@ -126,15 +147,18 @@
         constraints = state.preferences.limitations?.length
           ? `${state.preferences.limitations.length} constraint${state.preferences.limitations.length === 1 ? "" : "s"}`
           : "No exclusions";
-      element("rankingLensItems").innerHTML = [
-        goal,
-        state.preferences.level,
-        `${state.preferences.days} days`,
-        `${state.preferences.equipment.length} equipment types`,
-        constraints,
-      ]
-        .map((item) => `<li>${escapeHtml(item)}</li>`)
-        .join("");
+      StrataHtml.setHtml(
+        element("rankingLensItems"),
+        [
+          goal,
+          state.preferences.level,
+          `${state.preferences.days} days`,
+          `${state.preferences.equipment.length} equipment types`,
+          constraints,
+        ]
+          .map((item) => StrataHtml.html`<li>${item}</li>`)
+          .join(""),
+      );
     }
     function renderMovementBoard({ message = "" } = {}) {
       if (!element("savedActions")) return;
@@ -167,25 +191,34 @@
         }[state.preferences.goal] || titleCase(state.preferences.goal);
       element("recommendationSummary").textContent =
         `Rules-based ${goal.toLowerCase()} ranking · ${state.preferences.equipment.length} equipment types · ${state.preferences.days} days`;
-      element("recommendationGrid").innerHTML = state.recommendations.length
-        ? state.recommendations
-            .map(
-              ({ exercise, result }, index) =>
-                `<article class="recommend-card" data-rank="${String(index + 1).padStart(2, "0")}"><div class="card-topline"><span class="match-pill">${result.match}% personal match</span><div class="card-tools">${movementBoardButton(exercise, { compact: true })}${scoreButton(exercise)}</div></div><h3>${escapeHtml(exercise.name)}</h3><span class="target">${escapeHtml(labels[exercise.group])} / ${escapeHtml(exercise.sub)}</span><p>${escapeHtml(profileReason(result))}. ${escapeHtml(exercise.why)}</p><div class="mini-meta"><span>${escapeHtml(exercise.equipment)}</span><span>${escapeHtml(exercise.level)}</span></div><div class="community-line"><span>Community rating</span><strong>${escapeHtml(communityLabel(exercise.id))}</strong></div><div class="mini-actions"><button data-open-detail="${exercise.id}" type="button" aria-label="Why ${escapeHtml(exercise.name)} ranks here">Why it ranks</button>${compareButton(exercise)}<a href="/planner.html?add=${encodeURIComponent(exercise.id)}" aria-label="Add ${escapeHtml(exercise.name)} to weekly plan">Add to plan</a></div></article>`,
-            )
-            .join("")
-        : `<div class="loading-card recommendation-empty"><p>No exercise matches all saved equipment and constraints.</p><a class="small-button" href="#profile" data-feature-target="profile">Tune my ranking →</a></div>`;
+      StrataHtml.setHtml(
+        element("recommendationGrid"),
+        state.recommendations.length
+          ? state.recommendations
+              .map(
+                ({ exercise, result }, index) =>
+                  `<article class="recommend-card" data-rank="${String(index + 1).padStart(2, "0")}"><div class="card-topline"><span class="match-pill">${result.match}% personal match</span><div class="card-tools">${movementBoardButton(exercise, { compact: true })}${scoreButton(exercise)}</div></div><h3>${escapeHtml(exercise.name)}</h3><span class="target">${escapeHtml(labels[exercise.group])} / ${escapeHtml(exercise.sub)}</span><p>${escapeHtml(profileReason(result))}. ${escapeHtml(exercise.why)}</p><div class="mini-meta"><span>${escapeHtml(exercise.equipment)}</span><span>${escapeHtml(exercise.level)}</span></div><div class="community-line"><span>Community rating</span><strong>${escapeHtml(communityLabel(exercise.id))}</strong></div><div class="mini-actions"><button data-open-detail="${exercise.id}" type="button" aria-label="Why ${escapeHtml(exercise.name)} ranks here">Why it ranks</button>${compareButton(exercise)}<a href="/planner.html?add=${encodeURIComponent(exercise.id)}" aria-label="Add ${escapeHtml(exercise.name)} to weekly plan">Add to plan</a></div></article>`,
+              )
+              .join("")
+          : `<div class="loading-card recommendation-empty"><p>No exercise matches all saved equipment and constraints.</p><a class="small-button" href="#profile" data-feature-target="profile">Tune my ranking →</a></div>`,
+      );
     }
     function populateFilters() {
       const groups = [...new Set(state.exercises.map((exercise) => exercise.group))],
         equipment = [...new Set(state.exercises.map((exercise) => exercise.equipment))],
         patterns = [...new Set(state.exercises.map((exercise) => exercise.pattern))];
-      element("groupFilter").innerHTML =
-        `<option value="all">All muscles</option>${groups.map((value) => `<option value="${value}">${escapeHtml(labels[value] || titleCase(value))}</option>`).join("")}`;
-      element("equipmentFilter").innerHTML =
-        `<option value="all">All equipment</option>${equipment.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
-      element("patternFilter").innerHTML =
-        `<option value="all">All patterns</option>${patterns.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
+      StrataHtml.setHtml(
+        element("groupFilter"),
+        `<option value="all">All muscles</option>${groups.map((value) => `<option value="${value}">${escapeHtml(labels[value] || titleCase(value))}</option>`).join("")}`,
+      );
+      StrataHtml.setHtml(
+        element("equipmentFilter"),
+        `<option value="all">All equipment</option>${equipment.map((value) => StrataHtml.html`<option value="${value}">${value}</option>`).join("")}`,
+      );
+      StrataHtml.setHtml(
+        element("patternFilter"),
+        `<option value="all">All patterns</option>${patterns.map((value) => StrataHtml.html`<option value="${value}">${value}</option>`).join("")}`,
+      );
     }
     function discoveryResults() {
       return core.filterExercises(
@@ -226,16 +259,18 @@
       element("emptyStateDetail").textContent = savedEmpty
         ? "Save up to four movements from recommendations or the library, then return here to review them together."
         : "Try clearing the search or one of the exercise filters.";
-      element("exerciseGrid").innerHTML =
+      StrataHtml.setHtml(
+        element("exerciseGrid"),
         visibleItems
           .map((exercise, index) => {
             const personal = personalResult(exercise);
             return `<article class="exercise-card" data-result-index="${index}"><div class="card-topline"><span class="match-pill ${personal.eligible ? "" : "is-excluded"}">${escapeHtml(personalLabel(personal))}</span><div class="card-tools">${movementBoardButton(exercise, { compact: true })}${scoreButton(exercise)}</div></div><h3>${escapeHtml(exercise.name)}</h3><span class="target">${escapeHtml(labels[exercise.group] || titleCase(exercise.group))} / ${escapeHtml(exercise.sub)}</span><p>${escapeHtml(exercise.why)}</p><div class="mini-meta"><span>${escapeHtml(exercise.equipment)}</span><span>${escapeHtml(exercise.pattern)}</span><span>${escapeHtml(exercise.level)}</span></div><div class="community-line"><span>Community rating</span><strong>${escapeHtml(communityLabel(exercise.id))}</strong></div><div class="mini-actions"><button data-open-detail="${exercise.id}" type="button" aria-label="Inspect ${escapeHtml(exercise.name)}">Inspect</button>${compareButton(exercise)}<a href="/planner.html?add=${encodeURIComponent(exercise.id)}" aria-label="Add ${escapeHtml(exercise.name)} to weekly plan">Add to plan</a></div></article>`;
           })
           .join("") +
-        (!remaining
-          ? ""
-          : `<div class="explorer-load-more"><p>Showing ${visibleItems.length} of ${items.length} matching exercises</p><button data-load-more-exercises type="button" aria-controls="exerciseGrid">Load ${nextCount} more <span aria-hidden="true">↓</span></button></div>`);
+          (!remaining
+            ? ""
+            : `<div class="explorer-load-more"><p>Showing ${visibleItems.length} of ${items.length} matching exercises</p><button data-load-more-exercises type="button" aria-controls="exerciseGrid">Load ${nextCount} more <span aria-hidden="true">↓</span></button></div>`),
+      );
     }
     function renderCommunityViews() {
       if (!state.exercises.length || !state.preferences || state.ratingSaving.size) return;
@@ -295,12 +330,15 @@
     }
     function renderBattleBuilder() {
       if (!state.exercises.length) return;
-      element("battleSelects").innerHTML = [0, 1, 2, 3]
-        .map(
-          (index) =>
-            `<label class="battle-slot">Exercise ${index + 1}${index < 2 ? " (required)" : " (optional)"}<select data-battle-slot="${index}" ${index < 2 ? "required" : ""}>${battleOptions(state.compare[index] || "")}</select></label>`,
-        )
-        .join("");
+      StrataHtml.setHtml(
+        element("battleSelects"),
+        [0, 1, 2, 3]
+          .map(
+            (index) =>
+              `<label class="battle-slot">Exercise ${index + 1}${index < 2 ? " (required)" : " (optional)"}<select data-battle-slot="${index}" ${index < 2 ? "required" : ""}>${battleOptions(state.compare[index] || "")}</select></label>`,
+          )
+          .join(""),
+      );
       const count = state.compare.length;
       element("battleStatus").textContent =
         count < 2

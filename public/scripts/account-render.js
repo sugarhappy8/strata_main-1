@@ -4,10 +4,12 @@
     typeof module === "object" && module.exports
       ? require("./account-logic")
       : root.StrataAccountLogic;
-  const api = factory(logic);
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(logic, StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataAccountRender = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (logic) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (logic, StrataHtml) {
   "use strict";
 
   function createRenderer({
@@ -87,7 +89,7 @@
         "accountSecurityStatus",
       ];
       for (const id of textIds) el(id).textContent = "";
-      el("accountSessionList").innerHTML = "";
+      el("accountSessionList").textContent = "";
       for (const id of [
         "signedInCard",
         "accountBilling",
@@ -347,7 +349,8 @@
     function renderAccountSessions(sessions) {
       const list = el("accountSessionList"),
         others = sessions.filter((session) => session?.current !== true);
-      list.innerHTML =
+      StrataHtml.setHtml(
+        list,
         sessions
           .map((session) => {
             const current = session?.current === true,
@@ -355,7 +358,8 @@
             return `<li><div><strong>${current ? "This session" : "Other session"}</strong><small>Signed in ${logic.escapeHtml(logic.sessionDate(session?.createdAt))} · Expires ${logic.escapeHtml(logic.sessionDate(session?.expiresAt))}</small></div>${current ? '<span class="account-current-session">Current</span>' : `<button type="button" data-revoke-session="${id}" aria-label="Sign out session created ${logic.escapeHtml(logic.sessionDate(session?.createdAt))}">Sign out</button>`}</li>`;
           })
           .join("") ||
-        '<li class="account-session-loading">No active sessions were found. Refresh this page before making account changes.</li>';
+          '<li class="account-session-loading">No active sessions were found. Refresh this page before making account changes.</li>',
+      );
       list.setAttribute("aria-busy", "false");
       const revokeAll = el("accountRevokeOtherSessions");
       revokeAll.disabled = others.length === 0;
@@ -365,14 +369,19 @@
     function showSessionLoading() {
       const list = el("accountSessionList");
       list.setAttribute("aria-busy", "true");
-      list.innerHTML = '<li class="account-session-loading">Checking active sessions…</li>';
+      StrataHtml.setHtml(
+        list,
+        '<li class="account-session-loading">Checking active sessions…</li>',
+      );
       el("accountRevokeOtherSessions").disabled = true;
     }
     function showSessionError() {
       const list = el("accountSessionList");
       list.setAttribute("aria-busy", "false");
-      list.innerHTML =
-        '<li class="account-session-loading">Active sessions could not be loaded. Nothing was changed.</li>';
+      StrataHtml.setHtml(
+        list,
+        '<li class="account-session-loading">Active sessions could not be loaded. Nothing was changed.</li>',
+      );
       showAccountControlStatus(
         "accountSessionStatus",
         "Could not load signed-in sessions. Refresh to try again.",

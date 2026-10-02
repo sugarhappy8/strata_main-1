@@ -4,6 +4,12 @@
       "html": "public/pages/index.html",
       "modules": [
         {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
+        {
           "file": "public/scripts/entitlements.js",
           "role": "logic",
           "global": "StrataEntitlements",
@@ -79,6 +85,12 @@
     "strata-plus": {
       "html": "public/pages/discover.html",
       "modules": [
+        {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
         {
           "file": "public/scripts/session-selection-core.js",
           "role": "logic",
@@ -173,7 +185,7 @@
           "file": "public/scripts/discover-coaching-render.js",
           "role": "render",
           "global": "StrataDiscoverCoachingRender",
-          "maxLines": 600
+          "maxLines": 630
         },
         {
           "file": "public/scripts/discover-coaching-trend.js",
@@ -288,6 +300,12 @@
       "html": "public/pages/planner.html",
       "modules": [
         {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
+        {
           "file": "public/scripts/entitlements.js",
           "role": "logic",
           "global": "StrataEntitlements",
@@ -362,13 +380,19 @@
         {
           "file": "public/scripts/planner.js",
           "role": "entry",
-          "maxLines": 1400
+          "maxLines": 1440
         }
       ]
     },
     "workout": {
       "html": "public/pages/workout.html",
       "modules": [
+        {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
         {
           "file": "public/scripts/workout-core.js",
           "role": "logic",
@@ -458,6 +482,12 @@
       "html": "public/pages/pricing.html",
       "modules": [
         {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
+        {
           "file": "public/scripts/entitlements.js",
           "role": "logic",
           "global": "StrataEntitlements",
@@ -503,6 +533,12 @@
     "ai": {
       "html": "public/pages/ai.html",
       "modules": [
+        {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
         {
           "file": "public/scripts/personal-training-energy-ui-core.js",
           "role": "logic",
@@ -555,6 +591,12 @@
     "account": {
       "html": "public/pages/account.html",
       "modules": [
+        {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
         {
           "file": "public/scripts/entitlements.js",
           "role": "logic",
@@ -619,6 +661,12 @@
     "admin": {
       "html": "public/pages/admin.html",
       "modules": [
+        {
+          "file": "public/scripts/html.js",
+          "role": "logic",
+          "global": "StrataHtml",
+          "maxLines": 100
+        },
         {
           "file": "public/scripts/admin-state.js",
           "role": "state",

@@ -1,9 +1,11 @@
-/* global module */
+/* global module, require */
 (function (root, factory) {
-  const api = factory();
+  const StrataHtml =
+    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
+  const api = factory(StrataHtml);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataPlannerActivation = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
   function createController({
@@ -59,28 +61,35 @@
       el("devicePlanEyebrow").textContent = directClaim
         ? "Your first week is ready"
         : "Your preview survived";
-      el("devicePlanTitle").innerHTML = directClaim
-        ? "Save your <em>week.</em>"
-        : "Bring your <em>week with you.</em>";
+      StrataHtml.setHtml(
+        el("devicePlanTitle"),
+        directClaim ? "Save your <em>week.</em>" : "Bring your <em>week with you.</em>",
+      );
       el("devicePlanLead").textContent = directClaim
         ? "Your account week is empty. Save this device week directly—there is no existing schedule to compare or replace."
         : "Your account and this browser have different weeks. Nothing has been copied or overwritten. Compare both, then explicitly claim the device week or keep the account week.";
-      el("devicePlanOverview").innerHTML = activationOverview(candidate);
+      StrataHtml.setHtml(el("devicePlanOverview"), activationOverview(candidate));
       el("deviceCandidateTitle").textContent = candidate.label;
-      el("deviceAccountPlanSummary").innerHTML = planConflictSummary(state.plan);
-      el("deviceCandidatePlanSummary").innerHTML = planConflictSummary(candidate.plan);
+      StrataHtml.setHtml(el("deviceAccountPlanSummary"), planConflictSummary(state.plan));
+      StrataHtml.setHtml(el("deviceCandidatePlanSummary"), planConflictSummary(candidate.plan));
       el("devicePlanComparison").hidden = true;
       el("devicePlanConfirmLabel").hidden = true;
       el("devicePlanConfirm").checked = false;
       el("compareDevicePlan").hidden = directClaim;
       el("keepAccountPlan").hidden = directClaim;
       el("claimDevicePlan").disabled = false;
-      el("claimDevicePlan").innerHTML = directClaim
-        ? 'Save week to my account <span aria-hidden="true">→</span>'
-        : 'Use device week <span aria-hidden="true">→</span>';
+      StrataHtml.setHtml(
+        el("claimDevicePlan"),
+        directClaim
+          ? 'Save week to my account <span aria-hidden="true">→</span>'
+          : 'Use device week <span aria-hidden="true">→</span>',
+      );
       if (!directClaim) el("claimDevicePlan").disabled = true;
       el("compareDevicePlan").setAttribute("aria-expanded", "false");
-      el("compareDevicePlan").innerHTML = 'Compare both weeks <span aria-hidden="true">↘</span>';
+      StrataHtml.setHtml(
+        el("compareDevicePlan"),
+        'Compare both weeks <span aria-hidden="true">↘</span>',
+      );
       setActivationStatus(
         directClaim
           ? "Ready to save. Your empty account week has nothing to overwrite."
@@ -128,12 +137,15 @@
       state.activationCandidates = candidates;
       state.activationCandidateId = candidates[0].id;
       const source = el("devicePlanSource");
-      source.innerHTML = candidates
-        .map(
-          (candidate) =>
-            `<option value="${escapeHtml(candidate.id)}">${escapeHtml(candidate.label)} · ${planMovementCount(candidate.plan)} movements</option>`,
-        )
-        .join("");
+      StrataHtml.setHtml(
+        source,
+        candidates
+          .map(
+            (candidate) =>
+              `<option value="${escapeHtml(candidate.id)}">${escapeHtml(candidate.label)} · ${planMovementCount(candidate.plan)} movements</option>`,
+          )
+          .join(""),
+      );
       source.value = state.activationCandidateId;
       el("devicePlanSourceLabel").hidden = candidates.length < 2;
       renderActivationCandidate();
@@ -148,9 +160,12 @@
       comparison.hidden = !opening;
       el("devicePlanConfirmLabel").hidden = !opening;
       el("compareDevicePlan").setAttribute("aria-expanded", String(opening));
-      el("compareDevicePlan").innerHTML = opening
-        ? 'Hide comparison <span aria-hidden="true">↖</span>'
-        : 'Compare both weeks <span aria-hidden="true">↘</span>';
+      StrataHtml.setHtml(
+        el("compareDevicePlan"),
+        opening
+          ? 'Hide comparison <span aria-hidden="true">↖</span>'
+          : 'Compare both weeks <span aria-hidden="true">↘</span>',
+      );
       setActivationStatus(
         opening
           ? "Comparison open. Review every day before choosing a week."

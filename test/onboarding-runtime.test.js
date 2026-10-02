@@ -6,6 +6,7 @@ const test = require("node:test"),
   vm = require("node:vm");
 const { join } = require("node:path");
 const Activation = require("../public/scripts/activation-core");
+const { loadHtml } = require("./support/browser-html");
 const ROOT = join(__dirname, ".."),
   GUEST_KEY = "strata_guest_plan_v1";
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -228,6 +229,7 @@ async function setup({
       123,
     );
   }
+  loadHtml(vm.createContext(context));
   vm.runInNewContext(fs.readFileSync(join(ROOT, "public/scripts/onboarding.js"), "utf8"), context, {
     filename: "onboarding.js",
   });
