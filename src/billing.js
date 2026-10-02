@@ -941,15 +941,6 @@ function createBillingService({
     json(res, 200, { ok: true, outcome });
   }
 
-  /** @param {import("./domain-types").HttpResponse} res */
-  function retiredTrial(res) {
-    // Installed apps from earlier builds may still offer the old trial button.
-    json(res, 410, {
-      error: "The free Strata+ trial is no longer offered. Subscribe to use Strata+.",
-      code: "TRIAL_RETIRED",
-    });
-  }
-
   // Never take a second payment: a member whose Strata+ comes from the App Store is told so.
   /** @param {import("./domain-types").HttpResponse} res @param {string} userId */
   async function alreadyEntitled(res, userId) {
@@ -1283,13 +1274,6 @@ function createBillingService({
       path: "/api/billing/config",
       public: true,
       handler: ({ res }) => json(res, 200, publicPaymentConfig(paymentConfig)),
-    },
-    // Installed apps from earlier builds may still offer the old trial button.
-    {
-      method: "POST",
-      path: "/api/discovery/trial",
-      public: true,
-      handler: ({ res }) => retiredTrial(res),
     },
     {
       method: "POST",

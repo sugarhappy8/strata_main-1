@@ -108,14 +108,13 @@ function assertRetiredTables(database) {
   assert.equal(tables.has("admin_elevations"), false, "the unused elevation table is dropped");
   assert.equal(tables.has("discovery_trials"), false, "legacy trials no longer grant access");
   assert.equal(tables.has("community_weekly_plans"), false, "shared community plans are retired");
-  assert.deepEqual(
-    database
-      .prepare("SELECT id,title FROM archive_community_weekly_plans")
-      .all()
-      .map((row) => ({ ...row })),
-    [{ id: "shared-1", title: "Legacy week" }],
-    "shared plans are archived, not deleted",
+  // Build 9 archived the retired rows for one release; 9.6 drops the archives after the owner's backup.
+  assert.equal(
+    tables.has("archive_community_weekly_plans"),
+    false,
+    "the shared-plan archive is dropped",
   );
+  assert.equal(tables.has("archive_discovery_trials"), false, "the trial archive is dropped");
   assert.equal(
     database
       .prepare(
@@ -123,14 +122,6 @@ function assertRetiredTables(database) {
       )
       .get().count,
     0,
-  );
-  assert.deepEqual(
-    database
-      .prepare("SELECT user_id,started_at,expires_at FROM archive_discovery_trials")
-      .all()
-      .map((row) => ({ ...row })),
-    [{ user_id: "legacy-coach", started_at: 1000, expires_at: 2000 }],
-    "legacy trial rows are archived, not deleted",
   );
   assert.deepEqual(
     database
@@ -184,7 +175,8 @@ test("a 9.3 database gains separate signed-in and anonymous counts, and the dail
     database.exec(
       "CREATE TABLE schema_migrations (migration_id TEXT PRIMARY KEY,applied_at INTEGER NOT NULL)",
     );
-    for (const { id } of MIGRATIONS.slice(0, -1))
+    const audiences = MIGRATIONS.findIndex(({ id }) => id === "010-product-signal-audiences");
+    for (const { id } of MIGRATIONS.slice(0, audiences))
       database.prepare("INSERT INTO schema_migrations VALUES(?,?)").run(id, 1);
     const result = migrateLocalSchema(database, {
       activeWorkoutIndex: WORKOUT_ACTIVE_INDEX,
@@ -192,7 +184,7 @@ test("a 9.3 database gains separate signed-in and anonymous counts, and the dail
       productSignalTable: PRODUCT_SIGNAL_TABLE,
       now: () => 1234,
     });
-    assert.deepEqual(result.applied, ["010-product-signal-audiences"]);
+    assert.deepEqual(result.applied, ["010-product-signal-audiences", "011-drop-build9-archives"]);
     assert.deepEqual(
       {
         ...database
@@ -328,52 +320,6 @@ test("SQLite records each idempotent migration once", () => {
           .get("legacy-coach"),
       },
       { morning_weight_kg: 300, intake_complete: 1 },
-    );
-  } finally {
-    database.close();
-  }
-});
-
-test("the documented 9.0.0 rollback restores archived rows under their 8.9.0 table names", () => {
-  const database = legacyDatabase();
-  try {
-    migrateLocalSchema(database, {
-      activeWorkoutIndex: WORKOUT_ACTIVE_INDEX,
-      reconcileActiveWorkouts: RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,
-      productSignalTable: PRODUCT_SIGNAL_TABLE,
-      now: () => 1234,
-    });
-    // The rollback plan in CHANGELOG_9.0.0.md: rename the archives back before redeploying 8.9.0.
-    database.exec("ALTER TABLE archive_discovery_trials RENAME TO discovery_trials");
-    database.exec("ALTER TABLE archive_community_weekly_plans RENAME TO community_weekly_plans");
-    assert.deepEqual(
-      database
-        .prepare("SELECT user_id,started_at,expires_at FROM discovery_trials")
-        .all()
-        .map((row) => ({ ...row })),
-      [{ user_id: "legacy-coach", started_at: 1000, expires_at: 2000 }],
-    );
-    assert.deepEqual(
-      database
-        .prepare("SELECT id,user_id,title,is_published FROM community_weekly_plans")
-        .all()
-        .map((row) => ({ ...row })),
-      [{ id: "shared-1", user_id: "legacy-coach", title: "Legacy week", is_published: 1 }],
-    );
-    // The renamed tables keep their constraints, so 8.9.0 writes behave as before.
-    assert.throws(
-      () =>
-        database
-          .prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)")
-          .run("legacy-coach", 3000, 4000),
-      /UNIQUE constraint failed/,
-    );
-    assert.throws(
-      () =>
-        database
-          .prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)")
-          .run("missing-user", 3000, 4000),
-      /FOREIGN KEY constraint failed/,
     );
   } finally {
     database.close();

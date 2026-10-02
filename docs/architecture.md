@@ -266,7 +266,7 @@ Add an index only for a demonstrated high-frequency lookup, join, ordering, or c
 7. Duplicate webhook event IDs return an idempotent replay outcome, and stale subscription events cannot regress newer state.
 8. Later ordered transaction events update pending state without overriding a terminal completion. Applicable adjustment events are upserted and may revoke the corresponding purchase.
 
-STRATA has no free trial. `POST /api/discovery/trial` answers `410 TRIAL_RETIRED` for installed apps from earlier builds, the store has no trial table, and `/api/me` carries no trial state. Build 9 archived the last legacy trial rows under `archive_discovery_trials` (migration `008-build9-retired-tables`); they grant nothing. A previously completed, unrevoked one-time lifetime purchase remains valid without requiring or fabricating a monthly subscription row.
+STRATA has no free trial. The old trial route (`POST /api/discovery/trial`, which answered `410 TRIAL_RETIRED` from 8.9.0) was removed in 9.6.0, the store has no trial table, and `/api/me` carries no trial state. Build 9 archived the last legacy trial rows under `archive_discovery_trials` (migration `008-build9-retired-tables`) and the shared community plans under `archive_community_weekly_plans`; migration `011-drop-build9-archives` (9.6.0) drops both archives after a backup. A previously completed, unrevoked one-time lifetime purchase remains valid without requiring or fabricating a monthly subscription row.
 
 Checkout recovery is bounded and validates every provider response, pagination link, and durable account reference. Account deletion reconciles or blocks unsettled checkout work so a late webhook cannot recreate access for a deleted user.
 

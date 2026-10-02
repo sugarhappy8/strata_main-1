@@ -161,19 +161,26 @@ test("public, optional-session, form, and webhook routes opt out only of what th
   );
 });
 
-test("paths match exactly, fixed paths win, parameters are decoded, and wrong methods get 405", async () => {
+test("paths match exactly, fixed paths win, IDs are strict, and wrong methods get 405", async () => {
   const page = harness();
   assert.equal((await page.call("GET", "/api/unknown")).handled, false);
   assert.equal((await page.call("GET", "/api/things/a/b")).handled, false);
   await page.call("GET", "/api/things/search");
-  await page.call("PUT", "/api/things/a%20b");
+  await page.call("PUT", "/api/things/Ab_9-2026-10-02");
   assert.deepEqual(
     page.calls.handled.map(({ name, params }) => [name, params]),
     [
       ["search", {}],
-      ["update", { id: "a b" }],
+      ["update", { id: "Ab_9-2026-10-02" }],
     ],
   );
+  for (const id of ["a%2Fb", "a%2fb", "..", "%2E%2E", "a%20b", "a.b", "a%00", "x".repeat(201)])
+    assert.equal(
+      (await page.call("PUT", `/api/things/${id}`)).handled,
+      false,
+      `${id} is not an ID: it is never decoded into one`,
+    );
+  assert.equal(page.calls.handled.length, 2, "no refused ID reached a handler");
   const wrong = await page.call("DELETE", "/api/things");
   assert.deepEqual(
     [wrong.status, wrong.data.code, wrong.headers.Allow],
@@ -263,7 +270,7 @@ function sourceRoutes() {
 
 test("every write in src/ is protected unless it is one of the reviewed public or webhook routes", () => {
   const routes = sourceRoutes();
-  assert.ok(routes.length >= 90, `found ${routes.length} routes`);
+  assert.ok(routes.length >= 85, `found ${routes.length} routes`);
   for (const route of routes)
     assert.ok(route.method && route.path, `${route.file} declares a literal route`);
   const unprotected = routes
@@ -274,7 +281,6 @@ test("every write in src/ is protected unless it is one of the reviewed public o
   assert.deepEqual(unprotected, [
     "public POST /api/account/delete/complete",
     "public POST /api/account/delete/status",
-    "public POST /api/discovery/trial",
     "public POST /api/login",
     "public POST /api/logout",
     "public POST /api/password-reset/complete",

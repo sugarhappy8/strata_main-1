@@ -351,8 +351,7 @@ test("creates an account with a private default plan", async () => {
     },
     body: "{}",
   });
-  assert.equal(retiredTrial.response.status, 410);
-  assert.equal(retiredTrial.data.code, "TRIAL_RETIRED");
+  assert.equal(retiredTrial.response.status, 404, "the retired trial route was removed in 9.6");
   assert.equal(
     (await request("/api/me", { headers: { Cookie: signup.cookie } })).data.user.discovery.active,
     false,

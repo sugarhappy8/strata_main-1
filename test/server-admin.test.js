@@ -1532,8 +1532,8 @@ test("admin grants timed or indefinite free Strata+, revokes it, and controls ne
   assert.equal(
     (await jsonRequest("/api/discovery/trial", {}, { cookie: target.cookie, csrf: target.csrf }))
       .response.status,
-    410,
-    "the retired trial cannot start alongside a grant",
+    404,
+    "the trial route is gone, so no trial can start alongside a grant",
   );
   const db = openDatabase();
   assert.equal(

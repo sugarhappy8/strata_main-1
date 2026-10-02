@@ -53,6 +53,11 @@ const MIGRATIONS = Object.freeze([
     id: "010-product-signal-audiences",
     description: "Count signed-in and anonymous product activity separately.",
   },
+  {
+    id: "011-drop-build9-archives",
+    description:
+      "Drop the Build 9 archives of retired trials and shared community plans (backed up before 9.6).",
+  },
 ]);
 const SIGNAL_AUDIENCE_COLUMNS = Object.freeze([
   ["member_count", "INTEGER NOT NULL DEFAULT 0"],
@@ -60,7 +65,12 @@ const SIGNAL_AUDIENCE_COLUMNS = Object.freeze([
 ]);
 const LATEST_MIGRATION_ID = MIGRATIONS.at(-1).id;
 
-// Build 9 keeps the trial rows under an archive name so the cut stays reversible for one release.
+// Build 9 kept the trial rows under an archive name so the cut stayed reversible for one release; 9.6 drops the
+// archives (ARCHIVE_DROP_STATEMENTS) once the owner has exported a backup.
+const ARCHIVE_DROP_STATEMENTS = Object.freeze([
+  "DROP TABLE IF EXISTS archive_discovery_trials",
+  "DROP TABLE IF EXISTS archive_community_weekly_plans",
+]);
 const RETIRED_TABLE_STATEMENTS = Object.freeze([
   "DROP INDEX IF EXISTS admin_elevations_expiry",
   "DROP TABLE IF EXISTS admin_elevations",
@@ -298,6 +308,17 @@ function migrateLocalSchema(
     )
   )
     applied.push(MIGRATIONS[9].id);
+  if (
+    runLocalMigration(
+      database,
+      MIGRATIONS[10].id,
+      () => {
+        for (const sql of ARCHIVE_DROP_STATEMENTS) database.exec(sql);
+      },
+      now(),
+    )
+  )
+    applied.push(MIGRATIONS[10].id);
   return { latest: LATEST_MIGRATION_ID, applied };
 }
 
@@ -471,6 +492,19 @@ async function migrateTursoSchema(
       "write",
     );
     applied.push(MIGRATIONS[9].id);
+  }
+  if (!completed.has(MIGRATIONS[10].id)) {
+    await client.batch(
+      [
+        ...ARCHIVE_DROP_STATEMENTS,
+        {
+          sql: "INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",
+          args: [MIGRATIONS[10].id, now()],
+        },
+      ],
+      "write",
+    );
+    applied.push(MIGRATIONS[10].id);
   }
   return { latest: LATEST_MIGRATION_ID, applied };
 }

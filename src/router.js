@@ -31,6 +31,10 @@ const SECURITY_CHECK_FAILED = "Security check failed. Refresh and try again.";
  * }} Route
  */
 
+// A path parameter names one record: letters, digits, "_" and "-", as every STRATA ID, date, and slug is written.
+// It is matched against the raw path and never decoded, so an encoded "/" (%2F) or "." cannot reach a handler.
+const PARAMETER = "([A-Za-z0-9_-]{1,200})";
+
 /** @param {string} path */
 function compilePath(path) {
   const names = [];
@@ -39,7 +43,7 @@ function compilePath(path) {
     .map((segment) => {
       if (!segment.startsWith(":")) return segment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       names.push(segment.slice(1));
-      return "([^/]+)";
+      return PARAMETER;
     })
     .join("/");
   return { pattern: new RegExp(`^${source}$`), names, static: names.length === 0 };
@@ -119,14 +123,10 @@ function createRouter({
     for (const route of routes) {
       const match = route.compiled.pattern.exec(pathname);
       if (!match) continue;
-      try {
-        const params = Object.fromEntries(
-          route.compiled.names.map((name, index) => [name, decodeURIComponent(match[index + 1])]),
-        );
-        found.push({ route, params });
-      } catch {
-        // A malformed escape cannot name a resource.
-      }
+      const params = Object.fromEntries(
+        route.compiled.names.map((name, index) => [name, match[index + 1]]),
+      );
+      found.push({ route, params });
     }
     return found;
   }

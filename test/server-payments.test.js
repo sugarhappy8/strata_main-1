@@ -649,8 +649,7 @@ test("live monthly checkout grants, manages, updates, and revokes Strata+ secure
     },
     body: "{}",
   });
-  assert.equal(paidTrial.response.status, 410, "the free trial is retired for every account");
-  assert.equal(paidTrial.data.code, "TRIAL_RETIRED");
+  assert.equal(paidTrial.response.status, 404, "there is no free trial route for any account");
 
   const subscriptionStatus = await request("/api/billing/subscription", {
     headers: { Cookie: account.cookie },
