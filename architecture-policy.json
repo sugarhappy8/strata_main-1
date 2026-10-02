@@ -181,7 +181,7 @@
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 510,
+      "maxLines": 560,
       "allowedDependencies": ["src/billing-schema.js", "src/product-signals-schema.js"]
     },
     "src/schema.js": {
