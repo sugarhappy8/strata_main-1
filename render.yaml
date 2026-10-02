@@ -4,6 +4,9 @@ services:
     runtime: node
     # Always-on baseline; verify capacity against the real Turso region before launch.
     plan: 1c-2g
+    # STRATA runs as exactly one server (see docs/deployment.md, "One server"). A second server logs
+    # service.multiple_instances; scale up with a bigger plan, not more instances.
+    numInstances: 1
     buildCommand: npm ci --omit=dev --no-audit --no-fund
     startCommand: npm start
     healthCheckPath: /healthz

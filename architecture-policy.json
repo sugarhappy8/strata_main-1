@@ -42,7 +42,8 @@
         "src/apple-billing.js",
         "src/session-renewal.js",
         "src/social-auth.js",
-        "src/social-auth-config.js"
+        "src/social-auth-config.js",
+        "src/single-instance.js"
       ]
     },
     "src/service-composition.js": {
@@ -700,6 +701,11 @@
       "allowedDependencies": [
         "src/server-state-schema.js"
       ]
+    },
+    "src/single-instance.js": {
+      "role": "Heartbeat lock that logs a second server on the same database",
+      "maxLines": 50,
+      "allowedDependencies": []
     },
     "src/social-auth.js": {
       "role": "Sign up and sign in with Google",

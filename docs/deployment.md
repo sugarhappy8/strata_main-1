@@ -11,7 +11,8 @@ The checked-in `render.yaml` defines the supported Render service shape:
 - Node 24 selected by `.node-version`;
 - `npm ci --omit=dev --no-audit --no-fund` for production dependencies;
 - `npm start` as the process command;
-- `/healthz` as the compatibility alias for the storage-aware readiness check; and
+- `/healthz` as the compatibility alias for the storage-aware readiness check;
+- `numInstances: 1`, because STRATA runs as exactly one server (see [One server](#one-server)); and
 - secret values entered in the host rather than committed to the repository.
 
 Local development uses SQLite. Production refuses to start without Turso, because Render's local filesystem is ephemeral and must not become the durable account store.
@@ -20,7 +21,7 @@ Local development uses SQLite. Production refuses to start without Turso, becaus
 
 The blueprint selects `1c-2g` (1 CPU, 2 GB RAM), an always-on paid web-service baseline. This is a starting configuration to validate against the real workload, not a certified capacity guarantee. No service has been purchased or changed by editing this file. See [Render compute plans](https://render.com/docs/compute-plans) and [Blueprint reference](https://render.com/docs/blueprint-spec).
 
-Use one application instance initially: request/identity throttles are process-local. Before adding replicas, move those counters to a shared store or enforce equivalent limits at a trusted ingress. Persistent email-send and challenge-attempt controls remain in the database. Keep `TRUST_PROXY=true` only behind the configured trusted proxy; direct Node deployments should leave it false.
+Run one application instance (see [One server](#one-server)). Request and identity rate limits are kept in the database (`rate_buckets`), as are the persistent email-send and challenge-attempt controls. Keep `TRUST_PROXY=true` only behind the configured trusted proxy; direct Node deployments should leave it false.
 
 The auth network allowance is 400 signup/login attempts per IP per 15 minutes, with ten attempts per hashed email across addresses. Verification permits 600 requests per IP and twelve per challenge; resend permits 300 per IP and six per challenge. Existing five-attempt code and durable email-send limits still apply. API rate-limit responses include retry guidance.
 
@@ -221,6 +222,21 @@ After deployment:
 6. Confirm GitHub Actions is green before tagging or announcing a release.
 
 The deployment smoke is read-only and does not create an account, send email, buy a subscription, process a webhook, or mutate production data. Complete authorized provider-backed smoke separately and record its result; never describe local provider fakes or configuration-shape checks as live credential evidence.
+
+## One server
+
+STRATA supports exactly one server per database. `render.yaml` sets `numInstances: 1`; scale up with a larger plan, not more instances.
+
+Most shared state is in the database, so it survives restarts and deploys:
+
+- rate limits (`rate_buckets`, one conditional write per request);
+- the Strata AI request queue (`ai_jobs`, one unfinished request per member; requests a restart interrupted run again);
+- failed event reactions waiting to be retried (`event_outbox`);
+- the Polar sync loop, which runs only while its server holds the `polar-sync` row in `locks`.
+
+Some state still lives in each server's memory: the Strata AI per-minute provider cap, the marks that stop a member's simultaneous AI requests, the provider health and signing-key caches, and the timers that run the AI queue, the outbox retries, the Daily Brief, and cleanup. A second server would keep its own copies of these, so it could exceed the AI per-minute cap and run the Daily Brief twice.
+
+Each server renews a heartbeat row (`server-instance` in `locks`) every minute. A server that keeps finding another live holder logs `service.multiple_instances` (after three straight misses, then about hourly). A deploy's brief overlap does not trigger it, because the old server hands the row over when it shuts down. If you see the warning, check that only one instance is running and that no second deployment (for example a preview environment) points at the production database.
 
 ## Production limits
 

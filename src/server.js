@@ -32,6 +32,7 @@ const {profilePayload:coachingProfilePayload}=require("./coaching");
 const { createBillingService } = require("./billing");
 const {appleBillingSettings,createAppleBillingService}=require("./apple-billing");
 const {withAppendedCookies}=require("./session-renewal");
+const {createSingleInstanceGuard}=require("./single-instance");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
 const { createLogger,observeRequest } = require("./observability");
@@ -653,7 +654,7 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
 
 server.setTimeout(60_000,(socket)=>socket.destroy());
 
-let cleanup,shuttingDown=false,events,dataService;
+let cleanup,shuttingDown=false,events,dataService,instanceGuard;
 async function start() {
   if (process.env.NODE_ENV==="production"&&!EMAIL_CONFIG.flagValid) {
     throw new Error("EMAIL_VERIFICATION_ENABLED must be set explicitly to true or false in production.");
@@ -707,6 +708,8 @@ async function start() {
   await appleBilling.cleanup();
   void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
   events.start();
+  // One server per database: a second one is logged as service.multiple_instances (see src/single-instance.js).
+  instanceGuard=createSingleInstanceGuard({store,logger:LOGGER});await instanceGuard.start();
   if (ENFORCE_PADDLE_IPS) void billing.warmProviderTrust().catch((error)=>LOGGER.error("billing.webhook_allowlist_warm_failed",{error}));
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
@@ -744,6 +747,7 @@ function shutdown() {
   server.close(async(error)=>{
     try {
       if (error&&error.code!=="ERR_SERVER_NOT_RUNNING") throw error;
+      await instanceGuard?.stop();
       await store?.close();
       clearTimeout(deadline);
       process.exit(0);

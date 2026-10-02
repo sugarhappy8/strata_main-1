@@ -74,7 +74,8 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/observability.js` | Structured JSON request logs, validated or generated request IDs, bounded fields, and defensive redaction. |
 | `src/email.js` | Browser-safe email configuration plus privately retained Resend credentials, HMAC digests, address masking, and transactional message delivery. |
 | `src/events.js` | In-process event bus: routes announce `plan.updated`, `workout.completed`, `polar.sync.finished`, `snapshot.ready`, and the rest of `DATA_MODEL.md`'s list; listeners react without the routes knowing them. A listener that fails is saved to the `event_outbox` table and retried with backoff. |
-| `src/server-state-schema.js`, `src/server-state-store.js` | Server state kept in the database rather than in memory, starting with the event outbox. |
+| `src/server-state-schema.js`, `src/server-state-store.js` | Server state kept in the database rather than in memory: the event outbox, rate-limit buckets, and locks (the Polar sync loop and the single-server heartbeat). |
+| `src/single-instance.js` | Heartbeat lock that logs `service.multiple_instances` when a second server uses the same database; STRATA runs as one server. |
 | `src/athlete-profile.js` | Athlete Profile read model (`GET /api/profile`) and the sync that keeps `preferences` and `coaching_profiles` telling one story. |
 | `src/data-service.js` | The shared data layer's front door: Athlete Profile, Training Log, Daily Snapshots, Rankings Signals, plan history, their routes, and the listeners that keep derived rows in step. |
 | `src/training-log.js` | Training Log read model: logged workouts, Polar sessions, and this week's planned days in one schema, with source tags and Polar-to-workout links. |
@@ -120,7 +121,7 @@ Every request field is untrusted, including JSON, form values, headers, URL para
 
 Session tokens are random and stored only as hashes in the database. Cookies are HttpOnly, SameSite=Strict, scoped to `/`, and Secure in production. A session lookup also checks expiry, credential version, suspension, and required verification state. Password reset increments the credential version and revokes all sessions.
 
-State-changing authenticated routes require the session's CSRF value and a trusted same-origin request. Public recovery endpoints use origin checks, generic responses where account enumeration is a concern, durable or in-memory quotas as appropriate, expiry, attempt caps, and one-time tokens.
+State-changing authenticated routes require the session's CSRF value and a trusted same-origin request. Public recovery endpoints use origin checks, generic responses where account enumeration is a concern, durable quotas (the database-backed `rate_buckets` and email-send counts), expiry, attempt caps, and one-time tokens.
 
 ### Data ownership boundary
 
