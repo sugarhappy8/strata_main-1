@@ -1,110 +1,588 @@
 /* global module, require */
-(function(root,factory){
-  const energyUi=typeof module==="object"&&module.exports?require("./personal-training-energy-ui-core"):root.StrataPersonalTrainingEnergyUi;
-  const api=factory(energyUi);
-  if(typeof module==="object"&&module.exports)module.exports=api;
-  root.StrataDiscoverCoachingRender=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(energyUi){
+(function (root, factory) {
+  const energyUi =
+    typeof module === "object" && module.exports
+      ? require("./personal-training-energy-ui-core")
+      : root.StrataPersonalTrainingEnergyUi;
+  const api = factory(energyUi);
+  if (typeof module === "object" && module.exports) module.exports = api;
+  root.StrataDiscoverCoachingRender = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function (energyUi) {
   "use strict";
-  const DAYS=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
-  const number=(value)=>Math.round(Number(value)||0).toLocaleString();
-  const dateLabel=(value)=>{const date=new Date(`${value}T12:00:00`);return Number.isNaN(date.getTime())?String(value||""):new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric"}).format(date);};
-  const localDate=()=>{const date=new Date();return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;};
-  const goalLabel=(goal)=>({fat_loss:"Fat-loss target",maintenance:"Maintenance target",muscle_gain:"Muscle-gain target"}[goal]||"Selected target"),targetKind=(kind)=>({flexible_day:"Flexible day",higher_training_day:"Training day",lower_rest_day:"Rest day"}[kind]||"Daily target");
-  const activityLabel=(activity)=>({sedentary:"inactive",lightly_active:"low active",moderately_active:"active",very_active:"very active",extremely_active:"very active",mostly_seated:"mostly seated",lightly_moving:"lightly moving",on_feet:"on your feet",physically_demanding:"physically demanding"}[activity]||String(activity||"").replaceAll("_"," "));
-  const equationLabel=(equation)=>String(equation||"").includes("cunningham")?"Cunningham 1991 · noisy body-fat input":equation==="katch_mcardle"?"Legacy body-composition estimate · noisy body-fat input":equation==="nasem_2023_eer"||String(equation||"").includes("eer")?"2023 DRI EER · age, height, weight, activity, and coefficient":"Mifflin–St Jeor · age, height, weight, and coefficient";
-  const escape=(value)=>String(value??"").replace(/[&<>'"]/g,(character)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[character]));
-  function structuredActivitySummary(profile,nutrition){const activity=nutrition.activityBreakdown||{},sessions=Array.isArray(activity.sessions)?activity.sessions:[],minutes=sessions.reduce((sum,session)=>sum+(Number(session.minutes)||0),0),additional=Number(profile.additionalActivityMinutesPerWeek)||0;return `Built from your ${profile.experience} experience, ${activityLabel(profile.dailyMovement)} movement outside workouts, ${sessions.length} planned STRATA session${sessions.length===1?"":"s"} (${number(minutes)} min), ${additional?`${number(additional)} min of ${activityLabel(profile.additionalActivityIntensity)} other activity`:`no additional activity outside STRATA`}, and ${profile.usualExercises.length} known exercise${profile.usualExercises.length===1?"":"s"}.`;}
-  function activityEnergySummary(nutrition,itemized=false){
-    const activity=nutrition.activityBreakdown;if(!activity)return"";
-    const resting=nutrition.rmrKcal,pal=activity.movementPal,factorText=Number.isFinite(resting)&&resting>0&&Number.isFinite(pal)&&pal>0?` (resting ${number(resting)} × ${pal.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})} movement factor; an activity assumption, not a measurement)`:"";
-    const cross=nutrition.wholeDayEerCrossCheck,crossText=cross?.targetKcal==null?"":` Population EER cross-check: about ${number(cross.targetKcal)} kcal/day (${activityLabel(cross.activityCategory)}); context only, not an override.`;
-    if(itemized)return `Workout and activity rows count only the energy above resting, so nothing is counted twice. The movement factor is an activity assumption, not a measurement.${crossText}`;
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const number = (value) => Math.round(Number(value) || 0).toLocaleString();
+  const dateLabel = (value) => {
+    const date = new Date(`${value}T12:00:00`);
+    return Number.isNaN(date.getTime())
+      ? String(value || "")
+      : new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(date);
+  };
+  const localDate = () => {
+    const date = new Date();
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
+  const goalLabel = (goal) =>
+      ({
+        fat_loss: "Fat-loss target",
+        maintenance: "Maintenance target",
+        muscle_gain: "Muscle-gain target",
+      })[goal] || "Selected target",
+    targetKind = (kind) =>
+      ({
+        flexible_day: "Flexible day",
+        higher_training_day: "Training day",
+        lower_rest_day: "Rest day",
+      })[kind] || "Daily target";
+  const activityLabel = (activity) =>
+    ({
+      sedentary: "inactive",
+      lightly_active: "low active",
+      moderately_active: "active",
+      very_active: "very active",
+      extremely_active: "very active",
+      mostly_seated: "mostly seated",
+      lightly_moving: "lightly moving",
+      on_feet: "on your feet",
+      physically_demanding: "physically demanding",
+    })[activity] || String(activity || "").replaceAll("_", " ");
+  const equationLabel = (equation) =>
+    String(equation || "").includes("cunningham")
+      ? "Cunningham 1991 · noisy body-fat input"
+      : equation === "katch_mcardle"
+        ? "Legacy body-composition estimate · noisy body-fat input"
+        : equation === "nasem_2023_eer" || String(equation || "").includes("eer")
+          ? "2023 DRI EER · age, height, weight, activity, and coefficient"
+          : "Mifflin–St Jeor · age, height, weight, and coefficient";
+  const escape = (value) =>
+    String(value ?? "").replace(
+      /[&<>'"]/g,
+      (character) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character],
+    );
+  function structuredActivitySummary(profile, nutrition) {
+    const activity = nutrition.activityBreakdown || {},
+      sessions = Array.isArray(activity.sessions) ? activity.sessions : [],
+      minutes = sessions.reduce((sum, session) => sum + (Number(session.minutes) || 0), 0),
+      additional = Number(profile.additionalActivityMinutesPerWeek) || 0;
+    return `Built from your ${profile.experience} experience, ${activityLabel(profile.dailyMovement)} movement outside workouts, ${sessions.length} planned STRATA session${sessions.length === 1 ? "" : "s"} (${number(minutes)} min), ${additional ? `${number(additional)} min of ${activityLabel(profile.additionalActivityIntensity)} other activity` : `no additional activity outside STRATA`}, and ${profile.usualExercises.length} known exercise${profile.usualExercises.length === 1 ? "" : "s"}.`;
+  }
+  function activityEnergySummary(nutrition, itemized = false) {
+    const activity = nutrition.activityBreakdown;
+    if (!activity) return "";
+    const resting = nutrition.rmrKcal,
+      pal = activity.movementPal,
+      factorText =
+        Number.isFinite(resting) && resting > 0 && Number.isFinite(pal) && pal > 0
+          ? ` (resting ${number(resting)} × ${pal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} movement factor; an activity assumption, not a measurement)`
+          : "";
+    const cross = nutrition.wholeDayEerCrossCheck,
+      crossText =
+        cross?.targetKcal == null
+          ? ""
+          : ` Population EER cross-check: about ${number(cross.targetKcal)} kcal/day (${activityLabel(cross.activityCategory)}); context only, not an override.`;
+    if (itemized)
+      return `Workout and activity rows count only the energy above resting, so nothing is counted twice. The movement factor is an activity assumption, not a measurement.${crossText}`;
     return `Resting plus ordinary daily movement: about ${number(activity.nonWorkoutKcal)} kcal/day${factorText} · planned sessions: about ${number(activity.plannedTrainingWeekKcal)} kcal/week · other activity: about ${number(activity.additionalActivityWeekKcal)} kcal/week. Exercise totals exclude resting energy.${crossText}`;
   }
-  function deficitSummary(nutrition){const details=nutrition.deficit?.breakdown,requestedRaw=details?.requestedWeightChangePercentPerWeek;if(!details||requestedRaw==null||requestedRaw==="")return nutrition.deficit?.policy||"Review required";const requestedValue=Number(requestedRaw);if(!Number.isFinite(requestedValue))return nutrition.deficit?.policy||"Review required";const percent=(value)=>value.toLocaleString(undefined,{maximumFractionDigits:2}),requested=percent(requestedValue),floor=details.energyAvailabilityFloorKcal==null?"":` A body-composition floor of about ${number(details.energyAvailabilityFloorKcal)} kcal/day ${details.energyAvailabilityGuardApplied?"limits the deficit":"does not limit the deficit"}.`,cross=details.compositionDifferenceKcal==null?"":` The body-fat cross-check differs from the resting estimate by about ${number(details.compositionDifferenceKcal)} kcal${details.compositionRangeExpanded?", which widens the planning range":", within the planning range"}.`,scenario=details.scenarioGuardApplied?" The lower weight scenario needs review.":" The lower weight scenario stays within the planner’s limits.";if(nutrition.deficit?.targetKcal==null)return `A ${requested}% weekly loss needs review before STRATA sets a deficit.${floor}${cross}${scenario}`;const actualRaw=details.actualWeightChangePercentPerWeek,actual=actualRaw==null||actualRaw===""?null:Number(actualRaw);return `${number(details.actualDeficitKcal)} kcal/day below maintenance, about ${percent(Number.isFinite(actual)?actual:requestedValue)}% of body weight per week (${requested}% requested).${floor}${cross}${scenario}`;}
-  function projectionSvg(profile,scenarios,displayWeight){
-    const start=Number(scenarios?.[0]?.startWeightKg??profile.weightKg),points=[{weeks:0,weightKg:start,rangeKg:[start,start]},...(Array.isArray(scenarios)?scenarios:[])].filter((item)=>Number.isFinite(Number(item.weightKg))&&Array.isArray(item.rangeKg));
-    if(points.length<2)return '<p class="coaching-field-intro">A projection appears after a complete energy estimate is available.</p>';
-    const width=720,height=210,pad={left:54,right:18,top:18,bottom:38},weeks=Math.max(...points.map((item)=>Number(item.weeks))),values=points.flatMap((item)=>[Number(item.weightKg),...item.rangeKg.map(Number)]),low=Math.min(...values)-.5,high=Math.max(...values)+.5,span=Math.max(1,high-low);
-    const x=(week)=>pad.left+(Number(week)/weeks)*(width-pad.left-pad.right),y=(weight)=>pad.top+(high-Number(weight))/span*(height-pad.top-pad.bottom);
-    const line=points.map((item,index)=>`${index?"L":"M"}${x(item.weeks).toFixed(1)},${y(item.weightKg).toFixed(1)}`).join(" ");
-    const range=[...points.map((item)=>`${x(item.weeks).toFixed(1)},${y(Math.max(...item.rangeKg)).toFixed(1)}`),...points.slice().reverse().map((item)=>`${x(item.weeks).toFixed(1)},${y(Math.min(...item.rangeKg)).toFixed(1)}`)].join(" ");
-    const grids=points.map((item)=>`<line class="projection-grid" x1="${x(item.weeks)}" y1="${pad.top}" x2="${x(item.weeks)}" y2="${height-pad.bottom}"/><text x="${x(item.weeks)}" y="${height-13}" text-anchor="middle">${item.weeks?`${item.weeks} wk`:"Start"}</text>`).join("");
-    const labels=points.slice(1).map((item)=>`<circle cx="${x(item.weeks)}" cy="${y(item.weightKg)}" r="4" fill="#657a22"/><text x="${x(item.weeks)}" y="${Math.max(12,y(item.weightKg)-10)}" text-anchor="middle">${escape(displayWeight(item.weightKg))}</text>`).join("");
-    const valuesList=points.slice(1).map((item)=>`<div><dt>${number(item.weeks)} weeks</dt><dd><strong>${escape(displayWeight(item.weightKg))}</strong><span>Scenario range ${escape(displayWeight(Math.min(...item.rangeKg)))}–${escape(displayWeight(Math.max(...item.rangeKg)))}</span></dd></div>`).join("");
+  function deficitSummary(nutrition) {
+    const details = nutrition.deficit?.breakdown,
+      requestedRaw = details?.requestedWeightChangePercentPerWeek;
+    if (!details || requestedRaw == null || requestedRaw === "")
+      return nutrition.deficit?.policy || "Review required";
+    const requestedValue = Number(requestedRaw);
+    if (!Number.isFinite(requestedValue)) return nutrition.deficit?.policy || "Review required";
+    const percent = (value) => value.toLocaleString(undefined, { maximumFractionDigits: 2 }),
+      requested = percent(requestedValue),
+      floor =
+        details.energyAvailabilityFloorKcal == null
+          ? ""
+          : ` A body-composition floor of about ${number(details.energyAvailabilityFloorKcal)} kcal/day ${details.energyAvailabilityGuardApplied ? "limits the deficit" : "does not limit the deficit"}.`,
+      cross =
+        details.compositionDifferenceKcal == null
+          ? ""
+          : ` The body-fat cross-check differs from the resting estimate by about ${number(details.compositionDifferenceKcal)} kcal${details.compositionRangeExpanded ? ", which widens the planning range" : ", within the planning range"}.`,
+      scenario = details.scenarioGuardApplied
+        ? " The lower weight scenario needs review."
+        : " The lower weight scenario stays within the planner’s limits.";
+    if (nutrition.deficit?.targetKcal == null)
+      return `A ${requested}% weekly loss needs review before STRATA sets a deficit.${floor}${cross}${scenario}`;
+    const actualRaw = details.actualWeightChangePercentPerWeek,
+      actual = actualRaw == null || actualRaw === "" ? null : Number(actualRaw);
+    return `${number(details.actualDeficitKcal)} kcal/day below maintenance, about ${percent(Number.isFinite(actual) ? actual : requestedValue)}% of body weight per week (${requested}% requested).${floor}${cross}${scenario}`;
+  }
+  function projectionSvg(profile, scenarios, displayWeight) {
+    const start = Number(scenarios?.[0]?.startWeightKg ?? profile.weightKg),
+      points = [
+        { weeks: 0, weightKg: start, rangeKg: [start, start] },
+        ...(Array.isArray(scenarios) ? scenarios : []),
+      ].filter((item) => Number.isFinite(Number(item.weightKg)) && Array.isArray(item.rangeKg));
+    if (points.length < 2)
+      return '<p class="coaching-field-intro">A projection appears after a complete energy estimate is available.</p>';
+    const width = 720,
+      height = 210,
+      pad = { left: 54, right: 18, top: 18, bottom: 38 },
+      weeks = Math.max(...points.map((item) => Number(item.weeks))),
+      values = points.flatMap((item) => [Number(item.weightKg), ...item.rangeKg.map(Number)]),
+      low = Math.min(...values) - 0.5,
+      high = Math.max(...values) + 0.5,
+      span = Math.max(1, high - low);
+    const x = (week) => pad.left + (Number(week) / weeks) * (width - pad.left - pad.right),
+      y = (weight) => pad.top + ((high - Number(weight)) / span) * (height - pad.top - pad.bottom);
+    const line = points
+      .map(
+        (item, index) =>
+          `${index ? "L" : "M"}${x(item.weeks).toFixed(1)},${y(item.weightKg).toFixed(1)}`,
+      )
+      .join(" ");
+    const range = [
+      ...points.map(
+        (item) => `${x(item.weeks).toFixed(1)},${y(Math.max(...item.rangeKg)).toFixed(1)}`,
+      ),
+      ...points
+        .slice()
+        .reverse()
+        .map((item) => `${x(item.weeks).toFixed(1)},${y(Math.min(...item.rangeKg)).toFixed(1)}`),
+    ].join(" ");
+    const grids = points
+      .map(
+        (item) =>
+          `<line class="projection-grid" x1="${x(item.weeks)}" y1="${pad.top}" x2="${x(item.weeks)}" y2="${height - pad.bottom}"/><text x="${x(item.weeks)}" y="${height - 13}" text-anchor="middle">${item.weeks ? `${item.weeks} wk` : "Start"}</text>`,
+      )
+      .join("");
+    const labels = points
+      .slice(1)
+      .map(
+        (item) =>
+          `<circle cx="${x(item.weeks)}" cy="${y(item.weightKg)}" r="4" fill="#657a22"/><text x="${x(item.weeks)}" y="${Math.max(12, y(item.weightKg) - 10)}" text-anchor="middle">${escape(displayWeight(item.weightKg))}</text>`,
+      )
+      .join("");
+    const valuesList = points
+      .slice(1)
+      .map(
+        (item) =>
+          `<div><dt>${number(item.weeks)} weeks</dt><dd><strong>${escape(displayWeight(item.weightKg))}</strong><span>Scenario range ${escape(displayWeight(Math.min(...item.rangeKg)))}–${escape(displayWeight(Math.max(...item.rangeKg)))}</span></dd></div>`,
+      )
+      .join("");
     return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated weight scenario over ${weeks} weeks"><polygon class="projection-range" points="${range}"/><g>${grids}</g><path class="projection-line" d="${line}"/>${labels}</svg><dl class="coaching-projection-data">${valuesList}</dl>`;
   }
-  function createRenderer({element,ui,diaryUi}){
-    const el=element;let ready=false;
-    function show(state){const available=ready&&state!=="loading"&&state!=="error";
-      el("coachingLoading").hidden=state!=="loading";el("coachingError").hidden=state!=="error";el("coachingSetup").hidden=state!=="setup";el("coachingDashboard").hidden=!available;
-      el("programResults").hidden=!available;
-      for(const prefix of ["program","nutrition"]){
-        el(`${prefix}State`).hidden=available;el(`${prefix}SetupLink`).hidden=state!=="setup";el(`${prefix}Retry`).hidden=state!=="error";
-        el(`${prefix}StateMessage`).textContent=state==="error"?el("coachingErrorMessage").textContent:state==="setup"?"Set up your measurements, available days, and preferences once. Plan and Nutrition use the same profile.":"Loading your saved profile…";
+  function createRenderer({ element, ui, diaryUi }) {
+    const el = element;
+    let ready = false;
+    function show(state) {
+      const available = ready && state !== "loading" && state !== "error";
+      el("coachingLoading").hidden = state !== "loading";
+      el("coachingError").hidden = state !== "error";
+      el("coachingSetup").hidden = state !== "setup";
+      el("coachingDashboard").hidden = !available;
+      el("programResults").hidden = !available;
+      for (const prefix of ["program", "nutrition"]) {
+        el(`${prefix}State`).hidden = available;
+        el(`${prefix}SetupLink`).hidden = state !== "setup";
+        el(`${prefix}Retry`).hidden = state !== "error";
+        el(`${prefix}StateMessage`).textContent =
+          state === "error"
+            ? el("coachingErrorMessage").textContent
+            : state === "setup"
+              ? "Set up your measurements, available days, and preferences once. Plan and Nutrition use the same profile."
+              : "Loading your saved profile…";
       }
     }
-    function error(message){el("coachingErrorMessage").textContent=message||"Check your connection, then try again.";show("error");}
-    function clearPrivate(){
-      for(const id of ["coachingWeekGrid","coachingCalorieWeek","coachingProjectionChart","coachingMethodList","coachingProgressSummary","coachingGoalComparison","coachingCalibrationExplanation","coachingCalibrationLimitations","coachingWeightBasis","coachingModelUpdate","coachingCalibrationAlignment","coachingCalibrationQuality","coachingCalibrationSensitivity","coachingTrainingCoverage"])el(id).textContent="";
-      for(const id of ["coachingLogDate"])el(id).textContent="";
-      for(const id of ["coachingCaloriesEaten","coachingMorningWeight","coachingProteinEaten","coachingCarbsEaten","coachingFatEaten"])el(id).value="";
-      for(const id of ["coachingDayComplete"])el(id).checked=false;
-      el("coachingCalibrationTitle").textContent="Starting estimate";el("coachingCalibrationState").textContent="Formula estimate";el("coachingCalibrationState").dataset.state="starting";el("coachingCalibrationIntake").textContent="0 / 14";el("coachingCalibrationWeights").textContent="0 / 8 · 0 / 14 days";el("coachingCalibrationObserved").textContent="Not ready";el("coachingCalibrationCutoff").textContent="";el("coachingCalibrationAdjustment").textContent="";
-      ready=false;show("loading");
+    function error(message) {
+      el("coachingErrorMessage").textContent = message || "Check your connection, then try again.";
+      show("error");
     }
-    function renderCalibration(nutrition){
-      const rawMaintenance=typeof nutrition.maintenance==="number"?{}:nutrition.maintenance||{},view=ui.calibrationDisplay(rawMaintenance.calibration??nutrition.calibration),observed=view.observedMaintenanceKcal;
-      el("coachingCalibrationTitle").textContent=view.title;el("coachingCalibrationState").textContent=view.label;el("coachingCalibrationState").dataset.state=view.status;
-      el("coachingCalibrationExplanation").textContent=view.explanation;el("coachingCalibrationIntake").textContent=`${number(view.completeDays)} logged · ${number(view.alignedIntakeDays)} aligned`;el("coachingCalibrationIntakeHelp").textContent=`${number(view.requiredCompleteDays)} consecutive complete intake days within ${number(view.windowDays)} days`;el("coachingCalibrationWeightsHelp").textContent=`${number(view.requiredWeightDays)} usable morning weights spanning ${number(view.requiredWeightSpanDays)} days`;el("coachingCalibrationWeights").textContent=`${number(view.weightDays)} / ${number(view.requiredWeightDays)} · ${number(view.weightSpanDays)} / ${number(view.requiredWeightSpanDays)} days`;
-      el("coachingCalibrationObserved").textContent=observed==null?"Not ready":`about ${number(observed)} kcal/day`;el("coachingCalibrationCutoff").textContent=view.cutoffDate?`Evidence through ${dateLabel(view.cutoffDate)} · ${number(view.windowDays)}-day window${view.averageCompleteCaloriesKcal==null?"":` · intake averaged about ${number(view.averageCompleteCaloriesKcal)} kcal`}`:`Latest ${number(view.windowDays)}-day window`;
-      el("coachingCalibrationAlignment").textContent=view.interval?`Aligned intake: ${dateLabel(view.interval.start)}–${dateLabel(view.interval.lastIntakeDate)}. Closing morning weight: ${dateLabel(view.interval.end)}; intake on that final date is excluded.`:"No complete intake interval is aligned with enough morning weights yet.";el("coachingCalibrationQuality").textContent=`Evidence consistency: ${String(view.quality?.label||"insufficient").replaceAll("_"," ")}. These are engineering checks, not a confidence score.${view.priorState==="held"?` Previous accepted evidence ended ${dateLabel(view.lastAcceptedEvidenceEnd)}.`:view.priorState==="expired"?" Previous evidence has expired.":""}`;el("coachingCalibrationSensitivity").textContent=view.sensitivity?`Sensitivity range: about ${number(view.sensitivity.rangeKcal[0])}–${number(view.sensitivity.rangeKcal[1])} kcal/day. ${view.sensitivity.basis||"Not a confidence interval or total error bound."}`:"A sensitivity range appears only when an aligned estimate is usable.";
-      const adjustment=view.appliedAdjustmentKcal;el("coachingCalibrationAdjustment").textContent=adjustment?`Difference from equation baseline: ${adjustment>0?"+":"−"}${number(Math.abs(adjustment))} kcal/day`:"No difference from equation baseline";if(view.weeklyChangeKcal!=null)el("coachingCalibrationAdjustment").textContent+=` · Weekly target change: ${view.weeklyChangeKcal>0?"+":view.weeklyChangeKcal<0?"−":""}${number(Math.abs(view.weeklyChangeKcal))} kcal/day`;el("coachingCalibrationLimitations").textContent=Array.isArray(view.limitations)?view.limitations.join(" "):view.limitations;
+    function clearPrivate() {
+      for (const id of [
+        "coachingWeekGrid",
+        "coachingCalorieWeek",
+        "coachingProjectionChart",
+        "coachingMethodList",
+        "coachingProgressSummary",
+        "coachingGoalComparison",
+        "coachingCalibrationExplanation",
+        "coachingCalibrationLimitations",
+        "coachingWeightBasis",
+        "coachingModelUpdate",
+        "coachingCalibrationAlignment",
+        "coachingCalibrationQuality",
+        "coachingCalibrationSensitivity",
+        "coachingTrainingCoverage",
+      ])
+        el(id).textContent = "";
+      for (const id of ["coachingLogDate"]) el(id).textContent = "";
+      for (const id of [
+        "coachingCaloriesEaten",
+        "coachingMorningWeight",
+        "coachingProteinEaten",
+        "coachingCarbsEaten",
+        "coachingFatEaten",
+      ])
+        el(id).value = "";
+      for (const id of ["coachingDayComplete"]) el(id).checked = false;
+      el("coachingCalibrationTitle").textContent = "Starting estimate";
+      el("coachingCalibrationState").textContent = "Formula estimate";
+      el("coachingCalibrationState").dataset.state = "starting";
+      el("coachingCalibrationIntake").textContent = "0 / 14";
+      el("coachingCalibrationWeights").textContent = "0 / 8 · 0 / 14 days";
+      el("coachingCalibrationObserved").textContent = "Not ready";
+      el("coachingCalibrationCutoff").textContent = "";
+      el("coachingCalibrationAdjustment").textContent = "";
+      ready = false;
+      show("loading");
     }
-    function renderDashboard(profile,week,logs,selectedDate){
-      const nutrition=week.nutrition,targets=nutrition.dailyTargets||[],maintenanceData=typeof nutrition.maintenance==="number"?{targetKcal:nutrition.maintenance}:nutrition.maintenance||{},maintenance=energyUi.maintenanceDisplay(nutrition.maintenance),maintenanceTarget=maintenance.targetKcal,displayWeight=(kg)=>ui.displayWeight(kg,profile.measurementSystem,{projection:true});
-      const weightBasis=nutrition.weightBasis,bodyFatWeightNote=weightBasis?.changed&&profile.bodyFatPercent!=null?(nutrition.bodyFatCrossCheck?" The saved body-fat estimate is reused only because the recent weight remains within 2%; review it whenever body composition changes.":" The body-fat cross-check is withheld because recent weight differs by more than 2%; an automated deficit requires profile review."):"";el("coachingWeightBasis").textContent=weightBasis?`Weight used: ${ui.displayWeight(weightBasis.weightKg,profile.measurementSystem)} · ${weightBasis.source==="recent_morning_weights"?`recent morning weights through ${dateLabel(weightBasis.date)}`:"saved profile"}.${weightBasis.requiresReview?" Recent weights need review; review the diary and profile before changing your calorie goal.":""}${bodyFatWeightNote}`:"Weight basis: saved profile.";el("coachingModelUpdate").hidden=!week.modelUpdateAvailable;el("coachingModelUpdate").textContent=week.modelUpdateAvailable?(Number(profile.version)>=4?"A newer coaching model is available. This saved week stays unchanged. The next weekly snapshot uses the new method; edit and save your profile to rebuild this week deliberately.":"Your saved profile and week keep their existing calculation. Review and save the new movement fields to opt in; STRATA will not reinterpret your old activity answer automatically."):"";
-      const fromPlan=week.training?.source==="plan",sessionCount=fromPlan?(week.training.sessions||[]).length:profile.sessionsPerWeek;el("coachingWeekLabel").textContent=`${dateLabel(week.weekStart)}–${dateLabel(week.weekEnd)} · ${sessionCount} ${week.training?.summary?.reviewNeeded?"scheduled days":`workout${sessionCount===1?"":"s"}`}`;el("coachingTrainingKicker").textContent=fromPlan?"Your week · with coaching targets":"Suggested week · from your personal setup";el("coachingTrainingIntro").textContent=fromPlan?"From your saved weekly plan. The exercises, sets, and reps are yours; rest, effort, and targets come from your logged sets. Change the week in the planner.":"You have no training days saved yet. Review this starter week, then choose whether it becomes your saved weekly plan.";el("programApply").hidden=fromPlan;
-      const structuredActivity=Number(profile.version)>=4,reviewedActivity=Number(profile.version)>=3;el("coachingWeekExplanation").textContent=structuredActivity?structuredActivitySummary(profile,nutrition):reviewedActivity?`Built from your ${profile.experience} experience, ${profile.sessionMinutes}-minute sessions, ${activityLabel(profile.lifestyleActivity)} usual all-day activity, and ${profile.usualExercises.length} known exercise${profile.usualExercises.length===1?"":"s"}. Workout calories are not added a second time.`:`Built from your ${profile.experience} experience, ${profile.sessionMinutes}-minute sessions, and ${profile.usualExercises.length} known exercise${profile.usualExercises.length===1?"":"s"}. Your previous activity answer remains in this saved week until you review daily movement and any activity outside STRATA.`;
-      el("coachingBmr").textContent=`about ${number(nutrition.rmrKcal)} kcal`;const crossCheck=nutrition.bodyFatCrossCheck?.rmrKcal,restingDetail=equationLabel(nutrition.rmrEquation||"mifflin_st_jeor"),crossCheckDetail=equationLabel(nutrition.bodyFatCrossCheck?.equation||"cunningham_1991");el("coachingBmrMethod").textContent=crossCheck==null?restingDetail:`${restingDetail}. Body-fat cross-check: about ${number(crossCheck)} kcal · ${crossCheckDetail}.`;
-      const maintenanceMethod=equationLabel(nutrition.primaryEquation||nutrition.equation||maintenanceData.equation),calibrationStatus=maintenanceData.calibration?.status,steps=energyUi.maintenanceSteps(nutrition),maintenanceBasis=structuredActivity?activityEnergySummary(nutrition,Boolean(steps)):calibrationStatus==="legacy_profile"?`${maintenanceMethod} · review the current movement inputs to enable calibration`:calibrationStatus==="trend_informed"?`Trend-informed estimate · ${maintenanceMethod} baseline`:`${maintenanceMethod} · calibration can refine it`;el("coachingTdee").textContent=maintenance.label;el("coachingTdeeDetail").textContent=`${maintenance.detail} ${maintenanceBasis}`;el("coachingTdeeSteps").innerHTML=(steps||[]).map((row)=>`<li${row.total?' class="is-total"':""}><span>${escape(row.label)}</span><strong>${escape(row.value)}</strong></li>`).join("");el("coachingTdeeSteps").hidden=!steps;
-      const summary=energyUi.targetSummary(nutrition);el("coachingGoalLabel").textContent=goalLabel(nutrition.selectedGoal);el("coachingTarget").textContent=summary.label;el("coachingTargetMath").textContent=summary.math;el("coachingTargetDays").textContent=summary.days;el("coachingTargetDays").hidden=!summary.days;el("coachingTargetDetail").textContent=[summary.varies?"Each kind of day has one target, and the seven days add up to exactly seven times the average.":"The same target every day.",nutrition.selectedGoal==="fat_loss"?deficitSummary(nutrition):nutrition.selectedGoal==="muscle_gain"?`${String(nutrition.goalPace||profile.goalPace||"gentle").replaceAll("_"," ")} pace: ${nutrition.bulk?.policy||"a conservative surplus"}.`:"Maintenance keeps intake level with the estimate."].join(" ");el("coachingWeeklyCalories").textContent=energyUi.calorieTargetLabel(nutrition.weeklyTargetKcal,"kcal/week");
-      const estimates=[{goal:"fat_loss",label:"Deficit",value:nutrition.deficit?.targetKcal,detail:deficitSummary(nutrition)},{goal:"maintenance",label:"Maintenance",value:maintenanceTarget,detail:"Daily planning target; refined as you log intake and morning weights."},{goal:"muscle_gain",label:"Surplus",value:nutrition.bulk?.targetKcal,detail:nutrition.bulk?.policy||"Conservative surplus"}];
-      el("coachingGoalComparison").innerHTML=estimates.map((item)=>`<article class="coaching-goal-option${nutrition.selectedGoal===item.goal?" is-selected":""}"${nutrition.selectedGoal===item.goal?' aria-current="true"':""}><span>${escape(item.label)}</span><strong>${energyUi.calorieTargetLabel(item.value)}</strong><small>${escape(item.detail)}</small></article>`).join("");renderCalibration(nutrition);
-      el("coachingRotationLabel").textContent=`${({balanced:"Balanced",strength:"Strength",hypertrophy:"Muscle growth"})[profile.trainingGoal||"balanced"]||"Balanced"} training focus`;el("coachingNextWeek").textContent=`Next plan ${dateLabel(week.nextWeekStart)}`;
-      const sessions=new Map((week.training?.sessions||[]).map((session)=>[session.day,session])),guidanceCounts=new Map();for(const session of sessions.values())for(const exercise of session.exercises||[])if(exercise.loadingGuidance)guidanceCounts.set(exercise.loadingGuidance,(guidanceCounts.get(exercise.loadingGuidance)||0)+1);const [topGuidance]=[...guidanceCounts].sort((a,b)=>b[1]-a[1]),sharedGuidance=topGuidance?.[1]>1?topGuidance[0]:"";
-      el("coachingWeekGrid").innerHTML=DAYS.map((day,index)=>{
-        const session=sessions.get(day),target=targets.find((item)=>item.day===day),date=target?.date||session?.date||"";
-        if(!session)return `<article class="coaching-day-card is-rest"><header><span>${String(index+1).padStart(2,"0")} · ${escape(day)}</span><time datetime="${escape(date)}">${escape(dateLabel(date))}</time></header><h5>Recovery day</h5><p>No programmed lifting. Normal daily movement can continue if it feels appropriate.</p></article>`;
-        const exercises=(session.exercises||[]).map((exercise)=>`<li><strong>${escape(exercise.name)}</strong><span>${number(exercise.sets)} sets × ${escape(exercise.reps)} · ${escape(exercise.rest)} rest</span>${exercise.loadingGuidance===sharedGuidance?"":`<span>${escape(exercise.loadingGuidance||"Use a controlled load and repeatable form.")}</span>`}${exercise.performance?.sourceDate?`<span>Recorded source: ${escape(dateLabel(exercise.performance.sourceDate))} · ${escape(String(exercise.performance.status||"reference").replaceAll("_"," "))}</span>`:""}${exercise.targetSets?`<span>Optional set targets: ${escape(exercise.targetSets.map((set)=>`${exercise.measurement==="timed"?`${set.seconds} s`:`${set.reps} ${exercise.countUnit||"reps"}`}${exercise.loadType!=="bodyweight"&&set.weight!=null?` · ${set.weight} ${exercise.unit}${exercise.loadType==="assisted"?" assistance":""}`:""}`).join("; "))}</span>`:""}${exercise.enteredCapability?`<span>${exercise.measurement&&exercise.measurement!=="reps"?"Entered repetition reference; not a time or distance target":"Entered reference"}: ${number(exercise.enteredCapability.maxSets)} sets × ${number(exercise.enteredCapability.maxReps)} reps${exercise.enteredCapability.maxWeightKg==null?"":` · ${escape(ui.displayWeight(exercise.enteredCapability.maxWeightKg,profile.preferredLoadUnit==="lb"?"imperial":"metric"))}`}</span>`:""}</li>`).join("");
-        const unavailable=session.status==="unavailable"||!session.exercises?.length,partial=!unavailable&&session.status==="partial",needsReview=unavailable||partial,title=unavailable?"Training unavailable":partial?"Partial session":session.label,warning=session.readinessWarning||(unavailable?"No compatible exercises are available for this requested day. Review your equipment, experience, and movement constraints.":"Some required movements are unavailable. Review the missing movements before treating this as a complete session.");
-        return `<article class="coaching-day-card is-training${unavailable?" is-unavailable":partial?" is-partial":""}"><header><span>${String(index+1).padStart(2,"0")} · ${escape(day)}</span><time datetime="${escape(date)}">${escape(dateLabel(date))}</time></header><h5>${escape(title)}</h5>${needsReview?`<p><strong>${escape(warning)}</strong>${session.missingRoles?.length?` Missing movements: ${escape(session.missingRoles.join(", "))}.`:""}</p>`:""}${unavailable?"":`<p>${session.workingSets!=null?`${number(session.workingSets)} working sets · about ${number(session.estimatedDurationMinutes)} minutes including planned rests and setup.`:escape(session.rationale)}</p><ol>${exercises}</ol>`}</article>`;
+    function renderCalibration(nutrition) {
+      const rawMaintenance =
+          typeof nutrition.maintenance === "number" ? {} : nutrition.maintenance || {},
+        view = ui.calibrationDisplay(rawMaintenance.calibration ?? nutrition.calibration),
+        observed = view.observedMaintenanceKcal;
+      el("coachingCalibrationTitle").textContent = view.title;
+      el("coachingCalibrationState").textContent = view.label;
+      el("coachingCalibrationState").dataset.state = view.status;
+      el("coachingCalibrationExplanation").textContent = view.explanation;
+      el("coachingCalibrationIntake").textContent =
+        `${number(view.completeDays)} logged · ${number(view.alignedIntakeDays)} aligned`;
+      el("coachingCalibrationIntakeHelp").textContent =
+        `${number(view.requiredCompleteDays)} consecutive complete intake days within ${number(view.windowDays)} days`;
+      el("coachingCalibrationWeightsHelp").textContent =
+        `${number(view.requiredWeightDays)} usable morning weights spanning ${number(view.requiredWeightSpanDays)} days`;
+      el("coachingCalibrationWeights").textContent =
+        `${number(view.weightDays)} / ${number(view.requiredWeightDays)} · ${number(view.weightSpanDays)} / ${number(view.requiredWeightSpanDays)} days`;
+      el("coachingCalibrationObserved").textContent =
+        observed == null ? "Not ready" : `about ${number(observed)} kcal/day`;
+      el("coachingCalibrationCutoff").textContent = view.cutoffDate
+        ? `Evidence through ${dateLabel(view.cutoffDate)} · ${number(view.windowDays)}-day window${view.averageCompleteCaloriesKcal == null ? "" : ` · intake averaged about ${number(view.averageCompleteCaloriesKcal)} kcal`}`
+        : `Latest ${number(view.windowDays)}-day window`;
+      el("coachingCalibrationAlignment").textContent = view.interval
+        ? `Aligned intake: ${dateLabel(view.interval.start)}–${dateLabel(view.interval.lastIntakeDate)}. Closing morning weight: ${dateLabel(view.interval.end)}; intake on that final date is excluded.`
+        : "No complete intake interval is aligned with enough morning weights yet.";
+      el("coachingCalibrationQuality").textContent =
+        `Evidence consistency: ${String(view.quality?.label || "insufficient").replaceAll("_", " ")}. These are engineering checks, not a confidence score.${view.priorState === "held" ? ` Previous accepted evidence ended ${dateLabel(view.lastAcceptedEvidenceEnd)}.` : view.priorState === "expired" ? " Previous evidence has expired." : ""}`;
+      el("coachingCalibrationSensitivity").textContent = view.sensitivity
+        ? `Sensitivity range: about ${number(view.sensitivity.rangeKcal[0])}–${number(view.sensitivity.rangeKcal[1])} kcal/day. ${view.sensitivity.basis || "Not a confidence interval or total error bound."}`
+        : "A sensitivity range appears only when an aligned estimate is usable.";
+      const adjustment = view.appliedAdjustmentKcal;
+      el("coachingCalibrationAdjustment").textContent = adjustment
+        ? `Difference from equation baseline: ${adjustment > 0 ? "+" : "−"}${number(Math.abs(adjustment))} kcal/day`
+        : "No difference from equation baseline";
+      if (view.weeklyChangeKcal != null)
+        el("coachingCalibrationAdjustment").textContent +=
+          ` · Weekly target change: ${view.weeklyChangeKcal > 0 ? "+" : view.weeklyChangeKcal < 0 ? "−" : ""}${number(Math.abs(view.weeklyChangeKcal))} kcal/day`;
+      el("coachingCalibrationLimitations").textContent = Array.isArray(view.limitations)
+        ? view.limitations.join(" ")
+        : view.limitations;
+    }
+    function renderDashboard(profile, week, logs, selectedDate) {
+      const nutrition = week.nutrition,
+        targets = nutrition.dailyTargets || [],
+        maintenanceData =
+          typeof nutrition.maintenance === "number"
+            ? { targetKcal: nutrition.maintenance }
+            : nutrition.maintenance || {},
+        maintenance = energyUi.maintenanceDisplay(nutrition.maintenance),
+        maintenanceTarget = maintenance.targetKcal,
+        displayWeight = (kg) =>
+          ui.displayWeight(kg, profile.measurementSystem, { projection: true });
+      const weightBasis = nutrition.weightBasis,
+        bodyFatWeightNote =
+          weightBasis?.changed && profile.bodyFatPercent != null
+            ? nutrition.bodyFatCrossCheck
+              ? " The saved body-fat estimate is reused only because the recent weight remains within 2%; review it whenever body composition changes."
+              : " The body-fat cross-check is withheld because recent weight differs by more than 2%; an automated deficit requires profile review."
+            : "";
+      el("coachingWeightBasis").textContent = weightBasis
+        ? `Weight used: ${ui.displayWeight(weightBasis.weightKg, profile.measurementSystem)} · ${weightBasis.source === "recent_morning_weights" ? `recent morning weights through ${dateLabel(weightBasis.date)}` : "saved profile"}.${weightBasis.requiresReview ? " Recent weights need review; review the diary and profile before changing your calorie goal." : ""}${bodyFatWeightNote}`
+        : "Weight basis: saved profile.";
+      el("coachingModelUpdate").hidden = !week.modelUpdateAvailable;
+      el("coachingModelUpdate").textContent = week.modelUpdateAvailable
+        ? Number(profile.version) >= 4
+          ? "A newer coaching model is available. This saved week stays unchanged. The next weekly snapshot uses the new method; edit and save your profile to rebuild this week deliberately."
+          : "Your saved profile and week keep their existing calculation. Review and save the new movement fields to opt in; STRATA will not reinterpret your old activity answer automatically."
+        : "";
+      const fromPlan = week.training?.source === "plan",
+        sessionCount = fromPlan ? (week.training.sessions || []).length : profile.sessionsPerWeek;
+      el("coachingWeekLabel").textContent =
+        `${dateLabel(week.weekStart)}–${dateLabel(week.weekEnd)} · ${sessionCount} ${week.training?.summary?.reviewNeeded ? "scheduled days" : `workout${sessionCount === 1 ? "" : "s"}`}`;
+      el("coachingTrainingKicker").textContent = fromPlan
+        ? "Your week · with coaching targets"
+        : "Suggested week · from your personal setup";
+      el("coachingTrainingIntro").textContent = fromPlan
+        ? "From your saved weekly plan. The exercises, sets, and reps are yours; rest, effort, and targets come from your logged sets. Change the week in the planner."
+        : "You have no training days saved yet. Review this starter week, then choose whether it becomes your saved weekly plan.";
+      el("programApply").hidden = fromPlan;
+      const structuredActivity = Number(profile.version) >= 4,
+        reviewedActivity = Number(profile.version) >= 3;
+      el("coachingWeekExplanation").textContent = structuredActivity
+        ? structuredActivitySummary(profile, nutrition)
+        : reviewedActivity
+          ? `Built from your ${profile.experience} experience, ${profile.sessionMinutes}-minute sessions, ${activityLabel(profile.lifestyleActivity)} usual all-day activity, and ${profile.usualExercises.length} known exercise${profile.usualExercises.length === 1 ? "" : "s"}. Workout calories are not added a second time.`
+          : `Built from your ${profile.experience} experience, ${profile.sessionMinutes}-minute sessions, and ${profile.usualExercises.length} known exercise${profile.usualExercises.length === 1 ? "" : "s"}. Your previous activity answer remains in this saved week until you review daily movement and any activity outside STRATA.`;
+      el("coachingBmr").textContent = `about ${number(nutrition.rmrKcal)} kcal`;
+      const crossCheck = nutrition.bodyFatCrossCheck?.rmrKcal,
+        restingDetail = equationLabel(nutrition.rmrEquation || "mifflin_st_jeor"),
+        crossCheckDetail = equationLabel(
+          nutrition.bodyFatCrossCheck?.equation || "cunningham_1991",
+        );
+      el("coachingBmrMethod").textContent =
+        crossCheck == null
+          ? restingDetail
+          : `${restingDetail}. Body-fat cross-check: about ${number(crossCheck)} kcal · ${crossCheckDetail}.`;
+      const maintenanceMethod = equationLabel(
+          nutrition.primaryEquation || nutrition.equation || maintenanceData.equation,
+        ),
+        calibrationStatus = maintenanceData.calibration?.status,
+        steps = energyUi.maintenanceSteps(nutrition),
+        maintenanceBasis = structuredActivity
+          ? activityEnergySummary(nutrition, Boolean(steps))
+          : calibrationStatus === "legacy_profile"
+            ? `${maintenanceMethod} · review the current movement inputs to enable calibration`
+            : calibrationStatus === "trend_informed"
+              ? `Trend-informed estimate · ${maintenanceMethod} baseline`
+              : `${maintenanceMethod} · calibration can refine it`;
+      el("coachingTdee").textContent = maintenance.label;
+      el("coachingTdeeDetail").textContent = `${maintenance.detail} ${maintenanceBasis}`;
+      el("coachingTdeeSteps").innerHTML = (steps || [])
+        .map(
+          (row) =>
+            `<li${row.total ? ' class="is-total"' : ""}><span>${escape(row.label)}</span><strong>${escape(row.value)}</strong></li>`,
+        )
+        .join("");
+      el("coachingTdeeSteps").hidden = !steps;
+      const summary = energyUi.targetSummary(nutrition);
+      el("coachingGoalLabel").textContent = goalLabel(nutrition.selectedGoal);
+      el("coachingTarget").textContent = summary.label;
+      el("coachingTargetMath").textContent = summary.math;
+      el("coachingTargetDays").textContent = summary.days;
+      el("coachingTargetDays").hidden = !summary.days;
+      el("coachingTargetDetail").textContent = [
+        summary.varies
+          ? "Each kind of day has one target, and the seven days add up to exactly seven times the average."
+          : "The same target every day.",
+        nutrition.selectedGoal === "fat_loss"
+          ? deficitSummary(nutrition)
+          : nutrition.selectedGoal === "muscle_gain"
+            ? `${String(nutrition.goalPace || profile.goalPace || "gentle").replaceAll("_", " ")} pace: ${nutrition.bulk?.policy || "a conservative surplus"}.`
+            : "Maintenance keeps intake level with the estimate.",
+      ].join(" ");
+      el("coachingWeeklyCalories").textContent = energyUi.calorieTargetLabel(
+        nutrition.weeklyTargetKcal,
+        "kcal/week",
+      );
+      const estimates = [
+        {
+          goal: "fat_loss",
+          label: "Deficit",
+          value: nutrition.deficit?.targetKcal,
+          detail: deficitSummary(nutrition),
+        },
+        {
+          goal: "maintenance",
+          label: "Maintenance",
+          value: maintenanceTarget,
+          detail: "Daily planning target; refined as you log intake and morning weights.",
+        },
+        {
+          goal: "muscle_gain",
+          label: "Surplus",
+          value: nutrition.bulk?.targetKcal,
+          detail: nutrition.bulk?.policy || "Conservative surplus",
+        },
+      ];
+      el("coachingGoalComparison").innerHTML = estimates
+        .map(
+          (item) =>
+            `<article class="coaching-goal-option${nutrition.selectedGoal === item.goal ? " is-selected" : ""}"${nutrition.selectedGoal === item.goal ? ' aria-current="true"' : ""}><span>${escape(item.label)}</span><strong>${energyUi.calorieTargetLabel(item.value)}</strong><small>${escape(item.detail)}</small></article>`,
+        )
+        .join("");
+      renderCalibration(nutrition);
+      el("coachingRotationLabel").textContent =
+        `${{ balanced: "Balanced", strength: "Strength", hypertrophy: "Muscle growth" }[profile.trainingGoal || "balanced"] || "Balanced"} training focus`;
+      el("coachingNextWeek").textContent = `Next plan ${dateLabel(week.nextWeekStart)}`;
+      const sessions = new Map(
+          (week.training?.sessions || []).map((session) => [session.day, session]),
+        ),
+        guidanceCounts = new Map();
+      for (const session of sessions.values())
+        for (const exercise of session.exercises || [])
+          if (exercise.loadingGuidance)
+            guidanceCounts.set(
+              exercise.loadingGuidance,
+              (guidanceCounts.get(exercise.loadingGuidance) || 0) + 1,
+            );
+      const [topGuidance] = [...guidanceCounts].sort((a, b) => b[1] - a[1]),
+        sharedGuidance = topGuidance?.[1] > 1 ? topGuidance[0] : "";
+      el("coachingWeekGrid").innerHTML = DAYS.map((day, index) => {
+        const session = sessions.get(day),
+          target = targets.find((item) => item.day === day),
+          date = target?.date || session?.date || "";
+        if (!session)
+          return `<article class="coaching-day-card is-rest"><header><span>${String(index + 1).padStart(2, "0")} · ${escape(day)}</span><time datetime="${escape(date)}">${escape(dateLabel(date))}</time></header><h5>Recovery day</h5><p>No programmed lifting. Normal daily movement can continue if it feels appropriate.</p></article>`;
+        const exercises = (session.exercises || [])
+          .map(
+            (exercise) =>
+              `<li><strong>${escape(exercise.name)}</strong><span>${number(exercise.sets)} sets × ${escape(exercise.reps)} · ${escape(exercise.rest)} rest</span>${exercise.loadingGuidance === sharedGuidance ? "" : `<span>${escape(exercise.loadingGuidance || "Use a controlled load and repeatable form.")}</span>`}${exercise.performance?.sourceDate ? `<span>Recorded source: ${escape(dateLabel(exercise.performance.sourceDate))} · ${escape(String(exercise.performance.status || "reference").replaceAll("_", " "))}</span>` : ""}${exercise.targetSets ? `<span>Optional set targets: ${escape(exercise.targetSets.map((set) => `${exercise.measurement === "timed" ? `${set.seconds} s` : `${set.reps} ${exercise.countUnit || "reps"}`}${exercise.loadType !== "bodyweight" && set.weight != null ? ` · ${set.weight} ${exercise.unit}${exercise.loadType === "assisted" ? " assistance" : ""}` : ""}`).join("; "))}</span>` : ""}${exercise.enteredCapability ? `<span>${exercise.measurement && exercise.measurement !== "reps" ? "Entered repetition reference; not a time or distance target" : "Entered reference"}: ${number(exercise.enteredCapability.maxSets)} sets × ${number(exercise.enteredCapability.maxReps)} reps${exercise.enteredCapability.maxWeightKg == null ? "" : ` · ${escape(ui.displayWeight(exercise.enteredCapability.maxWeightKg, profile.preferredLoadUnit === "lb" ? "imperial" : "metric"))}`}</span>` : ""}</li>`,
+          )
+          .join("");
+        const unavailable = session.status === "unavailable" || !session.exercises?.length,
+          partial = !unavailable && session.status === "partial",
+          needsReview = unavailable || partial,
+          title = unavailable
+            ? "Training unavailable"
+            : partial
+              ? "Partial session"
+              : session.label,
+          warning =
+            session.readinessWarning ||
+            (unavailable
+              ? "No compatible exercises are available for this requested day. Review your equipment, experience, and movement constraints."
+              : "Some required movements are unavailable. Review the missing movements before treating this as a complete session.");
+        return `<article class="coaching-day-card is-training${unavailable ? " is-unavailable" : partial ? " is-partial" : ""}"><header><span>${String(index + 1).padStart(2, "0")} · ${escape(day)}</span><time datetime="${escape(date)}">${escape(dateLabel(date))}</time></header><h5>${escape(title)}</h5>${needsReview ? `<p><strong>${escape(warning)}</strong>${session.missingRoles?.length ? ` Missing movements: ${escape(session.missingRoles.join(", "))}.` : ""}</p>` : ""}${unavailable ? "" : `<p>${session.workingSets != null ? `${number(session.workingSets)} working sets · about ${number(session.estimatedDurationMinutes)} minutes including planned rests and setup.` : escape(session.rationale)}</p><ol>${exercises}</ol>`}</article>`;
       }).join("");
-      el("coachingPlanMethod").textContent=[sharedGuidance?`Unless an exercise says otherwise: ${sharedGuidance}`:"",week.training?.summary?.reviewNeeded?"Training needs review: this week contains partial or unavailable sessions. Calorie estimates and the intake diary remain available.":"",week.training?.frequencyCaveat,week.training?.summary?.schedulingNote,week.training?.summary?.coverageGaps?.length?`Direct work on fewer than two days: ${week.training.summary.coverageGaps.join(", ")}. Compound overlap is not double-counted.`:"",week.training?.summary?.historyLimited?"Some workout history was unavailable; progression targets remain conservative.":"",week.training?.progression||"Progress gradually from repeatable, controlled work.",fromPlan?"Exercises, sets, and reps are exactly as saved in your weekly plan.":"Every choice respects your saved equipment and movement constraints."].filter(Boolean).join(" ");
-      const coverage=week.training?.summary;el("coachingTrainingCoverage").textContent=coverage?(coverage.missingCoverage?.length?`Missing movements by day: ${coverage.missingCoverage.join(" · ")}. `:"")+coverage.groups.map(row=>`${String(row.group).charAt(0).toUpperCase()+String(row.group).slice(1)}: ${number(row.workingSets)} direct sets over ${number(row.frequency)} ${row.frequency===1?"day":"days"}`).join(" · ")+`. ${coverage.coverageBasis}`:"Direct-set coverage is unavailable for this saved week. A new weekly snapshot includes it.";
-      const today=week.diaryEndDate||localDate(),logMap=new Map((logs||[]).map((log)=>[log.date,log]));
-      el("coachingCalorieWeek").innerHTML=targets.map((target)=>{
-        const macros=target.macros,log=logMap.get(target.date),share=log&&target.calories>0?Math.min(1,Math.max(0,Number(log.calories)||0)/target.calories):0;
-        return `<article class="coaching-calorie-card${target.date===today?" is-today":""}${target.kind==="flexible_day"?" is-flexible":""}${log?" is-logged":""}"><span>${escape(target.day)} · ${escape(dateLabel(target.date))}</span><strong>${energyUi.calorieTargetLabel(target.calories,"kcal")}</strong><small>${escape(targetKind(target.kind))}${target.date===today?" · today":""}</small>${log?`<p class="coaching-calorie-logged"><i aria-hidden="true"><b style="--value:${share.toFixed(3)}"></b></i>${number(log.calories)} kcal logged${log.complete===true?" · complete":""}</p>`:""}${macros?`<dl><div><dt>Protein</dt><dd>${number(macros.proteinG)} g</dd></div><div><dt>Carbs</dt><dd>${number(macros.carbsG)} g</dd></div><div><dt>Fat</dt><dd>${number(macros.fatG)} g</dd></div></dl>`:""}</article>`;
-      }).join("");
-      const patternText={steady:"Steady targets keep each day nearly equal.",zigzag:"Training-day zigzag moves more calories to workout days while preserving the weekly total.",flexible_day:`${profile.flexibleDay} has a higher flexible budget, balanced by the other six days.`},effective=nutrition.effectivePattern||profile.caloriePattern;el("coachingPatternExplanation").textContent=[patternText[effective]||"Each day contributes to one weekly target.",nutrition.patternFallback,...new Set(targets.map(target=>target.macros?.adjustmentReason).filter(Boolean))].filter(Boolean).join(" ");
-      el("coachingProjectionChart").innerHTML=projectionSvg({...profile,weightKg:nutrition.weightBasis?.weightKg??profile.weightKg},nutrition.weightScenarios,displayWeight);el("coachingProjectionNote").textContent=(nutrition.weightScenarios?.[0]?.caveat||"These are broad energy-balance scenarios, not promised outcomes. The display band is an unvalidated STRATA heuristic, not a confidence interval or clinical safety boundary. Water, glycogen, digestion, adherence, medication, and individual metabolism can move scale weight differently.")+(nutrition.weightScenarios?.some((scenario)=>scenario.includesGainAndLoss)?" The scenario envelope includes both weight gain and weight loss.":"");
-      const references=(week.methodology?.references||[]).filter((item)=>/^https:\/\//.test(String(item?.url||""))).map((item)=>`<li><a href="${escape(item.url)}" rel="noreferrer" target="_blank">${escape(item.label||"Method source")} <span aria-hidden="true">↗</span></a></li>`);el("coachingMethodList").innerHTML=[...(week.methodology?.formulaSources||[]),...(week.methodology?.assumptions||[]),...(week.methodology?.cautions||[]),...(maintenanceData.referencePredictionErrorKcal==null?[]:[`Population equation reference error: ${number(maintenanceData.referencePredictionErrorKcal)} kcal/day. ${maintenanceData.referencePredictionErrorBasis||"Not a personalized confidence interval."}`])].map((item)=>`<li>${escape(item)}</li>`).concat(references).join("");
-      const diaryTargets=diaryUi.targetsFor(week),keep=diaryUi.selectedDate(week,selectedDate,today);
-      for(const id of ["coachingLogDate"]){const select=el(id);select.innerHTML=diaryTargets.map((target)=>`<option value="${escape(target.date)}"${target.date===keep?" selected":""}>${escape(target.day)} · ${escape(dateLabel(target.date))}${target.date===today?" · today":target.calories==null?" · no saved target":""}</option>`).join("");}
-      document.querySelectorAll(".coaching-macro-log").forEach((node)=>node.hidden=!profile.macroPreference);renderLog(profile,week,logs,keep);ready=true;show("dashboard");return keep;
+      el("coachingPlanMethod").textContent = [
+        sharedGuidance ? `Unless an exercise says otherwise: ${sharedGuidance}` : "",
+        week.training?.summary?.reviewNeeded
+          ? "Training needs review: this week contains partial or unavailable sessions. Calorie estimates and the intake diary remain available."
+          : "",
+        week.training?.frequencyCaveat,
+        week.training?.summary?.schedulingNote,
+        week.training?.summary?.coverageGaps?.length
+          ? `Direct work on fewer than two days: ${week.training.summary.coverageGaps.join(", ")}. Compound overlap is not double-counted.`
+          : "",
+        week.training?.summary?.historyLimited
+          ? "Some workout history was unavailable; progression targets remain conservative."
+          : "",
+        week.training?.progression || "Progress gradually from repeatable, controlled work.",
+        fromPlan
+          ? "Exercises, sets, and reps are exactly as saved in your weekly plan."
+          : "Every choice respects your saved equipment and movement constraints.",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      const coverage = week.training?.summary;
+      el("coachingTrainingCoverage").textContent = coverage
+        ? (coverage.missingCoverage?.length
+            ? `Missing movements by day: ${coverage.missingCoverage.join(" · ")}. `
+            : "") +
+          coverage.groups
+            .map(
+              (row) =>
+                `${String(row.group).charAt(0).toUpperCase() + String(row.group).slice(1)}: ${number(row.workingSets)} direct sets over ${number(row.frequency)} ${row.frequency === 1 ? "day" : "days"}`,
+            )
+            .join(" · ") +
+          `. ${coverage.coverageBasis}`
+        : "Direct-set coverage is unavailable for this saved week. A new weekly snapshot includes it.";
+      const today = week.diaryEndDate || localDate(),
+        logMap = new Map((logs || []).map((log) => [log.date, log]));
+      el("coachingCalorieWeek").innerHTML = targets
+        .map((target) => {
+          const macros = target.macros,
+            log = logMap.get(target.date),
+            share =
+              log && target.calories > 0
+                ? Math.min(1, Math.max(0, Number(log.calories) || 0) / target.calories)
+                : 0;
+          return `<article class="coaching-calorie-card${target.date === today ? " is-today" : ""}${target.kind === "flexible_day" ? " is-flexible" : ""}${log ? " is-logged" : ""}"><span>${escape(target.day)} · ${escape(dateLabel(target.date))}</span><strong>${energyUi.calorieTargetLabel(target.calories, "kcal")}</strong><small>${escape(targetKind(target.kind))}${target.date === today ? " · today" : ""}</small>${log ? `<p class="coaching-calorie-logged"><i aria-hidden="true"><b style="--value:${share.toFixed(3)}"></b></i>${number(log.calories)} kcal logged${log.complete === true ? " · complete" : ""}</p>` : ""}${macros ? `<dl><div><dt>Protein</dt><dd>${number(macros.proteinG)} g</dd></div><div><dt>Carbs</dt><dd>${number(macros.carbsG)} g</dd></div><div><dt>Fat</dt><dd>${number(macros.fatG)} g</dd></div></dl>` : ""}</article>`;
+        })
+        .join("");
+      const patternText = {
+          steady: "Steady targets keep each day nearly equal.",
+          zigzag:
+            "Training-day zigzag moves more calories to workout days while preserving the weekly total.",
+          flexible_day: `${profile.flexibleDay} has a higher flexible budget, balanced by the other six days.`,
+        },
+        effective = nutrition.effectivePattern || profile.caloriePattern;
+      el("coachingPatternExplanation").textContent = [
+        patternText[effective] || "Each day contributes to one weekly target.",
+        nutrition.patternFallback,
+        ...new Set(targets.map((target) => target.macros?.adjustmentReason).filter(Boolean)),
+      ]
+        .filter(Boolean)
+        .join(" ");
+      el("coachingProjectionChart").innerHTML = projectionSvg(
+        { ...profile, weightKg: nutrition.weightBasis?.weightKg ?? profile.weightKg },
+        nutrition.weightScenarios,
+        displayWeight,
+      );
+      el("coachingProjectionNote").textContent =
+        (nutrition.weightScenarios?.[0]?.caveat ||
+          "These are broad energy-balance scenarios, not promised outcomes. The display band is an unvalidated STRATA heuristic, not a confidence interval or clinical safety boundary. Water, glycogen, digestion, adherence, medication, and individual metabolism can move scale weight differently.") +
+        (nutrition.weightScenarios?.some((scenario) => scenario.includesGainAndLoss)
+          ? " The scenario envelope includes both weight gain and weight loss."
+          : "");
+      const references = (week.methodology?.references || [])
+        .filter((item) => /^https:\/\//.test(String(item?.url || "")))
+        .map(
+          (item) =>
+            `<li><a href="${escape(item.url)}" rel="noreferrer" target="_blank">${escape(item.label || "Method source")} <span aria-hidden="true">↗</span></a></li>`,
+        );
+      el("coachingMethodList").innerHTML = [
+        ...(week.methodology?.formulaSources || []),
+        ...(week.methodology?.assumptions || []),
+        ...(week.methodology?.cautions || []),
+        ...(maintenanceData.referencePredictionErrorKcal == null
+          ? []
+          : [
+              `Population equation reference error: ${number(maintenanceData.referencePredictionErrorKcal)} kcal/day. ${maintenanceData.referencePredictionErrorBasis || "Not a personalized confidence interval."}`,
+            ]),
+      ]
+        .map((item) => `<li>${escape(item)}</li>`)
+        .concat(references)
+        .join("");
+      const diaryTargets = diaryUi.targetsFor(week),
+        keep = diaryUi.selectedDate(week, selectedDate, today);
+      for (const id of ["coachingLogDate"]) {
+        const select = el(id);
+        select.innerHTML = diaryTargets
+          .map(
+            (target) =>
+              `<option value="${escape(target.date)}"${target.date === keep ? " selected" : ""}>${escape(target.day)} · ${escape(dateLabel(target.date))}${target.date === today ? " · today" : target.calories == null ? " · no saved target" : ""}</option>`,
+          )
+          .join("");
+      }
+      document
+        .querySelectorAll(".coaching-macro-log")
+        .forEach((node) => (node.hidden = !profile.macroPreference));
+      renderLog(profile, week, logs, keep);
+      ready = true;
+      show("dashboard");
+      return keep;
     }
-    function renderLog(profile,week,logs,date){
-      const context=diaryUi.context(week,logs,date);if(!context)return;const {row,target,log}=context;
-      el("coachingProgressTitle").textContent=row.date===(week.diaryEndDate||localDate())?"Today’s intake":`Intake for ${row.day}, ${dateLabel(row.date).toUpperCase()}.`;
-      const progress=target?ui.calorieProgress(target.calories,log?.calories||0):null,label=progress?.status==="over"?"Above target":"Remaining",percent=progress?Math.round(progress.consumedCalories/progress.targetCalories*100):0;
-      const summary=`<div class="coaching-progress-stat"><span>Logged</span><strong>${number(log?.calories||0)} kcal</strong><small>${log?log.complete===true?"Saved as a complete day":"Saved running total":"Nothing logged yet"}</small></div><div class="coaching-progress-stat"><span>Target</span><strong>${target?energyUi.calorieTargetLabel(target.calories,"kcal"):"Not available"}</strong><small>${target?`${escape(targetKind(target.kind))} · planning estimate`:"No target was saved for this date"}</small></div><div class="coaching-progress-stat"><span>${progress?label:"Comparison"}</span><strong>${progress?`${number(progress.status==="over"?progress.overByCalories:progress.remainingCalories)} kcal`:"Unavailable"}</strong><small>${progress?`${number(percent)}% of the target logged`:"You can log or correct intake and weight without a historical calorie target."}</small></div>${progress?`<div class="coaching-progress-meter${progress.status==="over"?" is-over":""}" aria-hidden="true"><span style="--value:${Math.min(1,percent/100).toFixed(3)}"></span></div>`:""}`;
-      const macrosEnabled=Boolean(profile.macroPreference);
-      const imperial=profile.measurementSystem==="imperial",weightValue=ui.dailyWeightFromKilograms(log?.morningWeightKg,profile.measurementSystem);
-      for(const scope of [{prefix:"coaching",summary:"coachingProgressSummary"}]){el(scope.summary).innerHTML=summary;el(`${scope.prefix}CaloriesEaten`).value=log?.calories??"";el(`${scope.prefix}MorningWeight`).value=weightValue??"";el(`${scope.prefix}MorningWeight`).min=imperial?"77.2":"35";el(`${scope.prefix}MorningWeight`).max=imperial?"661.4":"300";el(`${scope.prefix}MorningWeightUnit`).textContent=imperial?"lb":"kg";el(`${scope.prefix}DayComplete`).checked=log?.complete===true;el(`${scope.prefix}ProteinEaten`).value=macrosEnabled?log?.proteinG??"":"";el(`${scope.prefix}CarbsEaten`).value=macrosEnabled?log?.carbsG??"":"";el(`${scope.prefix}FatEaten`).value=macrosEnabled?log?.fatG??"":"";el(`${scope.prefix}LogStatus`).textContent=log?log.complete===true?`Saved as a complete ${row.day}. It can count toward the next weekly calibration.`:`Saved running total for ${row.day}. Mark it complete only when the whole day is final.`:`No intake saved for ${row.day} yet. Enter the cumulative day total.`;el(`${scope.prefix}LogDate`).value=date;}
+    function renderLog(profile, week, logs, date) {
+      const context = diaryUi.context(week, logs, date);
+      if (!context) return;
+      const { row, target, log } = context;
+      el("coachingProgressTitle").textContent =
+        row.date === (week.diaryEndDate || localDate())
+          ? "Today’s intake"
+          : `Intake for ${row.day}, ${dateLabel(row.date).toUpperCase()}.`;
+      const progress = target ? ui.calorieProgress(target.calories, log?.calories || 0) : null,
+        label = progress?.status === "over" ? "Above target" : "Remaining",
+        percent = progress
+          ? Math.round((progress.consumedCalories / progress.targetCalories) * 100)
+          : 0;
+      const summary = `<div class="coaching-progress-stat"><span>Logged</span><strong>${number(log?.calories || 0)} kcal</strong><small>${log ? (log.complete === true ? "Saved as a complete day" : "Saved running total") : "Nothing logged yet"}</small></div><div class="coaching-progress-stat"><span>Target</span><strong>${target ? energyUi.calorieTargetLabel(target.calories, "kcal") : "Not available"}</strong><small>${target ? `${escape(targetKind(target.kind))} · planning estimate` : "No target was saved for this date"}</small></div><div class="coaching-progress-stat"><span>${progress ? label : "Comparison"}</span><strong>${progress ? `${number(progress.status === "over" ? progress.overByCalories : progress.remainingCalories)} kcal` : "Unavailable"}</strong><small>${progress ? `${number(percent)}% of the target logged` : "You can log or correct intake and weight without a historical calorie target."}</small></div>${progress ? `<div class="coaching-progress-meter${progress.status === "over" ? " is-over" : ""}" aria-hidden="true"><span style="--value:${Math.min(1, percent / 100).toFixed(3)}"></span></div>` : ""}`;
+      const macrosEnabled = Boolean(profile.macroPreference);
+      const imperial = profile.measurementSystem === "imperial",
+        weightValue = ui.dailyWeightFromKilograms(log?.morningWeightKg, profile.measurementSystem);
+      for (const scope of [{ prefix: "coaching", summary: "coachingProgressSummary" }]) {
+        el(scope.summary).innerHTML = summary;
+        el(`${scope.prefix}CaloriesEaten`).value = log?.calories ?? "";
+        el(`${scope.prefix}MorningWeight`).value = weightValue ?? "";
+        el(`${scope.prefix}MorningWeight`).min = imperial ? "77.2" : "35";
+        el(`${scope.prefix}MorningWeight`).max = imperial ? "661.4" : "300";
+        el(`${scope.prefix}MorningWeightUnit`).textContent = imperial ? "lb" : "kg";
+        el(`${scope.prefix}DayComplete`).checked = log?.complete === true;
+        el(`${scope.prefix}ProteinEaten`).value = macrosEnabled ? (log?.proteinG ?? "") : "";
+        el(`${scope.prefix}CarbsEaten`).value = macrosEnabled ? (log?.carbsG ?? "") : "";
+        el(`${scope.prefix}FatEaten`).value = macrosEnabled ? (log?.fatG ?? "") : "";
+        el(`${scope.prefix}LogStatus`).textContent = log
+          ? log.complete === true
+            ? `Saved as a complete ${row.day}. It can count toward the next weekly calibration.`
+            : `Saved running total for ${row.day}. Mark it complete only when the whole day is final.`
+          : `No intake saved for ${row.day} yet. Enter the cumulative day total.`;
+        el(`${scope.prefix}LogDate`).value = date;
+      }
     }
-    return{clearPrivate,error,renderDashboard,renderLog,show};
+    return { clearPrivate, error, renderDashboard, renderLog, show };
   }
-  return{createRenderer,dateLabel,equationLabel,goalLabel,projectionSvg};
+  return { createRenderer, dateLabel, equationLabel, goalLabel, projectionSvg };
 });

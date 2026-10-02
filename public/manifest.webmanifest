@@ -38,28 +38,28 @@
       "short_name": "Strata+",
       "description": "Open your personalized training tools in Strata+.",
       "url": "/discover.html",
-      "icons": [{"src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png"}]
+      "icons": [{ "src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Weekly Planner",
       "short_name": "Plan week",
       "description": "Open your synced weekly training plan.",
       "url": "/planner.html",
-      "icons": [{"src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png"}]
+      "icons": [{ "src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Workout Room",
       "short_name": "Train now",
       "description": "Start or resume a Strata+ workout.",
       "url": "/workout.html",
-      "icons": [{"src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png"}]
+      "icons": [{ "src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "Exercise Rankings",
       "short_name": "Rankings",
       "description": "Search the complete evidence-informed exercise index.",
       "url": "/#rankings",
-      "icons": [{"src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png"}]
+      "icons": [{ "src": "/icons/strata-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]
 }

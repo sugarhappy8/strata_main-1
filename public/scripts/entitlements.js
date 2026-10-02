@@ -1,30 +1,48 @@
 /* global module */
-(function(root,factory){
-  const api=factory();
-  if(typeof module==="object"&&module.exports)module.exports=api;
-  root.StrataEntitlements=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  root.StrataEntitlements = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
   // The server decides tiers and sends the answer as user.capabilities inside
   // /api/me. Pages ask can(user,"feature") instead of reading billing state.
-  const FREE_FEATURES=Object.freeze(["rankings","plan.week","profile.basic","account"]);
-  const PLUS_FEATURES=Object.freeze(["plus.studio","plus.train","plus.nutrition","plus.recovery","plus.progress","plus.library","plus.compare","plus.ai"]);
+  const FREE_FEATURES = Object.freeze(["rankings", "plan.week", "profile.basic", "account"]);
+  const PLUS_FEATURES = Object.freeze([
+    "plus.studio",
+    "plus.train",
+    "plus.nutrition",
+    "plus.recovery",
+    "plus.progress",
+    "plus.library",
+    "plus.compare",
+    "plus.ai",
+  ]);
 
-  function can(user,feature){
-    const capabilities=user?.capabilities;
-    if(capabilities&&typeof capabilities==="object")return capabilities[feature]===true;
+  function can(user, feature) {
+    const capabilities = user?.capabilities;
+    if (capabilities && typeof capabilities === "object") return capabilities[feature] === true;
     // A payload cached by an older build has no capability map; fall back to
     // the Strata+ flag the server has always sent.
-    if(FREE_FEATURES.includes(feature))return true;
-    return PLUS_FEATURES.includes(feature)&&user?.discovery?.active===true;
+    if (FREE_FEATURES.includes(feature)) return true;
+    return PLUS_FEATURES.includes(feature) && user?.discovery?.active === true;
   }
 
-  function hasPlus(user){return can(user,"plus.studio");}
+  function hasPlus(user) {
+    return can(user, "plus.studio");
+  }
 
   // One sentence per Strata+ entry point, so every upgrade prompt describes a feature the same way.
-  const UPSELLS=Object.freeze({ai:"Strata AI is included with Strata+.",recovery:"Recovery, with your Polar sleep and Nightly Recharge, is part of Strata+.",access:"That page is part of Strata+.","discovery-required":"That page is part of Strata+."});
-  function upsell(reason){return Object.hasOwn(UPSELLS,String(reason))?UPSELLS[String(reason)]:"";}
+  const UPSELLS = Object.freeze({
+    ai: "Strata AI is included with Strata+.",
+    recovery: "Recovery, with your Polar sleep and Nightly Recharge, is part of Strata+.",
+    access: "That page is part of Strata+.",
+    "discovery-required": "That page is part of Strata+.",
+  });
+  function upsell(reason) {
+    return Object.hasOwn(UPSELLS, String(reason)) ? UPSELLS[String(reason)] : "";
+  }
 
-  return Object.freeze({FREE_FEATURES,PLUS_FEATURES,UPSELLS,can,hasPlus,upsell});
+  return Object.freeze({ FREE_FEATURES, PLUS_FEATURES, UPSELLS, can, hasPlus, upsell });
 });

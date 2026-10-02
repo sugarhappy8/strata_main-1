@@ -1,54 +1,272 @@
 /* global module */
-(function(root,factory){
-  const api=factory();
-  if(typeof module==="object"&&module.exports)module.exports=api;
-  root.StrataDiscoverDetail=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  root.StrataDiscoverDetail = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  function createDetail({state,core,labels,element,escapeHtml,exerciseById,titleCase,round,factorWeights,weightedBaseline,scoreAdjustment,personalResult,alternativesFor,profileReason,personalLabel,movementBoardButton,aggregateFor,communitySummary,communityLabel,ratingAverage,setupLabel,resistanceProfile,practicality,openDialog,showToast}){
-    function sourceSelection(exercise){
-      const ids=["rom-2023","rom-meta-2021","prescription-2023","progression-acsm","machines-2022","execution-ace","anatomy-openstax"];
-      if(exercise.pattern.includes("Squat")||exercise.pattern.includes("Press"))ids.push("load-2021");
-      return[...new Set(ids)].map((id)=>state.sources.find((source)=>source.id===id)).filter(Boolean);
+  function createDetail({
+    state,
+    core,
+    labels,
+    element,
+    escapeHtml,
+    exerciseById,
+    titleCase,
+    round,
+    factorWeights,
+    weightedBaseline,
+    scoreAdjustment,
+    personalResult,
+    alternativesFor,
+    profileReason,
+    personalLabel,
+    movementBoardButton,
+    aggregateFor,
+    communitySummary,
+    communityLabel,
+    ratingAverage,
+    setupLabel,
+    resistanceProfile,
+    practicality,
+    openDialog,
+    showToast,
+  }) {
+    function sourceSelection(exercise) {
+      const ids = [
+        "rom-2023",
+        "rom-meta-2021",
+        "prescription-2023",
+        "progression-acsm",
+        "machines-2022",
+        "execution-ace",
+        "anatomy-openstax",
+      ];
+      if (exercise.pattern.includes("Squat") || exercise.pattern.includes("Press"))
+        ids.push("load-2021");
+      return [...new Set(ids)]
+        .map((id) => state.sources.find((source) => source.id === id))
+        .filter(Boolean);
     }
-    function metricMarkup(exercise){const weights=factorWeights();return state.methodology.factors.map((factor)=>`<div class="metric-row"><span>${escapeHtml(factor.label)}</span><div class="metric-bar"><i style="width:${exercise.metrics[factor.key]}%"></i></div><strong>${exercise.metrics[factor.key]}</strong><small>${round(exercise.metrics[factor.key]*weights[factor.key]/100,1)} pts</small></div>`).join("");}
-    function ratingOptions(selected){return[1,2,3,4,5].map((value)=>`<option value="${value}" ${Number(selected)===value?"selected":""}>${value} — ${{1:"Low",2:"Below average",3:"Average",4:"Strong",5:"Excellent"}[value]}</option>`).join("");}
-    function ratingFormMarkup(exercise,draft=null){const current=draft||state.userRatings.get(exercise.id)||{comfort:3,pump:3,enjoyment:3,stability:3,setup:3,overall:3};return`<form class="rating-form" data-rating-form="${exercise.id}"><div class="rating-grid">${[["comfort","Comfort"],["pump","Pump / target feel"],["enjoyment","Enjoyment"],["stability","Perceived stability"],["setup","Setup ease"],["overall","Overall"]].map(([key,label])=>`<label>${label}<select name="${key}">${ratingOptions(current[key])}</select></label>`).join("")}</div><button class="button button-dark" type="submit">${state.userRatings.has(exercise.id)?"Update my rating":"Save my rating"} <span>→</span></button><p class="rating-save-status" data-rating-status role="status" aria-live="polite" aria-atomic="true"></p></form>`;}
-    function openRatingDraft(id){
-      if(state.activeExercise!==id||!element("detailDialog")?.open)return null;const form=element("detailContent")?.querySelector?.("[data-rating-form]");if(!form||form.dataset?.ratingForm!==id)return null;const draft={};
-      for(const key of ["comfort","pump","enjoyment","stability","setup","overall"]){const field=form.elements?.namedItem?.(key)||form.querySelector?.(`[name="${key}"]`),value=Number(field?.value);if(!Number.isInteger(value)||value<1||value>5)return null;draft[key]=value;}return draft;
+    function metricMarkup(exercise) {
+      const weights = factorWeights();
+      return state.methodology.factors
+        .map(
+          (factor) =>
+            `<div class="metric-row"><span>${escapeHtml(factor.label)}</span><div class="metric-bar"><i style="width:${exercise.metrics[factor.key]}%"></i></div><strong>${exercise.metrics[factor.key]}</strong><small>${round((exercise.metrics[factor.key] * weights[factor.key]) / 100, 1)} pts</small></div>`,
+        )
+        .join("");
     }
-    function gainsAndLosses(reference,candidate){const result=core.gainsAndLosses(reference,candidate,state.methodology);return`Gain: ${result.gain} · Trade-off: ${result.loss}`;}
-    function openDetail(id){
-      if(state.ratingSaving.has(id)){showToast("Your rating is still saving. Please wait.");return;}
-      const exercise=exerciseById(id);if(!exercise)return;const ratingDraft=openRatingDraft(id);state.activeExercise=id;const dialog=element("detailDialog");
-      const baseline=weightedBaseline(exercise),adjustment=scoreAdjustment(exercise),personal=personalResult(exercise),aggregate=aggregateFor(id),sources=sourceSelection(exercise),alternatives=alternativesFor(exercise),confidence=state.limited.has(id)?"Limited":"Moderate",community=communitySummary(id),ownRating=state.userRatings.get(id)||null;
-      const profileHeading=personal.eligible?"Why it fits you":"Why it does not match your profile",profileSummary=personal.eligible?`<strong>${personal.match}% rules-based match.</strong> ${escapeHtml(profileReason(personal))}.`:`<strong>Excluded by your saved rules.</strong> ${escapeHtml(profileReason(personal))}.`;
-      element("detailContent").innerHTML=`
-        <div class="detail-hero"><div class="dialog-head" style="position:static;padding:0 0 24px;background:transparent;border-color:rgba(255,255,255,.18)"><p class="kicker">Exercise intelligence / ${escapeHtml(labels[exercise.group]||titleCase(exercise.group))}</p><button class="icon-button" data-close-dialog="detailDialog" type="button" aria-label="Close exercise details">×</button></div><div class="detail-hero-grid"><div><h2 class="detail-title" id="detailTitle">${escapeHtml(exercise.name)}</h2><p>${escapeHtml(exercise.why)}</p><span class="match-pill ${personal.eligible?"":"is-excluded"}">${escapeHtml(personalLabel(personal))}</span></div><div class="detail-score"><strong>${exercise.score}</strong><span>Official FitScore</span></div></div><div class="detail-quick-actions">${movementBoardButton(exercise)}<button data-toggle-compare="${exercise.id}" type="button" aria-pressed="${state.compare.includes(id)}">${state.compare.includes(id)?"Remove from battle":"Add to battle"}</button><button data-scroll-alternatives type="button" aria-controls="alternativeSection">Find alternative ↓</button><a href="/planner.html?add=${encodeURIComponent(id)}">Add to plan <span aria-hidden="true">→</span></a><a href="${exercise.youtube}" target="_blank" rel="noreferrer">YouTube search ↗</a></div></div>
+    function ratingOptions(selected) {
+      return [1, 2, 3, 4, 5]
+        .map(
+          (value) =>
+            `<option value="${value}" ${Number(selected) === value ? "selected" : ""}>${value} — ${{ 1: "Low", 2: "Below average", 3: "Average", 4: "Strong", 5: "Excellent" }[value]}</option>`,
+        )
+        .join("");
+    }
+    function ratingFormMarkup(exercise, draft = null) {
+      const current = draft ||
+        state.userRatings.get(exercise.id) || {
+          comfort: 3,
+          pump: 3,
+          enjoyment: 3,
+          stability: 3,
+          setup: 3,
+          overall: 3,
+        };
+      return `<form class="rating-form" data-rating-form="${exercise.id}"><div class="rating-grid">${[
+        ["comfort", "Comfort"],
+        ["pump", "Pump / target feel"],
+        ["enjoyment", "Enjoyment"],
+        ["stability", "Perceived stability"],
+        ["setup", "Setup ease"],
+        ["overall", "Overall"],
+      ]
+        .map(
+          ([key, label]) =>
+            `<label>${label}<select name="${key}">${ratingOptions(current[key])}</select></label>`,
+        )
+        .join(
+          "",
+        )}</div><button class="button button-dark" type="submit">${state.userRatings.has(exercise.id) ? "Update my rating" : "Save my rating"} <span>→</span></button><p class="rating-save-status" data-rating-status role="status" aria-live="polite" aria-atomic="true"></p></form>`;
+    }
+    function openRatingDraft(id) {
+      if (state.activeExercise !== id || !element("detailDialog")?.open) return null;
+      const form = element("detailContent")?.querySelector?.("[data-rating-form]");
+      if (!form || form.dataset?.ratingForm !== id) return null;
+      const draft = {};
+      for (const key of ["comfort", "pump", "enjoyment", "stability", "setup", "overall"]) {
+        const field = form.elements?.namedItem?.(key) || form.querySelector?.(`[name="${key}"]`),
+          value = Number(field?.value);
+        if (!Number.isInteger(value) || value < 1 || value > 5) return null;
+        draft[key] = value;
+      }
+      return draft;
+    }
+    function gainsAndLosses(reference, candidate) {
+      const result = core.gainsAndLosses(reference, candidate, state.methodology);
+      return `Gain: ${result.gain} · Trade-off: ${result.loss}`;
+    }
+    function openDetail(id) {
+      if (state.ratingSaving.has(id)) {
+        showToast("Your rating is still saving. Please wait.");
+        return;
+      }
+      const exercise = exerciseById(id);
+      if (!exercise) return;
+      const ratingDraft = openRatingDraft(id);
+      state.activeExercise = id;
+      const dialog = element("detailDialog");
+      const baseline = weightedBaseline(exercise),
+        adjustment = scoreAdjustment(exercise),
+        personal = personalResult(exercise),
+        aggregate = aggregateFor(id),
+        sources = sourceSelection(exercise),
+        alternatives = alternativesFor(exercise),
+        confidence = state.limited.has(id) ? "Limited" : "Moderate",
+        community = communitySummary(id),
+        ownRating = state.userRatings.get(id) || null;
+      const profileHeading = personal.eligible
+          ? "Why it fits you"
+          : "Why it does not match your profile",
+        profileSummary = personal.eligible
+          ? `<strong>${personal.match}% rules-based match.</strong> ${escapeHtml(profileReason(personal))}.`
+          : `<strong>Excluded by your saved rules.</strong> ${escapeHtml(profileReason(personal))}.`;
+      element("detailContent").innerHTML = `
+        <div class="detail-hero"><div class="dialog-head" style="position:static;padding:0 0 24px;background:transparent;border-color:rgba(255,255,255,.18)"><p class="kicker">Exercise intelligence / ${escapeHtml(labels[exercise.group] || titleCase(exercise.group))}</p><button class="icon-button" data-close-dialog="detailDialog" type="button" aria-label="Close exercise details">×</button></div><div class="detail-hero-grid"><div><h2 class="detail-title" id="detailTitle">${escapeHtml(exercise.name)}</h2><p>${escapeHtml(exercise.why)}</p><span class="match-pill ${personal.eligible ? "" : "is-excluded"}">${escapeHtml(personalLabel(personal))}</span></div><div class="detail-score"><strong>${exercise.score}</strong><span>Official FitScore</span></div></div><div class="detail-quick-actions">${movementBoardButton(exercise)}<button data-toggle-compare="${exercise.id}" type="button" aria-pressed="${state.compare.includes(id)}">${state.compare.includes(id) ? "Remove from battle" : "Add to battle"}</button><button data-scroll-alternatives type="button" aria-controls="alternativeSection">Find alternative ↓</button><a href="/planner.html?add=${encodeURIComponent(id)}">Add to plan <span aria-hidden="true">→</span></a><a href="${exercise.youtube}" target="_blank" rel="noreferrer">YouTube search ↗</a></div></div>
         <div class="detail-body"><div class="detail-grid"><div>
           <section class="detail-section"><h3>${profileHeading}</h3><p>${profileSummary} This selection is an editorial rules engine, not an AI prediction or medical recommendation.</p><p><strong>Target:</strong> ${escapeHtml(exercise.sub)} · <strong>Pattern:</strong> ${escapeHtml(exercise.pattern)} · <strong>Equipment:</strong> ${escapeHtml(exercise.equipment)} · <strong>Level:</strong> ${escapeHtml(exercise.level)}</p></section>
-          <section class="detail-section"><h3>FitScore audit</h3><div class="metric-list">${metricMarkup(exercise)}</div><div class="adjustment-row"><strong>Weighted baseline: ${round(baseline,1)}</strong> · Published score: ${exercise.score} · Editorial adjustment: ${adjustment>0?"+":""}${adjustment}.<br/>${escapeHtml(state.methodology.adjustment)}</div><p>${escapeHtml(state.methodology.evidenceNote)}</p></section>
-          <section class="detail-section"><h3>Evidence and boundaries</h3><span class="confidence">${confidence} exercise-specific confidence</span><p><strong>Evidence:</strong> the links below support broad training principles. <strong>STRATA interpretation:</strong> applying those principles to this exact exercise and score is editorial judgment.</p>${sources.map((source)=>`<article class="source-card"><a href="${source.url}" target="_blank" rel="noreferrer">${escapeHtml(source.title)} ↗</a><span>${escapeHtml(source.type)} · ${escapeHtml(source.publisher)} · ${source.year}</span><p><strong>Supports:</strong> ${escapeHtml(source.supports)}</p><p class="source-boundary"><strong>Does not support:</strong> ${escapeHtml(source.doesNotSupport)}</p></article>`).join("")}</section>
+          <section class="detail-section"><h3>FitScore audit</h3><div class="metric-list">${metricMarkup(exercise)}</div><div class="adjustment-row"><strong>Weighted baseline: ${round(baseline, 1)}</strong> · Published score: ${exercise.score} · Editorial adjustment: ${adjustment > 0 ? "+" : ""}${adjustment}.<br/>${escapeHtml(state.methodology.adjustment)}</div><p>${escapeHtml(state.methodology.evidenceNote)}</p></section>
+          <section class="detail-section"><h3>Evidence and boundaries</h3><span class="confidence">${confidence} exercise-specific confidence</span><p><strong>Evidence:</strong> the links below support broad training principles. <strong>STRATA interpretation:</strong> applying those principles to this exact exercise and score is editorial judgment.</p>${sources.map((source) => `<article class="source-card"><a href="${source.url}" target="_blank" rel="noreferrer">${escapeHtml(source.title)} ↗</a><span>${escapeHtml(source.type)} · ${escapeHtml(source.publisher)} · ${source.year}</span><p><strong>Supports:</strong> ${escapeHtml(source.supports)}</p><p class="source-boundary"><strong>Does not support:</strong> ${escapeHtml(source.doesNotSupport)}</p></article>`).join("")}</section>
         </div><aside>
-          <section class="detail-section"><h3>Practical decision</h3><p><strong>Stability:</strong> ${exercise.metrics.stability}/100 · <strong>Effective range:</strong> ${exercise.metrics.range}/100</p><p><strong>Resistance profile:</strong> ${escapeHtml(resistanceProfile(exercise))}</p><p><strong>Progression:</strong> ${exercise.metrics.progression}/100 · <strong>Setup:</strong> ${escapeHtml(setupLabel(exercise))}</p><p><strong>Editorial practicality:</strong> ${practicality(exercise)}/100</p><h4>Programming starting point</h4><p>${escapeHtml(exercise.sets)} sets · ${escapeHtml(exercise.reps)} reps · ${escapeHtml(exercise.rest)} rest</p><h4>Technique cues</h4><ul>${exercise.cues.map((cue)=>`<li>${escapeHtml(cue)}</li>`).join("")}</ul><h4>Consideration</h4><p>${escapeHtml(exercise.caution)}</p></section>
-          <section class="detail-section" id="alternativeSection"><h3 id="alternativeTitle" tabindex="-1">Find an alternative</h3><div class="alternative-list">${alternatives.length?alternatives.map(({exercise:candidate,match})=>`<div class="alternative-item"><div><strong>${escapeHtml(candidate.name)}</strong><small>${escapeHtml(gainsAndLosses(exercise,candidate))}</small></div><span>${match}%</span><div class="alternative-actions"><button data-open-detail="${candidate.id}" type="button" aria-label="Open ${escapeHtml(candidate.name)} details">Open</button><a href="/planner.html?add=${encodeURIComponent(candidate.id)}" aria-label="Add ${escapeHtml(candidate.name)} to weekly plan">Add to plan</a></div></div>`).join(""):"<p>No eligible same-target alternative under your saved profile.</p>"}</div><p>Match percentages are transparent editorial similarity scores based on target, pattern, resistance profile, equipment, skill, and factor profile.</p></section>
-          <section class="detail-section"><h3>Community score</h3><div class="rating-summary"><strong>${escapeHtml(community.hasRatings?`${community.score}/10`:community.label)}</strong><span>${escapeHtml(community.attribution)}</span></div>${community.hasRatings?`<div class="community-breakdown">${[["comfort","Comfort"],["pump","Pump"],["enjoyment","Enjoyment"],["stability","Stability"],["setup","Setup"],["overall","Overall"]].map(([key,label])=>`<span>${label}<b>${ratingAverage(aggregate[key])}/5</b></span>`).join("")}</div>`:""}${ownRating?`<p><strong>Your rating:</strong> ${Number(ownRating.overall)}/5 overall</p>`:"<p>Be the first Strata+ user to rate this exercise.</p>"}<p>Your rating is tied to your account and replaces your prior rating. It never changes the official FitScore.</p>${ratingFormMarkup(exercise,ratingDraft)}</section>
+          <section class="detail-section"><h3>Practical decision</h3><p><strong>Stability:</strong> ${exercise.metrics.stability}/100 · <strong>Effective range:</strong> ${exercise.metrics.range}/100</p><p><strong>Resistance profile:</strong> ${escapeHtml(resistanceProfile(exercise))}</p><p><strong>Progression:</strong> ${exercise.metrics.progression}/100 · <strong>Setup:</strong> ${escapeHtml(setupLabel(exercise))}</p><p><strong>Editorial practicality:</strong> ${practicality(exercise)}/100</p><h4>Programming starting point</h4><p>${escapeHtml(exercise.sets)} sets · ${escapeHtml(exercise.reps)} reps · ${escapeHtml(exercise.rest)} rest</p><h4>Technique cues</h4><ul>${exercise.cues.map((cue) => `<li>${escapeHtml(cue)}</li>`).join("")}</ul><h4>Consideration</h4><p>${escapeHtml(exercise.caution)}</p></section>
+          <section class="detail-section" id="alternativeSection"><h3 id="alternativeTitle" tabindex="-1">Find an alternative</h3><div class="alternative-list">${alternatives.length ? alternatives.map(({ exercise: candidate, match }) => `<div class="alternative-item"><div><strong>${escapeHtml(candidate.name)}</strong><small>${escapeHtml(gainsAndLosses(exercise, candidate))}</small></div><span>${match}%</span><div class="alternative-actions"><button data-open-detail="${candidate.id}" type="button" aria-label="Open ${escapeHtml(candidate.name)} details">Open</button><a href="/planner.html?add=${encodeURIComponent(candidate.id)}" aria-label="Add ${escapeHtml(candidate.name)} to weekly plan">Add to plan</a></div></div>`).join("") : "<p>No eligible same-target alternative under your saved profile.</p>"}</div><p>Match percentages are transparent editorial similarity scores based on target, pattern, resistance profile, equipment, skill, and factor profile.</p></section>
+          <section class="detail-section"><h3>Community score</h3><div class="rating-summary"><strong>${escapeHtml(community.hasRatings ? `${community.score}/10` : community.label)}</strong><span>${escapeHtml(community.attribution)}</span></div>${
+            community.hasRatings
+              ? `<div class="community-breakdown">${[
+                  ["comfort", "Comfort"],
+                  ["pump", "Pump"],
+                  ["enjoyment", "Enjoyment"],
+                  ["stability", "Stability"],
+                  ["setup", "Setup"],
+                  ["overall", "Overall"],
+                ]
+                  .map(
+                    ([key, label]) =>
+                      `<span>${label}<b>${ratingAverage(aggregate[key])}/5</b></span>`,
+                  )
+                  .join("")}</div>`
+              : ""
+          }${ownRating ? `<p><strong>Your rating:</strong> ${Number(ownRating.overall)}/5 overall</p>` : "<p>Be the first Strata+ user to rate this exercise.</p>"}<p>Your rating is tied to your account and replaces your prior rating. It never changes the official FitScore.</p>${ratingFormMarkup(exercise, ratingDraft)}</section>
         </aside></div></div>`;
-      openDialog(dialog,dialog.querySelector?.('[data-close-dialog="detailDialog"]'));
+      openDialog(dialog, dialog.querySelector?.('[data-close-dialog="detailDialog"]'));
     }
-    function comparisonWinner(exercises){const result=core.comparisonRecommendation(exercises,state.preferences);return{winner:result.winner,text:result.reason||result.error};}
-    function bestIds(exercises,value){const scores=exercises.map((exercise)=>({id:exercise.id,value:Number.parseFloat(value(exercise))})).filter((item)=>Number.isFinite(item.value));if(!scores.length)return new Set();const top=Math.max(...scores.map((item)=>item.value));return new Set(scores.filter((item)=>item.value===top).map((item)=>item.id));}
-    function tableRow(label,exercises,value,{winner=false}={}){const leaders=winner?bestIds(exercises,value):new Set();return`<tr><th scope="row">${escapeHtml(label)}</th>${exercises.map((exercise)=>{const leads=leaders.has(exercise.id);return`<td class="${leads?"winner":""}">${leads?'<span class="sr-only">Best in this comparison. </span>':""}${value(exercise)}</td>`;}).join("")}</tr>`;}
-    function openComparison(){
-      const exercises=state.compare.map(exerciseById).filter(Boolean);if(exercises.length<2){element("battleStatus").textContent="Choose at least two different exercises first.";element("battleResults").hidden=true;showToast("Choose at least two exercises.");return;}const verdict=comparisonWinner(exercises);
-      const rows=[tableRow("Official FitScore",exercises,(exercise)=>`${exercise.score}/100`,{winner:true}),tableRow("Personal match",exercises,(exercise)=>personalResult(exercise).eligible?`${personalResult(exercise).match}%`:"Excluded by profile",{winner:true}),tableRow("Community rating",exercises,(exercise)=>escapeHtml(communityLabel(exercise.id))),tableRow("Primary target",exercises,(exercise)=>escapeHtml(exercise.sub)),tableRow("Stability",exercises,(exercise)=>`${exercise.metrics.stability}/100`,{winner:true}),tableRow("Effective range",exercises,(exercise)=>`${exercise.metrics.range}/100`,{winner:true}),tableRow("Target stimulus",exercises,(exercise)=>`${exercise.metrics.stimulus}/100`,{winner:true}),tableRow("Progression",exercises,(exercise)=>`${exercise.metrics.progression}/100`,{winner:true}),tableRow("Resistance profile",exercises,(exercise)=>escapeHtml(resistanceProfile(exercise))),tableRow("Setup",exercises,(exercise)=>escapeHtml(setupLabel(exercise))),tableRow("Equipment",exercises,(exercise)=>escapeHtml(exercise.equipment)),tableRow("Practicality",exercises,(exercise)=>`${practicality(exercise)}/100`,{winner:true}),tableRow("Starting point",exercises,(exercise)=>`${escapeHtml(exercise.sets)} × ${escapeHtml(exercise.reps)}<br>${escapeHtml(exercise.rest)} rest`),tableRow("STRATA interpretation",exercises,(exercise)=>escapeHtml(exercise.why)),tableRow("Add to plan",exercises,(exercise)=>`<a class="small-button" href="/planner.html?add=${encodeURIComponent(exercise.id)}">Add to plan</a>`)];
-      const columnHeaders=exercises.map((exercise)=>`<th scope="col"><strong>${escapeHtml(exercise.name)}</strong><span>${escapeHtml(exercise.sub)}</span></th>`).join("");
-      element("battleResults").innerHTML=`<div class="battle-results-head"><h3>Side-by-side result</h3><div class="battle-results-actions"><a class="small-button" href="/planner.html">Open planner ↗</a></div></div><div class="battle-verdict"><strong>${verdict.winner?`${escapeHtml(verdict.winner.name)} leads`:"No universal winner"}</strong><p>${escapeHtml(verdict.text)}</p></div><div class="comparison-scroll" role="region" aria-label="Exercise comparison table. Scroll horizontally to see every exercise." tabindex="0"><table class="comparison-table"><caption class="sr-only">Exercise comparison across FitScore, targets, mechanics, progression, setup, equipment, and practicality</caption><thead><tr><th scope="col">Measure</th>${columnHeaders}</tr></thead><tbody>${rows.join("")}</tbody></table></div><p class="field-note">Highlighted cells lead this selected set on that factor. Rankings are editorial and do not predict individual results.</p>`;element("battleResults").hidden=false;element("battleStatus").textContent=`Compared ${exercises.length} exercises.`;
+    function comparisonWinner(exercises) {
+      const result = core.comparisonRecommendation(exercises, state.preferences);
+      return { winner: result.winner, text: result.reason || result.error };
     }
-    return{comparisonWinner,gainsAndLosses,metricMarkup,openComparison,openDetail,openRatingDraft,ratingFormMarkup,ratingOptions,sourceSelection};
+    function bestIds(exercises, value) {
+      const scores = exercises
+        .map((exercise) => ({ id: exercise.id, value: Number.parseFloat(value(exercise)) }))
+        .filter((item) => Number.isFinite(item.value));
+      if (!scores.length) return new Set();
+      const top = Math.max(...scores.map((item) => item.value));
+      return new Set(scores.filter((item) => item.value === top).map((item) => item.id));
+    }
+    function tableRow(label, exercises, value, { winner = false } = {}) {
+      const leaders = winner ? bestIds(exercises, value) : new Set();
+      return `<tr><th scope="row">${escapeHtml(label)}</th>${exercises
+        .map((exercise) => {
+          const leads = leaders.has(exercise.id);
+          return `<td class="${leads ? "winner" : ""}">${leads ? '<span class="sr-only">Best in this comparison. </span>' : ""}${value(exercise)}</td>`;
+        })
+        .join("")}</tr>`;
+    }
+    function openComparison() {
+      const exercises = state.compare.map(exerciseById).filter(Boolean);
+      if (exercises.length < 2) {
+        element("battleStatus").textContent = "Choose at least two different exercises first.";
+        element("battleResults").hidden = true;
+        showToast("Choose at least two exercises.");
+        return;
+      }
+      const verdict = comparisonWinner(exercises);
+      const rows = [
+        tableRow("Official FitScore", exercises, (exercise) => `${exercise.score}/100`, {
+          winner: true,
+        }),
+        tableRow(
+          "Personal match",
+          exercises,
+          (exercise) =>
+            personalResult(exercise).eligible
+              ? `${personalResult(exercise).match}%`
+              : "Excluded by profile",
+          { winner: true },
+        ),
+        tableRow("Community rating", exercises, (exercise) =>
+          escapeHtml(communityLabel(exercise.id)),
+        ),
+        tableRow("Primary target", exercises, (exercise) => escapeHtml(exercise.sub)),
+        tableRow("Stability", exercises, (exercise) => `${exercise.metrics.stability}/100`, {
+          winner: true,
+        }),
+        tableRow("Effective range", exercises, (exercise) => `${exercise.metrics.range}/100`, {
+          winner: true,
+        }),
+        tableRow("Target stimulus", exercises, (exercise) => `${exercise.metrics.stimulus}/100`, {
+          winner: true,
+        }),
+        tableRow("Progression", exercises, (exercise) => `${exercise.metrics.progression}/100`, {
+          winner: true,
+        }),
+        tableRow("Resistance profile", exercises, (exercise) =>
+          escapeHtml(resistanceProfile(exercise)),
+        ),
+        tableRow("Setup", exercises, (exercise) => escapeHtml(setupLabel(exercise))),
+        tableRow("Equipment", exercises, (exercise) => escapeHtml(exercise.equipment)),
+        tableRow("Practicality", exercises, (exercise) => `${practicality(exercise)}/100`, {
+          winner: true,
+        }),
+        tableRow(
+          "Starting point",
+          exercises,
+          (exercise) =>
+            `${escapeHtml(exercise.sets)} × ${escapeHtml(exercise.reps)}<br>${escapeHtml(exercise.rest)} rest`,
+        ),
+        tableRow("STRATA interpretation", exercises, (exercise) => escapeHtml(exercise.why)),
+        tableRow(
+          "Add to plan",
+          exercises,
+          (exercise) =>
+            `<a class="small-button" href="/planner.html?add=${encodeURIComponent(exercise.id)}">Add to plan</a>`,
+        ),
+      ];
+      const columnHeaders = exercises
+        .map(
+          (exercise) =>
+            `<th scope="col"><strong>${escapeHtml(exercise.name)}</strong><span>${escapeHtml(exercise.sub)}</span></th>`,
+        )
+        .join("");
+      element("battleResults").innerHTML =
+        `<div class="battle-results-head"><h3>Side-by-side result</h3><div class="battle-results-actions"><a class="small-button" href="/planner.html">Open planner ↗</a></div></div><div class="battle-verdict"><strong>${verdict.winner ? `${escapeHtml(verdict.winner.name)} leads` : "No universal winner"}</strong><p>${escapeHtml(verdict.text)}</p></div><div class="comparison-scroll" role="region" aria-label="Exercise comparison table. Scroll horizontally to see every exercise." tabindex="0"><table class="comparison-table"><caption class="sr-only">Exercise comparison across FitScore, targets, mechanics, progression, setup, equipment, and practicality</caption><thead><tr><th scope="col">Measure</th>${columnHeaders}</tr></thead><tbody>${rows.join("")}</tbody></table></div><p class="field-note">Highlighted cells lead this selected set on that factor. Rankings are editorial and do not predict individual results.</p>`;
+      element("battleResults").hidden = false;
+      element("battleStatus").textContent = `Compared ${exercises.length} exercises.`;
+    }
+    return {
+      comparisonWinner,
+      gainsAndLosses,
+      metricMarkup,
+      openComparison,
+      openDetail,
+      openRatingDraft,
+      ratingFormMarkup,
+      ratingOptions,
+      sourceSelection,
+    };
   }
 
-  return{createDetail};
+  return { createDetail };
 });

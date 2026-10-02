@@ -1,71 +1,249 @@
 /* Shared wayfinding, calm hierarchy, and compact action-first layouts for every page.
    Strata+ workspace rules live in discover.css. */
-:root { --site-radius:var(--strata-radius-site);}
-html { scroll-padding-top:100px; }
-body { line-height:1.5; }
-[hidden] { display:none!important; }
-:where(a,button,input,select,textarea,summary):focus-visible { outline:3px solid #6f8e27; outline-offset:4px; }
-:where(.site-header,.studio-header,.planner-header) { border-bottom:1px solid #ffffff24; }
-:where(.desktop-nav,.studio-nav,.mobile-public-nav) a { text-decoration:none; }
-:where(.desktop-nav,.studio-nav) a[aria-current] { color:#d4f578; }
-:where(.button,.small-button,.account-button,.dark-button,.outline-button) { border-radius:9px; min-height:44px; }
-:where(.section-heading,.workspace-heading,.coaching-heading) h2 { font-size:clamp(2rem,4.3vw,3.75rem); line-height:1.12; letter-spacing:-.045em; }
-:where(.section-heading,.workspace-heading,.coaching-heading)>p { max-width:48ch; line-height:1.65; }
-:where(.build-footer,.site-footer,.info-footer) { line-height:2; }
-.home-page .hero { height:auto; min-height:560px; max-height:none; }
-.home-page .hero-grid { min-height:560px; padding-top:130px; padding-bottom:52px; }
-.home-page .hero h1 { font-size:clamp(3rem,6vw,5rem); line-height:1.02; }
-.home-page .hero-intro { max-width:52ch; font-size:1rem; line-height:1.7; }
-.home-page .hero-data { max-width:230px; }
-.home-page .ticker { display:none; }
-.home-page :where(.proof-section,.week-section,.method-section) { padding-block:56px; }
-.home-page .section-heading h2 { font-size:clamp(2rem,4vw,3.4rem); }
+:root {
+  --site-radius: var(--strata-radius-site);
+}
+html {
+  scroll-padding-top: 100px;
+}
+body {
+  line-height: 1.5;
+}
+[hidden] {
+  display: none !important;
+}
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid #6f8e27;
+  outline-offset: 4px;
+}
+:where(.site-header, .studio-header, .planner-header) {
+  border-bottom: 1px solid #ffffff24;
+}
+:where(.desktop-nav, .studio-nav, .mobile-public-nav) a {
+  text-decoration: none;
+}
+:where(.desktop-nav, .studio-nav) a[aria-current] {
+  color: #d4f578;
+}
+:where(.button, .small-button, .account-button, .dark-button, .outline-button) {
+  border-radius: 9px;
+  min-height: 44px;
+}
+:where(.section-heading, .workspace-heading, .coaching-heading) h2 {
+  font-size: clamp(2rem, 4.3vw, 3.75rem);
+  line-height: 1.12;
+  letter-spacing: -0.045em;
+}
+:where(.section-heading, .workspace-heading, .coaching-heading) > p {
+  max-width: 48ch;
+  line-height: 1.65;
+}
+:where(.build-footer, .site-footer, .info-footer) {
+  line-height: 2;
+}
+.home-page .hero {
+  height: auto;
+  min-height: 560px;
+  max-height: none;
+}
+.home-page .hero-grid {
+  min-height: 560px;
+  padding-top: 130px;
+  padding-bottom: 52px;
+}
+.home-page .hero h1 {
+  font-size: clamp(3rem, 6vw, 5rem);
+  line-height: 1.02;
+}
+.home-page .hero-intro {
+  max-width: 52ch;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.home-page .hero-data {
+  max-width: 230px;
+}
+.home-page .ticker {
+  display: none;
+}
+.home-page :where(.proof-section, .week-section, .method-section) {
+  padding-block: 56px;
+}
+.home-page .section-heading h2 {
+  font-size: clamp(2rem, 4vw, 3.4rem);
+}
 /* Shared page hierarchy puts forms and tools ahead of decorative space. */
-.planner-page .week-toolbar { padding-block:42px; }
-.planner-page .week-toolbar h1 { font-size:clamp(2.5rem,5.2vw,4.8rem); line-height:1.05; }
-.workout-page .hero { min-height:0; grid-template-columns:1fr; padding-block:28px; }
-.workout-page .hero h1 { font-size:clamp(2rem,4vw,3.5rem); line-height:1.08; }
-.workout-page .hero-visual { display:none; }
-.workout-page .panel { border-radius:16px; }
-.workout-page .start-panel { scroll-margin-top:100px; }
-:where(.account-page) h1 { font-size:clamp(2.5rem,5vw,4.5rem); line-height:1.08; }
-:where(.account-page) :where(.info-hero) { padding-block:48px; }
-@media (max-width:1000px) {
+.planner-page .week-toolbar {
+  padding-block: 42px;
 }
-@media (max-width:680px) {
-  html { scroll-padding-top:128px; }
-  .home-page .hero,.home-page .hero-grid { min-height:0; }
-  .home-page .hero-grid { padding-top:132px; padding-bottom:34px; gap:24px; }
-  .home-page .hero h1 { font-size:clamp(2.8rem,11.5vw,4.2rem); }
-  .home-page .hero-data { max-width:none; }
-  .workout-page .hero { padding-block:26px; }
-  .planner-page .week-toolbar { padding-block:20px; }
+.planner-page .week-toolbar h1 {
+  font-size: clamp(2.5rem, 5.2vw, 4.8rem);
+  line-height: 1.05;
 }
-@media (prefers-reduced-motion:reduce) { html { scroll-behavior:auto; } }
+.workout-page .hero {
+  min-height: 0;
+  grid-template-columns: 1fr;
+  padding-block: 28px;
+}
+.workout-page .hero h1 {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1.08;
+}
+.workout-page .hero-visual {
+  display: none;
+}
+.workout-page .panel {
+  border-radius: 16px;
+}
+.workout-page .start-panel {
+  scroll-margin-top: 100px;
+}
+:where(.account-page) h1 {
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 1.08;
+}
+:where(.account-page) :where(.info-hero) {
+  padding-block: 48px;
+}
+@media (max-width: 1000px) {
+}
+@media (max-width: 680px) {
+  html {
+    scroll-padding-top: 128px;
+  }
+  .home-page .hero,
+  .home-page .hero-grid {
+    min-height: 0;
+  }
+  .home-page .hero-grid {
+    padding-top: 132px;
+    padding-bottom: 34px;
+    gap: 24px;
+  }
+  .home-page .hero h1 {
+    font-size: clamp(2.8rem, 11.5vw, 4.2rem);
+  }
+  .home-page .hero-data {
+    max-width: none;
+  }
+  .workout-page .hero {
+    padding-block: 26px;
+  }
+  .planner-page .week-toolbar {
+    padding-block: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
 
 /* Build 8.7 brand layer. This file loads last on every page, so the shared language lives here:
    one type family in sentence case, one olive accent, pill-shaped actions, and calmer lists. */
-:root { --focus-ring:var(--strata-focus);}
-:root body :is(.button,.small-button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button),
-:root body :is(.studio-user,.user-menu,.header-actions) :is(a,button) { border-radius:999px; }
-:root body :is(.button,.small-button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button):not(.compact) { padding-inline:20px; }
-:root body :is(.button,.outline-button,.dark-button,.account-button,.session-button,.offline-button,.danger-button):not(.icon-button):not(.compact) { font-size:.9375rem; }
-:root body :is(.small-button,.button.compact,.compact-button) { font-size:.875rem; }
+:root {
+  --focus-ring: var(--strata-focus);
+}
+:root
+  body
+  :is(
+    .button,
+    .small-button,
+    .outline-button,
+    .dark-button,
+    .account-button,
+    .session-button,
+    .offline-button,
+    .danger-button
+  ):not(.icon-button),
+:root body :is(.studio-user, .user-menu, .header-actions) :is(a, button) {
+  border-radius: 999px;
+}
+:root
+  body
+  :is(
+    .button,
+    .small-button,
+    .outline-button,
+    .dark-button,
+    .account-button,
+    .session-button,
+    .offline-button,
+    .danger-button
+  ):not(.icon-button):not(.compact) {
+  padding-inline: 20px;
+}
+:root
+  body
+  :is(
+    .button,
+    .outline-button,
+    .dark-button,
+    .account-button,
+    .session-button,
+    .offline-button,
+    .danger-button
+  ):not(.icon-button):not(.compact) {
+  font-size: 0.9375rem;
+}
+:root body :is(.small-button, .button.compact, .compact-button) {
+  font-size: 0.875rem;
+}
 /* A toolbar segment attached to a card edge keeps its square seam. */
-.home-page .exercise-title h3 { font:700 1.125rem/1.3 var(--display); letter-spacing:-.01em; }
-.home-page .exercise-title p { font-size:.8125rem; }
-.home-page .exercise-list-more { display:flex; justify-content:center; padding:28px 0 8px; }
-.home-page .exercise-list-more[hidden] { display:none; }
-.home-page .exercise-list-more .button { justify-content:center; min-width:220px; border-color:var(--ink); color:var(--ink); background:transparent; }
-.home-page .exercise-list-more .button:hover,.home-page .exercise-list-more .button:focus-visible { color:var(--white); background:var(--ink); }
-.home-page .discovery-offer h2 { font-size:clamp(2.75rem,5.5vw,4.5rem); line-height:1.06; }
-.home-page .discovery-offer p:not(.kicker) { font-size:1rem; line-height:1.7; }
-@media (max-width:680px) {
-  .home-page .exercise-title h3 { font-size:1.0625rem; }
-  .home-page .discovery-offer h2 { font-size:clamp(2.25rem,11vw,3.25rem); }
+.home-page .exercise-title h3 {
+  font: 700 1.125rem/1.3 var(--display);
+  letter-spacing: -0.01em;
+}
+.home-page .exercise-title p {
+  font-size: 0.8125rem;
+}
+.home-page .exercise-list-more {
+  display: flex;
+  justify-content: center;
+  padding: 28px 0 8px;
+}
+.home-page .exercise-list-more[hidden] {
+  display: none;
+}
+.home-page .exercise-list-more .button {
+  justify-content: center;
+  min-width: 220px;
+  border-color: var(--ink);
+  color: var(--ink);
+  background: transparent;
+}
+.home-page .exercise-list-more .button:hover,
+.home-page .exercise-list-more .button:focus-visible {
+  color: var(--white);
+  background: var(--ink);
+}
+.home-page .discovery-offer h2 {
+  font-size: clamp(2.75rem, 5.5vw, 4.5rem);
+  line-height: 1.06;
+}
+.home-page .discovery-offer p:not(.kicker) {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+@media (max-width: 680px) {
+  .home-page .exercise-title h3 {
+    font-size: 1.0625rem;
+  }
+  .home-page .discovery-offer h2 {
+    font-size: clamp(2.25rem, 11vw, 3.25rem);
+  }
 }
 /* Header utilities read as one pair of quiet pill actions on every product page. */
-@media (min-width:761px) {
-  .planner-page .user-menu :is(a,button) { min-height:40px; padding:0 16px; border:1px solid rgba(255,255,255,.3); color:var(--white); font:600 .8125rem/1 var(--body); }
-  .planner-page .user-menu :is(a,button):hover { border-color:var(--accent); color:var(--accent); }
+@media (min-width: 761px) {
+  .planner-page .user-menu :is(a, button) {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--white);
+    font: 600 0.8125rem/1 var(--body);
+  }
+  .planner-page .user-menu :is(a, button):hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
 }

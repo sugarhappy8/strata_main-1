@@ -1,60 +1,394 @@
 /* global module */
-(function(root,factory){
-  const api=factory();
-  if(typeof module==="object"&&module.exports)module.exports=api;
-  root.StrataDiscoverSession=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  root.StrataDiscoverSession = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  function createSession({state,core,monthly,labels,element,window,escapeHtml,titleCase,api,saveRetryMessage,showToast,renderWeeklyPulse,renderTrainingBlockReview,updateMonthlySourceButtons,onPlanChanged=()=>{}}){
-    function available(){return Boolean(element("sessionBuilder")&&element("sessionGroup")&&element("sessionLength")&&element("sessionDay")&&element("sessionGenerate")&&element("sessionResults")&&element("sessionStatus")&&element("sessionAddAll"));}
-    function preferredDay(current=""){
-      const days=core.WEEKDAYS.filter((day)=>!(state.weeklyPlan?.restDays||[state.weeklyPlan?.restDay]).includes(day));if(days.includes(current))return current;
-      const today=core.WEEKDAYS[(new Date().getDay()+6)%7];if(days.includes(today))return today;const pulse=core.weeklyPulse(state.weeklyPlan,{today,profileDays:state.preferences?.days});return days.includes(pulse.day)?pulse.day:days[0]||"";
+  function createSession({
+    state,
+    core,
+    monthly,
+    labels,
+    element,
+    window,
+    escapeHtml,
+    titleCase,
+    api,
+    saveRetryMessage,
+    showToast,
+    renderWeeklyPulse,
+    renderTrainingBlockReview,
+    updateMonthlySourceButtons,
+    onPlanChanged = () => {},
+  }) {
+    function available() {
+      return Boolean(
+        element("sessionBuilder") &&
+        element("sessionGroup") &&
+        element("sessionLength") &&
+        element("sessionDay") &&
+        element("sessionGenerate") &&
+        element("sessionResults") &&
+        element("sessionStatus") &&
+        element("sessionAddAll"),
+      );
     }
-    function populateDay(){
-      if(!available())return;const select=element("sessionDay"),selected=preferredDay(state.sessionDayInitialized?select.value:"");
-      select.innerHTML=core.WEEKDAYS.filter((day)=>!(state.weeklyPlan?.restDays||[state.weeklyPlan?.restDay]).includes(day)).map((day)=>{const count=Array.isArray(state.weeklyPlan?.days?.[day])?state.weeklyPlan.days[day].length:0;return`<option value="${day}" ${day===selected?"selected":""}>${day}${count?` · ${count} scheduled`:""}</option>`;}).join("");select.value=selected;state.sessionDayInitialized=true;
+    function preferredDay(current = "") {
+      const days = core.WEEKDAYS.filter(
+        (day) => !(state.weeklyPlan?.restDays || [state.weeklyPlan?.restDay]).includes(day),
+      );
+      if (days.includes(current)) return current;
+      const today = core.WEEKDAYS[(new Date().getDay() + 6) % 7];
+      if (days.includes(today)) return today;
+      const pulse = core.weeklyPulse(state.weeklyPlan, {
+        today,
+        profileDays: state.preferences?.days,
+      });
+      return days.includes(pulse.day) ? pulse.day : days[0] || "";
     }
-    function populateBrief(){
-      if(!available())return;const focus=Object.hasOwn(core.SESSION_FOCUSES,element("sessionGroup").value)?element("sessionGroup").value:"full",minutes=Object.hasOwn(core.SESSION_LENGTHS,element("sessionLength").value)?Number(element("sessionLength").value):35;
-      element("sessionGroup").innerHTML=Object.entries(core.SESSION_FOCUSES).map(([value,config])=>`<option value="${value}" ${value===focus?"selected":""}>${escapeHtml(config.label)}</option>`).join("");element("sessionLength").innerHTML=Object.values(core.SESSION_LENGTHS).map((config)=>`<option value="${config.minutes}" ${config.minutes===minutes?"selected":""}>${escapeHtml(config.label)} · ${config.minutes} min</option>`).join("");element("sessionGroup").value=focus;element("sessionLength").value=String(minutes);populateDay();
-      const mode=element("sessionSelectionMode");if(!Object.hasOwn(core.SESSION_SELECTION_MODES,mode.value))mode.value="random";populateMuscles();updateSelectionHelp();
+    function populateDay() {
+      if (!available()) return;
+      const select = element("sessionDay"),
+        selected = preferredDay(state.sessionDayInitialized ? select.value : "");
+      select.innerHTML = core.WEEKDAYS.filter(
+        (day) => !(state.weeklyPlan?.restDays || [state.weeklyPlan?.restDay]).includes(day),
+      )
+        .map((day) => {
+          const count = Array.isArray(state.weeklyPlan?.days?.[day])
+            ? state.weeklyPlan.days[day].length
+            : 0;
+          return `<option value="${day}" ${day === selected ? "selected" : ""}>${day}${count ? ` · ${count} scheduled` : ""}</option>`;
+        })
+        .join("");
+      select.value = selected;
+      state.sessionDayInitialized = true;
     }
-    function updateSelectionHelp(){const mode=core.SESSION_SELECTION_MODES[element("sessionSelectionMode").value];element("sessionSelectionHelp").textContent=mode?.description||"Choose how to pick your workouts.";}
-    function populateMuscles(){
-      const focus=element("sessionGroup").value,groupSelect=element("sessionMuscleGroup"),targetSelect=element("sessionMuscleTarget"),groups=Object.keys(labels).filter(group=>state.exercises.some(exercise=>exercise.group===group&&core.sessionFocusMatches(exercise,focus))),group=groups.includes(groupSelect.value)?groupSelect.value:"all";
-      groupSelect.innerHTML='<option value="all">All muscles in this focus</option>'+groups.map(value=>`<option value="${value}">${escapeHtml(labels[value])}</option>`).join("");groupSelect.value=group;
-      const targets=group==="all"?[]:core.sessionMuscleTargets(state.exercises,focus,group),target=targets.includes(targetSelect.value)?targetSelect.value:"all";
-      targetSelect.innerHTML=`<option value="all">${group==="all"?"Choose a muscle group first":"All muscles in this group"}</option>`+targets.map(value=>`<option value="${escapeHtml(value)}">${escapeHtml(titleCase(value))}</option>`).join("");targetSelect.value=target;targetSelect.disabled=state.sessionSaving||group==="all";
+    function populateBrief() {
+      if (!available()) return;
+      const focus = Object.hasOwn(core.SESSION_FOCUSES, element("sessionGroup").value)
+          ? element("sessionGroup").value
+          : "full",
+        minutes = Object.hasOwn(core.SESSION_LENGTHS, element("sessionLength").value)
+          ? Number(element("sessionLength").value)
+          : 35;
+      element("sessionGroup").innerHTML = Object.entries(core.SESSION_FOCUSES)
+        .map(
+          ([value, config]) =>
+            `<option value="${value}" ${value === focus ? "selected" : ""}>${escapeHtml(config.label)}</option>`,
+        )
+        .join("");
+      element("sessionLength").innerHTML = Object.values(core.SESSION_LENGTHS)
+        .map(
+          (config) =>
+            `<option value="${config.minutes}" ${config.minutes === minutes ? "selected" : ""}>${escapeHtml(config.label)} · ${config.minutes} min</option>`,
+        )
+        .join("");
+      element("sessionGroup").value = focus;
+      element("sessionLength").value = String(minutes);
+      populateDay();
+      const mode = element("sessionSelectionMode");
+      if (!Object.hasOwn(core.SESSION_SELECTION_MODES, mode.value)) mode.value = "random";
+      populateMuscles();
+      updateSelectionHelp();
     }
-    function bindSelectionControls(){
-      for(const id of ["sessionGroup","sessionMuscleGroup","sessionMuscleTarget","sessionSelectionMode"])element(id)?.addEventListener("change",()=>{if(state.sessionSaving)return;if(id==="sessionGroup"||id==="sessionMuscleGroup")populateMuscles();updateSelectionHelp();resetPreview("Session brief changed. Build the session to see your updated picks.");});
+    function updateSelectionHelp() {
+      const mode = core.SESSION_SELECTION_MODES[element("sessionSelectionMode").value];
+      element("sessionSelectionHelp").textContent =
+        mode?.description || "Choose how to pick your workouts.";
     }
-    function cardMarkup(item,index){const exercise=item.exercise,name=escapeHtml(exercise.name),reason=item.reasons.map(escapeHtml).join(" · ");return`<li class="session-result-card"><span class="session-result-index" aria-hidden="true">${String(index+1).padStart(2,"0")}</span><div class="session-result-copy"><p>${escapeHtml(item.roleLabel)}</p><h4>${name}</h4><span>${escapeHtml(labels[exercise.group]||titleCase(exercise.group))} / ${escapeHtml(exercise.sub)} · ${escapeHtml(exercise.equipment)}</span><p class="session-result-reason">${reason}.</p></div><div class="session-result-prescription"><strong>${item.sets} sets × ${escapeHtml(item.reps)}</strong><span>${escapeHtml(item.rest)} rest</span><span class="session-match">${item.match}% personal match</span><button class="small-button" data-open-detail="${escapeHtml(exercise.id)}" type="button" aria-label="Inspect why ${name} fits this session">Why this move</button></div></li>`;}
-    function mergePreview(){const day=element("sessionDay").value;if(state.session?.selectionMode==="not-in-week"){const planned=new Set(core.WEEKDAYS.flatMap(day=>state.weeklyPlan?.days?.[day]||[]).map(item=>item.exerciseId));if(state.session.items.some(item=>planned.has(item.exerciseId)))throw new Error("Your week now includes movements from this session. Build again to get picks that are not in your week.");}return state.session?core.mergeSessionIntoPlan(state.weeklyPlan,day,state.session):null;}
-    function updateAddButton(){
-      if(!available())return null;const button=element("sessionAddAll"),day=element("sessionDay").value,dayLabel=day||"the selected day";button.hidden=!state.session;if(!state.session){button.disabled=true;button.title="";return null;}
-      try{const preview=mergePreview();button.disabled=state.sessionSaving||!preview.changed;button.title=preview.changed?`Add ${preview.added} new movement${preview.added===1?"":"s"}${preview.skipped?` and skip ${preview.skipped} already on this day`:""}`:"Every movement in this session is already on the selected day.";button.innerHTML=preview.changed?`Add ${preview.added} movement${preview.added===1?"":"s"} to ${escapeHtml(dayLabel)} <span aria-hidden="true">→</span>`:`Already in ${escapeHtml(dayLabel)} <span aria-hidden="true">✓</span>`;return null;}catch(error){button.disabled=true;button.title=error.message;button.textContent=`Can't add to ${dayLabel}`;return error;}
+    function populateMuscles() {
+      const focus = element("sessionGroup").value,
+        groupSelect = element("sessionMuscleGroup"),
+        targetSelect = element("sessionMuscleTarget"),
+        groups = Object.keys(labels).filter((group) =>
+          state.exercises.some(
+            (exercise) => exercise.group === group && core.sessionFocusMatches(exercise, focus),
+          ),
+        ),
+        group = groups.includes(groupSelect.value) ? groupSelect.value : "all";
+      groupSelect.innerHTML =
+        '<option value="all">All muscles in this focus</option>' +
+        groups
+          .map((value) => `<option value="${value}">${escapeHtml(labels[value])}</option>`)
+          .join("");
+      groupSelect.value = group;
+      const targets =
+          group === "all" ? [] : core.sessionMuscleTargets(state.exercises, focus, group),
+        target = targets.includes(targetSelect.value) ? targetSelect.value : "all";
+      targetSelect.innerHTML =
+        `<option value="all">${group === "all" ? "Choose a muscle group first" : "All muscles in this group"}</option>` +
+        targets
+          .map(
+            (value) =>
+              `<option value="${escapeHtml(value)}">${escapeHtml(titleCase(value))}</option>`,
+          )
+          .join("");
+      targetSelect.value = target;
+      targetSelect.disabled = state.sessionSaving || group === "all";
     }
-    function render(session,{announce=false}={}){
-      if(!available())return;state.session=session;element("sessionResults").innerHTML=`<div class="session-result-summary"><div><p>${escapeHtml(session.selectionLabel||"Personalized")} · ${escapeHtml(session.timeLabel)} session</p><h3 id="sessionResultsTitle">${escapeHtml(session.focusLabel)} · ${session.minutes} min</h3></div><strong>${escapeHtml(session.summary)}</strong></div>${session.selectionNote?`<p class="session-selection-note">${escapeHtml(session.selectionNote)}</p>`:""}<ol class="session-result-list">${session.items.map(cardMarkup).join("")}</ol><p class="session-time-note">Time is an estimate; actual duration changes with setup, rest, and training pace.</p>`;element("sessionStatus").textContent=`${session.selectionLabel||"Personalized"} · ${session.focusLabel} session ready · ${session.summary}. Review every movement before adding it.`;element("sessionOpenPlan")&&(element("sessionOpenPlan").hidden=true);const previewError=updateAddButton();if(previewError)element("sessionStatus").textContent=`This session does not fit the selected day: ${previewError.message}`;
-      if(announce&&state.activeFeature==="session"){const reduceMotion=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;element("sessionResults").scrollIntoView?.({behavior:reduceMotion?"auto":"smooth",block:"start"});}
+    function bindSelectionControls() {
+      for (const id of [
+        "sessionGroup",
+        "sessionMuscleGroup",
+        "sessionMuscleTarget",
+        "sessionSelectionMode",
+      ])
+        element(id)?.addEventListener("change", () => {
+          if (state.sessionSaving) return;
+          if (id === "sessionGroup" || id === "sessionMuscleGroup") populateMuscles();
+          updateSelectionHelp();
+          resetPreview("Session brief changed. Build the session to see your updated picks.");
+        });
     }
-    function showBuildError(error){if(!available())return;state.session=null;element("sessionResults").innerHTML=`<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Session needs an adjustment.</h3><p>${escapeHtml(error.message)}</p></div></div>`;element("sessionStatus").textContent=error.message;element("sessionAddAll").hidden=true;element("sessionAddAll").disabled=true;element("sessionOpenPlan").hidden=true;}
-    function generate({announce=false}={}){if(!available()||!state.exercises.length||!state.preferences)return;element("sessionResults").setAttribute("aria-busy","true");try{render(core.buildSession({exercises:state.exercises,preferences:state.preferences,focus:element("sessionGroup").value,minutes:Number(element("sessionLength").value),weeklyPlan:state.weeklyPlan,selectionMode:element("sessionSelectionMode").value,muscleGroup:element("sessionMuscleGroup").value,muscleTarget:element("sessionMuscleTarget").value,workouts:state.workouts,workoutHistoryAvailable:state.workoutHistoryAvailable,workoutHistoryHasMore:state.workoutHistoryHasMore,userRatings:state.userRatings,shortlist:state.shortlist}),{announce});}catch(error){showBuildError(error);if(announce)showToast(error.message);}finally{element("sessionResults").setAttribute("aria-busy","false");}}
-    function setBusy(busy){state.sessionSaving=busy;element("sessionResults")?.setAttribute("aria-busy",String(busy));for(const id of ["sessionGroup","sessionLength","sessionDay","sessionGenerate","sessionSelectionMode","sessionMuscleGroup","sessionMuscleTarget"])if(element(id))element(id).disabled=busy;if(element("sessionAddAll")){element("sessionAddAll").disabled=busy;if(busy)element("sessionAddAll").innerHTML='Saving… <span aria-hidden="true">→</span>';}if(!busy){populateMuscles();updateAddButton();}}
-    function resetPreview(message="Choose your brief, then build a session."){if(!available())return;state.session=null;element("sessionResults").setAttribute("aria-busy","false");element("sessionResults").innerHTML='<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Your session will appear here.</h3><p>Choose Random, Not in my week, Needs focus, or My preferences. Every method respects your equipment and movement limits.</p></div></div>';element("sessionStatus").textContent=message;element("sessionAddAll").hidden=true;element("sessionAddAll").disabled=true;element("sessionOpenPlan").hidden=true;}
-    function syncPlanViews({invalidateSession=false}={}){renderWeeklyPulse();renderTrainingBlockReview();populateDay();updateMonthlySourceButtons();if(invalidateSession){resetPreview("Your weekly plan changed. Build the session again to refresh its exercise picks.");onPlanChanged();}else updateAddButton();}
-    async function refreshConflict(error){const latest=error?.payload?.plan?error.payload:await api("/api/plan");state.weeklyPlan=monthly.normalizeWeeklyPlan(latest.plan,state.exercises);state.weeklyPlanUpdatedAt=Number(latest.planUpdatedAt)||0;syncPlanViews();}
-    async function addToWeek(){
-      if(!available()||state.sessionSaving||!state.session)return;const day=element("sessionDay").value;let merged;
-      try{merged=mergePreview();}catch(error){const message=saveRetryMessage(error);element("sessionStatus").textContent=message;showToast(message);updateAddButton();return;}if(!merged.changed){element("sessionStatus").textContent=`Every generated movement is already scheduled on ${day}.`;updateAddButton();return;}setBusy(true);element("sessionStatus").textContent="Saving…";
-      try{const result=await api("/api/plan",{method:"PUT",body:JSON.stringify({plan:merged.plan,expectedPlanUpdatedAt:state.weeklyPlanUpdatedAt})});state.weeklyPlan=monthly.normalizeWeeklyPlan(result.plan,state.exercises);state.weeklyPlanUpdatedAt=Number(result.planUpdatedAt)||state.weeklyPlanUpdatedAt;syncPlanViews();const skipped=merged.skipped?` ${merged.skipped} already scheduled movement${merged.skipped===1?" was":"s were"} not duplicated.`:"";element("sessionStatus").textContent=`Saved. Session added to ${day}: ${merged.added} new movement${merged.added===1?"":"s"}.${skipped}`;if(element("sessionOpenPlan"))element("sessionOpenPlan").hidden=false;showToast(`Saved. Session added to ${day}.`);}catch(error){if(error.status===409||error.code==="PLAN_CHANGED"){try{await refreshConflict(error);if(state.session?.selectionMode==="not-in-week")resetPreview("Your week changed in another tab or device. The latest plan is loaded; build again to get picks that are not in your week.");else element("sessionStatus").textContent="Couldn't save — Retry. Your week changed in another tab or device. The latest plan is loaded; review the selected day, then add the session again.";showToast("Couldn't save — Retry. Weekly plan changed; latest copy loaded.");}catch{element("sessionStatus").textContent="Couldn't save — Retry. Your week changed elsewhere, and the latest copy could not be loaded. Refresh before adding this session.";}}else{const message=saveRetryMessage(error);element("sessionStatus").textContent=message;showToast(message);}}finally{setBusy(false);}
+    function cardMarkup(item, index) {
+      const exercise = item.exercise,
+        name = escapeHtml(exercise.name),
+        reason = item.reasons.map(escapeHtml).join(" · ");
+      return `<li class="session-result-card"><span class="session-result-index" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span><div class="session-result-copy"><p>${escapeHtml(item.roleLabel)}</p><h4>${name}</h4><span>${escapeHtml(labels[exercise.group] || titleCase(exercise.group))} / ${escapeHtml(exercise.sub)} · ${escapeHtml(exercise.equipment)}</span><p class="session-result-reason">${reason}.</p></div><div class="session-result-prescription"><strong>${item.sets} sets × ${escapeHtml(item.reps)}</strong><span>${escapeHtml(item.rest)} rest</span><span class="session-match">${item.match}% personal match</span><button class="small-button" data-open-detail="${escapeHtml(exercise.id)}" type="button" aria-label="Inspect why ${name} fits this session">Why this move</button></div></li>`;
     }
-    function initialize(){if(!available())return;populateBrief();resetPreview();renderWeeklyPulse();}
-    return{addToWeek,available,bindSelectionControls,generate,initialize,populateBrief,populateDay,populateMuscles,preferredDay,render,resetPreview,setBusy,syncPlanViews,updateAddButton,updateSelectionHelp};
+    function mergePreview() {
+      const day = element("sessionDay").value;
+      if (state.session?.selectionMode === "not-in-week") {
+        const planned = new Set(
+          core.WEEKDAYS.flatMap((day) => state.weeklyPlan?.days?.[day] || []).map(
+            (item) => item.exerciseId,
+          ),
+        );
+        if (state.session.items.some((item) => planned.has(item.exerciseId)))
+          throw new Error(
+            "Your week now includes movements from this session. Build again to get picks that are not in your week.",
+          );
+      }
+      return state.session ? core.mergeSessionIntoPlan(state.weeklyPlan, day, state.session) : null;
+    }
+    function updateAddButton() {
+      if (!available()) return null;
+      const button = element("sessionAddAll"),
+        day = element("sessionDay").value,
+        dayLabel = day || "the selected day";
+      button.hidden = !state.session;
+      if (!state.session) {
+        button.disabled = true;
+        button.title = "";
+        return null;
+      }
+      try {
+        const preview = mergePreview();
+        button.disabled = state.sessionSaving || !preview.changed;
+        button.title = preview.changed
+          ? `Add ${preview.added} new movement${preview.added === 1 ? "" : "s"}${preview.skipped ? ` and skip ${preview.skipped} already on this day` : ""}`
+          : "Every movement in this session is already on the selected day.";
+        button.innerHTML = preview.changed
+          ? `Add ${preview.added} movement${preview.added === 1 ? "" : "s"} to ${escapeHtml(dayLabel)} <span aria-hidden="true">→</span>`
+          : `Already in ${escapeHtml(dayLabel)} <span aria-hidden="true">✓</span>`;
+        return null;
+      } catch (error) {
+        button.disabled = true;
+        button.title = error.message;
+        button.textContent = `Can't add to ${dayLabel}`;
+        return error;
+      }
+    }
+    function render(session, { announce = false } = {}) {
+      if (!available()) return;
+      state.session = session;
+      element("sessionResults").innerHTML =
+        `<div class="session-result-summary"><div><p>${escapeHtml(session.selectionLabel || "Personalized")} · ${escapeHtml(session.timeLabel)} session</p><h3 id="sessionResultsTitle">${escapeHtml(session.focusLabel)} · ${session.minutes} min</h3></div><strong>${escapeHtml(session.summary)}</strong></div>${session.selectionNote ? `<p class="session-selection-note">${escapeHtml(session.selectionNote)}</p>` : ""}<ol class="session-result-list">${session.items.map(cardMarkup).join("")}</ol><p class="session-time-note">Time is an estimate; actual duration changes with setup, rest, and training pace.</p>`;
+      element("sessionStatus").textContent =
+        `${session.selectionLabel || "Personalized"} · ${session.focusLabel} session ready · ${session.summary}. Review every movement before adding it.`;
+      element("sessionOpenPlan") && (element("sessionOpenPlan").hidden = true);
+      const previewError = updateAddButton();
+      if (previewError)
+        element("sessionStatus").textContent =
+          `This session does not fit the selected day: ${previewError.message}`;
+      if (announce && state.activeFeature === "session") {
+        const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+        element("sessionResults").scrollIntoView?.({
+          behavior: reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+      }
+    }
+    function showBuildError(error) {
+      if (!available()) return;
+      state.session = null;
+      element("sessionResults").innerHTML =
+        `<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Session needs an adjustment.</h3><p>${escapeHtml(error.message)}</p></div></div>`;
+      element("sessionStatus").textContent = error.message;
+      element("sessionAddAll").hidden = true;
+      element("sessionAddAll").disabled = true;
+      element("sessionOpenPlan").hidden = true;
+    }
+    function generate({ announce = false } = {}) {
+      if (!available() || !state.exercises.length || !state.preferences) return;
+      element("sessionResults").setAttribute("aria-busy", "true");
+      try {
+        render(
+          core.buildSession({
+            exercises: state.exercises,
+            preferences: state.preferences,
+            focus: element("sessionGroup").value,
+            minutes: Number(element("sessionLength").value),
+            weeklyPlan: state.weeklyPlan,
+            selectionMode: element("sessionSelectionMode").value,
+            muscleGroup: element("sessionMuscleGroup").value,
+            muscleTarget: element("sessionMuscleTarget").value,
+            workouts: state.workouts,
+            workoutHistoryAvailable: state.workoutHistoryAvailable,
+            workoutHistoryHasMore: state.workoutHistoryHasMore,
+            userRatings: state.userRatings,
+            shortlist: state.shortlist,
+          }),
+          { announce },
+        );
+      } catch (error) {
+        showBuildError(error);
+        if (announce) showToast(error.message);
+      } finally {
+        element("sessionResults").setAttribute("aria-busy", "false");
+      }
+    }
+    function setBusy(busy) {
+      state.sessionSaving = busy;
+      element("sessionResults")?.setAttribute("aria-busy", String(busy));
+      for (const id of [
+        "sessionGroup",
+        "sessionLength",
+        "sessionDay",
+        "sessionGenerate",
+        "sessionSelectionMode",
+        "sessionMuscleGroup",
+        "sessionMuscleTarget",
+      ])
+        if (element(id)) element(id).disabled = busy;
+      if (element("sessionAddAll")) {
+        element("sessionAddAll").disabled = busy;
+        if (busy) element("sessionAddAll").innerHTML = 'Saving… <span aria-hidden="true">→</span>';
+      }
+      if (!busy) {
+        populateMuscles();
+        updateAddButton();
+      }
+    }
+    function resetPreview(message = "Choose your brief, then build a session.") {
+      if (!available()) return;
+      state.session = null;
+      element("sessionResults").setAttribute("aria-busy", "false");
+      element("sessionResults").innerHTML =
+        '<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Your session will appear here.</h3><p>Choose Random, Not in my week, Needs focus, or My preferences. Every method respects your equipment and movement limits.</p></div></div>';
+      element("sessionStatus").textContent = message;
+      element("sessionAddAll").hidden = true;
+      element("sessionAddAll").disabled = true;
+      element("sessionOpenPlan").hidden = true;
+    }
+    function syncPlanViews({ invalidateSession = false } = {}) {
+      renderWeeklyPulse();
+      renderTrainingBlockReview();
+      populateDay();
+      updateMonthlySourceButtons();
+      if (invalidateSession) {
+        resetPreview(
+          "Your weekly plan changed. Build the session again to refresh its exercise picks.",
+        );
+        onPlanChanged();
+      } else updateAddButton();
+    }
+    async function refreshConflict(error) {
+      const latest = error?.payload?.plan ? error.payload : await api("/api/plan");
+      state.weeklyPlan = monthly.normalizeWeeklyPlan(latest.plan, state.exercises);
+      state.weeklyPlanUpdatedAt = Number(latest.planUpdatedAt) || 0;
+      syncPlanViews();
+    }
+    async function addToWeek() {
+      if (!available() || state.sessionSaving || !state.session) return;
+      const day = element("sessionDay").value;
+      let merged;
+      try {
+        merged = mergePreview();
+      } catch (error) {
+        const message = saveRetryMessage(error);
+        element("sessionStatus").textContent = message;
+        showToast(message);
+        updateAddButton();
+        return;
+      }
+      if (!merged.changed) {
+        element("sessionStatus").textContent =
+          `Every generated movement is already scheduled on ${day}.`;
+        updateAddButton();
+        return;
+      }
+      setBusy(true);
+      element("sessionStatus").textContent = "Saving…";
+      try {
+        const result = await api("/api/plan", {
+          method: "PUT",
+          body: JSON.stringify({
+            plan: merged.plan,
+            expectedPlanUpdatedAt: state.weeklyPlanUpdatedAt,
+          }),
+        });
+        state.weeklyPlan = monthly.normalizeWeeklyPlan(result.plan, state.exercises);
+        state.weeklyPlanUpdatedAt = Number(result.planUpdatedAt) || state.weeklyPlanUpdatedAt;
+        syncPlanViews();
+        const skipped = merged.skipped
+          ? ` ${merged.skipped} already scheduled movement${merged.skipped === 1 ? " was" : "s were"} not duplicated.`
+          : "";
+        element("sessionStatus").textContent =
+          `Saved. Session added to ${day}: ${merged.added} new movement${merged.added === 1 ? "" : "s"}.${skipped}`;
+        if (element("sessionOpenPlan")) element("sessionOpenPlan").hidden = false;
+        showToast(`Saved. Session added to ${day}.`);
+      } catch (error) {
+        if (error.status === 409 || error.code === "PLAN_CHANGED") {
+          try {
+            await refreshConflict(error);
+            if (state.session?.selectionMode === "not-in-week")
+              resetPreview(
+                "Your week changed in another tab or device. The latest plan is loaded; build again to get picks that are not in your week.",
+              );
+            else
+              element("sessionStatus").textContent =
+                "Couldn't save — Retry. Your week changed in another tab or device. The latest plan is loaded; review the selected day, then add the session again.";
+            showToast("Couldn't save — Retry. Weekly plan changed; latest copy loaded.");
+          } catch {
+            element("sessionStatus").textContent =
+              "Couldn't save — Retry. Your week changed elsewhere, and the latest copy could not be loaded. Refresh before adding this session.";
+          }
+        } else {
+          const message = saveRetryMessage(error);
+          element("sessionStatus").textContent = message;
+          showToast(message);
+        }
+      } finally {
+        setBusy(false);
+      }
+    }
+    function initialize() {
+      if (!available()) return;
+      populateBrief();
+      resetPreview();
+      renderWeeklyPulse();
+    }
+    return {
+      addToWeek,
+      available,
+      bindSelectionControls,
+      generate,
+      initialize,
+      populateBrief,
+      populateDay,
+      populateMuscles,
+      preferredDay,
+      render,
+      resetPreview,
+      setBusy,
+      syncPlanViews,
+      updateAddButton,
+      updateSelectionHelp,
+    };
   }
 
-  return{createSession};
+  return { createSession };
 });

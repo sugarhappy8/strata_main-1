@@ -10,28 +10,32 @@
  * switch for Strata AI: "plus" (default) keeps it inside Strata+, "off"
  * hides it for everyone without touching a route.
  */
-const FREE="free",PLUS="plus",OFF="off";
+const FREE = "free",
+  PLUS = "plus",
+  OFF = "off";
 
 /** @type {Readonly<Record<string,"free"|"plus">>} */
-const FEATURES=Object.freeze({
-  "rankings":FREE,
-  "plan.week":FREE,
-  "profile.basic":FREE,
-  "account":FREE,
-  "plus.studio":PLUS,
-  "plus.train":PLUS,
-  "plus.nutrition":PLUS,
-  "plus.recovery":PLUS,
-  "plus.progress":PLUS,
-  "plus.library":PLUS,
-  "plus.compare":PLUS,
-  "plus.ai":PLUS
+const FEATURES = Object.freeze({
+  rankings: FREE,
+  "plan.week": FREE,
+  "profile.basic": FREE,
+  account: FREE,
+  "plus.studio": PLUS,
+  "plus.train": PLUS,
+  "plus.nutrition": PLUS,
+  "plus.recovery": PLUS,
+  "plus.progress": PLUS,
+  "plus.library": PLUS,
+  "plus.compare": PLUS,
+  "plus.ai": PLUS,
 });
 
 /** @param {Record<string,string|undefined>} [env] */
-function entitlementSettings(env={}) {
-  const aiTier=String(env.STRATA_AI_TIER||PLUS).trim().toLowerCase();
-  return Object.freeze({aiTier:aiTier===OFF?OFF:PLUS});
+function entitlementSettings(env = {}) {
+  const aiTier = String(env.STRATA_AI_TIER || PLUS)
+    .trim()
+    .toLowerCase();
+  return Object.freeze({ aiTier: aiTier === OFF ? OFF : PLUS });
 }
 
 /**
@@ -39,9 +43,9 @@ function entitlementSettings(env={}) {
  * @param {{aiTier:string}} [settings]
  * @returns {"free"|"plus"|"off"|null}
  */
-function tierFor(feature,settings=entitlementSettings()) {
-  if (!Object.hasOwn(FEATURES,feature)) return null;
-  if (feature==="plus.ai"&&settings.aiTier===OFF) return OFF;
+function tierFor(feature, settings = entitlementSettings()) {
+  if (!Object.hasOwn(FEATURES, feature)) return null;
+  if (feature === "plus.ai" && settings.aiTier === OFF) return OFF;
   return FEATURES[feature];
 }
 
@@ -52,19 +56,19 @@ function tierFor(feature,settings=entitlementSettings()) {
  * @param {{aiTier:string}} [settings]
  * @returns {Readonly<Record<string,boolean>>}
  */
-function capabilitiesFor({plusActive=false}={},settings=entitlementSettings()) {
+function capabilitiesFor({ plusActive = false } = {}, settings = entitlementSettings()) {
   /** @type {Record<string,boolean>} */
-  const capabilities={};
+  const capabilities = {};
   for (const feature of Object.keys(FEATURES)) {
-    const tier=tierFor(feature,settings);
-    capabilities[feature]=tier===FREE||(tier===PLUS&&plusActive===true);
+    const tier = tierFor(feature, settings);
+    capabilities[feature] = tier === FREE || (tier === PLUS && plusActive === true);
   }
   return Object.freeze(capabilities);
 }
 
 /** @param {{capabilities?:Record<string,boolean>|null}|null|undefined} user @param {string} feature */
-function can(user,feature) {
-  return user?.capabilities?.[feature]===true;
+function can(user, feature) {
+  return user?.capabilities?.[feature] === true;
 }
 
-module.exports={FEATURES,entitlementSettings,tierFor,capabilitiesFor,can};
+module.exports = { FEATURES, entitlementSettings, tierFor, capabilitiesFor, can };

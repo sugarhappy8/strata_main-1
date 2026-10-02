@@ -15,17 +15,25 @@
     location.replace("/");
     return;
   }
-  document.write('<link rel="stylesheet" href="/app-mode.css?v=9.4.0" /><script src="/app-mode.js?v=9.4.0"></script>');
+  document.write(
+    '<link rel="stylesheet" href="/app-mode.css?v=9.4.0" /><script src="/app-mode.js?v=9.4.0"></script>',
+  );
 
   function removeInstallLinks() {
     for (const link of document.querySelectorAll('a[href^="/install"]')) {
       // Footers separate links with " · "; drop the separator that belonged to the removed link.
       const before = link.previousSibling;
-      if (before && before.nodeType === Node.TEXT_NODE && /^\s*·\s*$/.test(before.textContent || "")) before.remove();
+      if (
+        before &&
+        before.nodeType === Node.TEXT_NODE &&
+        /^\s*·\s*$/.test(before.textContent || "")
+      )
+        before.remove();
       link.remove();
     }
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", removeInstallLinks, { once: true });
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", removeInstallLinks, { once: true });
   else removeInstallLinks();
 })();

@@ -1,10 +1,10 @@
 "use strict";
 
-const BUILD="9.4.0";
-const CACHE_PREFIX="strata-static-";
+const BUILD = "9.4.0";
+const CACHE_PREFIX = "strata-static-";
 // Every release refreshes this complete versioned set before the worker takes control.
-const STATIC_CACHE=`${CACHE_PREFIX}${BUILD}`;
-const PRECACHE_URLS=[
+const STATIC_CACHE = `${CACHE_PREFIX}${BUILD}`;
+const PRECACHE_URLS = [
   "/experience.css?v=9.4.0",
   "/site-experience.css?v=9.4.0",
   "/fonts.css?v=9.4.0",
@@ -137,88 +137,142 @@ const PRECACHE_URLS=[
   "/icons/strata-192.png",
   "/icons/strata-512.png",
   "/icons/strata-maskable-512.png",
-  "/icons/apple-touch-icon.png"
+  "/icons/apple-touch-icon.png",
 ];
-const PUBLIC_ASSET_URLS=new Set(PRECACHE_URLS.map((entry) => new URL(entry,self.location.origin).href));
-const PRIVATE_HTML_PATHS=new Set(["/","/index.html","/account.html","/dashboard","/dashboard.html","/verify-email","/verify-email.html","/forgot-password","/forgot-password.html","/reset-password","/reset-password.html","/delete-account","/delete-account.html","/discover.html","/workout.html","/onboarding.html","/ai","/ai.html","/admin","/admin.html"]);
-const PUBLIC_HTML_FALLBACKS=new Map([
-  ["/install","/install.html"],
-  ["/pricing","/pricing.html"],
-  ["/contact","/contact.html"],
-  ["/policies","/policies.html"],
-  ["/terms","/terms.html"],
-  ["/privacy","/privacy.html"],
-  ["/refunds","/refunds.html"],
-  ["/planner","/planner.html"],
-  ["/my-week","/planner.html"],
-  ["/dashboard","/planner.html"]
+const PUBLIC_ASSET_URLS = new Set(
+  PRECACHE_URLS.map((entry) => new URL(entry, self.location.origin).href),
+);
+const PRIVATE_HTML_PATHS = new Set([
+  "/",
+  "/index.html",
+  "/account.html",
+  "/dashboard",
+  "/dashboard.html",
+  "/verify-email",
+  "/verify-email.html",
+  "/forgot-password",
+  "/forgot-password.html",
+  "/reset-password",
+  "/reset-password.html",
+  "/delete-account",
+  "/delete-account.html",
+  "/discover.html",
+  "/workout.html",
+  "/onboarding.html",
+  "/ai",
+  "/ai.html",
+  "/admin",
+  "/admin.html",
+]);
+const PUBLIC_HTML_FALLBACKS = new Map([
+  ["/install", "/install.html"],
+  ["/pricing", "/pricing.html"],
+  ["/contact", "/contact.html"],
+  ["/policies", "/policies.html"],
+  ["/terms", "/terms.html"],
+  ["/privacy", "/privacy.html"],
+  ["/refunds", "/refunds.html"],
+  ["/planner", "/planner.html"],
+  ["/my-week", "/planner.html"],
+  ["/dashboard", "/planner.html"],
 ]);
 
 function bypassNetwork(pathname) {
-  return pathname.startsWith("/api/") || pathname.startsWith("/auth/") || pathname==="/healthz" || pathname==="/livez" || pathname==="/readyz";
+  return (
+    pathname.startsWith("/api/") ||
+    pathname.startsWith("/auth/") ||
+    pathname === "/healthz" ||
+    pathname === "/livez" ||
+    pathname === "/readyz"
+  );
 }
 
-self.addEventListener("install",(event) => {
-  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(PRECACHE_URLS)).then(() => self.skipWaiting()));
-});
-
-self.addEventListener("activate",(event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key!==STATIC_CACHE).map((key) => caches.delete(key))))
-      .then(() => self.clients.claim())
+    caches
+      .open(STATIC_CACHE)
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .then(() => self.skipWaiting()),
   );
 });
 
-async function navigationResponse(request,url) {
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith(CACHE_PREFIX) && key !== STATIC_CACHE)
+            .map((key) => caches.delete(key)),
+        ),
+      )
+      .then(() => self.clients.claim()),
+  );
+});
+
+async function navigationResponse(request, url) {
   try {
     return await fetch(request);
   } catch {
-    const cache=await caches.open(STATIC_CACHE);
-    const normalizedPath=url.pathname.length>1?url.pathname.replace(/\/+$/g,""):url.pathname;
-    const pageKey=normalizedPath.endsWith(".html")?normalizedPath.slice(0,-5):normalizedPath;
+    const cache = await caches.open(STATIC_CACHE);
+    const normalizedPath =
+      url.pathname.length > 1 ? url.pathname.replace(/\/+$/g, "") : url.pathname;
+    const pageKey = normalizedPath.endsWith(".html") ? normalizedPath.slice(0, -5) : normalizedPath;
     // Paddle appends `_ptxn` to the default payment-link URL. Never serve a
     // cached checkout landing page for that request: the transaction needs a
     // live connection to Paddle and STRATA's server.
-    if (pageKey==="/pricing" && url.searchParams.has("_ptxn")) {
-      const offline=await cache.match("/offline.html");
-      return offline || new Response("STRATA is offline.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8"}});
+    if (pageKey === "/pricing" && url.searchParams.has("_ptxn")) {
+      const offline = await cache.match("/offline.html");
+      return (
+        offline ||
+        new Response("STRATA is offline.", {
+          status: 503,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        })
+      );
     }
     // This is a generic shell, never the personalized workout page. It can
     // read only a previously authorized, account-scoped device draft and must
     // re-check identity/access before handing the draft back for server sync.
-    if (pageKey==="/workout") {
-      const workout=await cache.match("/workout-offline.html");
+    if (pageKey === "/workout") {
+      const workout = await cache.match("/workout-offline.html");
       if (workout) return workout;
     }
-    const publicFallback=PUBLIC_HTML_FALLBACKS.get(pageKey);
+    const publicFallback = PUBLIC_HTML_FALLBACKS.get(pageKey);
     if (publicFallback) {
-      const page=await cache.match(publicFallback);
+      const page = await cache.match(publicFallback);
       if (page) return page;
     }
-    const offline=await cache.match("/offline.html");
-    return offline || new Response("STRATA is offline.",{status:503,headers:{"Content-Type":"text/plain; charset=utf-8"}});
+    const offline = await cache.match("/offline.html");
+    return (
+      offline ||
+      new Response("STRATA is offline.", {
+        status: 503,
+        headers: { "Content-Type": "text/plain; charset=utf-8" },
+      })
+    );
   }
 }
 
 async function publicAssetResponse(request) {
-  const cached=await caches.match(request);
+  const cached = await caches.match(request);
   if (cached) return cached;
-  const response=await fetch(request);
-  if (response.ok && response.type==="basic") {
-    const cache=await caches.open(STATIC_CACHE);
-    await cache.put(request,response.clone());
+  const response = await fetch(request);
+  if (response.ok && response.type === "basic") {
+    const cache = await caches.open(STATIC_CACHE);
+    await cache.put(request, response.clone());
   }
   return response;
 }
 
-self.addEventListener("fetch",(event) => {
-  const request=event.request;
-  if (request.method!=="GET") return;
-  const url=new URL(request.url);
-  if (url.origin!==self.location.origin || bypassNetwork(url.pathname)) return;
-  if (request.mode==="navigate") {
-    event.respondWith(navigationResponse(request,url));
+self.addEventListener("fetch", (event) => {
+  const request = event.request;
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin || bypassNetwork(url.pathname)) return;
+  if (request.mode === "navigate") {
+    event.respondWith(navigationResponse(request, url));
     return;
   }
   if (PRIVATE_HTML_PATHS.has(url.pathname) || !PUBLIC_ASSET_URLS.has(url.href)) return;

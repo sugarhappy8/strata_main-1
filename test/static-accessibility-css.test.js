@@ -1,241 +1,519 @@
 "use strict";
 
-const test=require("node:test");
-const assert=require("node:assert/strict");
-const fs=require("node:fs");
-const path=require("node:path");
-const vm=require("node:vm");
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
 
-const PROJECT_ROOT=path.join(__dirname,"..");
-const read=(name)=>fs.readFileSync(path.join(PROJECT_ROOT,name),"utf8");
-const homeClient=()=>["entitlements.js","home-logic.js","home-state.js","home-api.js","home-render.js","home-events.js","app.js"].map(name=>read(`public/scripts/${name}`)).join("\n");
-const discoverClient=()=>["discover-api.js","discover-navigation.js","discover-progress.js","discover-render.js","discover-catalog.js","discover-detail.js","discover-session.js","discover-events.js","discover.js"].map(name=>read(`public/scripts/${name}`)).join("\n");
-const workoutClient=()=>["workout-state.js","workout-api.js","workout-calendar.js","workout-render.js","workout-context.js","workout-guidance.js","workout-history.js","workout-events.js","workout.js"].map(name=>read(`public/scripts/${name}`)).join("\n");
+const PROJECT_ROOT = path.join(__dirname, "..");
+const read = (name) => fs.readFileSync(path.join(PROJECT_ROOT, name), "utf8");
+const homeClient = () =>
+  [
+    "entitlements.js",
+    "home-logic.js",
+    "home-state.js",
+    "home-api.js",
+    "home-render.js",
+    "home-events.js",
+    "app.js",
+  ]
+    .map((name) => read(`public/scripts/${name}`))
+    .join("\n");
+const discoverClient = () =>
+  [
+    "discover-api.js",
+    "discover-navigation.js",
+    "discover-progress.js",
+    "discover-render.js",
+    "discover-catalog.js",
+    "discover-detail.js",
+    "discover-session.js",
+    "discover-events.js",
+    "discover.js",
+  ]
+    .map((name) => read(`public/scripts/${name}`))
+    .join("\n");
+const workoutClient = () =>
+  [
+    "workout-state.js",
+    "workout-api.js",
+    "workout-calendar.js",
+    "workout-render.js",
+    "workout-context.js",
+    "workout-guidance.js",
+    "workout-history.js",
+    "workout-events.js",
+    "workout.js",
+  ]
+    .map((name) => read(`public/scripts/${name}`))
+    .join("\n");
 
-test("homepage styles keep live comparison UI and omit retired modal families",()=>{
-  const css=read("public/styles/styles.css");
-  for(const selector of [".dialog-header"]){
-    assert.ok(css.includes(selector),`${selector} must remain styled`);
+test("homepage styles keep live comparison UI and omit retired modal families", () => {
+  const css = read("public/styles/styles.css");
+  for (const selector of [".dialog-header"]) {
+    assert.ok(css.includes(selector), `${selector} must remain styled`);
   }
-  assert.doesNotMatch(css,/\.(?:plan-(?:dialog|content|layout|sidebar|sidebar-label|editor|title-fields|field|list-head|item|video|empty|summary)|workout-tabs?|remove-item|auth-[a-z-]+|account-(?:card|avatar|stats|actions))\b/);
+  assert.doesNotMatch(
+    css,
+    /\.(?:plan-(?:dialog|content|layout|sidebar|sidebar-label|editor|title-fields|field|list-head|item|video|empty|summary)|workout-tabs?|remove-item|auth-[a-z-]+|account-(?:card|avatar|stats|actions))\b/,
+  );
 });
 
-test("homepage navigation and exercise controls expose 44px touch targets",()=>{
-  const css=read("public/styles/styles.css");
-  assert.match(css,/\.brand\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/);
-  assert.match(css,/\.action-icon\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
-  assert.doesNotMatch(css,/\.exercise-row\s*\.action-icon\s*\{\s*[^}]*\b(?:width|height)\s*:\s*\s*(?:3\d|4[0-3])px/);
+test("homepage navigation and exercise controls expose 44px touch targets", () => {
+  const css = read("public/styles/styles.css");
+  assert.match(css, /\.brand\s*\{[^}]*min-width:\s*44px;[^}]*min-height:\s*44px;/);
+  assert.match(css, /\.action-icon\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/);
+  assert.doesNotMatch(
+    css,
+    /\.exercise-row\s*\.action-icon\s*\{\s*[^}]*\b(?:width|height)\s*:\s*\s*(?:3\d|4[0-3])px/,
+  );
 });
 
-test("compact mobile navigation keeps account actions and every muscle group easy to reach",()=>{
-  const home=read("public/pages/index.html");
-  const account=read("public/pages/account.html");
-  const homeCss=read("public/styles/styles.css");
-  const accountCss=read("public/styles/account.css");
-  assert.match(home,/class="group-tabs-hint"[^>]*>Swipe to explore all 8 muscle groups/);
-  assert.match(homeCss,/\.group-tabs\s*\{[^}]*display:\s*flex;[^}]*overflow-x:\s*auto;[^}]*scroll-snap-type:\s*x proximity;/);
-  assert.match(account,/class="account-choice-nav"[^>]*>[\s\S]*href="#signupPanel"[\s\S]*href="#loginPanel"/);
-  assert.match(accountCss,/\.account-choice-nav\s*\{\s*display\s*:\s*grid\s*;\s*grid-template-columns\s*:\s*1fr\s*1fr\s*;/);
-  assert.match(accountCss,/\.signed-actions\s*\[\s*hidden\s*,?\s*\]\s*,\s*\.security-actions\s*\[\s*hidden\s*,?\s*\]\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/,"Account CSS must not expose privileged or inactive hidden actions");
+test("compact mobile navigation keeps account actions and every muscle group easy to reach", () => {
+  const home = read("public/pages/index.html");
+  const account = read("public/pages/account.html");
+  const homeCss = read("public/styles/styles.css");
+  const accountCss = read("public/styles/account.css");
+  assert.match(home, /class="group-tabs-hint"[^>]*>Swipe to explore all 8 muscle groups/);
+  assert.match(
+    homeCss,
+    /\.group-tabs\s*\{[^}]*display:\s*flex;[^}]*overflow-x:\s*auto;[^}]*scroll-snap-type:\s*x proximity;/,
+  );
+  assert.match(
+    account,
+    /class="account-choice-nav"[^>]*>[\s\S]*href="#signupPanel"[\s\S]*href="#loginPanel"/,
+  );
+  assert.match(
+    accountCss,
+    /\.account-choice-nav\s*\{\s*display\s*:\s*grid\s*;\s*grid-template-columns\s*:\s*1fr\s*1fr\s*;/,
+  );
+  assert.match(
+    accountCss,
+    /\.signed-actions\s*\[\s*hidden\s*,?\s*\]\s*,\s*\.security-actions\s*\[\s*hidden\s*,?\s*\]\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/,
+    "Account CSS must not expose privileged or inactive hidden actions",
+  );
 });
 
-test("the support honeypot stays outside the accessibility tree",()=>{
-  const contact=read("public/pages/contact.html");
-  assert.match(contact,/<div class="support-honeypot" aria-hidden="true">[\s\S]*?<input[^>]*tabindex="-1"/);
+test("the support honeypot stays outside the accessibility tree", () => {
+  const contact = read("public/pages/contact.html");
+  assert.match(
+    contact,
+    /<div class="support-honeypot" aria-hidden="true">[\s\S]*?<input[^>]*tabindex="-1"/,
+  );
 });
 
-test("Discover defines the compact hero gap only once",()=>{
-  const css=read("public/styles/discover.css");
-  assert.equal(css.match(/\.hero-layout\s*\{\s*gap:\s*34px;\s*\}/g)?.length,1);
+test("Discover defines the compact hero gap only once", () => {
+  const css = read("public/styles/discover.css");
+  assert.equal(css.match(/\.hero-layout\s*\{\s*gap:\s*34px;\s*\}/g)?.length, 1);
 });
 
-test("every native dialog has an accessible name and restores its trigger",()=>{
-  for(const page of ["public/pages/index.html","public/pages/admin.html","public/pages/discover.html"]){
-    const html=read(page),dialogs=[...html.matchAll(/<dialog\b([^>]*)>/g)];
-    assert.ok(dialogs.length,`${page} should contain a dialog`);
-    for(const [,attributes] of dialogs)assert.match(attributes,/\baria-(?:label|labelledby)="[^"]+"/,`${page} dialog needs an accessible name`);
+test("every native dialog has an accessible name and restores its trigger", () => {
+  for (const page of [
+    "public/pages/index.html",
+    "public/pages/admin.html",
+    "public/pages/discover.html",
+  ]) {
+    const html = read(page),
+      dialogs = [...html.matchAll(/<dialog\b([^>]*)>/g)];
+    assert.ok(dialogs.length, `${page} should contain a dialog`);
+    for (const [, attributes] of dialogs)
+      assert.match(
+        attributes,
+        /\baria-(?:label|labelledby)="[^"]+"/,
+        `${page} dialog needs an accessible name`,
+      );
   }
-  assert.match(homeClient(),/dialogReturnFocus/);
-  assert.match(read("public/scripts/discover.js"),/dialogReturnFocus/);
+  assert.match(homeClient(), /dialogReturnFocus/);
+  assert.match(read("public/scripts/discover.js"), /dialogReturnFocus/);
 });
 
-test("plan-saving surfaces use consistent announced states and actionable errors",()=>{
-  const plannerHtml=read("public/pages/planner.html"),planner=read("public/scripts/planner.js"),discover=discoverClient();
-  assert.match(plannerHtml,/id="saveStatus"[^>]*role="status"[^>]*aria-live="polite"/);
-  for(const state of ["Saving…","Saved","Couldn't save — Retry"])assert.ok(planner.includes(state),`planner must expose ${state}`);
-  for(const state of ["Saving…","Saved","Couldn't save — Retry"])assert.ok(discover.includes(state),`Strata+ must expose ${state}`);
-  assert.match(discover,/data-rating-status role="status" aria-live="polite"/);
-  assert.match(planner,/PLAN_CHANGED/);
-  assert.match(discover,/latest plan is loaded; review the selected day/i);
+test("plan-saving surfaces use consistent announced states and actionable errors", () => {
+  const plannerHtml = read("public/pages/planner.html"),
+    planner = read("public/scripts/planner.js"),
+    discover = discoverClient();
+  assert.match(plannerHtml, /id="saveStatus"[^>]*role="status"[^>]*aria-live="polite"/);
+  for (const state of ["Saving…", "Saved", "Couldn't save — Retry"])
+    assert.ok(planner.includes(state), `planner must expose ${state}`);
+  for (const state of ["Saving…", "Saved", "Couldn't save — Retry"])
+    assert.ok(discover.includes(state), `Strata+ must expose ${state}`);
+  assert.match(discover, /data-rating-status role="status" aria-live="polite"/);
+  assert.match(planner, /PLAN_CHANGED/);
+  assert.match(discover, /latest plan is loaded; review the selected day/i);
 });
 
-test("planner, workout, and the studio share the five-section navigation at mobile widths",()=>{
-  const plannerHtml=read("public/pages/planner.html"),workoutHtml=read("public/pages/workout.html"),discoverHtml=read("public/pages/discover.html");
-  const plannerCss=read("public/styles/planner.css"),workoutCss=read("public/styles/workout.css");
-  const destinations=/Rankings<\/a><a[^>]*>Dashboard<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Profile<\/a>/;
-  assert.match(plannerHtml,destinations);assert.match(workoutHtml,destinations);assert.match(discoverHtml,destinations);
-  assert.match(plannerHtml,/href="\/dashboard" aria-current="page">Dashboard<\/a>/);
-  assert.match(workoutHtml,/href="\/workout\.html" aria-current="page">Train<\/a>/);
-  for(const [name,html,desktop,user,mobile] of [
-    ["Planner",plannerHtml,'class="planner-primary-nav planner-primary-nav-desktop"','class="user-menu"','class="planner-primary-nav planner-primary-nav-mobile"'],
-    ["Strata+",discoverHtml,'class="studio-nav studio-nav-desktop"','class="studio-user"','class="studio-nav studio-nav-mobile"']
-  ]){
-    assert.ok(html.indexOf(desktop)<html.indexOf(user),`${name} desktop navigation must precede account controls in keyboard order`);
-    assert.ok(html.indexOf(user)<html.indexOf(mobile),`${name} mobile account controls must precede the bottom navigation in keyboard order`);
+test("planner, workout, and the studio share the five-section navigation at mobile widths", () => {
+  const plannerHtml = read("public/pages/planner.html"),
+    workoutHtml = read("public/pages/workout.html"),
+    discoverHtml = read("public/pages/discover.html");
+  const plannerCss = read("public/styles/planner.css"),
+    workoutCss = read("public/styles/workout.css");
+  const destinations =
+    /Rankings<\/a><a[^>]*>Dashboard<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Profile<\/a>/;
+  assert.match(plannerHtml, destinations);
+  assert.match(workoutHtml, destinations);
+  assert.match(discoverHtml, destinations);
+  assert.match(plannerHtml, /href="\/dashboard" aria-current="page">Dashboard<\/a>/);
+  assert.match(workoutHtml, /href="\/workout\.html" aria-current="page">Train<\/a>/);
+  for (const [name, html, desktop, user, mobile] of [
+    [
+      "Planner",
+      plannerHtml,
+      'class="planner-primary-nav planner-primary-nav-desktop"',
+      'class="user-menu"',
+      'class="planner-primary-nav planner-primary-nav-mobile"',
+    ],
+    [
+      "Strata+",
+      discoverHtml,
+      'class="studio-nav studio-nav-desktop"',
+      'class="studio-user"',
+      'class="studio-nav studio-nav-mobile"',
+    ],
+  ]) {
+    assert.ok(
+      html.indexOf(desktop) < html.indexOf(user),
+      `${name} desktop navigation must precede account controls in keyboard order`,
+    );
+    assert.ok(
+      html.indexOf(user) < html.indexOf(mobile),
+      `${name} mobile account controls must precede the bottom navigation in keyboard order`,
+    );
   }
-  assert.match(plannerCss,/\.planner-primary-nav-mobile\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/);
-  assert.match(plannerCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.planner-primary-nav-desktop\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}\s*[\s\S]*?\.planner-primary-nav-mobile\s*\{\s*display\s*:\s*grid\s*[;,]?\s*\}/);
-  assert.match(workoutCss,/\.site-header\s*\.workout-nav-mobile\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/);
-  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.site-header\s*\.workout-nav-desktop\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}\s*[\s\S]*?\.site-header\s*\.workout-nav-mobile\s*\{\s*display\s*:\s*grid\s*[;,]?\s*\}/);
-  const discoverCss=read("public/styles/discover.css");
-  assert.match(discoverCss,/\.studio-nav-mobile\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}/);
-  assert.match(discoverCss,/@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*[\s\S]*?\.plus-studio\s*\.studio-nav-desktop\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}\s*[\s\S]*?\.plus-studio\s*\.studio-nav-mobile\s*\{\s*display\s*:\s*flex\s*;\s*[;,]?\s*\}/);
-  assert.match(plannerCss,/\.planner-primary-nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/);
-  assert.match(plannerCss,/\.planner-primary-nav\s*a\s*\{\s*[^}]*font-size\s*:\s*11px/);
-  assert.match(plannerCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.planner-header\s*\{\s*background\s*:\s*var\s*\(\s*--ink\s*,?\s*\)\s*;\s*backdrop-filter\s*:\s*none\s*[;,]?\s*\}/);
-  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.site-header\s*nav\s*\{\s*position\s*:\s*fixed/);
-  assert.match(discoverCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\s*\{\s*[\s\S]*?\.plus-studio\s*\.studio-nav\s*\{\s*[^}]*position\s*:\s*fixed/);
-  assert.match(workoutCss,/\.site-header\s*nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/);
-  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.workout-page\s*\.site-header\s*\{\s*[^}]*background\s*:\s*var\s*\(\s*--bg\s*,?\s*\)\s*;\s*backdrop-filter\s*:\s*none\s*[;,]?\s*\}/);
+  assert.match(plannerCss, /\.planner-primary-nav-mobile\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/);
+  assert.match(
+    plannerCss,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.planner-primary-nav-desktop\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}\s*[\s\S]*?\.planner-primary-nav-mobile\s*\{\s*display\s*:\s*grid\s*[;,]?\s*\}/,
+  );
+  assert.match(
+    workoutCss,
+    /\.site-header\s*\.workout-nav-mobile\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/,
+  );
+  assert.match(
+    workoutCss,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.site-header\s*\.workout-nav-desktop\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}\s*[\s\S]*?\.site-header\s*\.workout-nav-mobile\s*\{\s*display\s*:\s*grid\s*[;,]?\s*\}/,
+  );
+  const discoverCss = read("public/styles/discover.css");
+  assert.match(discoverCss, /\.studio-nav-mobile\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}/);
+  assert.match(
+    discoverCss,
+    /@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*[\s\S]*?\.plus-studio\s*\.studio-nav-desktop\s*\{\s*display\s*:\s*none\s*;\s*[;,]?\s*\}\s*[\s\S]*?\.plus-studio\s*\.studio-nav-mobile\s*\{\s*display\s*:\s*flex\s*;\s*[;,]?\s*\}/,
+  );
+  assert.match(
+    plannerCss,
+    /\.planner-primary-nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/,
+  );
+  assert.match(plannerCss, /\.planner-primary-nav\s*a\s*\{\s*[^}]*font-size\s*:\s*11px/);
+  assert.match(
+    plannerCss,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.planner-header\s*\{\s*background\s*:\s*var\s*\(\s*--ink\s*,?\s*\)\s*;\s*backdrop-filter\s*:\s*none\s*[;,]?\s*\}/,
+  );
+  assert.match(
+    workoutCss,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.site-header\s*nav\s*\{\s*position\s*:\s*fixed/,
+  );
+  assert.match(
+    discoverCss,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\s*\{\s*[\s\S]*?\.plus-studio\s*\.studio-nav\s*\{\s*[^}]*position\s*:\s*fixed/,
+  );
+  assert.match(
+    workoutCss,
+    /\.site-header\s*nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/,
+  );
+  assert.match(
+    workoutCss,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[\s\S]*?\.workout-page\s*\.site-header\s*\{\s*[^}]*background\s*:\s*var\s*\(\s*--bg\s*,?\s*\)\s*;\s*backdrop-filter\s*:\s*none\s*[;,]?\s*\}/,
+  );
 });
 
-test("workout empty days and planner mobile hand-offs expose useful 44px actions",()=>{
-  const plannerHtml=read("public/pages/planner.html"),plannerCss=read("public/styles/planner.css");
-  const workoutHtml=read("public/pages/workout.html"),workout=workoutClient(),context=read("public/scripts/workout-context.js"),workoutCss=read("public/styles/workout.css");
-  assert.match(workoutHtml,/id="chooseScheduledDay" hidden/);assert.match(workoutHtml,/id="openPlannerFromEmpty"[^>]*hidden/);
-  assert.match(context,/You have not built a weekly plan yet/);assert.match(context,/Nothing is scheduled for this day/);assert.match(context,/Scheduled in your weekly plan/);
-  assert.match(context,/start\s*\.hidden\s*=\s*true\s*;\s*resume\s*\.hidden\s*=\s*!\s*active\s*;\s*choose\s*\.hidden\s*=\s*true\s*;\s*build\s*\.hidden\s*=\s*true\s*;\s*\$\s*\(\s*"differentWorkout"\s*,?\s*\)\s*\.hidden\s*=\s*true/);
-  assert.match(context,/if\s*\(\s*active\s*,?\s*\)\s*[\s\S]*return\s*;/);assert.match(context,/if\s*\(\s*!\s*hasWeek\s*,?\s*\)\s*[\s\S]*build\s*\.hidden\s*=\s*false\s*;\s*return\s*;/);assert.match(context,/if\s*\(\s*!\s*items\s*\.length\s*,?\s*\)\s*[\s\S]*choose\s*\.hidden\s*=\s*false/);
-  assert.match(workoutCss,/\.button\s*\{\s*[^}]*min-height\s*:\s*48px/);
-  assert.match(workout,/record\s*\?\.dirty\s*,?\s*\)\s*items\s*\.push/);assert.match(workout,/status\s*!==\s*"active"\s*\|\|\s*!\s*recoveryIds\s*\.has/);assert.match(workout,/recoveryIndex\s*>=\s*0/);
-  assert.match(workoutCss,/\.mode-notice\s*a\s*,\s*\.text-link\s*,\s*footer\s*a\s*\{\s*[^}]*min-width\s*:\s*44px\s*;\s*min-height\s*:\s*44px/);
-  assert.match(workoutHtml,/id="anotherSession">Choose another workout<\/button>/);
-  assert.doesNotMatch(workoutHtml,/Back\s*to\s*my\s*plan/);
-  assert.match(plannerHtml,/class="planner-mobile-switcher"[^>]*>[\s\S]*Exercise library[\s\S]*My week/);
-  assert.match(plannerHtml,/id="libraryPanel"[^>]*tabindex="-1"/);
-  assert.match(plannerCss,/\.planner-mobile-switcher\s*\{\s*position\s*:\s*sticky\s*;\s*[^}]*display\s*:\s*grid/);
-  assert.match(plannerCss,/\.planner-jump-link\s*\{\s*[^}]*min-height\s*:\s*44px/);
-  assert.match(plannerCss,/\.planner-mode-notice\s*a\s*\{\s*[^}]*min-height\s*:\s*44px/);
-  assert.match(plannerCss,/\.build-footer\s*a\s*\{\s*min-width\s*:\s*44px\s*;\s*color\s*:\s*inherit/);
-  assert.match(workoutCss,/\.skip-link\s*\{\s*[^}]*z-index\s*:\s*100\s*;/,"The focused workout skip link must paint above its sticky header");
-  assert.match(workoutCss,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*\s*html\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*76px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*[;,]?\s*\}/);
-  assert.match(workoutHtml,/id="historyError"[^>]*role="alert"/);
-  assert.match(workoutHtml,/href="\/pricing">Review Strata\+ access<\/a>/);
-  assert.match(workoutHtml,/href="\/planner\.html">Open your free week<\/a>/);
-  assert.match(workoutHtml,/id="openPlannerFromEmpty"[^>]*>Build your first week/);
-  assert.match(workoutHtml,/id="editWorkoutWeek"[^>]*>Edit weekly plan/);
-  assert.match(workoutHtml,/id="chooseScheduledDay"[^>]*>Go to next workout day/);
-  assert.match(workoutHtml,/id="checkInForm"[^>]*aria-labelledby="checkInTitle"/);
-  for(const id of ["checkInDifficulty","checkInEnergy","checkInComfort","checkInEnjoyment"])assert.match(workoutHtml,new RegExp(`id="${id}" required`));
-  assert.match(workoutHtml,/STRATA does not detect recovery, fatigue, pain, or injury/);
-  assert.match(workout,/\/api\/workouts\/\$\{encodeURIComponent\(workoutId\)\}\/check-in/);
-  assert.match(workout,/checkIn\s*:\s*\{\s*difficulty\s*:\s*values\s*\[\s*0\s*,?\s*\]\s*,\s*energy\s*:\s*values\s*\[\s*1\s*,?\s*\]\s*,\s*comfort\s*:\s*values\s*\[\s*2\s*,?\s*\]\s*,\s*enjoyment\s*:\s*values\s*\[\s*3\s*,?\s*\]\s*[;,]?\s*\}/);
-  assert.match(workoutHtml,/No change happens unless you approve it/);
-  assert.match(workoutHtml,/id="reviewAdaptation" href="\/discover\.html#planWorkspace"/);
-  assert.doesNotMatch(workoutHtml,/id\s*=\s*"(?:acceptAdaptation|dismissAdaptation)"/);
-  assert.match(read("public/scripts/discover.js"),/decision\s*:\s*"accept"\s*,\s*expectedPlanUpdatedAt\s*:\s*suggestion\s*\.expectedPlanUpdatedAt/);
-  assert.match(workoutCss,/\.exercise-guide\s*>\s*summary\s*\{\s*[^}]*min-height\s*:\s*46px/);
-  assert.match(workoutCss,/\.check-in-grid\s*\{\s*display\s*:\s*grid/);
+test("workout empty days and planner mobile hand-offs expose useful 44px actions", () => {
+  const plannerHtml = read("public/pages/planner.html"),
+    plannerCss = read("public/styles/planner.css");
+  const workoutHtml = read("public/pages/workout.html"),
+    workout = workoutClient(),
+    context = read("public/scripts/workout-context.js"),
+    workoutCss = read("public/styles/workout.css");
+  assert.match(workoutHtml, /id="chooseScheduledDay" hidden/);
+  assert.match(workoutHtml, /id="openPlannerFromEmpty"[^>]*hidden/);
+  assert.match(context, /You have not built a weekly plan yet/);
+  assert.match(context, /Nothing is scheduled for this day/);
+  assert.match(context, /Scheduled in your weekly plan/);
+  assert.match(
+    context,
+    /start\s*\.hidden\s*=\s*true\s*;\s*resume\s*\.hidden\s*=\s*!\s*active\s*;\s*choose\s*\.hidden\s*=\s*true\s*;\s*build\s*\.hidden\s*=\s*true\s*;\s*\$\s*\(\s*"differentWorkout"\s*,?\s*\)\s*\.hidden\s*=\s*true/,
+  );
+  assert.match(context, /if\s*\(\s*active\s*,?\s*\)\s*[\s\S]*return\s*;/);
+  assert.match(
+    context,
+    /if\s*\(\s*!\s*hasWeek\s*,?\s*\)\s*[\s\S]*build\s*\.hidden\s*=\s*false\s*;\s*return\s*;/,
+  );
+  assert.match(
+    context,
+    /if\s*\(\s*!\s*items\s*\.length\s*,?\s*\)\s*[\s\S]*choose\s*\.hidden\s*=\s*false/,
+  );
+  assert.match(workoutCss, /\.button\s*\{\s*[^}]*min-height\s*:\s*48px/);
+  assert.match(workout, /record\s*\?\.dirty\s*,?\s*\)\s*items\s*\.push/);
+  assert.match(workout, /status\s*!==\s*"active"\s*\|\|\s*!\s*recoveryIds\s*\.has/);
+  assert.match(workout, /recoveryIndex\s*>=\s*0/);
+  assert.match(
+    workoutCss,
+    /\.mode-notice\s*a\s*,\s*\.text-link\s*,\s*footer\s*a\s*\{\s*[^}]*min-width\s*:\s*44px\s*;\s*min-height\s*:\s*44px/,
+  );
+  assert.match(workoutHtml, /id="anotherSession">Choose another workout<\/button>/);
+  assert.doesNotMatch(workoutHtml, /Back\s*to\s*my\s*plan/);
+  assert.match(
+    plannerHtml,
+    /class="planner-mobile-switcher"[^>]*>[\s\S]*Exercise library[\s\S]*My week/,
+  );
+  assert.match(plannerHtml, /id="libraryPanel"[^>]*tabindex="-1"/);
+  assert.match(
+    plannerCss,
+    /\.planner-mobile-switcher\s*\{\s*position\s*:\s*sticky\s*;\s*[^}]*display\s*:\s*grid/,
+  );
+  assert.match(plannerCss, /\.planner-jump-link\s*\{\s*[^}]*min-height\s*:\s*44px/);
+  assert.match(plannerCss, /\.planner-mode-notice\s*a\s*\{\s*[^}]*min-height\s*:\s*44px/);
+  assert.match(
+    plannerCss,
+    /\.build-footer\s*a\s*\{\s*min-width\s*:\s*44px\s*;\s*color\s*:\s*inherit/,
+  );
+  assert.match(
+    workoutCss,
+    /\.skip-link\s*\{\s*[^}]*z-index\s*:\s*100\s*;/,
+    "The focused workout skip link must paint above its sticky header",
+  );
+  assert.match(
+    workoutCss,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*\s*html\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*76px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*[;,]?\s*\}/,
+  );
+  assert.match(workoutHtml, /id="historyError"[^>]*role="alert"/);
+  assert.match(workoutHtml, /href="\/pricing">Review Strata\+ access<\/a>/);
+  assert.match(workoutHtml, /href="\/planner\.html">Open your free week<\/a>/);
+  assert.match(workoutHtml, /id="openPlannerFromEmpty"[^>]*>Build your first week/);
+  assert.match(workoutHtml, /id="editWorkoutWeek"[^>]*>Edit weekly plan/);
+  assert.match(workoutHtml, /id="chooseScheduledDay"[^>]*>Go to next workout day/);
+  assert.match(workoutHtml, /id="checkInForm"[^>]*aria-labelledby="checkInTitle"/);
+  for (const id of ["checkInDifficulty", "checkInEnergy", "checkInComfort", "checkInEnjoyment"])
+    assert.match(workoutHtml, new RegExp(`id="${id}" required`));
+  assert.match(workoutHtml, /STRATA does not detect recovery, fatigue, pain, or injury/);
+  assert.match(workout, /\/api\/workouts\/\$\{encodeURIComponent\(workoutId\)\}\/check-in/);
+  assert.match(
+    workout,
+    /checkIn\s*:\s*\{\s*difficulty\s*:\s*values\s*\[\s*0\s*,?\s*\]\s*,\s*energy\s*:\s*values\s*\[\s*1\s*,?\s*\]\s*,\s*comfort\s*:\s*values\s*\[\s*2\s*,?\s*\]\s*,\s*enjoyment\s*:\s*values\s*\[\s*3\s*,?\s*\]\s*[;,]?\s*\}/,
+  );
+  assert.match(workoutHtml, /No change happens unless you approve it/);
+  assert.match(workoutHtml, /id="reviewAdaptation" href="\/discover\.html#planWorkspace"/);
+  assert.doesNotMatch(workoutHtml, /id\s*=\s*"(?:acceptAdaptation|dismissAdaptation)"/);
+  assert.match(
+    read("public/scripts/discover.js"),
+    /decision\s*:\s*"accept"\s*,\s*expectedPlanUpdatedAt\s*:\s*suggestion\s*\.expectedPlanUpdatedAt/,
+  );
+  assert.match(workoutCss, /\.exercise-guide\s*>\s*summary\s*\{\s*[^}]*min-height\s*:\s*46px/);
+  assert.match(workoutCss, /\.check-in-grid\s*\{\s*display\s*:\s*grid/);
 });
 
-test("planner keeps evidence collapsed and shows plan guidance only to active Strata+ accounts",()=>{
-  const plannerHtml=read("public/pages/planner.html"),planner=read("public/scripts/planner.js"),plannerRender=read("public/scripts/planner-render.js");
-  assert.match(plannerHtml,/<details class="plan-insights" id="planInsights">/);
-  assert.doesNotMatch(plannerHtml,/<\s*details\s*class\s*=\s*"plan-insights"\s*id\s*=\s*"planInsights"[^>]*\sopen(?:\s|>)/);
-  assert.match(planner,/plusActive\s*=\s*STATE\s*\.hasConfirmedPlusAccess\s*\(\s*state\s*,?\s*\)/);
-  assert.match(planner,/else\s*if\s*\(\s*plusActive\s*&&\s*!\s*total\s*,?\s*\)\s*readiness\s*=/);
-  assert.match(planner,/\$\s*\{\s*readiness\s*\?\s*`\s*<\s*section\s*class\s*=\s*"week-readiness/);
-  assert.match(planner,/href\s*:\s*`\/workout\s*\.html\s*\?\s*day\s*=/);
-  assert.match(plannerRender,/Free device plan/);
-  assert.match(plannerRender,/Free synced plan/);
+test("planner keeps evidence collapsed and shows plan guidance only to active Strata+ accounts", () => {
+  const plannerHtml = read("public/pages/planner.html"),
+    planner = read("public/scripts/planner.js"),
+    plannerRender = read("public/scripts/planner-render.js");
+  assert.match(plannerHtml, /<details class="plan-insights" id="planInsights">/);
+  assert.doesNotMatch(
+    plannerHtml,
+    /<\s*details\s*class\s*=\s*"plan-insights"\s*id\s*=\s*"planInsights"[^>]*\sopen(?:\s|>)/,
+  );
+  assert.match(planner, /plusActive\s*=\s*STATE\s*\.hasConfirmedPlusAccess\s*\(\s*state\s*,?\s*\)/);
+  assert.match(planner, /else\s*if\s*\(\s*plusActive\s*&&\s*!\s*total\s*,?\s*\)\s*readiness\s*=/);
+  assert.match(planner, /\$\s*\{\s*readiness\s*\?\s*`\s*<\s*section\s*class\s*=\s*"week-readiness/);
+  assert.match(planner, /href\s*:\s*`\/workout\s*\.html\s*\?\s*day\s*=/);
+  assert.match(plannerRender, /Free device plan/);
+  assert.match(plannerRender, /Free synced plan/);
 });
 
-test("fixed mobile navigation reserves scroll space for keyboard focus",()=>{
-  const css=read("public/styles/experience.css");
-  assert.match(css,/@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*\s*\{\s*\s*html\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*76px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}\s*\s*[;,]?\s*\}/);
+test("fixed mobile navigation reserves scroll space for keyboard focus", () => {
+  const css = read("public/styles/experience.css");
+  assert.match(
+    css,
+    /@media\s*\(\s*max-width\s*:\s*800px\s*,?\s*\)\s*\s*\{\s*\s*html\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*76px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}\s*\s*[;,]?\s*\}/,
+  );
 });
 
-test("Strata AI keeps its starters and keyboard focus clear of the sticky composer",()=>{
-  const css=read("public/styles/ai.css");
-  assert.match(read("public/pages/ai.html"),/<body class="[^"]*\bai-page\b/);
-  assert.match(css,/\.ai-composer\s*\{\s*position\s*:\s*sticky\s*;\s*[^}]*background\s*:\s*#151713\s*;/,"The conversation must not show through the sticky composer");
-  assert.match(css,/\.ai-chat\s*:\s*has\s*\(\s*>\s*\.ai-empty\s*:\s*not\s*\(\s*\[\s*hidden\s*,?\s*\]\s*,?\s*\)\s*,?\s*\)\s*\.ai-composer\s*\{\s*position\s*:\s*static\s*;\s*[;,]?\s*\}/,"Before the first message the composer follows the starters");
-  assert.match(css,/html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*190px\s*;\s*[;,]?\s*\}/);
-  assert.match(css,/@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[^@]*html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*272px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}/);
-  assert.match(css,/@media\s*\(\s*max-width\s*:\s*620px\s*,?\s*\)\s*\{\s*[^@]*html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*220px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}/);
+test("Strata AI keeps its starters and keyboard focus clear of the sticky composer", () => {
+  const css = read("public/styles/ai.css");
+  assert.match(read("public/pages/ai.html"), /<body class="[^"]*\bai-page\b/);
+  assert.match(
+    css,
+    /\.ai-composer\s*\{\s*position\s*:\s*sticky\s*;\s*[^}]*background\s*:\s*#151713\s*;/,
+    "The conversation must not show through the sticky composer",
+  );
+  assert.match(
+    css,
+    /\.ai-chat\s*:\s*has\s*\(\s*>\s*\.ai-empty\s*:\s*not\s*\(\s*\[\s*hidden\s*,?\s*\]\s*,?\s*\)\s*,?\s*\)\s*\.ai-composer\s*\{\s*position\s*:\s*static\s*;\s*[;,]?\s*\}/,
+    "Before the first message the composer follows the starters",
+  );
+  assert.match(
+    css,
+    /html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*190px\s*;\s*[;,]?\s*\}/,
+  );
+  assert.match(
+    css,
+    /@media\s*\(\s*max-width\s*:\s*760px\s*,?\s*\)\s*\{\s*[^@]*html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*272px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}/,
+  );
+  assert.match(
+    css,
+    /@media\s*\(\s*max-width\s*:\s*620px\s*,?\s*\)\s*\{\s*[^@]*html\s*:\s*has\s*\(\s*>\s*body\s*\.ai-page\s*,?\s*\)\s*\{\s*scroll-padding-bottom\s*:\s*calc\s*\(\s*220px\s*\+\s*env\s*\(\s*safe-area-inset-bottom\s*,?\s*\)\s*,?\s*\)\s*;\s*[;,]?\s*\}/,
+  );
 });
 
-test("every page keeps a top-level heading in each state",()=>{
-  for(const name of fs.readdirSync(path.join(PROJECT_ROOT,"public","pages")).filter((file)=>file.endsWith(".html"))){
-    assert.match(read(`public/pages/${name}`),/<h1[\s>]/,`${name} needs a top-level heading`);
+test("every page keeps a top-level heading in each state", () => {
+  for (const name of fs
+    .readdirSync(path.join(PROJECT_ROOT, "public", "pages"))
+    .filter((file) => file.endsWith(".html"))) {
+    assert.match(read(`public/pages/${name}`), /<h1[\s>]/, `${name} needs a top-level heading`);
   }
-  assert.match(read("public/pages/account.html"),/<section class="signed-in-card" id="signedInCard"[^>]*>\s*<h1 class="sr-only">Your STRATA account<\/h1>/,"Signing in hides the account intro, so the signed-in view needs its own heading");
-  assert.match(read("public/pages/discover.html"),/<h1 class="sr-only" id="featureHubTitle">Strata\+ workspace<\/h1>/);
-  const workoutCss=read("public/styles/workout.css");
-  assert.doesNotMatch(workoutCss,/\.workout-page\s*\.has-workout-access\s*\.hero\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/,"The phone workout hero holds the page heading and the skip-link target");
-  assert.match(workoutCss,/\.workout-page\s*\.has-workout-access\s*\.hero\s*\{\s*position\s*:\s*absolute\s*;\s*width\s*:\s*1px\s*;\s*height\s*:\s*1px\s*;\s*[^}]*clip-path\s*:\s*inset\s*\(\s*50%\s*,?\s*\)/);
+  assert.match(
+    read("public/pages/account.html"),
+    /<section class="signed-in-card" id="signedInCard"[^>]*>\s*<h1 class="sr-only">Your STRATA account<\/h1>/,
+    "Signing in hides the account intro, so the signed-in view needs its own heading",
+  );
+  assert.match(
+    read("public/pages/discover.html"),
+    /<h1 class="sr-only" id="featureHubTitle">Strata\+ workspace<\/h1>/,
+  );
+  const workoutCss = read("public/styles/workout.css");
+  assert.doesNotMatch(
+    workoutCss,
+    /\.workout-page\s*\.has-workout-access\s*\.hero\s*\{\s*display\s*:\s*none\s*[;,]?\s*\}/,
+    "The phone workout hero holds the page heading and the skip-link target",
+  );
+  assert.match(
+    workoutCss,
+    /\.workout-page\s*\.has-workout-access\s*\.hero\s*\{\s*position\s*:\s*absolute\s*;\s*width\s*:\s*1px\s*;\s*height\s*:\s*1px\s*;\s*[^}]*clip-path\s*:\s*inset\s*\(\s*50%\s*,?\s*\)/,
+  );
 });
 
-test("global motion progress tracks scroll and stays hidden for reduced motion and print",()=>{
-  const motion=read("public/scripts/motion.js"),listeners={},frames=new Map();
-  const rootClasses=new Set(),preference={matches:false,listener:null,addEventListener(type,handler){if(type==="change")this.listener=handler;}};
-  let progress=null,nextFrame=0,disconnects=0;
-  class FakeIntersectionObserver{
-    disconnect(){disconnects+=1;}
-    observe(){}
-    unobserve(){}
-  }
-  const documentElement={
-    scrollHeight:2200,
-    classList:{add:(name)=>rootClasses.add(name),remove:(name)=>rootClasses.delete(name),contains:(name)=>rootClasses.has(name)}
-  };
-  const document={
-    readyState:"complete",documentElement,
-    body:{append(node){progress=node;}},
-    querySelectorAll(){return[];},
-    createElement(){
-      return{className:"",dataset:{},style:{},attributes:{},setAttribute(name,value){this.attributes[name]=String(value);},getAttribute(name){return this.attributes[name]??null;}};
+test("global motion progress tracks scroll and stays hidden for reduced motion and print", () => {
+  const motion = read("public/scripts/motion.js"),
+    listeners = {},
+    frames = new Map();
+  const rootClasses = new Set(),
+    preference = {
+      matches: false,
+      listener: null,
+      addEventListener(type, handler) {
+        if (type === "change") this.listener = handler;
+      },
+    };
+  let progress = null,
+    nextFrame = 0,
+    disconnects = 0;
+  class FakeIntersectionObserver {
+    disconnect() {
+      disconnects += 1;
     }
+    observe() {}
+    unobserve() {}
+  }
+  const documentElement = {
+    scrollHeight: 2200,
+    classList: {
+      add: (name) => rootClasses.add(name),
+      remove: (name) => rootClasses.delete(name),
+      contains: (name) => rootClasses.has(name),
+    },
   };
-  const window={
-    innerHeight:1000,scrollY:0,IntersectionObserver:FakeIntersectionObserver,
-    matchMedia:()=>preference,
-    addEventListener(type,handler){(listeners[type]||=[]).push(handler);}
+  const document = {
+    readyState: "complete",
+    documentElement,
+    body: {
+      append(node) {
+        progress = node;
+      },
+    },
+    querySelectorAll() {
+      return [];
+    },
+    createElement() {
+      return {
+        className: "",
+        dataset: {},
+        style: {},
+        attributes: {},
+        setAttribute(name, value) {
+          this.attributes[name] = String(value);
+        },
+        getAttribute(name) {
+          return this.attributes[name] ?? null;
+        },
+      };
+    },
   };
-  const context={
-    window,document,IntersectionObserver:FakeIntersectionObserver,
-    requestAnimationFrame(handler){const id=++nextFrame;frames.set(id,handler);return id;},
-    cancelAnimationFrame(id){frames.delete(id);}
+  const window = {
+    innerHeight: 1000,
+    scrollY: 0,
+    IntersectionObserver: FakeIntersectionObserver,
+    matchMedia: () => preference,
+    addEventListener(type, handler) {
+      (listeners[type] ||= []).push(handler);
+    },
+  };
+  const context = {
+    window,
+    document,
+    IntersectionObserver: FakeIntersectionObserver,
+    requestAnimationFrame(handler) {
+      const id = ++nextFrame;
+      frames.set(id, handler);
+      return id;
+    },
+    cancelAnimationFrame(id) {
+      frames.delete(id);
+    },
   };
   vm.createContext(context);
-  vm.runInContext(motion,context,{filename:"motion.js"});
+  vm.runInContext(motion, context, { filename: "motion.js" });
 
-  assert.ok(progress,"motion.js must append the progress element");
-  assert.equal(progress.className,"strata-scroll-progress");
-  assert.equal(progress.getAttribute("aria-hidden"),"true");
-  assert.equal(progress.dataset.active,"true");
-  assert.equal(progress.style.transform,"scaleX(0)");
-  assert.equal(rootClasses.has("motion-ready"),true);
+  assert.ok(progress, "motion.js must append the progress element");
+  assert.equal(progress.className, "strata-scroll-progress");
+  assert.equal(progress.getAttribute("aria-hidden"), "true");
+  assert.equal(progress.dataset.active, "true");
+  assert.equal(progress.style.transform, "scaleX(0)");
+  assert.equal(rootClasses.has("motion-ready"), true);
 
-  window.scrollY=600;
-  for(const handler of listeners.scroll||[])handler();
-  assert.equal(frames.size,1,"scroll updates should be coalesced into one frame");
-  const [[frameId,frame]]=frames.entries();frames.delete(frameId);frame();
-  assert.equal(progress.style.transform,"scaleX(0.5)");
+  window.scrollY = 600;
+  for (const handler of listeners.scroll || []) handler();
+  assert.equal(frames.size, 1, "scroll updates should be coalesced into one frame");
+  const [[frameId, frame]] = frames.entries();
+  frames.delete(frameId);
+  frame();
+  assert.equal(progress.style.transform, "scaleX(0.5)");
 
-  documentElement.scrollHeight=900;
-  for(const handler of listeners.resize||[])handler();
-  const [[resizeFrameId,resizeFrame]]=frames.entries();frames.delete(resizeFrameId);resizeFrame();
-  assert.equal(progress.dataset.active,"false");
-  assert.equal(progress.style.transform,"scaleX(0)");
+  documentElement.scrollHeight = 900;
+  for (const handler of listeners.resize || []) handler();
+  const [[resizeFrameId, resizeFrame]] = frames.entries();
+  frames.delete(resizeFrameId);
+  resizeFrame();
+  assert.equal(progress.dataset.active, "false");
+  assert.equal(progress.style.transform, "scaleX(0)");
 
-  preference.matches=true;preference.listener();
-  assert.equal(rootClasses.has("motion-ready"),false,"reduced motion must disable reveal animation state");
-  assert.ok(disconnects>0,"reduced motion must disconnect reveal observers");
+  preference.matches = true;
+  preference.listener();
+  assert.equal(
+    rootClasses.has("motion-ready"),
+    false,
+    "reduced motion must disable reveal animation state",
+  );
+  assert.ok(disconnects > 0, "reduced motion must disconnect reveal observers");
 
-  for(const file of ["public/styles/experience.css","public/styles/workout.css"]){
-    const css=read(file);
-    assert.match(css,/@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.strata-scroll-progress\s*\{[^}]*display:\s*none/i,`${file} reduced-motion progress`);
-    assert.match(css,/@media\s+print\s*\{[\s\S]*?\.strata-scroll-progress\s*\{[^}]*display:\s*none/i,`${file} print progress`);
+  for (const file of ["public/styles/experience.css", "public/styles/workout.css"]) {
+    const css = read(file);
+    assert.match(
+      css,
+      /@media\s*\(prefers-reduced-motion:\s*reduce\)[\s\S]*?\.strata-scroll-progress\s*\{[^}]*display:\s*none/i,
+      `${file} reduced-motion progress`,
+    );
+    assert.match(
+      css,
+      /@media\s+print\s*\{[\s\S]*?\.strata-scroll-progress\s*\{[^}]*display:\s*none/i,
+      `${file} print progress`,
+    );
   }
 });

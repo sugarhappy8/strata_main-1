@@ -1,80 +1,843 @@
 /* global module */
-(function(root,factory){
-  const api=factory();
-  if(typeof module==="object"&&module.exports)module.exports=api;
-  root.StrataDiscoverCoaching=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  root.StrataDiscoverCoaching = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  const value=(node)=>String(node?.value||"").trim();
-  const number=(node)=>value(node)===""?null:Number(value(node));
-  const integer=(node)=>value(node)===""?null:Number(value(node));
-  const localDate=(date=new Date())=>`${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
-  const goalToApi=(goal)=>({deficit:"fat_loss",maintenance:"maintenance",surplus:"muscle_gain"}[goal]||goal);
-  const goalFromApi=(goal)=>({fat_loss:"deficit",maintenance:"maintenance",muscle_gain:"surplus"}[goal]||goal);
-  const patternToApi=(pattern)=>({steady:"steady",training_day:"zigzag",flexible_day:"flexible_day"}[pattern]||pattern);
-  const patternFromApi=(pattern)=>({steady:"steady",zigzag:"training_day",flexible_day:"flexible_day"}[pattern]||pattern);
+  const value = (node) => String(node?.value || "").trim();
+  const number = (node) => (value(node) === "" ? null : Number(value(node)));
+  const integer = (node) => (value(node) === "" ? null : Number(value(node)));
+  const localDate = (date = new Date()) =>
+    `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  const goalToApi = (goal) =>
+    ({ deficit: "fat_loss", maintenance: "maintenance", surplus: "muscle_gain" })[goal] || goal;
+  const goalFromApi = (goal) =>
+    ({ fat_loss: "deficit", maintenance: "maintenance", muscle_gain: "surplus" })[goal] || goal;
+  const patternToApi = (pattern) =>
+    ({ steady: "steady", training_day: "zigzag", flexible_day: "flexible_day" })[pattern] ||
+    pattern;
+  const patternFromApi = (pattern) =>
+    ({ steady: "steady", zigzag: "training_day", flexible_day: "flexible_day" })[pattern] ||
+    pattern;
 
-  function createController({document,element,api,state,ui,diaryUi,meals,assertAccountResponse,renderFactory,saveRetryMessage,showToast,onAccountError,navigate=()=>{},trendFactory=globalThis.StrataDiscoverCoachingTrend?.createTrend}){
+  function createController({
+    document,
+    element,
+    api,
+    state,
+    ui,
+    diaryUi,
+    meals,
+    assertAccountResponse,
+    renderFactory,
+    saveRetryMessage,
+    showToast,
+    onAccountError,
+    navigate = () => {},
+    trendFactory = globalThis.StrataDiscoverCoachingTrend?.createTrend,
+  }) {
     // Every render of the diary form refreshes the macro total so a hint never describes another day's numbers.
-    const el=element,baseRenderer=renderFactory({element:el,ui,diaryUi}),trend=trendFactory?trendFactory({element:el}):null,insights=(profile,week,logs)=>{macroHint();trend?.render({profile,week,logs});};
-    const renderer={...baseRenderer,renderDashboard:(...args)=>{const result=baseRenderer.renderDashboard(...args);insights(args[0],args[1],args[2]);return result;},renderLog:(...args)=>{baseRenderer.renderLog(...args);insights(args[0],args[1],args[2]);}};
-    const data={profile:null,week:null,logs:[],loadedUserId:"",loading:false,bound:false,setupInitialized:false,dirty:false,generation:0,returnFeature:"nutrition"};
-    const requestContext=()=>({userId:String(state.user?.id||""),csrfToken:String(state.csrfToken||""),generation:data.generation}),current=(expected)=>expected.userId===String(state.user?.id||"")&&expected.csrfToken===String(state.csrfToken||"")&&expected.generation===data.generation;
-    const checked=(response,expected)=>{if(!current(expected))throw Object.assign(new Error("This coaching response belongs to an earlier view or account."),{stale:true});return assertAccountResponse(response,{userId:state.user?.id,csrfToken:state.csrfToken},expected);};
-    const escapeHtml=(input)=>String(input??"").replace(/[&<>'"]/g,(character)=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[character]));
-    const exerciseById=(id)=>state.exercises.find((exercise)=>exercise.id===id);
-    const exerciseIdFor=(name)=>{const text=String(name||"").trim().toLowerCase();return state.exercises.find((exercise)=>exercise.id.toLowerCase()===text||exercise.name.toLowerCase()===text)?.id||"";};
-    function equipmentSummary(){const equipment=state.preferences?.equipment||[];el("coachingEquipmentSummary").textContent=equipment.length?`${equipment.slice(0,4).join(", ")}${equipment.length>4?` +${equipment.length-4} more`:""}. Saved movement constraints are also respected.`:"Add available equipment in Strata+ Preferences before building a coaching week.";}
-    function populateExerciseOptions(){el("coachingExerciseOptions").innerHTML=state.exercises.map((exercise)=>`<option value="${escapeHtml(exercise.name)}">${escapeHtml(exercise.group)} · ${escapeHtml(exercise.equipment)}</option>`).join("");}
-    function capabilityRow(entry={}){
-      const id=String(entry.exerciseId||""),name=exerciseById(id)?.name||id,unit=entry.unit||data.profile?.preferredLoadUnit||"kg",load=entry.maxWeightKg==null?"":unit==="lb"?ui.kilogramsToPounds(entry.maxWeightKg):entry.maxWeightKg;
-      const row=document.createElement("div");row.className="coaching-capability-row";row.innerHTML=`<label class="coaching-capability-exercise"><span>Exercise</span><input data-capability-exercise list="coachingExerciseOptions" value="${escapeHtml(name)}" placeholder="Search an exercise" aria-label="Known exercise" autocomplete="off"/></label><label class="coaching-capability-sets"><span>Sets</span><input data-capability-sets type="number" min="1" max="20" step="1" value="${entry.maxSets??""}" placeholder="Sets" aria-label="Maximum sets" inputmode="numeric"/></label><label class="coaching-capability-reps"><span>Reps</span><input data-capability-reps type="number" min="1" max="100" step="1" value="${entry.maxReps??""}" placeholder="Reps" aria-label="Maximum repetitions" inputmode="numeric"/></label><label class="coaching-capability-weight"><span>Weight</span><input data-capability-weight type="number" min="0" max="2200" step="0.1" value="${load}" placeholder="Optional" aria-label="Maximum external weight" inputmode="decimal"/></label><label class="coaching-capability-unit"><span>Unit</span><select data-capability-unit aria-label="Weight unit"><option value="kg"${unit==="kg"?" selected":""}>kg</option><option value="lb"${unit==="lb"?" selected":""}>lb</option></select></label><button data-remove-capability type="button" aria-label="Remove known exercise">×</button>`;return row;
+    const el = element,
+      baseRenderer = renderFactory({ element: el, ui, diaryUi }),
+      trend = trendFactory ? trendFactory({ element: el }) : null,
+      insights = (profile, week, logs) => {
+        macroHint();
+        trend?.render({ profile, week, logs });
+      };
+    const renderer = {
+      ...baseRenderer,
+      renderDashboard: (...args) => {
+        const result = baseRenderer.renderDashboard(...args);
+        insights(args[0], args[1], args[2]);
+        return result;
+      },
+      renderLog: (...args) => {
+        baseRenderer.renderLog(...args);
+        insights(args[0], args[1], args[2]);
+      },
+    };
+    const data = {
+      profile: null,
+      week: null,
+      logs: [],
+      loadedUserId: "",
+      loading: false,
+      bound: false,
+      setupInitialized: false,
+      dirty: false,
+      generation: 0,
+      returnFeature: "nutrition",
+    };
+    const requestContext = () => ({
+        userId: String(state.user?.id || ""),
+        csrfToken: String(state.csrfToken || ""),
+        generation: data.generation,
+      }),
+      current = (expected) =>
+        expected.userId === String(state.user?.id || "") &&
+        expected.csrfToken === String(state.csrfToken || "") &&
+        expected.generation === data.generation;
+    const checked = (response, expected) => {
+      if (!current(expected))
+        throw Object.assign(
+          new Error("This coaching response belongs to an earlier view or account."),
+          { stale: true },
+        );
+      return assertAccountResponse(
+        response,
+        { userId: state.user?.id, csrfToken: state.csrfToken },
+        expected,
+      );
+    };
+    const escapeHtml = (input) =>
+      String(input ?? "").replace(
+        /[&<>'"]/g,
+        (character) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[character],
+      );
+    const exerciseById = (id) => state.exercises.find((exercise) => exercise.id === id);
+    const exerciseIdFor = (name) => {
+      const text = String(name || "")
+        .trim()
+        .toLowerCase();
+      return (
+        state.exercises.find(
+          (exercise) => exercise.id.toLowerCase() === text || exercise.name.toLowerCase() === text,
+        )?.id || ""
+      );
+    };
+    function equipmentSummary() {
+      const equipment = state.preferences?.equipment || [];
+      el("coachingEquipmentSummary").textContent = equipment.length
+        ? `${equipment.slice(0, 4).join(", ")}${equipment.length > 4 ? ` +${equipment.length - 4} more` : ""}. Saved movement constraints are also respected.`
+        : "Add available equipment in Strata+ Preferences before building a coaching week.";
     }
-    function addCapability(entry={},focus=false){const row=capabilityRow(entry);el("coachingCapabilityRows").append(row);if(focus)row.querySelector("[data-capability-exercise]")?.focus();}
-    function updateUnitBounds(kind,unit){const input=el(kind==="height"?"coachingHeight":"coachingWeight");if(!input)return;if(kind==="height"){input.min=unit==="in"?"47.24":"120";input.max=unit==="in"?"90.55":"230";input.step=unit==="in"?"0.01":"0.1";}else{input.min=unit==="lb"?"77.2":"35";input.max=unit==="lb"?"661.4":"300";}input.dataset.unit=unit;}
-    function convertUnit(kind,next){const input=el(kind==="height"?"coachingHeight":"coachingWeight"),previous=input.dataset.unit||next,current=number(input);if(current!=null&&previous!==next){const converted=kind==="height"?(next==="in"?ui.centimetersToInches(current):ui.inchesToCentimeters(current)):(next==="lb"?ui.kilogramsToPounds(current):ui.dailyWeightToKilograms(current,"imperial"));input.value=converted??"";}updateUnitBounds(kind,next);}
-    function updateConditionalFields(){const flexible=document.querySelector('input[name="caloriePattern"]:checked')?.value==="flexible_day",macrosEnabled=el("coachingMacrosEnabled").checked,hasOtherActivity=Number(value(el("coachingAdditionalActivityMinutes")))>0;el("coachingFlexibleDay").disabled=!flexible;el("coachingSex").required=true;el("coachingAdditionalActivityIntensity").disabled=!hasOtherActivity;el("coachingAdditionalActivityIntensity").required=hasOtherActivity;el("coachingMacroPreferenceWrap").hidden=!macrosEnabled;el("coachingMacroPreference").disabled=!macrosEnabled;el("coachingMacrosEnabled").setAttribute("aria-expanded",String(macrosEnabled));}
-    function setDays(days){const chosen=new Set(days);document.querySelectorAll('input[name="trainingDays"]').forEach((input)=>{input.checked=chosen.has(input.value);});}
-    function defaultDays(count){const choices={1:["Monday"],2:["Monday","Thursday"],3:["Monday","Wednesday","Friday"],4:["Monday","Tuesday","Thursday","Saturday"],5:["Monday","Tuesday","Wednesday","Friday","Saturday"],6:["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]};return choices[count]||choices[3];}
-    function fillProfile(profile){
-      data.profile=profile||null;const imperial=profile?.measurementSystem==="imperial",heightUnit=imperial?"in":"cm",weightUnit=imperial?"lb":"kg",energyDraft=ui.profileMetricToDraft(profile,imperial?"imperial":"metric");
-      el("coachingAge").value=profile?.age??"";el("coachingHeightUnit").value=heightUnit;el("coachingWeightUnit").value=weightUnit;updateUnitBounds("height",heightUnit);updateUnitBounds("weight",weightUnit);
-      el("coachingHeight").value=profile?imperial?ui.centimetersToInches(profile.heightCm):profile.heightCm:"";el("coachingWeight").value=profile?imperial?ui.kilogramsToPounds(profile.weightKg):profile.weightKg:"";
-      el("coachingBodyFat").value=profile?.bodyFatPercent??"";el("coachingSex").value=profile?.sexForEquation||"";el("coachingDailyMovement").value=energyDraft.dailyMovement;el("coachingAdditionalActivityMinutes").value=String(energyDraft.additionalActivityMinutesPerWeek);el("coachingAdditionalActivityIntensity").value=energyDraft.additionalActivityIntensity;el("coachingGoal").value=goalFromApi(profile?.goal||"maintenance");el("coachingGoalPace").value=profile?.goalPace||"gentle";
-      el("coachingTrainingGoal").value=profile?.trainingGoal||"balanced";el("coachingExperience").value=profile?.experience||String(state.preferences?.level||"Intermediate").toLowerCase();const count=profile?.sessionsPerWeek||Math.min(6,Math.max(1,Number(state.preferences?.days)||3));el("coachingFrequency").value=String(count);el("coachingDuration").value=String(profile?.sessionMinutes||45);setDays(profile?.workoutDays||defaultDays(count));
-      el("coachingCapabilityRows").innerHTML="";(profile?.usualExercises||[]).forEach((entry)=>addCapability({...entry,unit:profile.preferredLoadUnit}));meals.fillPreferences(profile);
-      const pattern=patternFromApi(profile?.caloriePattern||"zigzag");document.querySelectorAll('input[name="caloriePattern"]').forEach((input)=>{input.checked=input.value===pattern;});el("coachingFlexibleDay").value=profile?.flexibleDay||"Friday";el("coachingMacrosEnabled").checked=Boolean(profile?.macroPreference);el("coachingMacroPreference").value=profile?.macroPreference==="higher_protein"?"higher_protein":"balanced";const needsActivityReview=Boolean(profile)&&Number(profile.version)<4,reviewNotice=el("coachingActivityReviewNotice");reviewNotice.hidden=!needsActivityReview;reviewNotice.textContent=needsActivityReview?"Your saved profile, week, and diary are unchanged. Review Normal day outside planned exercise and Separate planned activity each week to use the more individualized estimate, then save personal setup. Choose Discard edits to return to your saved dashboard without changing anything.":"";el("coachingDiscardProfile").hidden=!profile;el("coachingSaveStatus").textContent=needsActivityReview?"Two new activity answers are required before STRATA changes your saved calculation.":profile?"Saved profile loaded. Save personal setup to update suggestions and targets.":"No changes until you save personal setup.";validation([]);updateConditionalFields();equipmentSummary();data.setupInitialized=true;data.dirty=false;
+    function populateExerciseOptions() {
+      el("coachingExerciseOptions").innerHTML = state.exercises
+        .map(
+          (exercise) =>
+            `<option value="${escapeHtml(exercise.name)}">${escapeHtml(exercise.group)} · ${escapeHtml(exercise.equipment)}</option>`,
+        )
+        .join("");
     }
-    function profileInput(){
-      const rows=[...el("coachingCapabilityRows").children].filter((row)=>value(row.querySelector("[data-capability-exercise]"))),performanceMaxes=rows.map((row)=>({exerciseId:exerciseIdFor(value(row.querySelector("[data-capability-exercise]"))),sets:value(row.querySelector("[data-capability-sets]")),reps:value(row.querySelector("[data-capability-reps]")),load:value(row.querySelector("[data-capability-weight]")),unit:value(row.querySelector("[data-capability-unit]"))})),equipment=Array.isArray(state.preferences?.equipment)?state.preferences.equipment:[],limitations=Array.isArray(state.preferences?.limitations)?state.preferences.limitations:[];
-      const macrosEnabled=el("coachingMacrosEnabled").checked,result=ui.profileDraftToMetric({height:value(el("coachingHeight")),heightUnit:value(el("coachingHeightUnit")),weight:value(el("coachingWeight")),weightUnit:value(el("coachingWeightUnit")),age:value(el("coachingAge")),bodyFatPercent:value(el("coachingBodyFat")),sexForEquation:value(el("coachingSex")),goal:value(el("coachingGoal")),goalPace:value(el("coachingGoalPace")),dailyMovement:value(el("coachingDailyMovement")),additionalActivityMinutesPerWeek:value(el("coachingAdditionalActivityMinutes")),additionalActivityIntensity:value(el("coachingAdditionalActivityIntensity")),experience:value(el("coachingExperience")),trainingGoal:value(el("coachingTrainingGoal")),frequency:value(el("coachingFrequency")),sessionMinutes:value(el("coachingDuration")),trainingDays:[...document.querySelectorAll('input[name="trainingDays"]:checked')].map((input)=>input.value),equipment,limitations,performanceMaxes,caloriePattern:document.querySelector('input[name="caloriePattern"]:checked')?.value||"training_day",flexibleDay:value(el("coachingFlexibleDay")),macrosEnabled,macroPreference:macrosEnabled?value(el("coachingMacroPreference")):null,timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone||"UTC"});
-      const fixed={age:el("coachingAge"),height:el("coachingHeight"),weight:el("coachingWeight"),bodyFatPercent:el("coachingBodyFat"),sexForEquation:el("coachingSex"),dailyMovement:el("coachingDailyMovement"),additionalActivityMinutesPerWeek:el("coachingAdditionalActivityMinutes"),additionalActivityIntensity:el("coachingAdditionalActivityIntensity"),goal:el("coachingGoal"),experience:el("coachingExperience"),trainingGoal:el("coachingTrainingGoal"),frequency:el("coachingFrequency"),trainingDays:el("coachingFrequency"),sessionMinutes:el("coachingDuration"),flexibleDay:el("coachingFlexibleDay")},nodeFor=(field)=>{const match=field.match(/^performanceMaxes\.(\d+)\.(.+)$/),row=match?rows[Number(match[1])]:null;if(!row)return fixed[field]||null;return row.querySelector(match[2]==="exerciseId"?"[data-capability-exercise]":match[2]==="maxSets"?"[data-capability-sets]":match[2]==="maxReps"?"[data-capability-reps]":"[data-capability-weight]");};
-      const mealOutput=meals.profileInput(),errors=[...result.errors.map((error)=>({node:nodeFor(error.field),message:error.message})),...mealOutput.errors];if(!equipment.length)errors.push({node:el("coachingEquipmentSummary"),message:"Select at least one available equipment type in Strata+ Preferences."});if(rows.length>40)errors.push({node:el("coachingCapabilityRows"),message:"Keep known exercises to 40 or fewer."});return{errors,profile:{...result.payload,version:4,mealPreferences:mealOutput.mealPreferences}};
+    function capabilityRow(entry = {}) {
+      const id = String(entry.exerciseId || ""),
+        name = exerciseById(id)?.name || id,
+        unit = entry.unit || data.profile?.preferredLoadUnit || "kg",
+        load =
+          entry.maxWeightKg == null
+            ? ""
+            : unit === "lb"
+              ? ui.kilogramsToPounds(entry.maxWeightKg)
+              : entry.maxWeightKg;
+      const row = document.createElement("div");
+      row.className = "coaching-capability-row";
+      row.innerHTML = `<label class="coaching-capability-exercise"><span>Exercise</span><input data-capability-exercise list="coachingExerciseOptions" value="${escapeHtml(name)}" placeholder="Search an exercise" aria-label="Known exercise" autocomplete="off"/></label><label class="coaching-capability-sets"><span>Sets</span><input data-capability-sets type="number" min="1" max="20" step="1" value="${entry.maxSets ?? ""}" placeholder="Sets" aria-label="Maximum sets" inputmode="numeric"/></label><label class="coaching-capability-reps"><span>Reps</span><input data-capability-reps type="number" min="1" max="100" step="1" value="${entry.maxReps ?? ""}" placeholder="Reps" aria-label="Maximum repetitions" inputmode="numeric"/></label><label class="coaching-capability-weight"><span>Weight</span><input data-capability-weight type="number" min="0" max="2200" step="0.1" value="${load}" placeholder="Optional" aria-label="Maximum external weight" inputmode="decimal"/></label><label class="coaching-capability-unit"><span>Unit</span><select data-capability-unit aria-label="Weight unit"><option value="kg"${unit === "kg" ? " selected" : ""}>kg</option><option value="lb"${unit === "lb" ? " selected" : ""}>lb</option></select></label><button data-remove-capability type="button" aria-label="Remove known exercise">×</button>`;
+      return row;
     }
-    function validation(errors){const box=el("coachingValidation");document.querySelectorAll('#coachingProfileForm [aria-invalid="true"]').forEach((node)=>node.removeAttribute("aria-invalid"));document.querySelectorAll('#coachingProfileForm [aria-describedby~="coachingValidation"]').forEach((node)=>{const ids=(node.getAttribute("aria-describedby")||"").split(/\s+/).filter((id)=>id&&id!=="coachingValidation");if(ids.length)node.setAttribute("aria-describedby",ids.join(" "));else node.removeAttribute("aria-describedby");});if(!errors.length){box.hidden=true;box.textContent="";return false;}box.textContent=errors.map(({message})=>message).filter((message,index,list)=>list.indexOf(message)===index).join(" ");box.hidden=false;for(const {node} of errors){if(!node?.setAttribute)continue;node.setAttribute("aria-invalid","true");const ids=new Set((node.getAttribute("aria-describedby")||"").split(/\s+/).filter(Boolean));ids.add("coachingValidation");node.setAttribute("aria-describedby",[...ids].join(" "));}errors[0].node?.focus?.();return true;}
-    async function load({force=false,focusResult=false}={}){
-      const userId=String(state.user?.id||""),expected=requestContext();if(!userId)return;if(data.loading)return;populateExerciseOptions();if(!force&&data.loadedUserId===userId){if(state.activeFeature==="coaching"||data.dirty||!data.week&&data.setupInitialized||data.profile&&Number(data.profile.version)<4){equipmentSummary();renderer.show("setup");return;}if(data.week){renderer.show("dashboard");return;}}data.loading=true;renderer.show("loading");
-      try{const profileResult=checked(await api("/api/coaching/profile"),expected);if(!profileResult.profile){data.loadedUserId=userId;data.profile=null;data.week=null;data.logs=[];fillProfile(null);renderer.show("setup");if(focusResult)el("coachingSetupTitle").focus();return;}const result=checked(await api("/api/coaching/week"),expected);data.loadedUserId=userId;data.profile=profileResult.profile;data.week=result.week;data.logs=Array.isArray(result.logs)?result.logs:[];fillProfile(data.profile);const date=renderer.renderDashboard(data.profile,data.week,data.logs,localDate());meals.sync({profile:data.profile,week:data.week,logs:data.logs,date});if(state.activeFeature==="coaching"||Number(data.profile.version)<4){renderer.show("setup");if(focusResult)el("coachingSetupTitle").focus();}else if(focusResult)el("coachingDashboardTitle").focus();}
-      catch(error){if(!current(expected))return;if(onAccountError?.(error))return;if(!error?.stale){renderer.error(error?.message||"Coaching could not load. Please try again.");}}finally{if(current(expected))data.loading=false;}
+    function addCapability(entry = {}, focus = false) {
+      const row = capabilityRow(entry);
+      el("coachingCapabilityRows").append(row);
+      if (focus) row.querySelector("[data-capability-exercise]")?.focus();
     }
-    async function saveProfile(event){event.preventDefault();const output=profileInput();if(validation(output.errors))return;const button=el("coachingGenerate"),expected=requestContext();button.disabled=true;el("coachingSaveStatus").textContent="Saving…";try{const result=checked(await api("/api/coaching/profile",{method:"PUT",body:JSON.stringify({profile:output.profile,expectedRevision:data.profile?.revision||0,expectedUserId:expected.userId})}),expected);data.profile=result.profile;data.week=result.week;data.logs=Array.isArray(result.logs)?result.logs:[];fillProfile(data.profile);const date=renderer.renderDashboard(data.profile,data.week,data.logs,localDate());meals.sync({profile:data.profile,week:data.week,logs:data.logs,date});navigate(data.returnFeature,{focus:true,historyMode:"push"});showToast("Saved. Your training suggestions are in Plan; your diary is in Nutrition.");}catch(error){if(!current(expected))return;if(onAccountError?.(error))return;if(error?.code==="COACHING_PROFILE_CHANGED"&&Object.hasOwn(error.payload||{},"profile"))data.profile=error.payload.profile;if(!error?.stale){el("coachingSaveStatus").textContent=error?.code==="COACHING_PROFILE_CHANGED"?"Couldn't save — Retry. The latest revision is loaded; your entries remain on screen for review.":saveRetryMessage(error);validation([{node:null,message:error.message||"Your personal setup could not be saved."}]);}}finally{if(current(expected))button.disabled=false;}}
-    function logSurface(){const prefix="coaching";return{prefix,date:el(`${prefix}LogDate`),calories:el(`${prefix}CaloriesEaten`),weight:el(`${prefix}MorningWeight`),complete:el(`${prefix}DayComplete`),macros:[el(`${prefix}ProteinEaten`),el(`${prefix}CarbsEaten`),el(`${prefix}FatEaten`)],button:el(`${prefix}SaveLog`),status:el(`${prefix}LogStatus`)}};
-    function logError(surface,node,message){surface.status.textContent=message;if(node){node.setAttribute("aria-invalid","true");const ids=new Set((node.getAttribute("aria-describedby")||"").split(/\s+/).filter(Boolean));ids.add(surface.status.id);node.setAttribute("aria-describedby",[...ids].join(" "));node.focus();}}
-    async function saveLog(event){event.preventDefault();const surface=logSurface(),date=value(surface.date),calories=integer(surface.calories),macroValues=data.profile?.macroPreference?surface.macros.map(integer):[null,null,null],provided=macroValues.filter((item)=>item!=null).length,limits=[2000,3000,1000],enteredWeight=number(surface.weight),morningWeightKg=enteredWeight==null?null:ui.dailyWeightToKilograms(enteredWeight,data.profile?.measurementSystem),expected=requestContext();[surface.calories,surface.weight,...surface.macros].forEach((node)=>node.removeAttribute("aria-invalid"));if(!Number.isSafeInteger(calories)||calories<0||calories>20000){logError(surface,surface.calories,"Enter the cumulative whole-day calories from 0 to 20,000.");return;}if(value(surface.weight)!==""&&(!Number.isFinite(morningWeightKg)||morningWeightKg<35||morningWeightKg>300)){logError(surface,surface.weight,`Enter a morning weight from ${data.profile?.measurementSystem==="imperial"?"77.2–661.4 lb":"35–300 kg"}, or leave it blank.`);return;}if(provided!==0&&provided!==3){logError(surface,surface.macros.find((node)=>value(node)===""),"Enter protein, carbs, and fat together—or leave all three blank.");return;}const invalidMacro=macroValues.findIndex((item,index)=>provided&&(!Number.isSafeInteger(item)||item<0||item>limits[index]));if(invalidMacro>=0){logError(surface,surface.macros[invalidMacro],"Enter whole-number macros within the displayed limits.");return;}const existingLog=data.logs.find((log)=>log.date===date),log={calories,morningWeightKg,complete:Boolean(surface.complete.checked),...(data.profile?.macroPreference?{proteinG:provided?macroValues[0]:null,carbsG:provided?macroValues[1]:null,fatG:provided?macroValues[2]:null}:{})},submittedForms=diaryUi.captureForms(el);surface.button.disabled=true;surface.status.textContent="Saving…";try{const result=checked(await api(`/api/coaching/logs/${encodeURIComponent(date)}`,{method:"PUT",body:JSON.stringify({log,expectedRevision:existingLog?.revision||0,expectedUserId:expected.userId})}),expected);data.logs=[...data.logs.filter((item)=>item.date!==date),result.log];const changed=diaryUi.formsChanged(submittedForms,el),shownDate=changed?value(surface.date):date;if(!changed)renderer.renderDashboard(data.profile,data.week,data.logs,date);meals.sync({profile:data.profile,week:data.week,logs:data.logs,date:shownDate});if(changed)surface.status.textContent=`Saved ${date}. Your newer entries remain on screen and are not saved yet.`;else for(const id of ["coachingLogStatus"])el(id).textContent=log.complete?"Saved as a complete day. A future weekly estimate will assess the aligned evidence.":"Saved running total; this day is not marked complete.";showToast("Saved. Intake progress updated.");}catch(error){if(!current(expected))return;if(onAccountError?.(error))return;if(error?.code==="COACHING_LOG_CHANGED"&&Object.hasOwn(error.payload||{},"log")){data.logs=data.logs.filter((item)=>item.date!==date);if(error.payload.log)data.logs.push(error.payload.log);}if(!error?.stale)surface.status.textContent=error?.code==="COACHING_LOG_CHANGED"?"Couldn't save — Retry. The latest revision is loaded; your entries remain on screen for review.":saveRetryMessage(error);}finally{if(current(expected))surface.button.disabled=false;}}
+    function updateUnitBounds(kind, unit) {
+      const input = el(kind === "height" ? "coachingHeight" : "coachingWeight");
+      if (!input) return;
+      if (kind === "height") {
+        input.min = unit === "in" ? "47.24" : "120";
+        input.max = unit === "in" ? "90.55" : "230";
+        input.step = unit === "in" ? "0.01" : "0.1";
+      } else {
+        input.min = unit === "lb" ? "77.2" : "35";
+        input.max = unit === "lb" ? "661.4" : "300";
+      }
+      input.dataset.unit = unit;
+    }
+    function convertUnit(kind, next) {
+      const input = el(kind === "height" ? "coachingHeight" : "coachingWeight"),
+        previous = input.dataset.unit || next,
+        current = number(input);
+      if (current != null && previous !== next) {
+        const converted =
+          kind === "height"
+            ? next === "in"
+              ? ui.centimetersToInches(current)
+              : ui.inchesToCentimeters(current)
+            : next === "lb"
+              ? ui.kilogramsToPounds(current)
+              : ui.dailyWeightToKilograms(current, "imperial");
+        input.value = converted ?? "";
+      }
+      updateUnitBounds(kind, next);
+    }
+    function updateConditionalFields() {
+      const flexible =
+          document.querySelector('input[name="caloriePattern"]:checked')?.value === "flexible_day",
+        macrosEnabled = el("coachingMacrosEnabled").checked,
+        hasOtherActivity = Number(value(el("coachingAdditionalActivityMinutes"))) > 0;
+      el("coachingFlexibleDay").disabled = !flexible;
+      el("coachingSex").required = true;
+      el("coachingAdditionalActivityIntensity").disabled = !hasOtherActivity;
+      el("coachingAdditionalActivityIntensity").required = hasOtherActivity;
+      el("coachingMacroPreferenceWrap").hidden = !macrosEnabled;
+      el("coachingMacroPreference").disabled = !macrosEnabled;
+      el("coachingMacrosEnabled").setAttribute("aria-expanded", String(macrosEnabled));
+    }
+    function setDays(days) {
+      const chosen = new Set(days);
+      document.querySelectorAll('input[name="trainingDays"]').forEach((input) => {
+        input.checked = chosen.has(input.value);
+      });
+    }
+    function defaultDays(count) {
+      const choices = {
+        1: ["Monday"],
+        2: ["Monday", "Thursday"],
+        3: ["Monday", "Wednesday", "Friday"],
+        4: ["Monday", "Tuesday", "Thursday", "Saturday"],
+        5: ["Monday", "Tuesday", "Wednesday", "Friday", "Saturday"],
+        6: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+      };
+      return choices[count] || choices[3];
+    }
+    function fillProfile(profile) {
+      data.profile = profile || null;
+      const imperial = profile?.measurementSystem === "imperial",
+        heightUnit = imperial ? "in" : "cm",
+        weightUnit = imperial ? "lb" : "kg",
+        energyDraft = ui.profileMetricToDraft(profile, imperial ? "imperial" : "metric");
+      el("coachingAge").value = profile?.age ?? "";
+      el("coachingHeightUnit").value = heightUnit;
+      el("coachingWeightUnit").value = weightUnit;
+      updateUnitBounds("height", heightUnit);
+      updateUnitBounds("weight", weightUnit);
+      el("coachingHeight").value = profile
+        ? imperial
+          ? ui.centimetersToInches(profile.heightCm)
+          : profile.heightCm
+        : "";
+      el("coachingWeight").value = profile
+        ? imperial
+          ? ui.kilogramsToPounds(profile.weightKg)
+          : profile.weightKg
+        : "";
+      el("coachingBodyFat").value = profile?.bodyFatPercent ?? "";
+      el("coachingSex").value = profile?.sexForEquation || "";
+      el("coachingDailyMovement").value = energyDraft.dailyMovement;
+      el("coachingAdditionalActivityMinutes").value = String(
+        energyDraft.additionalActivityMinutesPerWeek,
+      );
+      el("coachingAdditionalActivityIntensity").value = energyDraft.additionalActivityIntensity;
+      el("coachingGoal").value = goalFromApi(profile?.goal || "maintenance");
+      el("coachingGoalPace").value = profile?.goalPace || "gentle";
+      el("coachingTrainingGoal").value = profile?.trainingGoal || "balanced";
+      el("coachingExperience").value =
+        profile?.experience || String(state.preferences?.level || "Intermediate").toLowerCase();
+      const count =
+        profile?.sessionsPerWeek || Math.min(6, Math.max(1, Number(state.preferences?.days) || 3));
+      el("coachingFrequency").value = String(count);
+      el("coachingDuration").value = String(profile?.sessionMinutes || 45);
+      setDays(profile?.workoutDays || defaultDays(count));
+      el("coachingCapabilityRows").innerHTML = "";
+      (profile?.usualExercises || []).forEach((entry) =>
+        addCapability({ ...entry, unit: profile.preferredLoadUnit }),
+      );
+      meals.fillPreferences(profile);
+      const pattern = patternFromApi(profile?.caloriePattern || "zigzag");
+      document.querySelectorAll('input[name="caloriePattern"]').forEach((input) => {
+        input.checked = input.value === pattern;
+      });
+      el("coachingFlexibleDay").value = profile?.flexibleDay || "Friday";
+      el("coachingMacrosEnabled").checked = Boolean(profile?.macroPreference);
+      el("coachingMacroPreference").value =
+        profile?.macroPreference === "higher_protein" ? "higher_protein" : "balanced";
+      const needsActivityReview = Boolean(profile) && Number(profile.version) < 4,
+        reviewNotice = el("coachingActivityReviewNotice");
+      reviewNotice.hidden = !needsActivityReview;
+      reviewNotice.textContent = needsActivityReview
+        ? "Your saved profile, week, and diary are unchanged. Review Normal day outside planned exercise and Separate planned activity each week to use the more individualized estimate, then save personal setup. Choose Discard edits to return to your saved dashboard without changing anything."
+        : "";
+      el("coachingDiscardProfile").hidden = !profile;
+      el("coachingSaveStatus").textContent = needsActivityReview
+        ? "Two new activity answers are required before STRATA changes your saved calculation."
+        : profile
+          ? "Saved profile loaded. Save personal setup to update suggestions and targets."
+          : "No changes until you save personal setup.";
+      validation([]);
+      updateConditionalFields();
+      equipmentSummary();
+      data.setupInitialized = true;
+      data.dirty = false;
+    }
+    function profileInput() {
+      const rows = [...el("coachingCapabilityRows").children].filter((row) =>
+          value(row.querySelector("[data-capability-exercise]")),
+        ),
+        performanceMaxes = rows.map((row) => ({
+          exerciseId: exerciseIdFor(value(row.querySelector("[data-capability-exercise]"))),
+          sets: value(row.querySelector("[data-capability-sets]")),
+          reps: value(row.querySelector("[data-capability-reps]")),
+          load: value(row.querySelector("[data-capability-weight]")),
+          unit: value(row.querySelector("[data-capability-unit]")),
+        })),
+        equipment = Array.isArray(state.preferences?.equipment) ? state.preferences.equipment : [],
+        limitations = Array.isArray(state.preferences?.limitations)
+          ? state.preferences.limitations
+          : [];
+      const macrosEnabled = el("coachingMacrosEnabled").checked,
+        result = ui.profileDraftToMetric({
+          height: value(el("coachingHeight")),
+          heightUnit: value(el("coachingHeightUnit")),
+          weight: value(el("coachingWeight")),
+          weightUnit: value(el("coachingWeightUnit")),
+          age: value(el("coachingAge")),
+          bodyFatPercent: value(el("coachingBodyFat")),
+          sexForEquation: value(el("coachingSex")),
+          goal: value(el("coachingGoal")),
+          goalPace: value(el("coachingGoalPace")),
+          dailyMovement: value(el("coachingDailyMovement")),
+          additionalActivityMinutesPerWeek: value(el("coachingAdditionalActivityMinutes")),
+          additionalActivityIntensity: value(el("coachingAdditionalActivityIntensity")),
+          experience: value(el("coachingExperience")),
+          trainingGoal: value(el("coachingTrainingGoal")),
+          frequency: value(el("coachingFrequency")),
+          sessionMinutes: value(el("coachingDuration")),
+          trainingDays: [...document.querySelectorAll('input[name="trainingDays"]:checked')].map(
+            (input) => input.value,
+          ),
+          equipment,
+          limitations,
+          performanceMaxes,
+          caloriePattern:
+            document.querySelector('input[name="caloriePattern"]:checked')?.value || "training_day",
+          flexibleDay: value(el("coachingFlexibleDay")),
+          macrosEnabled,
+          macroPreference: macrosEnabled ? value(el("coachingMacroPreference")) : null,
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+        });
+      const fixed = {
+          age: el("coachingAge"),
+          height: el("coachingHeight"),
+          weight: el("coachingWeight"),
+          bodyFatPercent: el("coachingBodyFat"),
+          sexForEquation: el("coachingSex"),
+          dailyMovement: el("coachingDailyMovement"),
+          additionalActivityMinutesPerWeek: el("coachingAdditionalActivityMinutes"),
+          additionalActivityIntensity: el("coachingAdditionalActivityIntensity"),
+          goal: el("coachingGoal"),
+          experience: el("coachingExperience"),
+          trainingGoal: el("coachingTrainingGoal"),
+          frequency: el("coachingFrequency"),
+          trainingDays: el("coachingFrequency"),
+          sessionMinutes: el("coachingDuration"),
+          flexibleDay: el("coachingFlexibleDay"),
+        },
+        nodeFor = (field) => {
+          const match = field.match(/^performanceMaxes\.(\d+)\.(.+)$/),
+            row = match ? rows[Number(match[1])] : null;
+          if (!row) return fixed[field] || null;
+          return row.querySelector(
+            match[2] === "exerciseId"
+              ? "[data-capability-exercise]"
+              : match[2] === "maxSets"
+                ? "[data-capability-sets]"
+                : match[2] === "maxReps"
+                  ? "[data-capability-reps]"
+                  : "[data-capability-weight]",
+          );
+        };
+      const mealOutput = meals.profileInput(),
+        errors = [
+          ...result.errors.map((error) => ({ node: nodeFor(error.field), message: error.message })),
+          ...mealOutput.errors,
+        ];
+      if (!equipment.length)
+        errors.push({
+          node: el("coachingEquipmentSummary"),
+          message: "Select at least one available equipment type in Strata+ Preferences.",
+        });
+      if (rows.length > 40)
+        errors.push({
+          node: el("coachingCapabilityRows"),
+          message: "Keep known exercises to 40 or fewer.",
+        });
+      return {
+        errors,
+        profile: { ...result.payload, version: 4, mealPreferences: mealOutput.mealPreferences },
+      };
+    }
+    function validation(errors) {
+      const box = el("coachingValidation");
+      document
+        .querySelectorAll('#coachingProfileForm [aria-invalid="true"]')
+        .forEach((node) => node.removeAttribute("aria-invalid"));
+      document
+        .querySelectorAll('#coachingProfileForm [aria-describedby~="coachingValidation"]')
+        .forEach((node) => {
+          const ids = (node.getAttribute("aria-describedby") || "")
+            .split(/\s+/)
+            .filter((id) => id && id !== "coachingValidation");
+          if (ids.length) node.setAttribute("aria-describedby", ids.join(" "));
+          else node.removeAttribute("aria-describedby");
+        });
+      if (!errors.length) {
+        box.hidden = true;
+        box.textContent = "";
+        return false;
+      }
+      box.textContent = errors
+        .map(({ message }) => message)
+        .filter((message, index, list) => list.indexOf(message) === index)
+        .join(" ");
+      box.hidden = false;
+      for (const { node } of errors) {
+        if (!node?.setAttribute) continue;
+        node.setAttribute("aria-invalid", "true");
+        const ids = new Set(
+          (node.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean),
+        );
+        ids.add("coachingValidation");
+        node.setAttribute("aria-describedby", [...ids].join(" "));
+      }
+      errors[0].node?.focus?.();
+      return true;
+    }
+    async function load({ force = false, focusResult = false } = {}) {
+      const userId = String(state.user?.id || ""),
+        expected = requestContext();
+      if (!userId) return;
+      if (data.loading) return;
+      populateExerciseOptions();
+      if (!force && data.loadedUserId === userId) {
+        if (
+          state.activeFeature === "coaching" ||
+          data.dirty ||
+          (!data.week && data.setupInitialized) ||
+          (data.profile && Number(data.profile.version) < 4)
+        ) {
+          equipmentSummary();
+          renderer.show("setup");
+          return;
+        }
+        if (data.week) {
+          renderer.show("dashboard");
+          return;
+        }
+      }
+      data.loading = true;
+      renderer.show("loading");
+      try {
+        const profileResult = checked(await api("/api/coaching/profile"), expected);
+        if (!profileResult.profile) {
+          data.loadedUserId = userId;
+          data.profile = null;
+          data.week = null;
+          data.logs = [];
+          fillProfile(null);
+          renderer.show("setup");
+          if (focusResult) el("coachingSetupTitle").focus();
+          return;
+        }
+        const result = checked(await api("/api/coaching/week"), expected);
+        data.loadedUserId = userId;
+        data.profile = profileResult.profile;
+        data.week = result.week;
+        data.logs = Array.isArray(result.logs) ? result.logs : [];
+        fillProfile(data.profile);
+        const date = renderer.renderDashboard(data.profile, data.week, data.logs, localDate());
+        meals.sync({ profile: data.profile, week: data.week, logs: data.logs, date });
+        if (state.activeFeature === "coaching" || Number(data.profile.version) < 4) {
+          renderer.show("setup");
+          if (focusResult) el("coachingSetupTitle").focus();
+        } else if (focusResult) el("coachingDashboardTitle").focus();
+      } catch (error) {
+        if (!current(expected)) return;
+        if (onAccountError?.(error)) return;
+        if (!error?.stale) {
+          renderer.error(error?.message || "Coaching could not load. Please try again.");
+        }
+      } finally {
+        if (current(expected)) data.loading = false;
+      }
+    }
+    async function saveProfile(event) {
+      event.preventDefault();
+      const output = profileInput();
+      if (validation(output.errors)) return;
+      const button = el("coachingGenerate"),
+        expected = requestContext();
+      button.disabled = true;
+      el("coachingSaveStatus").textContent = "Saving…";
+      try {
+        const result = checked(
+          await api("/api/coaching/profile", {
+            method: "PUT",
+            body: JSON.stringify({
+              profile: output.profile,
+              expectedRevision: data.profile?.revision || 0,
+              expectedUserId: expected.userId,
+            }),
+          }),
+          expected,
+        );
+        data.profile = result.profile;
+        data.week = result.week;
+        data.logs = Array.isArray(result.logs) ? result.logs : [];
+        fillProfile(data.profile);
+        const date = renderer.renderDashboard(data.profile, data.week, data.logs, localDate());
+        meals.sync({ profile: data.profile, week: data.week, logs: data.logs, date });
+        navigate(data.returnFeature, { focus: true, historyMode: "push" });
+        showToast("Saved. Your training suggestions are in Plan; your diary is in Nutrition.");
+      } catch (error) {
+        if (!current(expected)) return;
+        if (onAccountError?.(error)) return;
+        if (
+          error?.code === "COACHING_PROFILE_CHANGED" &&
+          Object.hasOwn(error.payload || {}, "profile")
+        )
+          data.profile = error.payload.profile;
+        if (!error?.stale) {
+          el("coachingSaveStatus").textContent =
+            error?.code === "COACHING_PROFILE_CHANGED"
+              ? "Couldn't save — Retry. The latest revision is loaded; your entries remain on screen for review."
+              : saveRetryMessage(error);
+          validation([
+            { node: null, message: error.message || "Your personal setup could not be saved." },
+          ]);
+        }
+      } finally {
+        if (current(expected)) button.disabled = false;
+      }
+    }
+    function logSurface() {
+      const prefix = "coaching";
+      return {
+        prefix,
+        date: el(`${prefix}LogDate`),
+        calories: el(`${prefix}CaloriesEaten`),
+        weight: el(`${prefix}MorningWeight`),
+        complete: el(`${prefix}DayComplete`),
+        macros: [el(`${prefix}ProteinEaten`), el(`${prefix}CarbsEaten`), el(`${prefix}FatEaten`)],
+        button: el(`${prefix}SaveLog`),
+        status: el(`${prefix}LogStatus`),
+      };
+    }
+    function logError(surface, node, message) {
+      surface.status.textContent = message;
+      if (node) {
+        node.setAttribute("aria-invalid", "true");
+        const ids = new Set(
+          (node.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean),
+        );
+        ids.add(surface.status.id);
+        node.setAttribute("aria-describedby", [...ids].join(" "));
+        node.focus();
+      }
+    }
+    async function saveLog(event) {
+      event.preventDefault();
+      const surface = logSurface(),
+        date = value(surface.date),
+        calories = integer(surface.calories),
+        macroValues = data.profile?.macroPreference
+          ? surface.macros.map(integer)
+          : [null, null, null],
+        provided = macroValues.filter((item) => item != null).length,
+        limits = [2000, 3000, 1000],
+        enteredWeight = number(surface.weight),
+        morningWeightKg =
+          enteredWeight == null
+            ? null
+            : ui.dailyWeightToKilograms(enteredWeight, data.profile?.measurementSystem),
+        expected = requestContext();
+      [surface.calories, surface.weight, ...surface.macros].forEach((node) =>
+        node.removeAttribute("aria-invalid"),
+      );
+      if (!Number.isSafeInteger(calories) || calories < 0 || calories > 20000) {
+        logError(
+          surface,
+          surface.calories,
+          "Enter the cumulative whole-day calories from 0 to 20,000.",
+        );
+        return;
+      }
+      if (
+        value(surface.weight) !== "" &&
+        (!Number.isFinite(morningWeightKg) || morningWeightKg < 35 || morningWeightKg > 300)
+      ) {
+        logError(
+          surface,
+          surface.weight,
+          `Enter a morning weight from ${data.profile?.measurementSystem === "imperial" ? "77.2–661.4 lb" : "35–300 kg"}, or leave it blank.`,
+        );
+        return;
+      }
+      if (provided !== 0 && provided !== 3) {
+        logError(
+          surface,
+          surface.macros.find((node) => value(node) === ""),
+          "Enter protein, carbs, and fat together—or leave all three blank.",
+        );
+        return;
+      }
+      const invalidMacro = macroValues.findIndex(
+        (item, index) =>
+          provided && (!Number.isSafeInteger(item) || item < 0 || item > limits[index]),
+      );
+      if (invalidMacro >= 0) {
+        logError(
+          surface,
+          surface.macros[invalidMacro],
+          "Enter whole-number macros within the displayed limits.",
+        );
+        return;
+      }
+      const existingLog = data.logs.find((log) => log.date === date),
+        log = {
+          calories,
+          morningWeightKg,
+          complete: Boolean(surface.complete.checked),
+          ...(data.profile?.macroPreference
+            ? {
+                proteinG: provided ? macroValues[0] : null,
+                carbsG: provided ? macroValues[1] : null,
+                fatG: provided ? macroValues[2] : null,
+              }
+            : {}),
+        },
+        submittedForms = diaryUi.captureForms(el);
+      surface.button.disabled = true;
+      surface.status.textContent = "Saving…";
+      try {
+        const result = checked(
+          await api(`/api/coaching/logs/${encodeURIComponent(date)}`, {
+            method: "PUT",
+            body: JSON.stringify({
+              log,
+              expectedRevision: existingLog?.revision || 0,
+              expectedUserId: expected.userId,
+            }),
+          }),
+          expected,
+        );
+        data.logs = [...data.logs.filter((item) => item.date !== date), result.log];
+        const changed = diaryUi.formsChanged(submittedForms, el),
+          shownDate = changed ? value(surface.date) : date;
+        if (!changed) renderer.renderDashboard(data.profile, data.week, data.logs, date);
+        meals.sync({ profile: data.profile, week: data.week, logs: data.logs, date: shownDate });
+        if (changed)
+          surface.status.textContent = `Saved ${date}. Your newer entries remain on screen and are not saved yet.`;
+        else
+          for (const id of ["coachingLogStatus"])
+            el(id).textContent = log.complete
+              ? "Saved as a complete day. A future weekly estimate will assess the aligned evidence."
+              : "Saved running total; this day is not marked complete.";
+        showToast("Saved. Intake progress updated.");
+      } catch (error) {
+        if (!current(expected)) return;
+        if (onAccountError?.(error)) return;
+        if (error?.code === "COACHING_LOG_CHANGED" && Object.hasOwn(error.payload || {}, "log")) {
+          data.logs = data.logs.filter((item) => item.date !== date);
+          if (error.payload.log) data.logs.push(error.payload.log);
+        }
+        if (!error?.stale)
+          surface.status.textContent =
+            error?.code === "COACHING_LOG_CHANGED"
+              ? "Couldn't save — Retry. The latest revision is loaded; your entries remain on screen for review."
+              : saveRetryMessage(error);
+      } finally {
+        if (current(expected)) surface.button.disabled = false;
+      }
+    }
     // Protein and carbohydrate count 4 kcal per gram and fat 9, so entered macros can be checked against the calorie total.
-    function macroHint(){
-      const hint=el("coachingMacroHint"),grams=["coachingProteinEaten","coachingCarbsEaten","coachingFatEaten"].map((id)=>integer(el(id))),button=el("coachingUseMacroCalories");if(!hint||!button)return;
-      const total=data.profile?.macroPreference&&grams.every((gram)=>Number.isFinite(gram)&&gram>=0)?4*grams[0]+4*grams[1]+9*grams[2]:null,entered=integer(el("coachingCaloriesEaten")),difference=total==null||!Number.isFinite(entered)?0:entered-total;
-      hint.hidden=total==null;button.hidden=total==null||entered===total;if(total==null)return;button.dataset.calories=String(total);button.textContent=`Use ${total.toLocaleString()} kcal`;
-      el("coachingMacroHintText").textContent=`Protein, carbs, and fat add up to ${total.toLocaleString()} kcal (4 kcal per gram of protein or carbs, 9 per gram of fat).${difference?` That is ${Math.abs(difference).toLocaleString()} kcal ${difference>0?"less":"more"} than the ${entered.toLocaleString()} kcal entered.`:""}`;
+    function macroHint() {
+      const hint = el("coachingMacroHint"),
+        grams = ["coachingProteinEaten", "coachingCarbsEaten", "coachingFatEaten"].map((id) =>
+          integer(el(id)),
+        ),
+        button = el("coachingUseMacroCalories");
+      if (!hint || !button) return;
+      const total =
+          data.profile?.macroPreference && grams.every((gram) => Number.isFinite(gram) && gram >= 0)
+            ? 4 * grams[0] + 4 * grams[1] + 9 * grams[2]
+            : null,
+        entered = integer(el("coachingCaloriesEaten")),
+        difference = total == null || !Number.isFinite(entered) ? 0 : entered - total;
+      hint.hidden = total == null;
+      button.hidden = total == null || entered === total;
+      if (total == null) return;
+      button.dataset.calories = String(total);
+      button.textContent = `Use ${total.toLocaleString()} kcal`;
+      el("coachingMacroHintText").textContent =
+        `Protein, carbs, and fat add up to ${total.toLocaleString()} kcal (4 kcal per gram of protein or carbs, 9 per gram of fat).${difference ? ` That is ${Math.abs(difference).toLocaleString()} kcal ${difference > 0 ? "less" : "more"} than the ${entered.toLocaleString()} kcal entered.` : ""}`;
     }
     // Quick add raises the selected day's running total and saves it; copying fills the form for review.
-    function quickAdd(amount){const current=integer(el("coachingCaloriesEaten"))||0;if(!Number.isInteger(amount)||amount<1||amount>5000||current+amount>20000){el("coachingLogStatus").textContent="Enter 1–5,000 calories to add.";el("coachingQuickAdd")?.focus();return;}el("coachingCaloriesEaten").value=String(current+amount);if(el("coachingQuickAdd"))el("coachingQuickAdd").value="";macroHint();return saveLog({preventDefault(){}});}
-    function copyPrevious(){const date=value(el("coachingLogDate")),previous=/^\d{4}-\d{2}-\d{2}$/.test(date)?data.logs.find((log)=>log.date===new Date(Date.parse(`${date}T00:00:00Z`)-86400000).toISOString().slice(0,10)):null;if(!previous){el("coachingLogStatus").textContent="Nothing was saved for the previous day.";return;}el("coachingCaloriesEaten").value=String(previous.calories);if(data.profile?.macroPreference)for(const [id,key] of [["coachingProteinEaten","proteinG"],["coachingCarbsEaten","carbsG"],["coachingFatEaten","fatG"]])el(id).value=previous[key]==null?"":String(previous[key]);macroHint();el("coachingLogStatus").textContent=`Copied ${Number(previous.calories).toLocaleString()} kcal from the previous day. Review it, then save.`;}
-    function bind(){if(data.bound)return;data.bound=true;el("coachingLogForm").addEventListener("input",macroHint);el("coachingQuickAddButton")?.addEventListener("click",()=>quickAdd(integer(el("coachingQuickAdd"))));el("coachingQuickAdd")?.addEventListener("keydown",(event)=>{if(event.key==="Enter"){event.preventDefault();quickAdd(integer(el("coachingQuickAdd")));}});document.querySelectorAll("[data-quick-add]").forEach((button)=>button.addEventListener("click",()=>quickAdd(Number(button.dataset.quickAdd))));el("coachingCopyPrevious")?.addEventListener("click",copyPrevious);el("coachingUseMacroCalories")?.addEventListener("click",(event)=>{el("coachingCaloriesEaten").value=event.currentTarget.dataset.calories||"";macroHint();el("coachingCaloriesEaten").focus();});el("coachingProfileForm").addEventListener("submit",saveProfile);el("coachingProfileForm").addEventListener("input",()=>{data.dirty=true;});el("coachingLogForm").addEventListener("submit",saveLog);for(const id of ["coachingRetry","nutritionRetry","programRetry"])el(id)?.addEventListener("click",()=>load({force:true}));el("coachingEditProfile").addEventListener("click",()=>{data.returnFeature="nutrition";navigate("coaching",{focus:true,historyMode:"push"});renderer.show("setup");el("coachingSetupTitle").focus?.();});el("coachingDiscardProfile").addEventListener("click",()=>{fillProfile(data.profile);const date=renderer.renderDashboard(data.profile,data.week,data.logs,localDate());meals.sync({profile:data.profile,week:data.week,logs:data.logs,date});navigate(data.returnFeature,{focus:true,historyMode:"push"});});el("coachingAddCapability").addEventListener("click",()=>addCapability({},true));el("coachingCapabilityRows").addEventListener("click",(event)=>{const button=event.target.closest?.("[data-remove-capability]");if(!button)return;const row=button.closest(".coaching-capability-row"),next=row?.nextElementSibling?.querySelector?.("[data-capability-exercise]")||row?.previousElementSibling?.querySelector?.("[data-capability-exercise]")||el("coachingAddCapability");row?.remove();next?.focus();});el("coachingCapabilityRows").addEventListener("change",(event)=>{if(!event.target.matches?.("[data-capability-unit]"))return;const row=event.target.closest(".coaching-capability-row"),load=row.querySelector("[data-capability-weight]"),previous=load.dataset.unit||data.profile?.preferredLoadUnit||"kg",next=value(event.target),current=number(load);if(current!=null&&previous!==next)load.value=next==="lb"?ui.kilogramsToPounds(current):ui.poundsToKilograms(current);load.dataset.unit=next;});el("coachingHeightUnit").addEventListener("change",()=>{const next=value(el("coachingHeightUnit")),weightUnit=next==="in"?"lb":"kg";convertUnit("height",next);el("coachingWeightUnit").value=weightUnit;convertUnit("weight",weightUnit);});el("coachingWeightUnit").addEventListener("change",()=>{const next=value(el("coachingWeightUnit")),heightUnit=next==="lb"?"in":"cm";convertUnit("weight",next);el("coachingHeightUnit").value=heightUnit;convertUnit("height",heightUnit);});el("coachingBodyFat").addEventListener("input",updateConditionalFields);el("coachingAdditionalActivityMinutes").addEventListener("input",updateConditionalFields);el("coachingMacrosEnabled").addEventListener("change",updateConditionalFields);document.querySelectorAll('input[name="caloriePattern"]').forEach((input)=>input.addEventListener("change",updateConditionalFields));el("coachingFrequency").addEventListener("change",()=>{const count=Math.max(1,Math.min(6,integer(el("coachingFrequency"))||3));setDays(defaultDays(count));});for(const id of ["coachingLogDate"])el(id).addEventListener("change",()=>{const date=value(el(id));renderer.renderLog(data.profile,data.week,data.logs,date);meals.sync({profile:data.profile,week:data.week,logs:data.logs,date});});}
-    function reset(){trend?.clear();data.profile=null;data.week=null;data.logs=[];data.loadedUserId="";data.loading=false;data.setupInitialized=false;data.dirty=false;data.returnFeature="nutrition";data.generation+=1;for(const id of ["coachingGenerate","coachingSaveLog"])el(id).disabled=false;el("coachingProfileForm").reset();el("coachingCapabilityRows").textContent="";el("coachingExerciseOptions").textContent="";validation([]);renderer.clearPrivate();meals.clearPrivate();}
-    bind();return{ensureLoaded:load,load,reset,state:data,setReturnFeature:(name)=>{if(["plan","nutrition"].includes(name))data.returnFeature=name;}};
+    function quickAdd(amount) {
+      const current = integer(el("coachingCaloriesEaten")) || 0;
+      if (!Number.isInteger(amount) || amount < 1 || amount > 5000 || current + amount > 20000) {
+        el("coachingLogStatus").textContent = "Enter 1–5,000 calories to add.";
+        el("coachingQuickAdd")?.focus();
+        return;
+      }
+      el("coachingCaloriesEaten").value = String(current + amount);
+      if (el("coachingQuickAdd")) el("coachingQuickAdd").value = "";
+      macroHint();
+      return saveLog({ preventDefault() {} });
+    }
+    function copyPrevious() {
+      const date = value(el("coachingLogDate")),
+        previous = /^\d{4}-\d{2}-\d{2}$/.test(date)
+          ? data.logs.find(
+              (log) =>
+                log.date ===
+                new Date(Date.parse(`${date}T00:00:00Z`) - 86400000).toISOString().slice(0, 10),
+            )
+          : null;
+      if (!previous) {
+        el("coachingLogStatus").textContent = "Nothing was saved for the previous day.";
+        return;
+      }
+      el("coachingCaloriesEaten").value = String(previous.calories);
+      if (data.profile?.macroPreference)
+        for (const [id, key] of [
+          ["coachingProteinEaten", "proteinG"],
+          ["coachingCarbsEaten", "carbsG"],
+          ["coachingFatEaten", "fatG"],
+        ])
+          el(id).value = previous[key] == null ? "" : String(previous[key]);
+      macroHint();
+      el("coachingLogStatus").textContent =
+        `Copied ${Number(previous.calories).toLocaleString()} kcal from the previous day. Review it, then save.`;
+    }
+    function bind() {
+      if (data.bound) return;
+      data.bound = true;
+      el("coachingLogForm").addEventListener("input", macroHint);
+      el("coachingQuickAddButton")?.addEventListener("click", () =>
+        quickAdd(integer(el("coachingQuickAdd"))),
+      );
+      el("coachingQuickAdd")?.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          quickAdd(integer(el("coachingQuickAdd")));
+        }
+      });
+      document
+        .querySelectorAll("[data-quick-add]")
+        .forEach((button) =>
+          button.addEventListener("click", () => quickAdd(Number(button.dataset.quickAdd))),
+        );
+      el("coachingCopyPrevious")?.addEventListener("click", copyPrevious);
+      el("coachingUseMacroCalories")?.addEventListener("click", (event) => {
+        el("coachingCaloriesEaten").value = event.currentTarget.dataset.calories || "";
+        macroHint();
+        el("coachingCaloriesEaten").focus();
+      });
+      el("coachingProfileForm").addEventListener("submit", saveProfile);
+      el("coachingProfileForm").addEventListener("input", () => {
+        data.dirty = true;
+      });
+      el("coachingLogForm").addEventListener("submit", saveLog);
+      for (const id of ["coachingRetry", "nutritionRetry", "programRetry"])
+        el(id)?.addEventListener("click", () => load({ force: true }));
+      el("coachingEditProfile").addEventListener("click", () => {
+        data.returnFeature = "nutrition";
+        navigate("coaching", { focus: true, historyMode: "push" });
+        renderer.show("setup");
+        el("coachingSetupTitle").focus?.();
+      });
+      el("coachingDiscardProfile").addEventListener("click", () => {
+        fillProfile(data.profile);
+        const date = renderer.renderDashboard(data.profile, data.week, data.logs, localDate());
+        meals.sync({ profile: data.profile, week: data.week, logs: data.logs, date });
+        navigate(data.returnFeature, { focus: true, historyMode: "push" });
+      });
+      el("coachingAddCapability").addEventListener("click", () => addCapability({}, true));
+      el("coachingCapabilityRows").addEventListener("click", (event) => {
+        const button = event.target.closest?.("[data-remove-capability]");
+        if (!button) return;
+        const row = button.closest(".coaching-capability-row"),
+          next =
+            row?.nextElementSibling?.querySelector?.("[data-capability-exercise]") ||
+            row?.previousElementSibling?.querySelector?.("[data-capability-exercise]") ||
+            el("coachingAddCapability");
+        row?.remove();
+        next?.focus();
+      });
+      el("coachingCapabilityRows").addEventListener("change", (event) => {
+        if (!event.target.matches?.("[data-capability-unit]")) return;
+        const row = event.target.closest(".coaching-capability-row"),
+          load = row.querySelector("[data-capability-weight]"),
+          previous = load.dataset.unit || data.profile?.preferredLoadUnit || "kg",
+          next = value(event.target),
+          current = number(load);
+        if (current != null && previous !== next)
+          load.value =
+            next === "lb" ? ui.kilogramsToPounds(current) : ui.poundsToKilograms(current);
+        load.dataset.unit = next;
+      });
+      el("coachingHeightUnit").addEventListener("change", () => {
+        const next = value(el("coachingHeightUnit")),
+          weightUnit = next === "in" ? "lb" : "kg";
+        convertUnit("height", next);
+        el("coachingWeightUnit").value = weightUnit;
+        convertUnit("weight", weightUnit);
+      });
+      el("coachingWeightUnit").addEventListener("change", () => {
+        const next = value(el("coachingWeightUnit")),
+          heightUnit = next === "lb" ? "in" : "cm";
+        convertUnit("weight", next);
+        el("coachingHeightUnit").value = heightUnit;
+        convertUnit("height", heightUnit);
+      });
+      el("coachingBodyFat").addEventListener("input", updateConditionalFields);
+      el("coachingAdditionalActivityMinutes").addEventListener("input", updateConditionalFields);
+      el("coachingMacrosEnabled").addEventListener("change", updateConditionalFields);
+      document
+        .querySelectorAll('input[name="caloriePattern"]')
+        .forEach((input) => input.addEventListener("change", updateConditionalFields));
+      el("coachingFrequency").addEventListener("change", () => {
+        const count = Math.max(1, Math.min(6, integer(el("coachingFrequency")) || 3));
+        setDays(defaultDays(count));
+      });
+      for (const id of ["coachingLogDate"])
+        el(id).addEventListener("change", () => {
+          const date = value(el(id));
+          renderer.renderLog(data.profile, data.week, data.logs, date);
+          meals.sync({ profile: data.profile, week: data.week, logs: data.logs, date });
+        });
+    }
+    function reset() {
+      trend?.clear();
+      data.profile = null;
+      data.week = null;
+      data.logs = [];
+      data.loadedUserId = "";
+      data.loading = false;
+      data.setupInitialized = false;
+      data.dirty = false;
+      data.returnFeature = "nutrition";
+      data.generation += 1;
+      for (const id of ["coachingGenerate", "coachingSaveLog"]) el(id).disabled = false;
+      el("coachingProfileForm").reset();
+      el("coachingCapabilityRows").textContent = "";
+      el("coachingExerciseOptions").textContent = "";
+      validation([]);
+      renderer.clearPrivate();
+      meals.clearPrivate();
+    }
+    bind();
+    return {
+      ensureLoaded: load,
+      load,
+      reset,
+      state: data,
+      setReturnFeature: (name) => {
+        if (["plan", "nutrition"].includes(name)) data.returnFeature = name;
+      },
+    };
   }
-  return{createController,goalFromApi,goalToApi,localDate,patternFromApi,patternToApi};
+  return { createController, goalFromApi, goalToApi, localDate, patternFromApi, patternToApi };
 });

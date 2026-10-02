@@ -4,225 +4,989 @@
    homepage view, and data-app-nav how the page arrived (tab, push, back) for its view transition.
    Motion uses transform and opacity only, no blur behind anything, and stops for Reduce Motion. */
 :root[data-app="ios"] {
-  --app-tabbar-h:56px;
-  --app-topbar-h:44px;
-  --app-top:calc(var(--app-topbar-h) + env(safe-area-inset-top));
-  --app-bottom:calc(var(--app-tabbar-h) + env(safe-area-inset-bottom));
-  --app-spring:cubic-bezier(.32,.72,0,1);
-  --app-snap:cubic-bezier(.2,.9,.3,1.12);
-  --app-muted:#8f978a;
-  background:var(--strata-ink);
-  -webkit-text-size-adjust:100%;
-  text-size-adjust:100%;
-  touch-action:manipulation;
-  overscroll-behavior-x:none;
+  --app-tabbar-h: 56px;
+  --app-topbar-h: 44px;
+  --app-top: calc(var(--app-topbar-h) + env(safe-area-inset-top));
+  --app-bottom: calc(var(--app-tabbar-h) + env(safe-area-inset-bottom));
+  --app-spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --app-snap: cubic-bezier(0.2, 0.9, 0.3, 1.12);
+  --app-muted: #8f978a;
+  background: var(--strata-ink);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: manipulation;
+  overscroll-behavior-x: none;
 }
 
 /* Cross-document view transitions: the bars hold still while the content moves. */
-@view-transition { navigation:auto; }
-:root[data-app="ios"] .app-topbar { view-transition-name:app-topbar; }
-:root[data-app="ios"] .app-tabbar { view-transition-name:app-tabbar; }
-::view-transition-group(app-tabbar) { animation:none; }
-::view-transition-old(app-tabbar) { display:none; }
-::view-transition-new(app-tabbar) { animation:none; }
-::view-transition-group(app-topbar) { animation-duration:.3s; animation-timing-function:var(--app-spring); }
-::view-transition-group(root) { animation-duration:.34s; }
+@view-transition {
+  navigation: auto;
+}
+:root[data-app="ios"] .app-topbar {
+  view-transition-name: app-topbar;
+}
+:root[data-app="ios"] .app-tabbar {
+  view-transition-name: app-tabbar;
+}
+::view-transition-group(app-tabbar) {
+  animation: none;
+}
+::view-transition-old(app-tabbar) {
+  display: none;
+}
+::view-transition-new(app-tabbar) {
+  animation: none;
+}
+::view-transition-group(app-topbar) {
+  animation-duration: 0.3s;
+  animation-timing-function: var(--app-spring);
+}
+::view-transition-group(root) {
+  animation-duration: 0.34s;
+}
 @media (prefers-reduced-motion: no-preference) {
-  ::view-transition-old(root) { animation:app-push-out .3s var(--app-spring) both; }
-  ::view-transition-new(root) { animation:app-push-in .34s var(--app-spring) both; }
-  :root[data-app-nav="back"]::view-transition-old(root) { animation-name:app-back-out; }
-  :root[data-app-nav="back"]::view-transition-new(root) { animation-name:app-back-in; }
-  :root[data-app-nav="tab"]::view-transition-old(root) { animation:app-fade-out .16s ease-out both; }
-  :root[data-app-nav="tab"]::view-transition-new(root) { animation:app-tab-in .26s var(--app-spring) both; }
+  ::view-transition-old(root) {
+    animation: app-push-out 0.3s var(--app-spring) both;
+  }
+  ::view-transition-new(root) {
+    animation: app-push-in 0.34s var(--app-spring) both;
+  }
+  :root[data-app-nav="back"]::view-transition-old(root) {
+    animation-name: app-back-out;
+  }
+  :root[data-app-nav="back"]::view-transition-new(root) {
+    animation-name: app-back-in;
+  }
+  :root[data-app-nav="tab"]::view-transition-old(root) {
+    animation: app-fade-out 0.16s ease-out both;
+  }
+  :root[data-app-nav="tab"]::view-transition-new(root) {
+    animation: app-tab-in 0.26s var(--app-spring) both;
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),::view-transition-old(*),::view-transition-new(*) { animation:none !important; }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
 }
-@keyframes app-push-out { to { opacity:0; transform:translate3d(-28px,0,0); } }
-@keyframes app-push-in { from { opacity:0; transform:translate3d(36px,0,0); } }
-@keyframes app-back-out { to { opacity:0; transform:translate3d(36px,0,0); } }
-@keyframes app-back-in { from { opacity:0; transform:translate3d(-28px,0,0); } }
-@keyframes app-fade-out { to { opacity:0; } }
-@keyframes app-tab-in { from { opacity:0; transform:translate3d(0,6px,0) scale(.995); } }
-@keyframes app-rise { from { opacity:0; transform:translate3d(0,10px,0); } }
-@keyframes app-sheet { from { opacity:0; transform:translate3d(0,22px,0) scale(.985); } }
+@keyframes app-push-out {
+  to {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0);
+  }
+}
+@keyframes app-push-in {
+  from {
+    opacity: 0;
+    transform: translate3d(36px, 0, 0);
+  }
+}
+@keyframes app-back-out {
+  to {
+    opacity: 0;
+    transform: translate3d(36px, 0, 0);
+  }
+}
+@keyframes app-back-in {
+  from {
+    opacity: 0;
+    transform: translate3d(-28px, 0, 0);
+  }
+}
+@keyframes app-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes app-tab-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0) scale(0.995);
+  }
+}
+@keyframes app-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+}
+@keyframes app-sheet {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 22px, 0) scale(0.985);
+  }
+}
 
 /* Website chrome the app replaces: headers, footers, skip links, the homepage's phone nav, and scroll progress. */
 :root[data-app-chrome="tabs"] body > header:not(.app-topbar),
 :root[data-app-chrome="tabs"] body > nav.mobile-public-nav,
 :root[data-app="ios"] body > footer,
 :root[data-app="ios"] .skip-link,
-:root[data-app="ios"] .strata-scroll-progress { display:none !important; }
+:root[data-app="ios"] .strata-scroll-progress {
+  display: none !important;
+}
 /* In-app copy variants: a web-only sentence and its app twin (marked hidden, so browsers never show it) sit side by
    side in the page source. */
-:root[data-app="ios"] .web-only { display:none !important; }
-:root[data-app="ios"] span.app-only[hidden] { display:inline !important; }
-:root[data-app="ios"] :not(span).app-only[hidden] { display:block !important; }
+:root[data-app="ios"] .web-only {
+  display: none !important;
+}
+:root[data-app="ios"] span.app-only[hidden] {
+  display: inline !important;
+}
+:root[data-app="ios"] :not(span).app-only[hidden] {
+  display: block !important;
+}
 
 /* Top bar: a compact iOS navigation bar on the same ink as the status bar strip. */
-.app-topbar { position:sticky; z-index:100; top:0; padding-top:env(safe-area-inset-top); color:var(--strata-night-text); background:var(--strata-ink); border-bottom:1px solid rgba(255,255,255,.08); -webkit-user-select:none; user-select:none; }
-.app-topbar-inner { display:grid; grid-template-columns:minmax(80px,1fr) minmax(0,auto) minmax(80px,1fr); align-items:center; min-height:var(--app-topbar-h); padding:0 max(6px,env(safe-area-inset-right)) 0 max(6px,env(safe-area-inset-left)); }
-.app-title { grid-column:2; min-width:0; margin:0; overflow:hidden; font:700 17px/1.2 var(--strata-font); letter-spacing:-.01em; text-align:center; text-overflow:ellipsis; white-space:nowrap; }
-.app-back { grid-column:1; justify-self:start; display:inline-flex; align-items:center; gap:1px; min-width:44px; min-height:44px; padding:0 10px 0 2px; color:var(--strata-accent); font:600 17px/1 var(--strata-font); text-decoration:none; }
-.app-back svg { width:26px; height:26px; stroke-width:2.2; }
-.app-topbar-status { grid-column:3; justify-self:end; min-width:0; max-width:100%; overflow:hidden; color:#aeb4a8; font-size:12px; }
-.app-topbar-status .header-center { position:static; display:flex; align-items:center; gap:6px; width:auto; min-height:0; margin:0; padding:0 6px; border:0; color:#aeb4a8; background:none; white-space:nowrap; }
-.app-topbar-status .header-center.error { color:#ffb4a6; background:none; }
-.app-topbar-status .header-center #saveStatus { overflow:hidden; text-overflow:ellipsis; }
-.app-topbar-status .save-retry { min-height:32px; }
+.app-topbar {
+  position: sticky;
+  z-index: 100;
+  top: 0;
+  padding-top: env(safe-area-inset-top);
+  color: var(--strata-night-text);
+  background: var(--strata-ink);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.app-topbar-inner {
+  display: grid;
+  grid-template-columns: minmax(80px, 1fr) minmax(0, auto) minmax(80px, 1fr);
+  align-items: center;
+  min-height: var(--app-topbar-h);
+  padding: 0 max(6px, env(safe-area-inset-right)) 0 max(6px, env(safe-area-inset-left));
+}
+.app-title {
+  grid-column: 2;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font: 700 17px/1.2 var(--strata-font);
+  letter-spacing: -0.01em;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-back {
+  grid-column: 1;
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 10px 0 2px;
+  color: var(--strata-accent);
+  font: 600 17px/1 var(--strata-font);
+  text-decoration: none;
+}
+.app-back svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 2.2;
+}
+.app-topbar-status {
+  grid-column: 3;
+  justify-self: end;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  color: #aeb4a8;
+  font-size: 12px;
+}
+.app-topbar-status .header-center {
+  position: static;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  min-height: 0;
+  margin: 0;
+  padding: 0 6px;
+  border: 0;
+  color: #aeb4a8;
+  background: none;
+  white-space: nowrap;
+}
+.app-topbar-status .header-center.error {
+  color: #ffb4a6;
+  background: none;
+}
+.app-topbar-status .header-center #saveStatus {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-topbar-status .save-retry {
+  min-height: 32px;
+}
 
 /* Tab bar: one persistent bar, glassy through layered gradients rather than a live blur. */
-.app-tabbar { position:fixed; z-index:100; right:0; bottom:0; left:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); min-height:var(--app-bottom); padding:0 max(4px,env(safe-area-inset-right)) env(safe-area-inset-bottom) max(4px,env(safe-area-inset-left)); background:linear-gradient(180deg,rgba(30,33,27,.988),rgba(13,14,12,.996) 70%); border-top:1px solid rgba(255,255,255,.09); box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 -10px 30px rgba(0,0,0,.24); contain:layout paint; transform:translateZ(0); -webkit-user-select:none; user-select:none; }
-.app-tab { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; min-width:44px; min-height:var(--app-tabbar-h); padding:4px 0 3px; color:var(--app-muted); font:650 11px/1.1 var(--strata-font); letter-spacing:.01em; text-decoration:none; -webkit-tap-highlight-color:transparent; }
-.app-tab-icon { display:grid; place-items:center; width:52px; height:30px; border-radius:999px; transition:background-color .22s ease,transform .38s var(--app-snap); }
-.app-tab-icon svg { width:24px; height:24px; }
-.app-tab-label { max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.app-tab[aria-current="page"] { color:var(--strata-accent); }
-.app-tab[aria-current="page"] .app-tab-icon { background:rgba(212,245,120,.15); }
-.app-tab:active .app-tab-icon { transform:scale(.86); transition-duration:.08s; }
-.app-tab:focus-visible { outline:none; }
-.app-tab:focus-visible .app-tab-icon { outline:2px solid var(--strata-accent); outline-offset:2px; }
+.app-tabbar {
+  position: fixed;
+  z-index: 100;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-height: var(--app-bottom);
+  padding: 0 max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom)
+    max(4px, env(safe-area-inset-left));
+  background: linear-gradient(180deg, rgba(30, 33, 27, 0.988), rgba(13, 14, 12, 0.996) 70%);
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 -10px 30px rgba(0, 0, 0, 0.24);
+  contain: layout paint;
+  transform: translateZ(0);
+  -webkit-user-select: none;
+  user-select: none;
+}
+.app-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 44px;
+  min-height: var(--app-tabbar-h);
+  padding: 4px 0 3px;
+  color: var(--app-muted);
+  font: 650 11px/1.1 var(--strata-font);
+  letter-spacing: 0.01em;
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.app-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  transition:
+    background-color 0.22s ease,
+    transform 0.38s var(--app-snap);
+}
+.app-tab-icon svg {
+  width: 24px;
+  height: 24px;
+}
+.app-tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-tab[aria-current="page"] {
+  color: var(--strata-accent);
+}
+.app-tab[aria-current="page"] .app-tab-icon {
+  background: rgba(212, 245, 120, 0.15);
+}
+.app-tab:active .app-tab-icon {
+  transform: scale(0.86);
+  transition-duration: 0.08s;
+}
+.app-tab:focus-visible {
+  outline: none;
+}
+.app-tab:focus-visible .app-tab-icon {
+  outline: 2px solid var(--strata-accent);
+  outline-offset: 2px;
+}
 
 /* The homepage becomes three screens: welcome (signed out), Rankings, and the free-week preview. */
-:root[data-app-screen="home"] .home-page main > section { display:none !important; }
-:root[data-app-home="welcome"] .home-page main > .app-welcome { display:flex !important; }
+:root[data-app-screen="home"] .home-page main > section {
+  display: none !important;
+}
+:root[data-app-home="welcome"] .home-page main > .app-welcome {
+  display: flex !important;
+}
 :root[data-app-home="rankings"] .home-page main > #rankings,
 :root[data-app-home="preview"] .home-page main > #preview,
 :root[data-app-home="method"] .home-page main > #method,
-:root[data-app-home="sources"] .home-page main > #sources { display:block !important; }
-:root:is([data-app-home="start"],[data-app-home="welcome"]) :is(.app-topbar,.app-tabbar) { display:none !important; }
-:root:is([data-app-home="start"],[data-app-home="welcome"]) body { padding-bottom:0 !important; background:var(--strata-ink); }
-:root[data-app-screen="home"] .rankings-section { padding-top:24px; }
-:root[data-app-screen="home"] .proof-section { padding-top:28px; }
-.app-welcome { min-height:100svh; flex-direction:column; justify-content:flex-end; gap:18px; padding:calc(env(safe-area-inset-top) + 32px) max(24px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 28px) max(24px,env(safe-area-inset-left)); color:var(--strata-night-text); background:radial-gradient(120% 70% at 85% 8%,rgba(212,245,120,.16),transparent 60%),linear-gradient(180deg,#1a1d17,var(--strata-ink) 62%); }
-.app-welcome-brand { display:flex; align-items:center; gap:10px; margin-bottom:auto; font:800 15px/1 var(--strata-font); letter-spacing:.2em; }
-.app-welcome-mark { display:grid; gap:3px; width:22px; }
-.app-welcome-mark i { display:block; height:4px; border-radius:2px; background:var(--strata-accent); }
-.app-welcome-mark i:nth-child(2) { width:78%; }
-.app-welcome-mark i:nth-child(3) { width:56%; }
-.app-welcome h1 { margin:0; font:800 clamp(2.6rem,12vw,3.6rem)/1.02 var(--strata-font); letter-spacing:-.04em; }
-.app-welcome h1 em { color:var(--strata-accent); font-style:normal; }
-.app-welcome > p { max-width:34ch; margin:0; color:#c8cec1; font-size:1.0625rem; line-height:1.55; }
-.app-welcome-actions { display:grid; gap:10px; margin-top:10px; }
-.app-button { display:flex; align-items:center; justify-content:center; min-height:52px; padding:0 22px; border:1px solid rgba(255,255,255,.22); border-radius:14px; color:var(--strata-night-text); background:rgba(255,255,255,.06); font:700 1.0625rem/1 var(--strata-font); text-decoration:none; }
-.app-button-primary { border-color:var(--strata-accent); color:var(--strata-ink); background:var(--strata-accent); }
-.app-welcome-explore { display:grid; gap:2px; overflow:hidden; border:1px solid rgba(255,255,255,.1); border-radius:14px; }
-.app-welcome-explore a { display:grid; gap:3px; min-height:56px; padding:12px 16px; color:var(--strata-night-text); background:rgba(255,255,255,.04); text-decoration:none; }
-.app-welcome-explore strong { font-size:1rem; }
-.app-welcome-explore span { color:#aeb4a8; font-size:.875rem; }
+:root[data-app-home="sources"] .home-page main > #sources {
+  display: block !important;
+}
+:root:is([data-app-home="start"], [data-app-home="welcome"]) :is(.app-topbar, .app-tabbar) {
+  display: none !important;
+}
+:root:is([data-app-home="start"], [data-app-home="welcome"]) body {
+  padding-bottom: 0 !important;
+  background: var(--strata-ink);
+}
+:root[data-app-screen="home"] .rankings-section {
+  padding-top: 24px;
+}
+:root[data-app-screen="home"] .proof-section {
+  padding-top: 28px;
+}
+.app-welcome {
+  min-height: 100svh;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 18px;
+  padding: calc(env(safe-area-inset-top) + 32px) max(24px, env(safe-area-inset-right))
+    calc(env(safe-area-inset-bottom) + 28px) max(24px, env(safe-area-inset-left));
+  color: var(--strata-night-text);
+  background:
+    radial-gradient(120% 70% at 85% 8%, rgba(212, 245, 120, 0.16), transparent 60%),
+    linear-gradient(180deg, #1a1d17, var(--strata-ink) 62%);
+}
+.app-welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: auto;
+  font: 800 15px/1 var(--strata-font);
+  letter-spacing: 0.2em;
+}
+.app-welcome-mark {
+  display: grid;
+  gap: 3px;
+  width: 22px;
+}
+.app-welcome-mark i {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--strata-accent);
+}
+.app-welcome-mark i:nth-child(2) {
+  width: 78%;
+}
+.app-welcome-mark i:nth-child(3) {
+  width: 56%;
+}
+.app-welcome h1 {
+  margin: 0;
+  font: 800 clamp(2.6rem, 12vw, 3.6rem)/1.02 var(--strata-font);
+  letter-spacing: -0.04em;
+}
+.app-welcome h1 em {
+  color: var(--strata-accent);
+  font-style: normal;
+}
+.app-welcome > p {
+  max-width: 34ch;
+  margin: 0;
+  color: #c8cec1;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+.app-welcome-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+.app-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  padding: 0 22px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 14px;
+  color: var(--strata-night-text);
+  background: rgba(255, 255, 255, 0.06);
+  font: 700 1.0625rem/1 var(--strata-font);
+  text-decoration: none;
+}
+.app-button-primary {
+  border-color: var(--strata-accent);
+  color: var(--strata-ink);
+  background: var(--strata-accent);
+}
+.app-welcome-explore {
+  display: grid;
+  gap: 2px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+}
+.app-welcome-explore a {
+  display: grid;
+  gap: 3px;
+  min-height: 56px;
+  padding: 12px 16px;
+  color: var(--strata-night-text);
+  background: rgba(255, 255, 255, 0.04);
+  text-decoration: none;
+}
+.app-welcome-explore strong {
+  font-size: 1rem;
+}
+.app-welcome-explore span {
+  color: #aeb4a8;
+  font-size: 0.875rem;
+}
 
 /* Profile keeps legal, support, and Strata+ one tap away, in an iOS grouped list. */
-.app-more { margin:28px 0 8px; }
-.app-more h2 { margin:0 0 8px; padding:0 4px; color:var(--muted,#62675e); font:700 .8125rem/1.2 var(--strata-font); letter-spacing:.06em; text-transform:uppercase; }
-.app-list { margin:0; padding:0; overflow:hidden; list-style:none; border:1px solid var(--line,#d2d6cc); border-radius:14px; background:var(--strata-surface); }
-.app-list li + li { border-top:1px solid var(--line,#d2d6cc); }
-.app-list a { position:relative; display:grid; gap:2px; min-height:52px; padding:12px 40px 12px 16px; align-content:center; color:var(--strata-ink); font-weight:650; text-decoration:none; }
-.app-list a::after { content:""; position:absolute; top:50%; right:18px; width:8px; height:8px; border-top:2px solid #9aa092; border-right:2px solid #9aa092; transform:translateY(-50%) rotate(45deg); }
-.app-list small { color:var(--muted,#62675e); font-size:.8125rem; font-weight:500; }
-.app-more-build { margin:12px 4px 0; color:var(--muted,#62675e); font-size:.8125rem; }
+.app-more {
+  margin: 28px 0 8px;
+}
+.app-more h2 {
+  margin: 0 0 8px;
+  padding: 0 4px;
+  color: var(--muted, #62675e);
+  font: 700 0.8125rem/1.2 var(--strata-font);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.app-list {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+  border: 1px solid var(--line, #d2d6cc);
+  border-radius: 14px;
+  background: var(--strata-surface);
+}
+.app-list li + li {
+  border-top: 1px solid var(--line, #d2d6cc);
+}
+.app-list a {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  min-height: 52px;
+  padding: 12px 40px 12px 16px;
+  align-content: center;
+  color: var(--strata-ink);
+  font-weight: 650;
+  text-decoration: none;
+}
+.app-list a::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 18px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #9aa092;
+  border-right: 2px solid #9aa092;
+  transform: translateY(-50%) rotate(45deg);
+}
+.app-list small {
+  color: var(--muted, #62675e);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.app-more-build {
+  margin: 12px 4px 0;
+  color: var(--muted, #62675e);
+  font-size: 0.8125rem;
+}
 
 /* Delete account in the app (account-delete-dialog.js): an alert-style card. Fields use 17px text so iOS never zooms,
    every control is at least 44pt tall, and the error line keeps its height so a refusal never moves the buttons. */
-.account-delete-dialog { width:min(520px,calc(100% - 24px)); max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px); margin:auto; padding:0; overflow:auto; border:0; border-radius:20px; color:var(--strata-ink); background:var(--strata-surface); box-shadow:0 24px 70px rgba(16,17,15,.34); overscroll-behavior:contain; }
-.account-delete-dialog::backdrop { background:rgba(10,11,9,.62); }
-body:has(.account-delete-dialog[open]) { overflow:hidden; }
-.account-delete-form,.account-delete-done { display:grid; gap:10px; padding:22px 20px 18px; }
-.account-delete-form[hidden],.account-delete-done[hidden],.account-delete-apple[hidden],.account-delete-form [hidden] { display:none; }
-.account-delete-dialog h2 { margin:0; color:var(--strata-ink); font:800 1.375rem/1.2 var(--strata-font); letter-spacing:-.02em; }
-.account-delete-dialog :is(h2,.account-delete-done):focus { outline:none; }
-.account-delete-dialog p { margin:0; color:var(--muted,#62675e); font-size:.9375rem; line-height:1.5; }
-.account-delete-list { display:grid; gap:6px; margin:0; padding:0 0 0 20px; color:var(--strata-ink); font-size:.9375rem; line-height:1.45; }
-.account-delete-apple { display:grid; gap:10px; padding:12px 14px; border-radius:14px; background:#fff4d6; }
-.account-delete-dialog .account-delete-apple p { color:#4d3a00; }
-.account-delete-dialog .account-delete-note { color:var(--strata-ink); font-weight:650; }
-.account-delete-form label { margin-top:4px; color:var(--strata-ink); font:650 .9375rem/1.3 var(--strata-font); }
-.account-delete-form input { box-sizing:border-box; width:100%; min-height:48px; padding:0 14px; border:1px solid var(--line,#d2d6cc); border-radius:12px; color:var(--strata-ink); background:#fff; font:500 1.0625rem/1.2 var(--strata-font); }
-.account-delete-form input:focus-visible { outline:2px solid var(--strata-ink); outline-offset:2px; }
-.account-delete-form input[aria-invalid="true"] { border-color:var(--strata-danger,#b3261e); }
-.account-delete-dialog .account-delete-error { min-height:1.5em; color:var(--strata-danger,#b3261e); font-weight:650; }
-.account-delete-actions { display:grid; gap:10px; }
-.account-delete-submit,.account-delete-cancel,.account-delete-manage { display:flex; align-items:center; justify-content:center; box-sizing:border-box; min-height:50px; padding:0 18px; border-radius:14px; font:700 1.0625rem/1.2 var(--strata-font); text-align:center; text-decoration:none; }
-.account-delete-submit { border:1px solid var(--strata-danger,#b3261e); color:#fff; background:var(--strata-danger,#b3261e); }
-.account-delete-submit:disabled { opacity:.42; }
-.account-delete-cancel,.account-delete-manage { border:1px solid var(--line,#d2d6cc); color:var(--strata-ink); background:transparent; }
-.account-delete-manage { min-height:44px; background:#fff; }
-.account-delete-email { justify-self:center; min-height:44px; padding:0 12px; border:0; color:var(--strata-ink); background:none; font:650 .9375rem/1.2 var(--strata-font); text-decoration:underline; text-underline-offset:3px; }
-.account-delete-dialog :is(button,a):focus-visible { outline:2px solid var(--strata-ink); outline-offset:2px; }
+.account-delete-dialog {
+  width: min(520px, calc(100% - 24px));
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: 0;
+  border-radius: 20px;
+  color: var(--strata-ink);
+  background: var(--strata-surface);
+  box-shadow: 0 24px 70px rgba(16, 17, 15, 0.34);
+  overscroll-behavior: contain;
+}
+.account-delete-dialog::backdrop {
+  background: rgba(10, 11, 9, 0.62);
+}
+body:has(.account-delete-dialog[open]) {
+  overflow: hidden;
+}
+.account-delete-form,
+.account-delete-done {
+  display: grid;
+  gap: 10px;
+  padding: 22px 20px 18px;
+}
+.account-delete-form[hidden],
+.account-delete-done[hidden],
+.account-delete-apple[hidden],
+.account-delete-form [hidden] {
+  display: none;
+}
+.account-delete-dialog h2 {
+  margin: 0;
+  color: var(--strata-ink);
+  font: 800 1.375rem/1.2 var(--strata-font);
+  letter-spacing: -0.02em;
+}
+.account-delete-dialog :is(h2, .account-delete-done):focus {
+  outline: none;
+}
+.account-delete-dialog p {
+  margin: 0;
+  color: var(--muted, #62675e);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.account-delete-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0 0 0 20px;
+  color: var(--strata-ink);
+  font-size: 0.9375rem;
+  line-height: 1.45;
+}
+.account-delete-apple {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fff4d6;
+}
+.account-delete-dialog .account-delete-apple p {
+  color: #4d3a00;
+}
+.account-delete-dialog .account-delete-note {
+  color: var(--strata-ink);
+  font-weight: 650;
+}
+.account-delete-form label {
+  margin-top: 4px;
+  color: var(--strata-ink);
+  font: 650 0.9375rem/1.3 var(--strata-font);
+}
+.account-delete-form input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line, #d2d6cc);
+  border-radius: 12px;
+  color: var(--strata-ink);
+  background: #fff;
+  font: 500 1.0625rem/1.2 var(--strata-font);
+}
+.account-delete-form input:focus-visible {
+  outline: 2px solid var(--strata-ink);
+  outline-offset: 2px;
+}
+.account-delete-form input[aria-invalid="true"] {
+  border-color: var(--strata-danger, #b3261e);
+}
+.account-delete-dialog .account-delete-error {
+  min-height: 1.5em;
+  color: var(--strata-danger, #b3261e);
+  font-weight: 650;
+}
+.account-delete-actions {
+  display: grid;
+  gap: 10px;
+}
+.account-delete-submit,
+.account-delete-cancel,
+.account-delete-manage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 50px;
+  padding: 0 18px;
+  border-radius: 14px;
+  font: 700 1.0625rem/1.2 var(--strata-font);
+  text-align: center;
+  text-decoration: none;
+}
+.account-delete-submit {
+  border: 1px solid var(--strata-danger, #b3261e);
+  color: #fff;
+  background: var(--strata-danger, #b3261e);
+}
+.account-delete-submit:disabled {
+  opacity: 0.42;
+}
+.account-delete-cancel,
+.account-delete-manage {
+  border: 1px solid var(--line, #d2d6cc);
+  color: var(--strata-ink);
+  background: transparent;
+}
+.account-delete-manage {
+  min-height: 44px;
+  background: #fff;
+}
+.account-delete-email {
+  justify-self: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  color: var(--strata-ink);
+  background: none;
+  font: 650 0.9375rem/1.2 var(--strata-font);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.account-delete-dialog :is(button, a):focus-visible {
+  outline: 2px solid var(--strata-ink);
+  outline-offset: 2px;
+}
 
 /* Pricing in the app is the App Store paywall (app-paywall.js). The website's checkout panel, static USD prices,
    and Paddle notes never show here; the plan card's benefits move into the paywall. */
-:root[data-app-screen="pricing"] :is(#purchasePanel,.hero-facts,.price-card,.pricing-page noscript) { display:none !important; }
-:root[data-app-screen="pricing"] .pricing-grid { grid-template-columns:minmax(0,1fr); }
-:root[data-app-screen="pricing"] :is(.info-hero-grid > div:first-child,.info-lede) { display:none !important; }
-:root[data-app-screen="pricing"] .info-hero { padding-block:6px 20px; }
-:root[data-app-screen="pricing"] .info-hero-grid { display:block; }
-.app-paywall { margin-top:20px; padding:22px 20px 18px; border:1px solid rgba(212,245,120,.24); border-radius:22px; color:var(--strata-night-text); background:radial-gradient(110% 60% at 100% 0,rgba(212,245,120,.14),transparent 62%),linear-gradient(165deg,#22281d,var(--strata-ink) 72%); box-shadow:0 18px 44px rgba(16,17,15,.22); animation:app-rise .4s var(--app-spring) both; }
-.app-paywall[aria-busy="true"] .app-button-primary { opacity:.7; }
-.app-paywall h2 { margin:2px 0 6px; color:#fff; font:800 1.875rem/1.1 var(--strata-font); letter-spacing:-.03em; }
-.app-paywall-note { margin:0 0 14px; padding:10px 12px; border-radius:12px; color:var(--strata-ink); background:var(--strata-accent); font-weight:650; font-size:.9375rem; }
-.app-paywall-kicker { margin:0; color:var(--strata-accent); font:700 .8125rem/1 var(--strata-font); letter-spacing:.08em; text-transform:uppercase; }
-.app-paywall-price { display:flex; align-items:baseline; gap:8px; margin:6px 0 4px; }
-.app-paywall-price strong { color:#fff; font:800 2.25rem/1 var(--strata-font); letter-spacing:-.03em; font-variant-numeric:tabular-nums; }
-.app-paywall-price span,.app-paywall-detail { color:#c8cec1; font-size:1rem; }
-.app-paywall-detail { margin:4px 0 0; line-height:1.55; }
-.app-paywall-benefits { display:grid; gap:12px; margin:16px 0 4px; padding:0; list-style:none; }
-.app-paywall-benefits li { position:relative; padding-left:30px; color:#c8cec1; font-size:.9375rem; line-height:1.5; }
-.app-paywall-benefits li::before { content:""; position:absolute; top:3px; left:0; width:18px; height:18px; border-radius:50%; background:var(--strata-accent) no-repeat center/11px url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.3 4.8 9 10 3' fill='none' stroke='%2310110f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
-.app-paywall-benefits strong { display:block; margin:0; color:#fff; }
-.app-paywall-actions { display:grid; gap:10px; margin-top:18px; }
-.app-paywall-actions .app-button:disabled { opacity:.5; }
-.app-paywall-restore { justify-self:center; min-height:44px; padding:0 14px; border:0; color:var(--strata-accent); background:none; font:650 .9375rem/1 var(--strata-font); }
-.app-paywall-status { min-height:1.4em; margin:12px 0 0; color:#d9dfd5; font-size:.9375rem; line-height:1.5; text-align:center; }
-.app-paywall-status:empty { min-height:0; margin:0; }
-.app-paywall-status[data-tone="good"] { color:var(--strata-accent); }
-.app-paywall-status[data-tone="warn"] { color:#f3d38b; }
-.app-paywall-status[data-tone="error"] { color:#ffb4a6; }
-.app-paywall-terms { margin:14px 0 0; color:#9aa292; font-size:.75rem; line-height:1.55; }
-.app-paywall-terms:empty { display:none; }
-.app-paywall-links { display:flex; justify-content:center; gap:18px; margin:10px 0 0; }
-.app-paywall-links a { display:inline-flex; align-items:center; min-height:44px; color:#d9dfd5; font-size:.8125rem; font-weight:650; }
+:root[data-app-screen="pricing"]
+  :is(#purchasePanel, .hero-facts, .price-card, .pricing-page noscript) {
+  display: none !important;
+}
+:root[data-app-screen="pricing"] .pricing-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+:root[data-app-screen="pricing"] :is(.info-hero-grid > div:first-child, .info-lede) {
+  display: none !important;
+}
+:root[data-app-screen="pricing"] .info-hero {
+  padding-block: 6px 20px;
+}
+:root[data-app-screen="pricing"] .info-hero-grid {
+  display: block;
+}
+.app-paywall {
+  margin-top: 20px;
+  padding: 22px 20px 18px;
+  border: 1px solid rgba(212, 245, 120, 0.24);
+  border-radius: 22px;
+  color: var(--strata-night-text);
+  background:
+    radial-gradient(110% 60% at 100% 0, rgba(212, 245, 120, 0.14), transparent 62%),
+    linear-gradient(165deg, #22281d, var(--strata-ink) 72%);
+  box-shadow: 0 18px 44px rgba(16, 17, 15, 0.22);
+  animation: app-rise 0.4s var(--app-spring) both;
+}
+.app-paywall[aria-busy="true"] .app-button-primary {
+  opacity: 0.7;
+}
+.app-paywall h2 {
+  margin: 2px 0 6px;
+  color: #fff;
+  font: 800 1.875rem/1.1 var(--strata-font);
+  letter-spacing: -0.03em;
+}
+.app-paywall-note {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: var(--strata-ink);
+  background: var(--strata-accent);
+  font-weight: 650;
+  font-size: 0.9375rem;
+}
+.app-paywall-kicker {
+  margin: 0;
+  color: var(--strata-accent);
+  font: 700 0.8125rem/1 var(--strata-font);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.app-paywall-price {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 6px 0 4px;
+}
+.app-paywall-price strong {
+  color: #fff;
+  font: 800 2.25rem/1 var(--strata-font);
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.app-paywall-price span,
+.app-paywall-detail {
+  color: #c8cec1;
+  font-size: 1rem;
+}
+.app-paywall-detail {
+  margin: 4px 0 0;
+  line-height: 1.55;
+}
+.app-paywall-benefits {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+.app-paywall-benefits li {
+  position: relative;
+  padding-left: 30px;
+  color: #c8cec1;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+.app-paywall-benefits li::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--strata-accent) no-repeat center/11px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.3 4.8 9 10 3' fill='none' stroke='%2310110f' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+.app-paywall-benefits strong {
+  display: block;
+  margin: 0;
+  color: #fff;
+}
+.app-paywall-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+.app-paywall-actions .app-button:disabled {
+  opacity: 0.5;
+}
+.app-paywall-restore {
+  justify-self: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  color: var(--strata-accent);
+  background: none;
+  font: 650 0.9375rem/1 var(--strata-font);
+}
+.app-paywall-status {
+  min-height: 1.4em;
+  margin: 12px 0 0;
+  color: #d9dfd5;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  text-align: center;
+}
+.app-paywall-status:empty {
+  min-height: 0;
+  margin: 0;
+}
+.app-paywall-status[data-tone="good"] {
+  color: var(--strata-accent);
+}
+.app-paywall-status[data-tone="warn"] {
+  color: #f3d38b;
+}
+.app-paywall-status[data-tone="error"] {
+  color: #ffb4a6;
+}
+.app-paywall-terms {
+  margin: 14px 0 0;
+  color: #9aa292;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+.app-paywall-terms:empty {
+  display: none;
+}
+.app-paywall-links {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 10px 0 0;
+}
+.app-paywall-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: #d9dfd5;
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
 
 /* Space for the bars, and everything that floats moves above the tab bar. */
-:root[data-app-chrome="tabs"] { --planner-header-height:var(--app-top); scroll-padding-top:calc(var(--app-top) + 12px); }
-:root[data-app-chrome="tabs"] body { padding-bottom:var(--app-bottom) !important; }
-:root[data-app-chrome="tabs"] body:has(.compare-tray:not([hidden])) { padding-bottom:calc(var(--app-bottom) + 100px) !important; }
-:root[data-app-chrome="tabs"] .compare-tray { bottom:calc(var(--app-bottom) + 10px); }
-:root[data-app-chrome="tabs"] :is(.toast,.planner-toast) { bottom:calc(var(--app-bottom) + 14px) !important; }
-:root[data-app-chrome="tabs"] .ai-launcher { bottom:calc(var(--app-bottom) + 16px); }
-:root[data-app-chrome="tabs"] body:has(.compare-tray:not([hidden])) .ai-launcher { bottom:calc(var(--app-bottom) + 112px); }
-:root[data-app-chrome="tabs"] .ai-composer { bottom:var(--app-bottom); }
-:root[data-app-chrome="tabs"] .discovery-load-error { top:var(--app-top); }
-:root[data-app-chrome="tabs"] :is(.policy-nav,.contact-details-card,.week-preview) { top:calc(var(--app-top) + 12px); }
-@media (min-width:1201px) { :root[data-app-chrome="tabs"] .muscle-panel { top:calc(var(--app-top) + 12px); } }
-:root[data-app-chrome="tabs"] .filter-bar { top:var(--app-top); }
+:root[data-app-chrome="tabs"] {
+  --planner-header-height: var(--app-top);
+  scroll-padding-top: calc(var(--app-top) + 12px);
+}
+:root[data-app-chrome="tabs"] body {
+  padding-bottom: var(--app-bottom) !important;
+}
+:root[data-app-chrome="tabs"] body:has(.compare-tray:not([hidden])) {
+  padding-bottom: calc(var(--app-bottom) + 100px) !important;
+}
+:root[data-app-chrome="tabs"] .compare-tray {
+  bottom: calc(var(--app-bottom) + 10px);
+}
+:root[data-app-chrome="tabs"] :is(.toast, .planner-toast) {
+  bottom: calc(var(--app-bottom) + 14px) !important;
+}
+:root[data-app-chrome="tabs"] .ai-launcher {
+  bottom: calc(var(--app-bottom) + 16px);
+}
+:root[data-app-chrome="tabs"] body:has(.compare-tray:not([hidden])) .ai-launcher {
+  bottom: calc(var(--app-bottom) + 112px);
+}
+:root[data-app-chrome="tabs"] .ai-composer {
+  bottom: var(--app-bottom);
+}
+:root[data-app-chrome="tabs"] .discovery-load-error {
+  top: var(--app-top);
+}
+:root[data-app-chrome="tabs"] :is(.policy-nav, .contact-details-card, .week-preview) {
+  top: calc(var(--app-top) + 12px);
+}
+@media (min-width: 1201px) {
+  :root[data-app-chrome="tabs"] .muscle-panel {
+    top: calc(var(--app-top) + 12px);
+  }
+}
+:root[data-app-chrome="tabs"] .filter-bar {
+  top: var(--app-top);
+}
 
 /* Touch: instant press feedback, no grey tap flash, no link previews or text selection on controls. */
-:root[data-app="ios"] :is(a,button,summary,label,input,select,textarea,[role="button"],[role="tab"]) { -webkit-tap-highlight-color:transparent; }
-:root[data-app="ios"] :is(a,img) { -webkit-touch-callout:none; }
-:root[data-app="ios"] img { -webkit-user-drag:none; }
-:root[data-app="ios"] :is(button,summary,nav,[role="button"],[role="tab"],[role="tablist"],.button,.app-button,.app-list a,.dashboard-choice,.destination-link,.feature-block,.group-tab,.filter-chip,.account-button,.session-button) { -webkit-user-select:none; user-select:none; }
-:root[data-app="ios"] :is(button,.button,.app-button,.small-button,.dark-button,.outline-button,.account-button,.session-button,.dashboard-choice,.destination-link,.feature-block,.group-tab,.filter-chip,.app-list a,.app-welcome-explore a,.preview-starters button,.exercise-row,summary) { transition:transform .34s var(--app-snap),opacity .2s ease,background-color .2s ease,color .2s ease,border-color .2s ease; }
-:root[data-app="ios"] :is(button,.button,.app-button,.small-button,.dark-button,.outline-button,.account-button,.session-button,.dashboard-choice,.destination-link,.feature-block,.group-tab,.filter-chip,.preview-starters button,summary):not(:disabled):active { transform:scale(.965); opacity:.86; transition-duration:.07s; }
-:root[data-app="ios"] :is(.app-list a,.app-welcome-explore a,.exercise-row):active { background-color:rgba(127,135,120,.14); transition-duration:.05s; }
-:root[data-app="ios"] :is(dialog,.destination-nav,.group-tabs,.submuscle-row,.ai-panel,.policy-nav,.week-strip) { overscroll-behavior:contain; }
+:root[data-app="ios"]
+  :is(a, button, summary, label, input, select, textarea, [role="button"], [role="tab"]) {
+  -webkit-tap-highlight-color: transparent;
+}
+:root[data-app="ios"] :is(a, img) {
+  -webkit-touch-callout: none;
+}
+:root[data-app="ios"] img {
+  -webkit-user-drag: none;
+}
+:root[data-app="ios"]
+  :is(
+    button,
+    summary,
+    nav,
+    [role="button"],
+    [role="tab"],
+    [role="tablist"],
+    .button,
+    .app-button,
+    .app-list a,
+    .dashboard-choice,
+    .destination-link,
+    .feature-block,
+    .group-tab,
+    .filter-chip,
+    .account-button,
+    .session-button
+  ) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+:root[data-app="ios"]
+  :is(
+    button,
+    .button,
+    .app-button,
+    .small-button,
+    .dark-button,
+    .outline-button,
+    .account-button,
+    .session-button,
+    .dashboard-choice,
+    .destination-link,
+    .feature-block,
+    .group-tab,
+    .filter-chip,
+    .app-list a,
+    .app-welcome-explore a,
+    .preview-starters button,
+    .exercise-row,
+    summary
+  ) {
+  transition:
+    transform 0.34s var(--app-snap),
+    opacity 0.2s ease,
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+:root[data-app="ios"]
+  :is(
+    button,
+    .button,
+    .app-button,
+    .small-button,
+    .dark-button,
+    .outline-button,
+    .account-button,
+    .session-button,
+    .dashboard-choice,
+    .destination-link,
+    .feature-block,
+    .group-tab,
+    .filter-chip,
+    .preview-starters button,
+    summary
+  ):not(:disabled):active {
+  transform: scale(0.965);
+  opacity: 0.86;
+  transition-duration: 0.07s;
+}
+:root[data-app="ios"] :is(.app-list a, .app-welcome-explore a, .exercise-row):active {
+  background-color: rgba(127, 135, 120, 0.14);
+  transition-duration: 0.05s;
+}
+:root[data-app="ios"]
+  :is(dialog, .destination-nav, .group-tabs, .submuscle-row, .ai-panel, .policy-nav, .week-strip) {
+  overscroll-behavior: contain;
+}
 
 /* No blur behind anything while scrolling, no scroll-triggered reveals, and page-load entrances leave the motion to
    the view transition. */
-:root[data-app="ios"] *,:root[data-app="ios"] *::before,:root[data-app="ios"] *::after { -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
-:root[data-app="ios"] ::backdrop { -webkit-backdrop-filter:none !important; backdrop-filter:none !important; }
-:root[data-app="ios"] :is(.motion-enter,.hero-layout > div,.intro,.setup-snapshot,.step,.week-preview,.workout-page .hero > div:first-child,.preview-card) { animation:none !important; }
+:root[data-app="ios"] *,
+:root[data-app="ios"] *::before,
+:root[data-app="ios"] *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:root[data-app="ios"] ::backdrop {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+:root[data-app="ios"]
+  :is(
+    .motion-enter,
+    .hero-layout > div,
+    .intro,
+    .setup-snapshot,
+    .step,
+    .week-preview,
+    .workout-page .hero > div:first-child,
+    .preview-card
+  ) {
+  animation: none !important;
+}
 @media (prefers-reduced-motion: no-preference) {
-  :root[data-app="ios"] .feature-panel:not([hidden]) > .studio-container { animation:app-rise .3s var(--app-spring) both; }
-  :root[data-app="ios"] dialog[open] { animation:app-sheet .36s var(--app-spring); }
+  :root[data-app="ios"] .feature-panel:not([hidden]) > .studio-container {
+    animation: app-rise 0.3s var(--app-spring) both;
+  }
+  :root[data-app="ios"] dialog[open] {
+    animation: app-sheet 0.36s var(--app-spring);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
-  :root[data-app="ios"] *,:root[data-app="ios"] *::before,:root[data-app="ios"] *::after { transition-duration:.01ms !important; }
-  .app-paywall { animation:none; }
+  :root[data-app="ios"] *,
+  :root[data-app="ios"] *::before,
+  :root[data-app="ios"] *::after {
+    transition-duration: 0.01ms !important;
+  }
+  .app-paywall {
+    animation: none;
+  }
 }
 @media print {
-  .app-topbar,.app-tabbar,.app-more { display:none !important; }
-  :root[data-app-chrome="tabs"] body { padding-bottom:0 !important; }
+  .app-topbar,
+  .app-tabbar,
+  .app-more {
+    display: none !important;
+  }
+  :root[data-app-chrome="tabs"] body {
+    padding-bottom: 0 !important;
+  }
 }
 
 /* Google refuses sign-in inside an embedded web view, so the app keeps email sign-in only. */
-:root[data-app="ios"] .social-sign-in { display:none !important; }
+:root[data-app="ios"] .social-sign-in {
+  display: none !important;
+}
