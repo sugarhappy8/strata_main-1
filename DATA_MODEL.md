@@ -99,7 +99,9 @@ from.
 | `snapshot.ready` | Daily Snapshot after each stored day | `userId`, `date` | Daily Brief job moves that member to the front of its queue |
 
 Handlers run in order and are awaited before the route answers; a failing handler is logged
-and never fails the request that caused it.
+and never fails the request that caused it. The failed handler and its payload are saved to the
+`event_outbox` table and retried with backoff until they succeed (or give up after 12 tries), and
+reading a member's Daily Snapshots retries that member's queued handlers first.
 
 ## Device copies
 

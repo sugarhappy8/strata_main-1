@@ -7,7 +7,7 @@ const STORE_METHODS = Object.freeze([
   "trainingLinks","upsertTrainingLink","deleteTrainingLink","deleteTrainingLinksForProvider",
   "dailySnapshots","upsertDailySnapshot","saveDailyBrief","deleteDailyBriefs","deleteOldDailySnapshots","deleteUserDailySnapshots",
   "insertPlanChange","planChanges",
-  "aiSettings","upsertAiSettings","briefCandidates","aiUsage","addAiUsage","refundAiUsage","aiUsageTotals","aiUsageTop","deleteOldAiUsage",
+  "aiSettings","upsertAiSettings","briefCandidates","aiUsage","addAiUsage","refundAiUsage","claimMemberAiRequest","claimGlobalAiRequest","insertAiJob","aiJob","activeAiJob","queuedAiJobs","aiJobPosition","claimAiJob","finishAiJob","requeueStaleAiJobs","deleteFinishedAiJobs","aiUsageTotals","aiUsageTop","deleteOldAiUsage",
   "appleSubscription","appleSubscriptionsForUser","upsertAppleSubscription","hasActiveAppleSubscription","appleNotification","recordAppleNotification","deleteOldAppleNotifications",
   "coachingProfile",
   "upsertCoachingProfile",
@@ -89,9 +89,10 @@ const STORE_METHODS = Object.freeze([
   "ratingAggregates",
   "ratingAggregate",
   "upsertRating",
-  "incrementProductSignal",
+  "recordProductSignal",
   "productSignalCounts",
   "deleteOldProductSignals",
+  "deleteProductSignalActors",
   "insertPendingPurchase",
   "recordClaimedPurchase",
   "replacePendingPurchaseCatalog",
@@ -141,6 +142,7 @@ const STORE_METHODS = Object.freeze([
   "deleteOldSupportRequestEvents",
   "deviceConnection","deviceConnectionByProviderUser","insertDeviceConnectState","readDeviceConnectState","consumeDeviceConnectState","discardDeviceConnectState","upsertDeviceConnection","updateDeviceToken","recordDeviceSync","markDeviceConnectionDue","dueDeviceConnections","updateDeviceSettings","deleteDeviceData","upsertWellnessNight","upsertWellnessDay","upsertWellnessWorkout","wellnessNights","wellnessDays","wellnessWorkouts","deleteExpiredDeviceData",
   "insertSocialSignInState","recordSocialSignInReturn","discardSocialSignInState","consumeSocialSignInState","accountIdentity","accountIdentities","accountSignInMethods","linkAccountIdentity","touchAccountIdentity","createSocialAccount","deleteExpiredSocialSignInData",
+  "addOutboxEvent","dueOutboxEvents","userOutboxEvents","claimOutboxEvent","completeOutboxEvent","failOutboxEvent","deleteOldOutboxEvents","takeRateSlot","deleteOldRateBuckets","acquireLock","releaseLock",
   "close",
 ]);
 const STORE_METHOD_SET = new Set(STORE_METHODS);

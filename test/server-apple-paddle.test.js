@@ -142,11 +142,10 @@ function paddleSubscription(account,label){
 test.before(start);
 test.after(stop);
 
-test("status reports App Store purchases as configured beside Paddle",async()=>{
+test("the public status does not reveal App Store or Paddle setup",async()=>{
   const status=await request("/api/status");
   assert.equal(status.response.status,200);
-  assert.equal(status.data.paymentsConfigured,true);assert.equal(status.data.checkoutEnabled,true);
-  assert.equal(status.data.appStoreConfigured,true);
+  assert.deepEqual(Object.keys(status.data).sort(),["ok","version"]);
 });
 
 test("a member with Strata+ from the App Store is never sent to a second payment through Paddle",async()=>{

@@ -388,9 +388,7 @@ test("live monthly checkout grants, manages, updates, and revokes Strata+ secure
 
   const status=await request("/api/status");
   assert.equal(status.response.status,200);
-  assert.equal(status.data.paymentsConfigured,true);
-  assert.equal(status.data.checkoutEnabled,true);
-  assert.equal(status.data.webhookIpAllowlist,true);
+  assert.deepEqual(Object.keys(status.data).sort(),["ok","version"],"payment and webhook setup is not public");
   const config=await request("/api/billing/config");
   assert.equal(config.response.status,200);
   assert.deepEqual(config.data,{

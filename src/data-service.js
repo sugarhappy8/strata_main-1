@@ -42,9 +42,9 @@ function createDataService({store,events,getPlan,coachingProfile,requireSession,
     const updatedAt=Number(payload.updatedAt);if(!Number.isSafeInteger(updatedAt)||updatedAt<1)return;
     const source=["manual","ai","system"].includes(String(payload.source))?String(payload.source):"manual";
     await store.insertPlanChange(String(payload.userId),{planUpdatedAt:updatedAt,source,detail:String(payload.detail||"plan-edit").slice(0,40),createdAt:now()});
-  });
+  },"plan_changes.record");
   // Derived rows go with the device data they came from.
-  events.on("polar.data_deleted",async(payload)=>{const userId=String(payload.userId);await store.deleteTrainingLinksForProvider(userId,String(payload.provider));await store.deleteUserDailySnapshots(userId);});
+  events.on("polar.data_deleted",async(payload)=>{const userId=String(payload.userId);await store.deleteTrainingLinksForProvider(userId,String(payload.provider));await store.deleteUserDailySnapshots(userId);},"derived.polar_deleted");
 
   /**
    * What rankings and recommendations can learn from the member: their ranking lens, their own ratings, and

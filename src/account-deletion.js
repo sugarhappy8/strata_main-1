@@ -80,7 +80,7 @@ function createAccountDeletion({
     const session=await requireSession(req,res);if(!session)return true;
     if(!validCsrf(req,session)){json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});return true;}
     // Password guesses are limited per account (every session of it, from any network) and per network.
-    if(!rateAllowed(req,"account-delete-now",MAX_ATTEMPTS)||!rateAllowed(req,`identity:account-delete-now:${session.id}`,MAX_ATTEMPTS)){
+    if(!await rateAllowed(req,"account-delete-now",MAX_ATTEMPTS)||!await rateAllowed(req,`identity:account-delete-now:${session.id}`,MAX_ATTEMPTS)){
       json(res,429,{error:"Too many deletion attempts. Wait 15 minutes and try again.",code:"ACCOUNT_DELETE_RATE_LIMIT"},{"Retry-After":"900"});return true;
     }
     const input=await bodyJson(req);

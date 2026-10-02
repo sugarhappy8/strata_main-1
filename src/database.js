@@ -14,6 +14,7 @@ const {createLocalDataLayerMethods,createTursoDataLayerMethods,dataLayerDeletion
 const {aiDeletionBatch,createLocalAiMethods,createTursoAiMethods,deleteLocalAiData}=require("./ai-store");
 const {appleDeletionBatch,createLocalAppleBillingMethods,createTursoAppleBillingMethods,deleteLocalAppleData}=require("./apple-billing-store");
 const {createLocalSocialAuthMethods,createTursoSocialAuthMethods}=require("./social-auth-store");
+const {createLocalServerStateMethods,createTursoServerStateMethods}=require("./server-state-store");
 const {migrateLocalSchema,migrateTursoSchema}=require("./migrations");
 function plainValue(value) {
   return typeof value === "bigint" ? Number(value) : value;
@@ -226,7 +227,7 @@ function localStore(root) {
     }
   }
   return defineStore("local",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createLocalAppleBillingMethods({statements,plainRow}),...createLocalSocialAuthMethods({db,statements,plainRow}),
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createLocalAppleBillingMethods({statements,plainRow}),...createLocalSocialAuthMethods({db,statements,plainRow}),...createLocalServerStateMethods({statements,plainRow}),
     ...createLocalAccessControlMethods({db,statements,plainRow}),
     async ping() { return probeConnection(() => statements.ping.get()); },
     async userByEmail(email) { return plainRow(statements.userByEmail.get(email)); },
@@ -504,9 +505,10 @@ function localStore(root) {
     async ratingAggregates() { return plainRows(statements.ratingAggregates.all()); },
     async ratingAggregate(exerciseId) { return plainRow(statements.ratingAggregate.get(exerciseId)); },
     async upsertRating(userId,exerciseId,rating,createdAt,updatedAt) { statements.upsertRating.run(userId,exerciseId,rating.comfort,rating.pump,rating.enjoyment,rating.stability,rating.setup,rating.overall,createdAt,updatedAt); },
-    async incrementProductSignal(eventDay,eventName) { return Boolean(plainRow(statements.incrementProductSignal.get(eventDay,eventName))); },
+    async recordProductSignal(eventDay,eventName,actorKey,audience) { return Boolean(plainRow(statements.recordProductSignal.get(eventDay,eventName,actorKey,audience))); },
     async productSignalCounts(sinceDay,throughDay) { return plainRows(statements.productSignalCounts.all(sinceDay,throughDay)); },
     async deleteOldProductSignals(beforeDay) { return affectedRows(statements.deleteOldProductSignals.run(beforeDay)); },
+    async deleteProductSignalActors(beforeDay) { return affectedRows(statements.deleteProductSignalActors.run(beforeDay)); },
     ...billingMethods,
     async adminPrincipal() { return plainRow(statements.adminPrincipal.get()); },
     async claimAdminPrincipal(userId,configuredEmail,boundAt) {
@@ -760,7 +762,7 @@ async function tursoStore(url,authToken,tursoClientFactory) {
     return {status:"invalid"};
   }
   return defineStore("turso",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createTursoAppleBillingMethods({first,all,run}),...createTursoSocialAuthMethods({client,first,all,run,plainRow}),
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createTursoAppleBillingMethods({first,all,run}),...createTursoSocialAuthMethods({client,first,all,run,plainRow}),...createTursoServerStateMethods({first,all,run}),
     ...createTursoAccessControlMethods({client,first,plainRow,SQL}),
     // A successful query is the health signal. Some Turso-compatible row
     // implementations expose selected values only by numeric index, so the
@@ -979,12 +981,13 @@ async function tursoStore(url,authToken,tursoClientFactory) {
     async upsertRating(userId,exerciseId,rating,createdAt,updatedAt) {
       await run(SQL.upsertRating,[userId,exerciseId,rating.comfort,rating.pump,rating.enjoyment,rating.stability,rating.setup,rating.overall,createdAt,updatedAt]);
     },
-    async incrementProductSignal(eventDay,eventName) {
-      const result=await run(SQL.incrementProductSignal,[eventDay,eventName]);
+    async recordProductSignal(eventDay,eventName,actorKey,audience) {
+      const result=await run(SQL.recordProductSignal,[eventDay,eventName,actorKey,audience]);
       return Boolean(plainRow(result.rows?.[0],result.columns));
     },
     productSignalCounts:(sinceDay,throughDay) => all(SQL.productSignalCounts,[sinceDay,throughDay]),
     async deleteOldProductSignals(beforeDay) { return affectedRows(await run(SQL.deleteOldProductSignals,[beforeDay])); },
+    async deleteProductSignalActors(beforeDay) { return affectedRows(await run(SQL.deleteProductSignalActors,[beforeDay])); },
     ...billingMethods,
     adminPrincipal:() => first(SQL.adminPrincipal),
     async claimAdminPrincipal(userId,configuredEmail,boundAt) {

@@ -28,20 +28,26 @@ function createAiQuota({store,now=Date.now,limits}){
   }
   /**
    * Claims one request, or explains why not: "AI_BUSY" (this minute is full), "AI_RESTING" (today's shared
-   * budget is spent), or "AI_DAILY_LIMIT" (this member's chat allowance is spent).
+   * budget is spent), or "AI_DAILY_LIMIT" (this member's chat allowance is spent). Each limit is claimed with one
+   * conditional write, never read and then written, so concurrent requests cannot overshoot it; a claim that a later
+   * limit refuses is given back.
    * @param {"chat"|"brief"} kind @param {string} userId
    */
   async function reserve(kind,userId){
     if(!minuteRoom())return {ok:false,code:"AI_BUSY",retryAt:(recent[0]??now())+MINUTE_MS};
-    const date=today(),global=await usage("global",date);
-    if(global.chat.requests+global.brief.requests>=dailyRequests)return {ok:false,code:"AI_RESTING"};
-    if(kind==="chat"){
-      if(global.chat.requests>=chatCap)return {ok:false,code:"AI_RESTING"};
-      if((await usage(userId,date)).chat.requests>=userDaily)return {ok:false,code:"AI_DAILY_LIMIT"};
-    }
-    recent.push(now());
-    await store.addAiUsage(date,"global",kind,1,0);await store.addAiUsage(date,userId,kind,1,0);
-    return {ok:true,date};
+    // The minute slot is taken before the first await, so a burst cannot all see the same free slot.
+    const stamp=now();recent.push(stamp);
+    const release=()=>{const index=recent.indexOf(stamp);if(index>=0)recent.splice(index,1);};
+    const date=today();
+    try{
+      if(kind==="chat"&&!await store.claimMemberAiRequest(date,userId,"chat",userDaily)){release();return {ok:false,code:"AI_DAILY_LIMIT"};}
+      if(!await store.claimGlobalAiRequest(date,kind,dailyRequests,kind==="chat"?chatCap:dailyRequests)){
+        if(kind==="chat")await store.refundAiUsage(date,userId,"chat");
+        release();return {ok:false,code:"AI_RESTING"};
+      }
+      if(kind==="brief")await store.addAiUsage(date,userId,"brief",1,0);
+      return {ok:true,date};
+    }catch(error){release();throw error;}
   }
   /** Tokens are counted on the day the request was claimed. @param {"chat"|"brief"} kind @param {string} userId @param {string} date @param {number} tokens */
   async function record(kind,userId,date,tokens){

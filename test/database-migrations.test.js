@@ -59,7 +59,29 @@ function assertRetiredTables(database) {
   assert.deepEqual(database.prepare("SELECT event_name,event_count FROM product_signal_counts ORDER BY event_name").all().map((row)=>({...row})),[{event_name:"plan_saved",event_count:2}],"the retired trial signal is dropped from the counts");
   assert.throws(()=>database.prepare("INSERT INTO product_signal_counts(event_day,event_name,event_count) VALUES(?,?,?)").run("2030-03-05","trial_started",1),/CHECK constraint failed/);
   database.prepare("INSERT INTO product_signal_counts(event_day,event_name,event_count) VALUES(?,?,?)").run("2030-03-05","workout_started",1);
+  assert.deepEqual(database.prepare("PRAGMA table_info(product_signal_counts)").all().map((row)=>row.name),["event_day","event_name","event_count","member_count","anonymous_count"]);
 }
+
+test("a 9.3 database gains separate signed-in and anonymous counts, and the daily-key trigger fills them",()=>{
+  const database=new DatabaseSync(":memory:",{enableForeignKeyConstraints:true});
+  try {
+    for (const statement of SCHEMA) if (statement!==WORKOUT_ACTIVE_INDEX) database.exec(statement);
+    database.exec("DROP TABLE product_signal_counts");
+    database.exec(PRODUCT_SIGNAL_TABLE.replace(/\n\s*member_count[^\n]*\n\s*anonymous_count[^\n]*/,""));
+    assert.deepEqual(database.prepare("PRAGMA table_info(product_signal_counts)").all().map((row)=>row.name),["event_day","event_name","event_count"],"the 9.3 shape");
+    database.prepare("INSERT INTO product_signal_counts(event_day,event_name,event_count) VALUES(?,?,?)").run("2030-03-04","plan_saved",7);
+    database.exec("CREATE TABLE schema_migrations (migration_id TEXT PRIMARY KEY,applied_at INTEGER NOT NULL)");
+    for (const {id} of MIGRATIONS.slice(0,-1)) database.prepare("INSERT INTO schema_migrations VALUES(?,?)").run(id,1);
+    const result=migrateLocalSchema(database,{activeWorkoutIndex:WORKOUT_ACTIVE_INDEX,reconcileActiveWorkouts:RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,productSignalTable:PRODUCT_SIGNAL_TABLE,now:()=>1234});
+    assert.deepEqual(result.applied,["010-product-signal-audiences"]);
+    assert.deepEqual({...database.prepare("SELECT event_count,member_count,anonymous_count FROM product_signal_counts").get()},{event_count:7,member_count:0,anonymous_count:0},"older counts stay, unattributed");
+    const record=database.prepare("INSERT INTO product_signal_actors(event_day,event_name,actor_key,audience) VALUES(?,?,?,?) ON CONFLICT DO NOTHING RETURNING event_name");
+    assert.equal(record.all("2030-03-04","plan_saved","a".repeat(64),"member").length,1);
+    assert.equal(record.all("2030-03-04","plan_saved","a".repeat(64),"member").length,0,"the same key on the same day is not counted again");
+    assert.equal(record.all("2030-03-04","plan_saved","b".repeat(64),"anonymous").length,1);
+    assert.deepEqual({...database.prepare("SELECT event_count,member_count,anonymous_count FROM product_signal_counts").get()},{event_count:9,member_count:1,anonymous_count:1});
+  } finally { database.close(); }
+});
 
 test("SQLite records each idempotent migration once",()=>{
   const database=legacyDatabase();

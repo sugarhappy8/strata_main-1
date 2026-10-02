@@ -39,6 +39,8 @@ const PADDLE_STATUS_EVENTS=new Set([
   "transaction.revised","transaction.updated"
 ]);
 const PADDLE_CANCELABLE_STALE_STATUSES=new Set(["ready","billed"]);
+/** @type {import("./domain-types").AppleSandboxPolicy} */
+const PRODUCTION_ONLY_APPLE=Object.freeze({allowSandbox:false,sandboxAccounts:new Set()});
 /** @param {unknown} value @param {number} [fallback] */
 const eventTime=(value,fallback=Date.now())=>{const parsed=Date.parse(String(value||""));return Number.isFinite(parsed)?parsed:fallback;};
 
@@ -52,7 +54,7 @@ const eventTime=(value,fallback=Date.now())=>{const parsed=Date.parse(String(val
 function createBillingService({
   store,paymentConfig,enforcePaddleIps,requestAddress,rateAllowed,
   isUniqueViolation,getAuth,getUserPayload,http,logger,
-  now=Date.now,makeId=randomUUID
+  appleSandbox=PRODUCTION_ONLY_APPLE,now=Date.now,makeId=randomUUID
 }) {
   if(!store||!paymentConfig||typeof requestAddress!=="function"||typeof rateAllowed!=="function"||
     typeof isUniqueViolation!=="function"||typeof getAuth!=="function"||typeof getUserPayload!=="function"||
@@ -86,7 +88,7 @@ function createBillingService({
   // Strata+ is one entitlement however it was paid for: Paddle, Apple In-App Purchase, or an owner's grant.
   /** @param {string} userId @param {number} [timestamp] @param {import("./domain-types").AdminControlsRow|null} [knownControls] */
   async function hasCurrentAccess(userId,timestamp=now(),knownControls) {
-    const [paid,apple,controls]=await Promise.all([hasCurrentPaidAccess(userId,timestamp),store.hasActiveAppleSubscription(userId,timestamp),knownControls===undefined?store.adminControls(userId):knownControls]);
+    const [paid,apple,controls]=await Promise.all([hasCurrentPaidAccess(userId,timestamp),store.hasActiveAppleSubscription(userId,timestamp,appleSandbox),knownControls===undefined?store.adminControls(userId):knownControls]);
     return Boolean(paid||apple||adminGrantState(controls,timestamp).active);
   }
 
@@ -488,7 +490,7 @@ function createBillingService({
   // Never take a second payment: a member whose Strata+ comes from the App Store is told so.
   /** @param {import("./domain-types").HttpResponse} res @param {string} userId */
   async function alreadyEntitled(res,userId) {
-    if(await store.hasActiveAppleSubscription(userId,now()))json(res,409,{error:"You already have Strata+ through the App Store.",code:"ALREADY_ENTITLED_APP_STORE"});
+    if(await store.hasActiveAppleSubscription(userId,now(),appleSandbox))json(res,409,{error:"You already have Strata+ through the App Store.",code:"ALREADY_ENTITLED_APP_STORE"});
     else json(res,409,{error:"Strata+ is already unlocked for this account.",code:"ALREADY_ENTITLED"});
   }
 
@@ -505,7 +507,7 @@ function createBillingService({
     if(await store.activeAccountDeletion(session.id,now())){
       json(res,409,{error:"Cancel the pending account-deletion request before starting checkout.",code:"ACCOUNT_DELETION_PENDING"});return;
     }
-    if(!rateAllowed(req,`checkout:${session.id}`,8)){
+    if(!await rateAllowed(req,`checkout:${session.id}`,8)){
       json(res,429,{error:"Too many checkout attempts. Try again later."});return;
     }
     if(await hasCurrentAccess(session.id)){
@@ -646,7 +648,7 @@ function createBillingService({
       }
       json(res,404,{error:"No Strata+ monthly subscription was found for this account.",code:"SUBSCRIPTION_NOT_FOUND"});return;
     }
-    if(!rateAllowed(req,`billing-portal:${session.id}`,10,15*60*1000)){
+    if(!await rateAllowed(req,`billing-portal:${session.id}`,10,15*60*1000)){
       json(res,429,{error:"Too many subscription-management requests. Try again later."});return;
     }
     const links=await createCustomerPortalSession(paymentConfig,{

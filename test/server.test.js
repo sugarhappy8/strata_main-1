@@ -67,7 +67,7 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages",async()=>{
-  assert.equal(BUILD,"9.3.0");
+  assert.equal(BUILD,"9.4.0");
   const home=await request("/");
   assert.equal(home.response.status,200);
   assert.equal(home.response.headers.get("cache-control"),"private, no-store");
@@ -86,12 +86,7 @@ test("serves rankings and gates private account pages",async()=>{
   assert.match(account.data,BUILD_LABEL,"Profile's About line shows the build");
   const status=await request("/api/status");
   assert.equal(status.response.status,200);
-  assert.equal(status.data.ok,true);
-  assert.equal(status.data.build,BUILD);
-  assert.equal(status.data.paymentsConfigured,false);
-  assert.equal(typeof status.data.passwordResetEnabled,"boolean");
-  assert.equal(typeof status.data.accountDeletionEnabled,"boolean");
-  assert.equal(status.data.checkoutEnabled,false);
+  assert.deepEqual(status.data,{ok:true,version:BUILD},"the public status shows only that the app is up and its build");
   const billing=await request("/api/billing/config");
   assert.equal(billing.response.status,200);
   assert.equal(billing.data.configured,false);

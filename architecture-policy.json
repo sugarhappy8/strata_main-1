@@ -42,7 +42,8 @@
         "src/apple-billing.js",
         "src/session-renewal.js",
         "src/social-auth.js",
-        "src/social-auth-config.js"
+        "src/social-auth-config.js",
+        "src/single-instance.js"
       ]
     },
     "src/service-composition.js": {
@@ -179,7 +180,8 @@
         "src/data-layer-store.js",
         "src/ai-store.js",
         "src/apple-billing-store.js",
-        "src/social-auth-store.js"
+        "src/social-auth-store.js",
+        "src/server-state-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -189,9 +191,10 @@
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 210,
+      "maxLines": 220,
       "allowedDependencies": [
-        "src/billing-schema.js"
+        "src/billing-schema.js",
+        "src/product-signals-schema.js"
       ]
     },
     "src/schema.js": {
@@ -208,17 +211,18 @@
         "src/data-layer-schema.js",
         "src/ai-schema.js",
         "src/apple-billing-schema.js",
-        "src/social-auth-schema.js"
+        "src/social-auth-schema.js",
+        "src/server-state-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
-      "role": "Aggregate product-activity schema and statements",
-      "maxLines": 35,
+      "role": "Aggregate product-activity schema, daily keys, and statements",
+      "maxLines": 60,
       "allowedDependencies": []
     },
     "src/product-signals.js": {
       "role": "Consent-gated aggregate product-activity boundary",
-      "maxLines": 140,
+      "maxLines": 170,
       "allowedDependencies": []
     },
     "src/training-loop-schema.js": {
@@ -324,7 +328,9 @@
     "src/http.js": {
       "role": "HTTP transport helpers",
       "maxLines": 180,
-      "allowedDependencies": []
+      "allowedDependencies": [
+        "src/session-renewal.js"
+      ]
     },
     "src/observability.js": {
       "role": "Structured request tracing and redacted operational logging",
@@ -421,7 +427,7 @@
     },
     "src/ai.js": {
       "role": "Strata AI request queue and review-only proposal API",
-      "maxLines": 215,
+      "maxLines": 275,
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/ai-core.js",
@@ -542,8 +548,8 @@
       "allowedDependencies": []
     },
     "src/events.js": {
-      "role": "In-process event bus announcing plan, workout, and profile saves",
-      "maxLines": 60,
+      "role": "In-process event bus with an outbox that retries failed reactions",
+      "maxLines": 140,
       "allowedDependencies": []
     },
     "src/athlete-profile.js": {
@@ -591,12 +597,12 @@
     },
     "src/ai-schema.js": {
       "role": "Strata AI consent and daily usage storage schema",
-      "maxLines": 50,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/ai-store.js": {
       "role": "SQLite and Turso Strata AI storage parity",
-      "maxLines": 70,
+      "maxLines": 95,
       "allowedDependencies": [
         "src/ai-schema.js"
       ]
@@ -632,7 +638,7 @@
     },
     "src/apple-billing.js": {
       "role": "Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state",
-      "maxLines": 360,
+      "maxLines": 380,
       "allowedDependencies": [
         "src/apple-jws.js",
         "src/http.js"
@@ -651,7 +657,7 @@
       ]
     },
     "src/session-renewal.js": {
-      "role": "Sliding session renewal and the response cookie choke point",
+      "role": "Sliding session renewal and adding its cookie to the response",
       "maxLines": 70,
       "allowedDependencies": []
     },
@@ -683,6 +689,23 @@
       "allowedDependencies": [
         "src/social-auth-schema.js"
       ]
+    },
+    "src/server-state-schema.js": {
+      "role": "Event outbox, rate-limit, and lock tables that keep server state in the database",
+      "maxLines": 80,
+      "allowedDependencies": []
+    },
+    "src/server-state-store.js": {
+      "role": "Local and Turso storage for the event outbox, rate limits, and locks",
+      "maxLines": 80,
+      "allowedDependencies": [
+        "src/server-state-schema.js"
+      ]
+    },
+    "src/single-instance.js": {
+      "role": "Heartbeat lock that logs a second server on the same database",
+      "maxLines": 50,
+      "allowedDependencies": []
     },
     "src/social-auth.js": {
       "role": "Sign up and sign in with Google",

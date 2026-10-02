@@ -44,7 +44,7 @@ function publicConnection(row){
 
 /**
  * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,
- *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean,http:{json:Function,bodyJson:Function,redirect:Function},
+ *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,http:{json:Function,bodyJson:Function,redirect:Function},
  *   settings:ReturnType<typeof devicesSettings>,hasAccess:(userId:string)=>Promise<boolean>,logger?:{info?:Function,warn?:Function,error?:Function}|null,
  *   now?:()=>number,polar?:any,sync?:any,fetchImpl?:typeof fetch,isUniqueViolation?:(error:unknown)=>boolean,events?:import("./domain-types").EventBus|null}} dependencies
  */
@@ -52,7 +52,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
   if(!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http||!settings||typeof hasAccess!=="function")throw new TypeError("Connected devices require storage, access guards, rate limiting, HTTP helpers, settings, and access checks.");
   const {json,bodyJson,redirect}=http;
   const client=polar||createPolarClient({settings,now,...(fetchImpl?{fetchImpl}:{})});
-  const worker=sync||createDeviceSync({store,polar:client,keys:settings.keys,hasAccess,logger,now,intervalMs:settings.syncIntervalMs,events});
+  const worker=sync||createDeviceSync({store,polar:client,keys:settings.keys,hasAccess,logger,now,intervalMs:settings.syncIntervalMs,events,locks:typeof store.acquireLock==="function"?store:null});
   const uniqueViolation=isUniqueViolation||((/** @type {any} */ error)=>/UNIQUE constraint failed/i.test(String(error?.message||"")));
 
   /** @param {any} req @param {any} session */
@@ -109,7 +109,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
   async function connect(req,res,session){
     await readInput(req,session,[]);
     if(!settings.configured)throw deviceError("DEVICES_NOT_CONFIGURED","Polar is not set up on this server yet.",503);
-    if(!rateAllowed(req,`identity:devices:connect:${session.id}`,10,15*60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many connection attempts. Wait a few minutes.",429);
+    if(!await rateAllowed(req,`identity:devices:connect:${session.id}`,10,15*60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many connection attempts. Wait a few minutes.",429);
     const state=randomId(32),time=now(),redirectUri=redirectUriFor(req);
     const saved=await store.insertDeviceConnectState({stateHash:sha256(state),userId:String(session.id),provider:PROVIDER,sessionHash:String(session.token_hash||""),redirectUri,createdAt:time,expiresAt:time+STATE_TTL_MS});
     if(!saved)throw deviceError("DEVICES_ACCOUNT_CHANGED","Your account changed. Reload before connecting Polar.",409);
@@ -121,7 +121,7 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
     const state=String(url.searchParams.get("state")||""),code=String(url.searchParams.get("code")||""),problem=url.searchParams.get("error");
     /** @param {string} outcome @param {Record<string,string>} [headers] */
     const back=(outcome,headers={})=>redirect(res,`/account.html?devices=${outcome}#connectedDevices`,headers);
-    if(!STATE.test(state)||!rateAllowed(req,"devices:callback",30,15*60*1000)){back("polar-failed");return;}
+    if(!STATE.test(state)||!await rateAllowed(req,"devices:callback",30,15*60*1000)){back("polar-failed");return;}
     const pending=await store.readDeviceConnectState(sha256(state)),time=now();
     if(!pending||pending.used_at!=null||Number(pending.expires_at)<=time){back("polar-expired");return;}
     if(problem||!code){await store.discardDeviceConnectState(sha256(state),time);back(problem==="access_denied"?"polar-declined":"polar-failed");return;}
@@ -233,13 +233,13 @@ function createDevicesService({store,auth,requireAccess,trustedOrigin,rateAllowe
       if(path==="/api/devices"||path==="/api/devices/polar"){
         const session=await auth.requireSession(req,res);if(!session)return true;
         if(path==="/api/devices/polar"){await readInput(req,session,[]);json(res,200,{disconnected:await releaseConnection(String(session.id)),csrfToken:session.csrf_token});return true;}
-        if(!rateAllowed(req,`identity:devices:read:${session.id}`,240,60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many checks. Wait a moment.",429);
+        if(!await rateAllowed(req,`identity:devices:read:${session.id}`,240,60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many checks. Wait a moment.",429);
         json(res,200,{configured:settings.configured,plus:await hasAccess(String(session.id)),connection:publicConnection(await store.deviceConnection(String(session.id),PROVIDER)),csrfToken:session.csrf_token});return true;
       }
       // After Strata+ ends, syncing pauses but a member who still has a connection keeps read-only access to what was imported.
       const lapsedRead=method!=="POST"&&method!=="PUT"&&path.startsWith("/api/wellness/");
       const session=lapsedRead?await readOnlySession(req,res):await requireAccess(req,res);if(!session)return true;
-      if(method==="GET"&&!rateAllowed(req,`identity:devices:read:${session.id}`,240,60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many checks. Wait a moment.",429);
+      if(method==="GET"&&!await rateAllowed(req,`identity:devices:read:${session.id}`,240,60*1000))throw deviceError("DEVICES_RATE_LIMIT","Too many checks. Wait a moment.",429);
       if(path==="/api/devices/polar/connect")await connect(req,res,session);
       else if(path==="/api/devices/polar/complete")await complete(req,res,session);
       else if(path==="/api/devices/polar/sync")await syncNow(req,res,session);

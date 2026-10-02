@@ -110,8 +110,12 @@ function validRange(from,to){return isDate(from)&&isDate(to)&&from<=to&&(Date.pa
  * @param {{store:any,getPlan:(userId:string)=>Promise<any>,logger?:{warn?:Function}|null,now?:()=>number}} dependencies
  */
 function createTrainingLog({store,getPlan,logger=null,now=Date.now}){
-  /** Reads and links one range. Links are written only when they change, so reads stay cheap. @param {string} userId @param {string} from @param {string} to @param {string} today */
-  async function load(userId,from,to,today){
+  /**
+   * Reads and links one range. Links are written only when they change, so reads stay cheap. A read still answers
+   * when a link write fails (the next read retries it); a relink from an event throws so the bus can retry it.
+   * @param {string} userId @param {string} from @param {string} to @param {string} today @param {boolean} [strict]
+   */
+  async function load(userId,from,to,today,strict=false){
     const [rows,sessionRows,linkRows,plan,changes]=await Promise.all([store.workouts(userId,200,0),store.wellnessWorkouts(userId,PROVIDER,Date.parse(`${from}T00:00:00Z`)-DAY_MS,Date.parse(`${to}T00:00:00Z`)+2*DAY_MS),store.trainingLinks(userId),getPlan(userId),store.planChanges(userId,1)]);
     const workouts=/** @type {any[]} */(rows.map(summaryOf).filter(Boolean)),sessions=/** @type {any[]} */(sessionRows.map(sessionOf).filter(Boolean));
     const inRange=new Set(sessions.map((session)=>session.externalId)),stored=linkRows.filter((/** @type {any} */ row)=>inRange.has(String(row.external_id)));
@@ -121,20 +125,20 @@ function createTrainingLog({store,getPlan,logger=null,now=Date.now}){
         const keep=new Set(matched.map((link)=>link.externalId));
         for(const row of stored)if(!keep.has(String(row.external_id)))await store.deleteTrainingLink(userId,PROVIDER,String(row.external_id));
         for(const link of matched)if(!stored.some((/** @type {any} */ row)=>key(row)===key(link)))await store.upsertTrainingLink(userId,{...link,linkedAt:now()});
-      }catch(error){logger?.warn?.("training_log.link_failed",{error});}
+      }catch(error){logger?.warn?.("training_log.link_failed",{error});if(strict)throw error;}
     }
     return composeTrainingLog({workouts,sessions,links:matched,plan,planSource:String(changes[0]?.source||"manual"),from,to,today});
   }
   /** Re-links the days a Polar sync or a finished workout touched. @param {string} userId @param {string} from @param {string} to @param {string} today */
-  async function relink(userId,from,to,today){if(validRange(from,to))await load(userId,from,to,today);}
+  async function relink(userId,from,to,today){if(validRange(from,to))await load(userId,from,to,today,true);}
   return {
     /** @param {string} userId @param {{from:string,to:string,today:string}} range */
     async read(userId,{from,to,today}){if(!validRange(from,to))throw Object.assign(new Error("Choose a range of up to 92 days."),{status:400,code:"INVALID_TRAINING_LOG_RANGE"});return load(userId,from,to,today);},
     relink,
     /** @param {import("./domain-types").EventBus} events @param {(userId:string)=>string|Promise<string>} todayFor */
     subscribe(events,todayFor){
-      events.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await relink(userId,addDays(date,-1),addDays(date,1),await todayFor(userId));});
-      events.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),from=String(payload.from||""),to=String(payload.to||"");if(isDate(from)&&isDate(to))await relink(userId,from,to,await todayFor(userId));});
+      events.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await relink(userId,addDays(date,-1),addDays(date,1),await todayFor(userId));},"training_log.workout_completed");
+      events.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),from=String(payload.from||""),to=String(payload.to||"");if(isDate(from)&&isDate(to))await relink(userId,from,to,await todayFor(userId));},"training_log.polar_sync");
     }
   };
 }

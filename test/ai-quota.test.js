@@ -4,12 +4,21 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const {createAiQuota}=require("../src/ai-quota");
 
+const pause=()=>new Promise((resolve)=>setImmediate(resolve));
+
 function memoryStore(){
   const rows=new Map(),key=(date,scope,kind)=>`${date}|${scope}|${kind}`;
   return {rows,
     async aiUsage(date,scope){return [...rows.entries()].filter(([name])=>name.startsWith(`${date}|${scope}|`)).map(([name,value])=>({kind:name.split("|")[2],...value}));},
     async addAiUsage(date,scope,kind,requests,tokens){const current=rows.get(key(date,scope,kind))||{requests:0,tokens:0};rows.set(key(date,scope,kind),{requests:current.requests+requests,tokens:current.tokens+tokens});},
     async refundAiUsage(date,scope,kind){const current=rows.get(key(date,scope,kind));if(current)current.requests=Math.max(0,current.requests-1);},
+    // Like the database: each claim checks and writes in one step (after a network-like pause).
+    async claimMemberAiRequest(date,scope,kind,limit){await pause();const current=rows.get(key(date,scope,kind))||{requests:0,tokens:0};if(current.requests>=limit)return false;rows.set(key(date,scope,kind),{...current,requests:current.requests+1});return true;},
+    async claimGlobalAiRequest(date,kind,dailyLimit,kindLimit){
+      await pause();const used=(name)=>rows.get(key(date,"global",name))?.requests||0;
+      if(used("chat")+used("brief")>=dailyLimit||used(kind)>=kindLimit)return false;
+      const current=rows.get(key(date,"global",kind))||{requests:0,tokens:0};rows.set(key(date,"global",kind),{...current,requests:current.requests+1});return true;
+    },
     async aiUsageTotals(date){return ["brief","chat"].map(kind=>({kind,...(rows.get(key(date,"global",kind))||{requests:0,tokens:0})}));},
     async aiUsageTop(date,limit){const users=new Map();for(const [name,value] of rows){const [day,scope]=name.split("|");if(day!==date||scope==="global")continue;const current=users.get(scope)||{user_id:scope,email:null,requests:0,tokens:0};current.requests+=value.requests;current.tokens+=value.tokens;users.set(scope,current);}return [...users.values()].sort((a,b)=>b.tokens-a.tokens).slice(0,limit);},
     async deleteOldAiUsage(){}
@@ -46,4 +55,21 @@ test("tokens are recorded, failed requests are refunded, and the owner sees the 
   assert.deepEqual(summary.totals,[{kind:"brief",requests:1,tokens:400},{kind:"chat",requests:1,tokens:1500}]);
   assert.deepEqual(summary.topUsers.map(row=>[row.userId,row.requests,row.tokens]),[["a",1,1500],["b",1,400]],"the refunded chat request is not counted");
   assert.equal(summary.chatCap,60);assert.equal(summary.dailyRequests,100);
+});
+
+test("concurrent requests never pass the member allowance, the shared budget, or the minute cap",async()=>{
+  const time=Date.parse("2026-10-01T08:00:00Z"),store=memoryStore();
+  const quota=createAiQuota({store,now:()=>time,limits:{dailyRequests:5,briefShare:0,perMinute:100,userDaily:3}});
+  const mine=await Promise.all(Array.from({length:10},()=>quota.reserve("chat","a")));
+  assert.equal(mine.filter((claim)=>claim.ok).length,3,"ten at once still get exactly three");
+  assert.ok(mine.filter((claim)=>!claim.ok).every((claim)=>claim.code==="AI_DAILY_LIMIT"));
+  const everyone=await Promise.all(Array.from({length:10},(_,index)=>quota.reserve("chat",`member-${index}`)));
+  assert.equal(everyone.filter((claim)=>claim.ok).length,2,"the shared budget of five is never overshot");
+  assert.equal(store.rows.get("2026-10-01|global|chat").requests,5);
+  assert.equal(everyone.filter((claim)=>!claim.ok).every((claim)=>claim.code==="AI_RESTING"),true);
+  assert.deepEqual([...store.rows].filter(([name])=>name.startsWith("2026-10-01|member-")).reduce((sum,[,value])=>sum+value.requests,0),2,"a refused member claim is given back");
+
+  const burst=createAiQuota({store:memoryStore(),now:()=>time,limits:{dailyRequests:100,briefShare:0,perMinute:4,userDaily:100}});
+  const claims=await Promise.all(Array.from({length:9},(_,index)=>burst.reserve("chat",`burst-${index}`)));
+  assert.equal(claims.filter((claim)=>claim.ok).length,4,"the minute slot is taken before the first await");
 });

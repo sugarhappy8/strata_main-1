@@ -11,7 +11,8 @@ The checked-in `render.yaml` defines the supported Render service shape:
 - Node 24 selected by `.node-version`;
 - `npm ci --omit=dev --no-audit --no-fund` for production dependencies;
 - `npm start` as the process command;
-- `/healthz` as the compatibility alias for the storage-aware readiness check; and
+- `/healthz` as the compatibility alias for the storage-aware readiness check;
+- `numInstances: 1`, because STRATA runs as exactly one server (see [One server](#one-server)); and
 - secret values entered in the host rather than committed to the repository.
 
 Local development uses SQLite. Production refuses to start without Turso, because Render's local filesystem is ephemeral and must not become the durable account store.
@@ -20,7 +21,7 @@ Local development uses SQLite. Production refuses to start without Turso, becaus
 
 The blueprint selects `1c-2g` (1 CPU, 2 GB RAM), an always-on paid web-service baseline. This is a starting configuration to validate against the real workload, not a certified capacity guarantee. No service has been purchased or changed by editing this file. See [Render compute plans](https://render.com/docs/compute-plans) and [Blueprint reference](https://render.com/docs/blueprint-spec).
 
-Use one application instance initially: request/identity throttles are process-local. Before adding replicas, move those counters to a shared store or enforce equivalent limits at a trusted ingress. Persistent email-send and challenge-attempt controls remain in the database. Keep `TRUST_PROXY=true` only behind the configured trusted proxy; direct Node deployments should leave it false.
+Run one application instance (see [One server](#one-server)). Request and identity rate limits are kept in the database (`rate_buckets`), as are the persistent email-send and challenge-attempt controls. Keep `TRUST_PROXY=true` only behind the configured trusted proxy; direct Node deployments should leave it false.
 
 The auth network allowance is 400 signup/login attempts per IP per 15 minutes, with ten attempts per hashed email across addresses. Verification permits 600 requests per IP and twelve per challenge; resend permits 300 per IP and six per challenge. Existing five-attempt code and durable email-send limits still apply. API rate-limit responses include retry guidance.
 
@@ -54,7 +55,7 @@ The server applies additive schema setup through an ordered migration ledger on 
 
 Operational endpoints:
 
-- `/api/status` reports build and provider-readiness booleans without returning secrets.
+- `/api/status` returns only `{ "ok": true, "version": "<build>" }`. Storage, email, payment, Paddle IP allowlist, App Store, Google sign-in, and admin setup is shown on the admin Overview under System readiness, never publicly.
 - `/livez` is process-only and returns only `{ "ok": true }` when the Node process can answer.
 - `/readyz` runs a store probe and returns only `{ "ok": true }` with `200` when storage is reachable.
 - `/healthz` remains a compatibility alias for `/readyz`, including for the checked-in Render health check.
@@ -130,7 +131,7 @@ How it runs:
 
 ## Sign in with Google
 
-Members can create an account or sign in with Google from the account page, next to email and password. The button is off until both settings are present, and `GET /api/status` lists `google` in `signInProviders` once it is on. Google returns to `https://<your domain>/auth/social/google/callback`, built from `APP_BASE_URL` (which must be HTTPS in production).
+Members can create an account or sign in with Google from the account page, next to email and password. The button is off until both settings are present, and the admin Overview shows Sign in with Google as On once it is. Google returns to `https://<your domain>/auth/social/google/callback`, built from `APP_BASE_URL` (which must be HTTPS in production).
 
 1. In the Google Cloud console, open **Google Auth Platform**: set the app name and support email, the `/privacy` and `/terms` links, the authorized domain, and the scopes `openid`, `email`, `profile`, then publish the app. Under **Clients**, create a client of type *Web application* with the redirect URI `https://<your domain>/auth/social/google/callback`. Set `GOOGLE_SIGN_IN_CLIENT_ID` and `GOOGLE_SIGN_IN_CLIENT_SECRET`.
 2. Run `npm run preflight:production`; once either value is set, the `sign-in.google` check must pass. Deploy, then create an account with Google, sign in again, and link Google to an existing verified account.
@@ -188,10 +189,10 @@ Keep private promotion codes in Paddle and share them privately. Never place a c
 
 Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase at the same $2.99 USD per month; Paddle on the website is unchanged. Strata+ is one entitlement whichever way it was paid for (Paddle, Apple, or an owner's grant). [apple-in-app-purchase.md](apple-in-app-purchase.md) covers how it works and the App Store Connect steps.
 
-- `APPLE_BUNDLE_ID` (default `online.stratafitness.app`) and `APPLE_IAP_PRODUCT_IDS` (comma list, default `online.stratafitness.app.plus.monthly`) are plain settings in `render.yaml`. There is no Apple secret: signed App Store data is verified against the pinned Apple Root CA - G3.
+- `APPLE_BUNDLE_ID` (default `online.stratafitness.app`) and `APPLE_IAP_PRODUCT_IDS` (comma list, default `online.stratafitness.app.plus.monthly`) are plain settings in `render.yaml`. There is no Apple secret: signed App Store data is verified against the pinned Apple Root CA - G3. Set `APPLE_SANDBOX_ACCOUNTS` to the App Review demo account's email: in production a Sandbox purchase unlocks Strata+ only for the accounts listed there.
 - `APPLE_ROOT_FINGERPRINT` is honored only when `NODE_ENV=test`. Never set it in production; the server ignores it there and logs `apple.root_override_ignored`.
 - In App Store Connect, set the App Store Server Notifications V2 URL to `https://stratafitness.online/api/billing/apple/notifications` for both Production and Sandbox.
-- `/api/status` reports `appStoreConfigured: true` once the App Store settings verify against a pinned root.
+- The admin Overview shows App Store billing as Purchases verified once the App Store settings verify against a pinned root.
 - Production and Sandbox purchases are both accepted, because App Review and TestFlight buy in Sandbox. A TestFlight tester's free sandbox purchase therefore unlocks Strata+ on that tester's STRATA account.
 - Sessions slide: a session past half of its seven days is extended with the same token on the next request, never beyond 60 days after sign-in, so app members stay signed in.
 
@@ -213,14 +214,29 @@ npm run preflight:production
 
 After deployment:
 
-1. Check `/api/status`, `/livez`, `/readyz`, and the compatibility `/healthz` alias.
+1. Check `/api/status` (only `ok` and `version`), `/livez`, `/readyz`, and the compatibility `/healthz` alias, then the admin Overview's System readiness panel.
 2. Confirm account, protected-page, service-worker, and manifest responses have the expected cache policy.
 3. Complete a signup/login and plan-save round trip.
 4. Exercise provider flows after changing Resend or Paddle configuration.
-5. Run `STRATA_SMOKE_BASE_URL=https://your-host.example STRATA_EXPECTED_BUILD=$(node -p "require('./package.json').version") npm run smoke:deploy` to check status/build/provider flags, durable Turso reporting, storage readiness, the public home and manifest, security headers, and signed-out private-route handling.
+5. Run `STRATA_SMOKE_BASE_URL=https://your-host.example STRATA_EXPECTED_BUILD=$(node -p "require('./package.json').version") npm run smoke:deploy` to check that the public status shows only `ok` and the expected `version`, storage readiness, the public home and manifest, security headers, and signed-out private-route handling. Storage, email, payment, App Store, and sign-in setup is no longer public: check it before the deploy with `npm run preflight:production` and afterwards on the admin Overview (System readiness).
 6. Confirm GitHub Actions is green before tagging or announcing a release.
 
 The deployment smoke is read-only and does not create an account, send email, buy a subscription, process a webhook, or mutate production data. Complete authorized provider-backed smoke separately and record its result; never describe local provider fakes or configuration-shape checks as live credential evidence.
+
+## One server
+
+STRATA supports exactly one server per database. `render.yaml` sets `numInstances: 1`; scale up with a larger plan, not more instances.
+
+Most shared state is in the database, so it survives restarts and deploys:
+
+- rate limits (`rate_buckets`, one conditional write per request);
+- the Strata AI request queue (`ai_jobs`, one unfinished request per member; requests a restart interrupted run again);
+- failed event reactions waiting to be retried (`event_outbox`);
+- the Polar sync loop, which runs only while its server holds the `polar-sync` row in `locks`.
+
+Some state still lives in each server's memory: the Strata AI per-minute provider cap, the marks that stop a member's simultaneous AI requests, the provider health and signing-key caches, and the timers that run the AI queue, the outbox retries, the Daily Brief, and cleanup. A second server would keep its own copies of these, so it could exceed the AI per-minute cap and run the Daily Brief twice.
+
+Each server renews a heartbeat row (`server-instance` in `locks`) every minute. A server that keeps finding another live holder logs `service.multiple_instances` (after three straight misses, then about hourly). A deploy's brief overlap does not trigger it, because the old server hands the row over when it shuts down. If you see the warning, check that only one instance is running and that no second deployment (for example a preview environment) points at the production database.
 
 ## Production limits
 

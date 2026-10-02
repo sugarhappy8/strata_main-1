@@ -1,6 +1,7 @@
 "use strict";
 
 const {BILLING_SUBSCRIPTION_TABLE}=require("./billing-schema");
+const {PRODUCT_SIGNAL_TRIGGER}=require("./product-signals-schema");
 
 const MIGRATION_LEDGER_SCHEMA=`CREATE TABLE IF NOT EXISTS schema_migrations (
   migration_id TEXT PRIMARY KEY,
@@ -16,8 +17,10 @@ const MIGRATIONS=Object.freeze([
   {id:"006-polar-v4-ans-status",description:"Store Polar V4 ANS status across its documented range."},
   {id:"007-polar-v4-revocations",description:"Drop the queued V3 deregistration credentials that V4 cannot use."},
   {id:"008-build9-retired-tables",description:"Archive legacy trials, drop admin elevations, and retire the trial product signal."},
-  {id:"009-build9-archive-community-plans",description:"Archive shared community weekly plans; Build 9 retires the feature."}
+  {id:"009-build9-archive-community-plans",description:"Archive shared community weekly plans; Build 9 retires the feature."},
+  {id:"010-product-signal-audiences",description:"Count signed-in and anonymous product activity separately."}
 ]);
+const SIGNAL_AUDIENCE_COLUMNS=Object.freeze([["member_count","INTEGER NOT NULL DEFAULT 0"],["anonymous_count","INTEGER NOT NULL DEFAULT 0"]]);
 const LATEST_MIGRATION_ID=MIGRATIONS.at(-1).id;
 
 // Build 9 keeps the trial rows under an archive name so the cut stays reversible for one release.
@@ -104,6 +107,10 @@ function migrateLocalSchema(database,{activeWorkoutIndex,reconcileActiveWorkouts
     database.exec("DROP INDEX IF EXISTS community_weekly_plans_public_updated");
     if (database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='community_weekly_plans'").get()) database.exec("ALTER TABLE community_weekly_plans RENAME TO archive_community_weekly_plans");
   },now())) applied.push(MIGRATIONS[8].id);
+  if (runLocalMigration(database,MIGRATIONS[9].id,()=>{
+    for (const [column,declaration] of SIGNAL_AUDIENCE_COLUMNS) addLocalColumn(database,"product_signal_counts",column,declaration);
+    for (const sql of PRODUCT_SIGNAL_TRIGGER) database.exec(sql);
+  },now())) applied.push(MIGRATIONS[9].id);
   return {latest:LATEST_MIGRATION_ID,applied};
 }
 
@@ -190,6 +197,11 @@ async function migrateTursoSchema(client,{activeWorkoutIndex,reconcileActiveWork
     const shared=await client.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='community_weekly_plans'");
     if ((shared.rows||[]).length) await client.execute("ALTER TABLE community_weekly_plans RENAME TO archive_community_weekly_plans");
     await recordTursoMigration(client,MIGRATIONS[8].id,now());applied.push(MIGRATIONS[8].id);
+  }
+  if (!completed.has(MIGRATIONS[9].id)) {
+    for (const [column,declaration] of SIGNAL_AUDIENCE_COLUMNS) await addTursoColumn(client,"product_signal_counts",column,declaration);
+    await client.batch([...PRODUCT_SIGNAL_TRIGGER,{sql:"INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",args:[MIGRATIONS[9].id,now()]}],"write");
+    applied.push(MIGRATIONS[9].id);
   }
   return {latest:LATEST_MIGRATION_ID,applied};
 }

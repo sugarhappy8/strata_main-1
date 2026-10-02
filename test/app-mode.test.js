@@ -199,16 +199,16 @@ test("Profile keeps Strata+, support, and legal pages one tap away",()=>{
   const page=realm({pathname:"/account.html"});page.insertBody();
   const accountPage=fakeNode("accountPage");
   page.document.getElementById=(id)=>id==="accountPage"?accountPage:null;
-  page.document.querySelector=(selector)=>selector==="body > footer > span"?{textContent:"About STRATA · Build 9.3.0"}:null;
+  page.document.querySelector=(selector)=>selector==="body > footer > span"?{textContent:"About STRATA · Build 9.4.0"}:null;
   page.ready();
   const more=accountPage.html[0].html;
   for(const href of ["/pricing","/contact","/policies","/terms","/privacy"])assert.match(more,new RegExp(`href="${href}"`));
-  assert.match(more,/About STRATA · Build 9\.3\.0/);
+  assert.match(more,/About STRATA · Build 9\.4\.0/);
 });
 
 test("on /pricing the app loads its App Store paywall, and the website never loads Paddle there",()=>{
   const page=realm({pathname:"/pricing"});page.insertBody();page.ready();
-  assert.equal(page.document.head.children.length,1);assert.equal(page.document.head.children[0].src,"/app-paywall.js?v=9.3.0");
+  assert.equal(page.document.head.children.length,1);assert.equal(page.document.head.children[0].src,"/app-paywall.js?v=9.4.0");
   const pricing=read("public/scripts/pricing.js");
   assert.match(pricing,/\(\(\) => \{\n {2}\/\/ Inside the iOS app[^\n]*\n {2}if\(globalThis\.StrataApp\)return;/);
   assert.match(pricing,/function loadPaddle\(\)\{\n {4}if\(globalThis\.StrataApp\)return Promise\.reject/);
@@ -283,11 +283,11 @@ test("the workout bridge calls the app only when the wanted screen and rest-aler
 
 test("Profile names the app build when the app can say",async()=>{
   const page=realm({pathname:"/account.html",plugin:{info:async()=>({appVersion:"1.2",build:"34",iosVersion:"18.0",canMakePayments:true})}});page.insertBody();
-  const accountPage=fakeNode("accountPage"),line={textContent:"About STRATA · Build 9.3.0"};
+  const accountPage=fakeNode("accountPage"),line={textContent:"About STRATA · Build 9.4.0"};
   page.document.getElementById=(id)=>id==="accountPage"?accountPage:null;
-  page.document.querySelector=(selector)=>selector==="body > footer > span"?{textContent:"About STRATA · Build 9.3.0"}:selector===".app-more-build"?line:null;
+  page.document.querySelector=(selector)=>selector==="body > footer > span"?{textContent:"About STRATA · Build 9.4.0"}:selector===".app-more-build"?line:null;
   page.ready();for(let index=0;index<5;index+=1)await new Promise(setImmediate);
-  assert.equal(line.textContent,"About STRATA · Build 9.3.0 · App 1.2 (34)");
+  assert.equal(line.textContent,"About STRATA · Build 9.4.0 · App 1.2 (34)");
 });
 
 test("downloads keep their file for a minute, so the app's share sheet can still read it, and the app says where it goes",()=>{

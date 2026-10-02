@@ -8,7 +8,12 @@ const {open,seal}=require("./devices-crypto");
 const {parsePolarCredentials,serializePolarCredentials}=require("./polar-client");
 const {daysFromHeartRate,nightsFromPolar,workoutsFromExercises}=require("./polar-mapping");
 
+const {randomUUID}=require("node:crypto");
+
 const DAY_MS=24*60*60*1000;
+// Only one server runs the sync loop at a time. It holds the "polar-sync" lock for a few ticks and renews it as it
+// works; if that server stops, the lock expires and another can take over.
+const LOCK_NAME="polar-sync";
 const FIRST_IMPORT_DAYS=28;
 const RECHECK_DAYS=3;
 const RECONNECT_CODES=new Set(["POLAR_AUTH","POLAR_V4_RECONNECT","DEVICE_KEY_MISSING","DEVICE_TOKEN_UNREADABLE"]);
@@ -18,9 +23,11 @@ const isoDate=(time)=>new Date(time).toISOString().slice(0,10);
 
 /**
  * @param {{store:import("./domain-types").DeviceStore,polar:any,keys:import("./devices-crypto").DeviceKey[],hasAccess:(userId:string)=>Promise<boolean>,
- *   logger?:{info?:Function,warn?:Function,error?:Function}|null,now?:()=>number,intervalMs?:number,batchSize?:number,events?:import("./domain-types").EventBus|null}} dependencies
+ *   logger?:{info?:Function,warn?:Function,error?:Function}|null,now?:()=>number,intervalMs?:number,batchSize?:number,events?:import("./domain-types").EventBus|null,
+ *   locks?:Pick<import("./domain-types").ServerStateStore,"acquireLock"|"releaseLock">|null,holder?:string}} dependencies
  */
-function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,intervalMs=60000,batchSize=5,events=null}){
+function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,intervalMs=60000,batchSize=5,events=null,locks=null,holder=randomUUID()}){
+  const lockMs=Math.max(5*60*1000,3*intervalMs);
   /** @type {Set<string>} */
   const running=new Set();
   /** @type {ReturnType<typeof setInterval>|null} */
@@ -76,11 +83,19 @@ function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,i
     }finally{running.delete(key);}
   }
 
+  /** Takes or renews the loop's lock; true when this server may sync now. */
+  async function holdLock(){
+    if(!locks)return true;
+    const time=now();
+    return locks.acquireLock(LOCK_NAME,holder,time+lockMs,time);
+  }
+
   async function tick(){
     if(ticking)return;
     ticking=true;
     try{
-      for(const row of await store.dueDeviceConnections(now(),batchSize))await syncConnection(row);
+      if(!await holdLock())return;
+      for(const row of await store.dueDeviceConnections(now(),batchSize)){if(!await holdLock())return;await syncConnection(row);}
       if(now()-lastCleanup>=60*60*1000){lastCleanup=now();await store.deleteExpiredDeviceData(now());}
     }finally{ticking=false;}
   }
@@ -93,7 +108,10 @@ function createDeviceSync({store,polar,keys,hasAccess,logger=null,now=Date.now,i
       timer=setInterval(run,intervalMs);timer.unref?.();
       setTimeout(run,Math.min(intervalMs,1000)).unref?.();
     },
-    stop(){if(timer)clearInterval(timer);timer=null;}
+    stop(){
+      if(timer)clearInterval(timer);timer=null;
+      void locks?.releaseLock(LOCK_NAME,holder).catch((error)=>logger?.warn?.("device.sync_lock_release_failed",{error}));
+    }
   };
 }
 

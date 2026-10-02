@@ -124,7 +124,7 @@ test("an Apple purchase unlocks Strata+ for the buying account only, and the App
   const sharedNotice=await notify("SUBSCRIBED",{tx:transaction(buyer,shared),renew:renewal({originalTransactionId:"3000000500"}),signedDate:BASE-6000});
   assert.equal(sharedNotice.response.status,200);assert.deepEqual(sharedNotice.data,{});
   assert.equal((await discoveryOf(buyer)).active,false);assert.equal((await discoveryOf(buyer)).apple,null);
-  assert.equal((await request("/api/status")).data.appStoreConfigured,true);
+  assert.equal((await request("/api/status")).data.appStoreConfigured,undefined,"App Store setup is not public");
 
   const signed=chain.signJws(transaction(buyer));
   assert.equal((await request("/api/billing/apple/transactions",{method:"POST",cookie:buyer.cookie,body:{signedTransactions:[signed]}})).response.status,403);

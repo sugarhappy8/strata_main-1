@@ -50,8 +50,12 @@ function appleBillingSettings(environment=process.env){
   const override=String(environment.APPLE_ROOT_FINGERPRINT||"").trim().toUpperCase();
   const testRoot=environment.NODE_ENV==="test"&&FINGERPRINT.test(override);
   const rootFingerprint=testRoot?override:APPLE_ROOT_CA_G3_FINGERPRINT;
+  // Sandbox purchases are always stored (App Review buys in Sandbox), but in production they unlock Strata+ only for
+  // the accounts listed in APPLE_SANDBOX_ACCOUNTS, such as the App Review demo account.
+  const allowSandbox=environment.NODE_ENV!=="production";
+  const sandboxAccounts=new Set(String(environment.APPLE_SANDBOX_ACCOUNTS||"").split(",").map((item)=>item.trim().toLowerCase()).filter(Boolean));
   // Configured: signed App Store data can be verified against a pinned root for this bundle and at least one product.
-  return Object.freeze({bundleId,productIds:Object.freeze(productIds),rootFingerprint,rootOverrideIgnored:Boolean(override)&&!testRoot,configured:productIds.length>0&&FINGERPRINT.test(rootFingerprint)});
+  return Object.freeze({bundleId,productIds:Object.freeze(productIds),rootFingerprint,rootOverrideIgnored:Boolean(override)&&!testRoot,configured:productIds.length>0&&FINGERPRINT.test(rootFingerprint),allowSandbox,sandboxAccounts});
 }
 
 /**
@@ -93,8 +97,15 @@ function validateAppleRenewal(payload,transaction){
   return {autoRenew:status===1?true:status===0?false:null,gracePeriodExpiresAt:time(payload.gracePeriodExpiresDate)};
 }
 
-/** @param {import("./domain-types").AppleSubscriptionRow} row @param {number} now */
-function appleRowActive(row,now){
+/**
+ * Whether a stored subscription is paid up at this moment. With an account and settings it also answers whether it
+ * unlocks Strata+ for that account: a Sandbox purchase does so in production only for a listed account. Without them it
+ * is Apple's own state, which decides ownership and the deletion notice.
+ * @param {import("./domain-types").AppleSubscriptionRow} row @param {number} now
+ * @param {{email?:string|null}|null} [user] @param {import("./domain-types").AppleSandboxPolicy|null} [settings]
+ */
+function appleRowActive(row,now,user=null,settings=null){
+  if(row.environment==="Sandbox"&&settings&&!settings.allowSandbox&&!settings.sandboxAccounts.has(String(user?.email||"").toLowerCase()))return false;
   return row.revoked_at==null&&(Number(row.expires_at||0)>now||Number(row.grace_period_expires_at||0)>now);
 }
 
@@ -146,16 +157,20 @@ function nextAppleState(existing,{userId,transaction,renewal=null,type=null,subt
 
 /**
  * The member-facing Apple summary for /api/me "discovery.apple": the subscription giving access, else the latest one.
+ * Admin passes no account or settings and sees Apple's own state.
  * @param {import("./domain-types").AppleSubscriptionRow[]} rows @param {number} now
+ * @param {{email?:string|null}|null} [user] @param {import("./domain-types").AppleSandboxPolicy|null} [settings]
  * @returns {import("./domain-types").AppleSubscriptionSummary|null}
  */
-function appleSubscriptionSummary(rows,now){
-  const ranked=[...rows].sort((a,b)=>Number(appleRowActive(b,now))-Number(appleRowActive(a,now))||Number(b.expires_at||0)-Number(a.expires_at||0)||Number(b.updated_at)-Number(a.updated_at));
+function appleSubscriptionSummary(rows,now,user=null,settings=null){
+  /** @param {import("./domain-types").AppleSubscriptionRow} row */
+  const active=(row)=>appleRowActive(row,now,user,settings);
+  const ranked=[...rows].sort((a,b)=>Number(active(b))-Number(active(a))||Number(b.expires_at||0)-Number(a.expires_at||0)||Number(b.updated_at)-Number(a.updated_at));
   const row=ranked[0];
   if(!row)return null;
   const expiresAt=row.expires_at==null?null:Number(row.expires_at),revoked=row.revoked_at!=null;
   return {
-    active:appleRowActive(row,now),productId:String(row.product_id),expiresAt,
+    active:active(row),productId:String(row.product_id),expiresAt,
     autoRenew:row.auto_renew==null?null:Number(row.auto_renew)===1,
     inGracePeriod:!revoked&&(expiresAt??0)<=now&&Number(row.grace_period_expires_at||0)>now,
     environment:row.environment==="Sandbox"?"Sandbox":"Production",revoked
@@ -234,7 +249,7 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
     const session=await auth.requireSession(req,res);if(!session)return;
     if(!trustedOrigin(req)){json(res,403,{error:"Purchase security check failed. Refresh and try again.",code:"APPLE_ORIGIN_REQUIRED"});return;}
     if(!auth.validCsrf(req,session)){json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});return;}
-    if(!rateAllowed(req,`identity:apple-transactions:${session.id}`,TRANSACTION_REQUESTS_PER_WINDOW)){
+    if(!await rateAllowed(req,`identity:apple-transactions:${session.id}`,TRANSACTION_REQUESTS_PER_WINDOW)){
       json(res,429,{error:"Too many purchase updates. Try again in a few minutes.",code:"APPLE_RATE_LIMIT"});return;
     }
     const tokens=(await readJson(req)).signedTransactions;
@@ -312,7 +327,7 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
   async function handleNotification(req,res){
     if(req.method!=="POST"){json(res,405,{error:"Method not allowed."},{Allow:"POST"});return;}
-    if(!rateAllowed(req,"apple-notifications",NOTIFICATIONS_PER_WINDOW)){json(res,429,{error:"Too many notifications. Retry later."});return;}
+    if(!await rateAllowed(req,"apple-notifications",NOTIFICATIONS_PER_WINDOW)){json(res,429,{error:"Too many notifications. Retry later."});return;}
     const signedPayload=(await readJson(req)).signedPayload;
     if(typeof signedPayload!=="string")throw appleError("The notification has no signedPayload.",400,"APPLE_SIGNATURE_INVALID");
     const outcome=await processNotification(verifySigned(signedPayload));
@@ -328,9 +343,9 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
     return true;
   }
 
-  /** @param {string} userId */
-  async function subscriptionForUser(userId){
-    return appleSubscriptionSummary(await store.appleSubscriptionsForUser(userId),now());
+  /** @param {string} userId @param {string|null} [email] */
+  async function subscriptionForUser(userId,email=null){
+    return appleSubscriptionSummary(await store.appleSubscriptionsForUser(userId),now(),{email},settings);
   }
 
   // Apple bills until the member cancels with Apple, so deletion says so while a subscription is live or set to renew.

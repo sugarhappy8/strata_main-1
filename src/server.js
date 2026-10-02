@@ -4,6 +4,7 @@ const http = require("node:http");
 const { readFileSync, existsSync } = require("node:fs");
 const { extname, join, normalize } = require("node:path");
 const { isIP } = require("node:net");
+const { createHash } = require("node:crypto");
 const { createStore,isUniqueViolation } = require("./database");
 const { loadPublicAssets,cachedResponseBody } = require("./static-assets");
 const { getEmailVerificationConfig } = require("./email");
@@ -30,7 +31,8 @@ const {createDataService}=require("./data-service");
 const {profilePayload:coachingProfilePayload}=require("./coaching");
 const { createBillingService } = require("./billing");
 const {appleBillingSettings,createAppleBillingService}=require("./apple-billing");
-const {deliverQueuedCookies}=require("./session-renewal");
+const {withAppendedCookies}=require("./session-renewal");
+const {createSingleInstanceGuard}=require("./single-instance");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
 const { createLogger,observeRequest } = require("./observability");
@@ -321,7 +323,7 @@ async function userPayload(session) {
     planFor(session.id),
     billing.accessSummaryForUser(session.id),
     billing.subscriptionForUser(session.id),
-    appleBilling.subscriptionForUser(session.id),
+    appleBilling.subscriptionForUser(session.id,session.email),
     store.activeAccountDeletion(session.id,now),
     admin.adminIdentity(session),
     store.adminControls(session.id),
@@ -402,7 +404,6 @@ function trustedAuthOrigin(req) {
   return sameOrigin(req);
 }
 
-const rateBuckets = new Map();
 function requestAddress(req) {
   const direct=req.socket.remoteAddress||"unknown";
   if (process.env.TRUST_PROXY!=="true") return direct;
@@ -410,16 +411,15 @@ function requestAddress(req) {
   return forwarded.at(-1)||direct;
 }
 
-function rateKeyAllowed(key,max=10,windowMs=15*60*1000) {
-  const now=Date.now();
-  const bucket=(rateBuckets.get(key)||[]).filter((time) => now-time<windowMs);
-  if (bucket.length >= max) return false;
-  bucket.push(now); rateBuckets.set(key,bucket); return true;
+// Rate limits live in the rate_buckets table, so they hold across restarts and instances. One conditional write per
+// request takes a slot or refuses; keys are stored hashed, never as addresses, emails, or account IDs.
+async function rateKeyAllowed(key,max=10,windowMs=15*60*1000) {
+  return store.takeRateSlot(createHash("sha256").update(String(key)).digest("hex"),max,windowMs,Date.now());
 }
 
-function rateAllowed(req,kind,max=10,windowMs=15*60*1000) {
+async function rateAllowed(req,kind,max=10,windowMs=15*60*1000) {
   // Identity buckets apply across addresses; network buckets allow shared Wi-Fi.
-  return rateKeyAllowed(kind.startsWith("identity:")?kind:`${kind}:${requestAddress(req)}`,max,windowMs);
+  return await rateKeyAllowed(kind.startsWith("identity:")?kind:`${kind}:${requestAddress(req)}`,max,windowMs);
 }
 
 function healthMethodAllowed(req,res) {
@@ -462,7 +462,8 @@ async function handleApi(req,res,url) {
   if (await billing.handleApi(req,res,url)) return;
   if (await appleBilling.handleApi(req,res,url)) return;
   if (url.pathname === "/api/status" && req.method === "GET") {
-    json(res,200,{ok:true,build:BUILD_NUMBER,storage:store.kind,persistent:store.kind==="turso"||process.env.NODE_ENV!=="production",paymentsConfigured:PAYMENT_CONFIG.configured,checkoutEnabled:PAYMENT_CONFIG.enabled,appStoreConfigured:APPLE_SETTINGS.configured,webhookIpAllowlist:ENFORCE_PADDLE_IPS,emailVerificationEnabled:EMAIL_CONFIG.enabled,signInProviders:social.enabledProviders(),emailVerificationConfigured:EMAIL_CONFIG.configured,passwordResetEnabled:EMAIL_CONFIG.enabled,accountDeletionEnabled:EMAIL_CONFIG.enabled,adminConfigured:Boolean(ADMIN_EMAIL)}); return;
+    // Public: only that the app is up and which build it runs. Setup flags are on the admin Overview.
+    json(res,200,{ok:true,version:BUILD_NUMBER}); return;
   }
   if (url.pathname === "/api/plan" && req.method === "GET") {
     const session=await auth.requireSession(req,res); if (!session) return;
@@ -539,7 +540,7 @@ async function handleApi(req,res,url) {
     if (!auth.validCsrf(req,session)) { json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"}); return; }
     const exerciseId=ratingMatch[1];
     if (!EXERCISE_IDS.has(exerciseId)) { json(res,404,{error:"Exercise not found."}); return; }
-    if (!rateAllowed(req,`rating:${session.id}`,60)) { json(res,429,{error:"Too many rating updates. Try again later."}); return; }
+    if (!await rateAllowed(req,`rating:${session.id}`,60)) { json(res,429,{error:"Too many rating updates. Try again later."}); return; }
     const input=await bodyJson(req), rating=sanitizeRating(input.rating), now=Date.now();
     await store.upsertRating(session.id,exerciseId,rating,now,now);
     json(res,200,{ok:true,rating:{exercise_id:exerciseId,...rating,updated_at:now},aggregate:await store.ratingAggregate(exerciseId)}); return;
@@ -556,7 +557,7 @@ async function serveStatic(req,res,url) {
       : normalize(url.pathname).replace(/^[/\\]+/,"");
   const section=SECTION_ROUTES.get(requested==="dashboard.html"?"/dashboard":aliasPath);
   if (section) {
-    const session=await auth.sessionFor(req),plus=Boolean(session&&await hasCurrentDiscoveryAccess(session.id));
+    const session=await auth.sessionFor(req,res),plus=Boolean(session&&await hasCurrentDiscoveryAccess(session.id));
     const location=plus?section.plus:session?section.member:section.visitor;
     if (location) {
       res.writeHead(302,{...securityHeaders(),Location:location,"Cache-Control":"private, no-store",Vary:"Cookie"});
@@ -565,7 +566,7 @@ async function serveStatic(req,res,url) {
     }
   }
   if (!STATIC_FILES.has(requested)) { json(res,404,{error:"Page not found."}); return; }
-  const activeSession=(PROTECTED_HTML.has(requested)||requested==="index.html"||requested==="admin.html")?await auth.sessionFor(req):null;
+  const activeSession=(PROTECTED_HTML.has(requested)||requested==="index.html"||requested==="admin.html")?await auth.sessionFor(req,res):null;
   if (requested==="admin.html") {
     if (!activeSession) {
       res.writeHead(302,{...securityHeaders(),Location:"/account.html?mode=login&next=admin","Cache-Control":"no-store"});
@@ -575,7 +576,7 @@ async function serveStatic(req,res,url) {
     const identity=await admin.adminIdentity(activeSession,{allowBootstrap:true});
     if (identity.boundNow) {
       const params=new URLSearchParams({mode:"login",next:"admin",error:"Admin ownership is secured. Sign in again to continue."});
-      res.writeHead(302,{...securityHeaders(),Location:`/account.html?${params}`,"Cache-Control":"no-store","Set-Cookie":auth.sessionCookie("",0)});
+      res.writeHead(302,withAppendedCookies(res,{...securityHeaders(),Location:`/account.html?${params}`,"Cache-Control":"no-store","Set-Cookie":auth.sessionCookie("",0)}));
       res.end();
       return;
     }
@@ -633,7 +634,6 @@ async function serveStatic(req,res,url) {
 
 const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keepAliveTimeout:5_000},async(req,res) => {
   observeRequest(req,res,LOGGER);
-  deliverQueuedCookies(req,res);
   try {
     const url=new URL(req.url,`http://${req.headers.host || "localhost"}`);
     if (url.pathname==="/livez") handleLiveness(req,res);
@@ -654,18 +654,19 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
 
 server.setTimeout(60_000,(socket)=>socket.destroy());
 
-let cleanup,shuttingDown=false,events,dataService;
+let cleanup,shuttingDown=false,events,dataService,instanceGuard;
 async function start() {
   if (process.env.NODE_ENV==="production"&&!EMAIL_CONFIG.flagValid) {
     throw new Error("EMAIL_VERIFICATION_ENABLED must be set explicitly to true or false in production.");
   }
   publicAssets=loadPublicAssets({root:PUBLIC_ROOT,files:STATIC_FILES,privateFiles:PRIVATE_HTML,mime:MIME});
   store = await createStore(PROJECT_ROOT);
-  events=createEventBus({logger:LOGGER});
+  // A reaction that fails is kept in the event_outbox table and retried with backoff (see src/events.js).
+  events=createEventBus({logger:LOGGER,outbox:store});
   billing=createBillingService({
     store,paymentConfig:PAYMENT_CONFIG,enforcePaddleIps:ENFORCE_PADDLE_IPS,
     requestAddress,rateAllowed,isUniqueViolation,getAuth:()=>auth,getUserPayload:userPayload,
-    http:{json,bodyJson},logger:LOGGER
+    http:{json,bodyJson},logger:LOGGER,appleSandbox:APPLE_SETTINGS
   });
   appleBilling=createAppleBillingService({store,settings:APPLE_SETTINGS,getAuth:()=>auth,getUserPayload:userPayload,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json},logger:LOGGER});
   ({auth,admin,support}=composeServices({
@@ -675,18 +676,19 @@ async function start() {
     http:{json,bodyJson,bodyForm,redirect,securityHeaders},getUserPayload:userPayload,
     reconcileCheckoutCreationBeforeDeletion:billing.reconcileCheckoutCreationBeforeDeletion,
     reconcileUnsettledPurchases:billing.reconcileUnsettledPurchases,isUniqueViolation,appleDeletionNotice:appleBilling.deletionNotice,
+    serviceStatus:()=>({appStore:APPLE_SETTINGS.configured,signInProviders:social?social.enabledProviders():[]}),
     createAuthService,createAdminService,createSupportService
   }));
   social=createSocialAuthService({store,settings:SOCIAL_SETTINGS,getAuth:()=>auth,claimAdminForLogin:(user)=>admin.maybeClaimAdminForLogin(user),trustedAuthOrigin,rateAllowed,http:{bodyForm,redirect,securityHeaders},isUniqueViolation,logger:LOGGER});
   dataService=createDataService({store,events,getPlan:planFor,coachingProfile:async(userId)=>coachingProfilePayload(await store.coachingProfile(userId)),requireSession:(req,res)=>auth.requireSession(req,res),requireFeature,http:{json},logger:LOGGER});
-  productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
-  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson},events});
+  productSignals=createProductSignalsService({store,admin,auth,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
+  workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
   training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
   coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events,getPlan:planFor});
   devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation,events});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
   const aiProvider=createAiProvider(AI_SETTINGS.provider),aiQuota=createAiQuota({store,limits:AI_SETTINGS.limits});
-  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:aiProvider,getPlanSnapshot:planSnapshotFor,quota:aiQuota,dataService,logger:LOGGER,config:AI_SETTINGS.limits});
+  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:aiProvider,getPlanSnapshot:planSnapshotFor,quota:aiQuota,dataService,logger:LOGGER,config:AI_SETTINGS.limits,isUniqueViolation});void ai.start().catch((error)=>LOGGER.error("ai.queue_start_failed",{error}));
   aiSettingsService=createAiSettingsService({store,auth,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},quota:aiQuota,admin});
   // The Daily Brief runs through the night's queue; tests turn it on explicitly.
   briefJob=createDailyBriefJob({store,dataService,provider:aiProvider,quota:aiQuota,hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,settings:{hour:AI_SETTINGS.brief.hour}});briefJob.subscribe(events);
@@ -705,6 +707,9 @@ async function start() {
   await dataService.cleanup();
   await appleBilling.cleanup();
   void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
+  events.start();
+  // One server per database: a second one is logged as service.multiple_instances (see src/single-instance.js).
+  instanceGuard=createSingleInstanceGuard({store,logger:LOGGER});await instanceGuard.start();
   if (ENFORCE_PADDLE_IPS) void billing.warmProviderTrust().catch((error)=>LOGGER.error("billing.webhook_allowlist_warm_failed",{error}));
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
@@ -715,7 +720,9 @@ async function start() {
     void aiQuota.cleanup(90).catch((error)=>LOGGER.error("cleanup.ai_usage_failed",{error}));
     void appleBilling.cleanup().catch((error)=>LOGGER.error("cleanup.apple_notifications_failed",{error}));
     void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
-    for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
+    void events.cleanup().catch((error)=>LOGGER.error("cleanup.event_outbox_failed",{error}));
+    void ai.cleanup().catch((error)=>LOGGER.error("cleanup.ai_jobs_failed",{error}));
+    void store.deleteOldRateBuckets(Date.now()-24*60*60*1000).catch((error)=>LOGGER.error("cleanup.rate_buckets_failed",{error}));
   },60*60*1000);
   cleanup.unref();
   server.listen(PORT,HOST,() => {
@@ -730,6 +737,7 @@ function shutdown() {
   if (cleanup) clearInterval(cleanup);
   devices?.stop();
   briefJob?.stop();
+  events?.stop();
   const deadline=setTimeout(()=>{
     console.error("Shutdown deadline reached; closing remaining connections.");
     server.closeAllConnections();
@@ -739,6 +747,7 @@ function shutdown() {
   server.close(async(error)=>{
     try {
       if (error&&error.code!=="ERR_SERVER_NOT_RUNNING") throw error;
+      await instanceGuard?.stop();
       await store?.close();
       clearTimeout(deadline);
       process.exit(0);

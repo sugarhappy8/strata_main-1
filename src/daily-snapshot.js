@@ -62,24 +62,28 @@ function createDailySnapshots({store,trainingLog,events=null,logger=null,now=Dat
     }
     return built;
   }
-  /** Stored rows for a range; today and any missing past day are rebuilt first. @param {string} userId @param {{from:string,to:string,today:string}} range */
+  /**
+   * Stored rows for a range. A rebuild that failed and is waiting in the outbox is retried first, and today and any
+   * missing past day are rebuilt, so a read is never staler than its sources.
+   * @param {string} userId @param {{from:string,to:string,today:string}} range
+   */
   async function read(userId,{from,to,today}){
     if(!isDate(from)||!isDate(to)||from>to||(Date.parse(`${to}T00:00:00Z`)-Date.parse(`${from}T00:00:00Z`))/86400000>=MAX_RANGE_DAYS)throw Object.assign(new Error("Choose a range of up to 31 days."),{status:400,code:"INVALID_SNAPSHOT_RANGE"});
+    await events?.retryFor?.(userId).catch((/** @type {unknown} */ error)=>logger?.warn?.("snapshot.retry_failed",{error}));
     const stored=await store.dailySnapshots(userId,from,to),have=new Set(stored.map((/** @type {any} */ row)=>String(row.snapshot_date))),stale=[];
     for(let date=from;date<=to&&date<=today;date=addDays(date,1))if(date===today||!have.has(date))stale.push(date);
     if(stale.length)await build(userId,stale[0],stale.at(-1)||stale[0],today);
     return (await store.dailySnapshots(userId,from,to)).map(snapshotRow).filter(Boolean);
   }
-  /** @param {string} userId @param {string} from @param {string} to @param {string} today */
-  const rebuild=(userId,from,to,today)=>build(userId,from,to,today).catch((error)=>{logger?.warn?.("snapshot.build_failed",{error});return [];});
   return {
     build,read,
+    // A failed rebuild throws to the bus, which keeps it in the outbox and retries it.
     /** @param {import("./domain-types").EventBus} bus @param {(userId:string)=>string|Promise<string>} todayFor */
     subscribe(bus,todayFor){
-      bus.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),today=await todayFor(userId);await rebuild(userId,String(payload.from),String(payload.to),today);});
-      bus.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await rebuild(userId,date,date,await todayFor(userId));});
-      bus.on("coaching.log_saved",async(payload)=>{const userId=String(payload.userId),date=String(payload.date||"");if(isDate(date))await rebuild(userId,date,date,await todayFor(userId));});
-      bus.on("plan.updated",async(payload)=>{const userId=String(payload.userId),today=await todayFor(userId);await rebuild(userId,mondayOf(today),today,today);});
+      bus.on("polar.sync.finished",async(payload)=>{const userId=String(payload.userId),today=await todayFor(userId);await build(userId,String(payload.from),String(payload.to),today);},"snapshots.polar_sync");
+      bus.on("workout.completed",async(payload)=>{const userId=String(payload.userId),date=String(payload.workout?.date||"");if(isDate(date))await build(userId,date,date,await todayFor(userId));},"snapshots.workout_completed");
+      bus.on("coaching.log_saved",async(payload)=>{const userId=String(payload.userId),date=String(payload.date||"");if(isDate(date))await build(userId,date,date,await todayFor(userId));},"snapshots.coaching_log");
+      bus.on("plan.updated",async(payload)=>{const userId=String(payload.userId),today=await todayFor(userId);await build(userId,mondayOf(today),today,today);},"snapshots.plan_updated");
     },
     /** @param {string} beforeDate */
     async cleanup(beforeDate){await store.deleteOldDailySnapshots(beforeDate);}

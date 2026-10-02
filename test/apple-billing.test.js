@@ -13,6 +13,9 @@ const {
   DELETION_NOTICE,FAMILY_SHARED_MESSAGE,MANAGE_SUBSCRIPTIONS_URL,appleBillingSettings,appleSubscriptionSummary,createAppleBillingService,
   nextAppleState,validateAppleRenewal,validateAppleTransaction
 }=require("../src/apple-billing");
+const {createBillingService}=require("../src/billing");
+const {getPaymentConfig}=require("../src/payments");
+const {capabilitiesFor,entitlementSettings}=require("../src/entitlements");
 const {createAppleTestChain}=require("./support/apple-test-chain");
 
 const ROOT=join(__dirname,"..");
@@ -120,6 +123,9 @@ test("settings default to the STRATA app and only honor a test root under NODE_E
   assert.equal(listed.bundleId,"com.example.app");assert.deepEqual(listed.productIds,["a.monthly","b.yearly"]);
   assert.throws(()=>appleBillingSettings({APPLE_IAP_PRODUCT_IDS:"bad id"}),/App Store identifiers/);
   assert.throws(()=>appleBillingSettings({APPLE_BUNDLE_ID:"-bad"}),/App Store identifiers/);
+  assert.equal(settings.allowSandbox,true);assert.equal(defaults.allowSandbox,true);
+  assert.equal(production.allowSandbox,false);assert.deepEqual([...production.sandboxAccounts],[]);
+  assert.deepEqual([...appleBillingSettings({NODE_ENV:"production",APPLE_SANDBOX_ACCOUNTS:" Review@Example.TEST ,,demo@example.test"}).sandboxAccounts],["review@example.test","demo@example.test"]);
 });
 
 test("transactions must be a Strata+ subscription of this app with a linked account",()=>{
@@ -212,12 +218,12 @@ for(const kind of ["local","turso"]){
     assert.equal(await apple.processNotification(notification("SUBSCRIBED",{tx:tx({inAppOwnershipType:"FAMILY_SHARED"}),renew:renewal()})),"ignored:family-shared");
     assert.equal(await store.appleSubscription("2000000000"),null);
     assert.equal(await apple.processNotification({notificationType:"SUBSCRIBED",notificationUUID:"nope",signedDate:now}),"ignored:malformed");
-    assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),false);
 
     const subscribedId=randomUUID();
     assert.equal(await apple.processNotification(notification("SUBSCRIBED",{subtype:"INITIAL_BUY",tx:tx(),renew:renewal(),uuid:subscribedId,signedDate:now-4000})),"applied");
     assert.equal(await apple.processNotification(notification("SUBSCRIBED",{tx:tx(),renew:renewal(),uuid:subscribedId.toUpperCase(),signedDate:now-4000})),"replayed");
-    assert.equal(await store.hasActiveAppleSubscription(userId,now),true);
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),true);
     assert.deepEqual(await apple.subscriptionForUser(userId),{active:true,productId:PRODUCT,expiresAt:tx().expiresDate,autoRenew:true,inGracePeriod:false,environment:"Sandbox",revoked:false});
 
     const renewedExpiry=now+59*DAY;
@@ -229,14 +235,14 @@ for(const kind of ["local","turso"]){
     assert.equal(await apple.processNotification(notification("DID_FAIL_TO_RENEW",{subtype:"GRACE_PERIOD",tx:tx({transactionId:"2000000002",expiresDate:now-120_000}),renew:renewal({gracePeriodExpiresDate:now+6*DAY}),signedDate:now-2000})),"applied");
     summary=await apple.subscriptionForUser(userId);
     assert.equal(summary?.active,true);assert.equal(summary?.inGracePeriod,true);
-    assert.equal(await store.hasActiveAppleSubscription(userId,now),true);
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),true);
 
     assert.equal(await apple.processNotification(notification("GRACE_PERIOD_EXPIRED",{tx:tx({transactionId:"2000000002",expiresDate:now-120_000}),renew:renewal({gracePeriodExpiresDate:now+6*DAY}),signedDate:now-1800})),"applied");
-    assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),false);
     assert.equal((await apple.subscriptionForUser(userId))?.inGracePeriod,false);
 
     assert.equal(await apple.processNotification(notification("DID_RENEW",{tx:tx({transactionId:"2000000003",expiresDate:now+30*DAY}),renew:renewal(),signedDate:now-1500})),"applied");
-    assert.equal(await store.hasActiveAppleSubscription(userId,now),true);
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),true);
     assert.equal(await apple.processNotification(notification("REFUND",{tx:tx({transactionId:"2000000003",expiresDate:now+30*DAY,revocationDate:now-1200,revocationReason:1}),signedDate:now-1200})),"applied");
     summary=await apple.subscriptionForUser(userId);
     assert.equal(summary?.active,false);assert.equal(summary?.revoked,true);
@@ -263,6 +269,42 @@ for(const kind of ["local","turso"]){
     assert.ok(before);
     await store.deleteOldAppleNotifications(Date.now()+1);
     assert.equal(await store.appleNotification(subscribedId),null);
+  }));
+
+  test(`${kind}: in production a Sandbox purchase is saved but unlocks no plus.* feature unless its account is listed`,async()=>withStore(kind,async(store)=>{
+    const {apple}=service(store),now=BASE;
+    const production=appleBillingSettings({NODE_ENV:"production",APPLE_SANDBOX_ACCOUNTS:"Reviewer@Apple.test"});
+    const productionApple=createAppleBillingService({store,settings:production,getAuth:()=>({}),getUserPayload:async()=>({}),trustedOrigin:()=>true,rateAllowed:()=>true,http:{json(){}},logger:{debug(){},info(){},warn(){},error(){}}});
+    const billing=createBillingService({store,paymentConfig:getPaymentConfig({NODE_ENV:"test"}),enforcePaddleIps:false,requestAddress:()=>"127.0.0.1",rateAllowed:()=>true,isUniqueViolation:()=>false,getAuth:()=>undefined,getUserPayload:async()=>({}),http:{json(){},bodyJson:async()=>({})},logger:{debug(){},info(){},warn(){},error(){}},appleSandbox:production,now:()=>now});
+    const plusFeatures=Object.entries(capabilitiesFor({plusActive:true},entitlementSettings({}))).filter(([,on])=>on).map(([feature])=>feature).filter((feature)=>feature.startsWith("plus."));
+    assert.ok(plusFeatures.length>0);
+    /** What /api/me and the plus.* route gate see for the account. */
+    async function access(userId,email){
+      const summary=await productionApple.subscriptionForUser(userId,email),capabilities=capabilitiesFor({plusActive:Boolean(summary?.active)},entitlementSettings({}));
+      return {summary,gate:await billing.hasCurrentAccess(userId,now),plus:plusFeatures.filter((feature)=>capabilities[feature])};
+    }
+
+    const userId=await addUser(store),email=`${userId}@apple.test`;
+    assert.equal(await apple.processNotification(notification("SUBSCRIBED",{tx:transaction({appAccountToken:userId}),renew:renewal()})),"applied");
+    assert.equal((await store.appleSubscription("2000000000"))?.environment,"Sandbox","the Sandbox purchase is saved");
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),true,"outside production it unlocks Strata+");
+    const blocked=await access(userId,email);
+    assert.equal(blocked.gate,false);assert.deepEqual(blocked.plus,[]);
+    assert.deepEqual(blocked.summary,{active:false,productId:PRODUCT,expiresAt:BASE+29*DAY,autoRenew:true,inGracePeriod:false,environment:"Sandbox",revoked:false});
+    assert.equal(await store.hasActiveAppleSubscription(userId,now),false,"leaving the policy out counts Production purchases only");
+
+    // The App Review demo account is listed, so its Sandbox purchase unlocks Strata+ in production.
+    const reviewerId=randomUUID();
+    await store.insertUser({id:reviewerId,name:"Reviewer",email:"reviewer@apple.test",passwordHash:"hash",passwordSalt:"salt",createdAt:now,emailVerifiedAt:now});
+    assert.equal(await apple.processNotification(notification("SUBSCRIBED",{tx:transaction({appAccountToken:reviewerId,transactionId:"3000000001",originalTransactionId:"3000000000"}),renew:renewal({originalTransactionId:"3000000000"})})),"applied");
+    const reviewer=await access(reviewerId,"reviewer@apple.test");
+    assert.equal(reviewer.gate,true);assert.deepEqual(reviewer.plus,plusFeatures);assert.equal(reviewer.summary?.active,true);
+
+    // A real (Production) purchase is unaffected.
+    const buyerId=await addUser(store);
+    assert.equal(await apple.processNotification(notification("SUBSCRIBED",{tx:transaction({appAccountToken:buyerId,transactionId:"4000000001",originalTransactionId:"4000000000",environment:"Production"}),renew:renewal({originalTransactionId:"4000000000",environment:"Production"})})),"applied");
+    const buyer=await access(buyerId,`${buyerId}@apple.test`);
+    assert.equal(buyer.gate,true);assert.deepEqual(buyer.plus,plusFeatures);
   }));
 
   test(`${kind}: a refund of the current period ends access even when an older period's refund was signed after it`,async()=>withStore(kind,async(store)=>{
@@ -293,7 +335,7 @@ for(const kind of ["local","turso"]){
     assert.deepEqual(await access("3100000000"),{latest:"2",revoked:false,active:true});
     assert.equal(await send("REFUND","3100000000",{...current,revocationDate:now-2100},now-2000),"applied");
     assert.deepEqual(await access("3100000000"),{latest:"2",revoked:true,active:false});
-    assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),false);
     assert.equal((await apple.subscriptionForUser(userId))?.active,false);
 
     // Two late writes computed from the same row: the earlier billing period never replaces the later one, whichever
@@ -335,7 +377,7 @@ for(const kind of ["local","turso"]){
     const row=await store.appleSubscription("3300000000");
     assert.equal(row?.latest_transaction_id,"2");assert.equal(Number(row?.revoked_at),now-2100);
     assert.equal(Number(row?.auto_renew),0,"the newer renewal state from the older period's refund is kept");
-    assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+    assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),false);
 
     // A store that keeps refusing the write leaves the notification unrecorded, so Apple delivers it again.
     let writes=0;
@@ -376,10 +418,10 @@ test("signed transactions from the app grant access only to the account that bou
   await assert.rejects(apple.handleApi(request("{not json"),{},TRANSACTIONS),(error)=>error.status===400&&error.code==="INVALID_JSON");
   const foreign=createAppleTestChain();
   await assert.rejects(apple.handleApi(request({signedTransactions:[foreign.signJws(transaction({appAccountToken:userId}))]}),{},TRANSACTIONS),(error)=>error.code==="APPLE_ROOT_UNTRUSTED");
-  assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+  assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),false);
 
   await assert.rejects(apple.handleApi(request({signedTransactions:[sign({inAppOwnershipType:"FAMILY_SHARED"})]}),{},TRANSACTIONS),(error)=>error.message===FAMILY_SHARED_MESSAGE);
-  assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+  assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),false);
 
   // A family member's shared copy beside the member's own purchase is skipped; the member's own purchase counts.
   const accepted=await post({signedTransactions:[sign(),sign({transactionId:"2000000001",signedDate:now-5000}),sign({transactionId:"2000000081",originalTransactionId:"2000000080",inAppOwnershipType:"FAMILY_SHARED"})]});
@@ -398,8 +440,8 @@ test("signed transactions from the app grant access only to the account that bou
   await store.upsertAppleSubscription({originalTransactionId:"2000000000",userId,productId:PRODUCT,environment:"Sandbox",latestTransactionId:"2000000001",purchasedAt:spent?.purchased_at??null,originalPurchasedAt:null,expiresAt:now-DAY,revokedAt:null,revocationReason:null,autoRenew:false,gracePeriodExpiresAt:null,lastSignedAt:now,latestSignedAt:now,createdAt:now,updatedAt:now});
   const moved=await post({signedTransactions:[chain.signJws(transaction({appAccountToken:otherId,transactionId:"2000000060",purchaseDate:now,signedDate:now+1}))]});
   assert.equal(moved.status,200);assert.equal((await store.appleSubscription("2000000000"))?.user_id,otherId);
-  assert.equal(await store.hasActiveAppleSubscription(otherId,now),true);
-  assert.equal(await store.hasActiveAppleSubscription(userId,now),false);
+  assert.equal(await store.hasActiveAppleSubscription(otherId,now,settings),true);
+  assert.equal(await store.hasActiveAppleSubscription(userId,now,settings),false);
 }));
 
 test("App Store Server Notifications are verified, rate-limited, and acknowledged with an empty body",async()=>withStore("local",async(store)=>{
@@ -413,7 +455,7 @@ test("App Store Server Notifications are verified, rate-limited, and acknowledge
   await apple.handleNotification(request({signedPayload:chain.signJws(notification("SUBSCRIBED",{tx:transaction({appAccountToken:userId}),renew:renewal()}))}),res);
   assert.deepEqual(responses.at(-1),{status:200,data:{},headers:{}});
   assert.deepEqual(logs.at(-1),{event:"apple.notification",fields:{outcome:"applied"}});
-  assert.equal(await store.hasActiveAppleSubscription(userId,Date.now()),true);
+  assert.equal(await store.hasActiveAppleSubscription(userId,Date.now(),settings),true);
   await apple.cleanup();
   assert.throws(()=>createAppleBillingService({store}),/requires storage/);
   const warnings=service(store,{settings:appleBillingSettings({NODE_ENV:"production",APPLE_ROOT_FINGERPRINT:chain.rootFingerprint})}).logs;

@@ -238,12 +238,16 @@ async function parityScenario(store) {
   const expiryCredentials=await store.accountCredentialsById("expiry-user");
   const expirySessionAfter=await store.session("expiry-session",6_000);
 
-  const oldSignal=await store.incrementProductSignal("2026-06-09","preview_generated");
-  const firstSignal=await store.incrementProductSignal("2026-09-06","preview_generated");
-  const repeatedSignal=await store.incrementProductSignal("2026-09-06","preview_generated");
-  const workoutSignal=await store.incrementProductSignal("2026-09-07","workout_started");
+  const actor=(letter)=>letter.repeat(64);
+  const oldSignal=await store.recordProductSignal("2026-06-09","preview_generated",actor("a"),"member");
+  const firstSignal=await store.recordProductSignal("2026-09-06","preview_generated",actor("a"),"member");
+  const repeatedSignal=await store.recordProductSignal("2026-09-06","preview_generated",actor("a"),"member");
+  const anonymousSignal=await store.recordProductSignal("2026-09-06","preview_generated",actor("b"),"anonymous");
+  const workoutSignal=await store.recordProductSignal("2026-09-07","workout_started",actor("a"),"member");
   const signalCounts=await store.productSignalCounts("2026-06-10","2026-09-07");
   const deletedSignals=await store.deleteOldProductSignals("2026-06-10");
+  const deletedSignalActors=await store.deleteProductSignalActors("2026-09-07");
+  const recountedAfterCleanup=await store.recordProductSignal("2026-09-07","workout_started",actor("a"),"member");
   const retainedSignalCounts=await store.productSignalCounts("2026-01-01","2026-09-07");
 
   const deletionActor={id:"parity-delete-actor",name:"Deletion Actor",email:"deletion-actor@example.test",passwordHash:"delete-actor-hash",passwordSalt:"delete-actor-salt",createdAt:7_000,emailVerifiedAt:7_000};
@@ -311,9 +315,12 @@ async function parityScenario(store) {
     oldSignal,
     firstSignal,
     repeatedSignal,
+    anonymousSignal,
     workoutSignal,
     signalCounts,
     deletedSignals,
+    deletedSignalActors,
+    recountedAfterCleanup,
     retainedSignalCounts,
     adminOverview:await store.adminOverview(8_000),
     activeAdminDelete,
@@ -381,11 +388,14 @@ test("SQLite and Turso adapters expose matching values, mutation results, and se
     assert.equal(localResult.staleSetup,null,"stale setup revisions must not partially update either record");
     assert.equal(localResult.setupPlan.plan_json,JSON.stringify({version:1,restDay:"Saturday",days:{Monday:[{exerciseId:"setup"}]}}));
     assert.equal(localResult.setupPreferences.preferences_json,JSON.stringify({goal:"balanced",days:1}));
+    assert.deepEqual([localResult.oldSignal,localResult.firstSignal,localResult.repeatedSignal,localResult.anonymousSignal,localResult.workoutSignal],[true,true,false,true,true],"a daily key counts once");
     assert.deepEqual(localResult.signalCounts,[
-      {event_day:"2026-09-06",event_name:"preview_generated",event_count:2},
-      {event_day:"2026-09-07",event_name:"workout_started",event_count:1}
+      {event_day:"2026-09-06",event_name:"preview_generated",event_count:2,member_count:1,anonymous_count:1},
+      {event_day:"2026-09-07",event_name:"workout_started",event_count:1,member_count:1,anonymous_count:0}
     ]);
     assert.equal(localResult.deletedSignals,1);
+    assert.equal(localResult.deletedSignalActors,3,"daily keys from before the given day are removed");
+    assert.equal(localResult.recountedAfterCleanup,false,"the current day's keys are kept");
     assert.deepEqual(localResult.retainedSignalCounts,localResult.signalCounts);
     assert.equal(localResult.activeAdminDelete,null,"an active account cannot be deleted directly by Admin");
     assert.equal(localResult.adminDeleted.id,"parity-delete-target");

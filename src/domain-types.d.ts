@@ -330,7 +330,7 @@ export type CheckoutRecovery=
 
 export interface BillingStore {
   adminControls(userId:string):Promise<AdminControlsRow|null>;
-  hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
+  hasActiveAppleSubscription(userId:string,now:number,sandbox?:AppleSandboxPolicy):Promise<boolean>;
   appleSubscriptionsForUser(userId:string):Promise<AppleSubscriptionRow[]>;
   hasPaidDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(userId:string,priceId:string,productId:string,now?:number):Promise<boolean>;
@@ -382,12 +382,14 @@ export interface BillingServiceDependencies {
   paymentConfig:PaymentConfig;
   enforcePaddleIps:boolean;
   requestAddress:(request:HttpRequest)=>string;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   isUniqueViolation:(error:unknown)=>boolean;
   getAuth:()=>AuthService|undefined;
   getUserPayload:(account:SessionRow)=>Promise<JsonObject>;
   http:JsonHttpHelpers;
   logger:OperationalLogger;
+  /** Which Apple Sandbox purchases unlock Strata+; production-only when left out. */
+  appleSandbox?:AppleSandboxPolicy;
   now?:()=>number;
   makeId?:()=>string;
 }
@@ -439,18 +441,23 @@ export interface ProductSignalCountRow {
   event_day:string;
   event_name:ProductSignalEvent;
   event_count:number;
+  member_count:number;
+  anonymous_count:number;
 }
 
+export type ProductSignalAudience="member"|"anonymous";
 export interface ProductSignalsStore {
-  incrementProductSignal(eventDay:string,eventName:ProductSignalEvent):Promise<unknown>;
+  /** True when this is the action's first count for the actor's daily key; a repeat changes nothing. */
+  recordProductSignal(eventDay:string,eventName:ProductSignalEvent,actorKey:string,audience:ProductSignalAudience):Promise<boolean>;
   productSignalCounts(sinceDay:string,throughDay:string):Promise<ProductSignalCountRow[]>;
   deleteOldProductSignals(beforeDay:string):Promise<unknown>;
+  deleteProductSignalActors(beforeDay:string):Promise<unknown>;
 }
 
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore&AppleBillingStore&SocialAuthStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore&AppleBillingStore&SocialAuthStore&ServerStateStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -653,9 +660,55 @@ export interface SetupStore {
 }
 
 export interface EventBus {
-  on(name:string,handler:(payload:Record<string,unknown>)=>unknown):()=>void;
+  on(name:string,handler:(payload:Record<string,unknown>)=>unknown,key?:string):()=>void;
   emit(name:string,payload?:Record<string,unknown>):Promise<number>;
+  retryDue?(limit?:number):Promise<number>;
+  retryFor?(userId:string,limit?:number):Promise<number>;
   names:readonly string[];
+}
+
+/** One failed reaction (a handler for an event) waiting to be retried. */
+export interface OutboxEventRecord {
+  id:string;
+  eventName:string;
+  handlerKey:string;
+  userId:string|null;
+  payloadJson:string;
+  attempts:number;
+  attemptedAt:number;
+  nextAttemptAt:number;
+  lastError:string;
+  createdAt:number;
+}
+export interface OutboxFailure {
+  attempts:number;
+  attemptedAt:number;
+  nextAttemptAt:number;
+  lastError:string;
+  gaveUpAt:number|null;
+}
+export interface OutboxEventRow extends JsonObject {
+  id:string;
+  event_name:string;
+  handler_key:string;
+  user_id:string|null;
+  payload_json:string;
+  attempts:number;
+}
+export interface ServerStateStore {
+  addOutboxEvent(record:OutboxEventRecord):Promise<void>;
+  dueOutboxEvents(now:number,limit:number):Promise<OutboxEventRow[]>;
+  userOutboxEvents(userId:string,now:number,attemptedBefore:number,limit:number):Promise<OutboxEventRow[]>;
+  claimOutboxEvent(id:string,now:number,leaseUntil:number):Promise<boolean>;
+  completeOutboxEvent(id:string):Promise<void>;
+  failOutboxEvent(id:string,failure:OutboxFailure):Promise<void>;
+  deleteOldOutboxEvents(before:number):Promise<void>;
+  /** Takes one request slot in the key's fixed window; false when the window is full. */
+  takeRateSlot(key:string,max:number,windowMs:number,now:number):Promise<boolean>;
+  deleteOldRateBuckets(before:number):Promise<void>;
+  /** Takes or renews a named lock until expiresAt; false while another holder has it. */
+  acquireLock(name:string,holder:string,expiresAt:number,now:number):Promise<boolean>;
+  releaseLock(name:string,holder:string):Promise<void>;
 }
 
 export interface SetupServiceDependencies {
@@ -791,7 +844,7 @@ export interface TrainingServiceDependencies {
   auth:Pick<AuthService,"validCsrf">;
   requireAccess:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   trustedOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   events?:EventBus|null;
 }
@@ -829,12 +882,54 @@ export interface CoachingWeekRecord {userId:string;weekStart:string;planKey:stri
 export interface CoachingDailyLogRecord {userId:string;logDate:string;calories:number;proteinG:number|null;carbsG:number|null;fatG:number|null;morningWeightKg:number|null;complete:boolean|null;updatedAt:number;}
 export interface CoachingDailyLogRow extends JsonObject {log_date:string;calories:number;protein_g:number|null;carbs_g:number|null;fat_g:number|null;morning_weight_kg:number|null;intake_complete:0|1|null;revision:number;updated_at:number;}
 /** Strata AI consent and the organization's daily provider budget. */
+export interface AiJobRecord {
+  id:string;
+  userId:string;
+  kind:"chat"|"suggestions";
+  requestJson:string;
+  usageDate:string;
+  createdAt:number;
+}
+export interface AiJobOutcome {
+  status:"done"|"failed";
+  tokens:number;
+  resultJson:string|null;
+  errorJson:string|null;
+  finishedAt:number;
+}
+export interface AiJobRow extends JsonObject {
+  id:string;
+  user_id:string;
+  kind:"chat"|"suggestions";
+  status:"queued"|"running"|"done"|"failed";
+  request_json:string|null;
+  usage_date:string;
+  tokens:number;
+  result_json:string|null;
+  error_json:string|null;
+  created_at:number;
+  finished_at:number|null;
+}
 export interface AiStore {
   aiSettings(userId:string):Promise<JsonObject|null>;
   upsertAiSettings(userId:string,settings:{consentAt:number|null,consentVersion:number,dailyBrief:boolean,updatedAt:number}):Promise<JsonObject|null>;
   briefCandidates(limit:number,offset:number):Promise<JsonObject[]>;
   aiUsage(date:string,scope:string):Promise<JsonObject[]>;
   addAiUsage(date:string,scope:string,kind:"chat"|"brief",requests:number,tokens:number):Promise<void>;
+  /** Adds one request for the member unless it would pass the limit; false means the allowance is spent. */
+  claimMemberAiRequest(date:string,userId:string,kind:"chat"|"brief",limit:number):Promise<boolean>;
+  /** Adds one shared request unless today's total or this kind's share is spent. */
+  claimGlobalAiRequest(date:string,kind:"chat"|"brief",dailyLimit:number,kindLimit:number):Promise<boolean>;
+  /** Queues a request; fails with a unique violation while the member already has one queued or running. */
+  insertAiJob(job:AiJobRecord):Promise<AiJobRow|null>;
+  aiJob(id:string,userId:string):Promise<AiJobRow|null>;
+  activeAiJob(userId:string):Promise<AiJobRow|null>;
+  queuedAiJobs():Promise<number>;
+  aiJobPosition(id:string):Promise<number>;
+  claimAiJob(leaseUntil:number):Promise<AiJobRow|null>;
+  finishAiJob(id:string,outcome:AiJobOutcome):Promise<void>;
+  requeueStaleAiJobs(now:number):Promise<void>;
+  deleteFinishedAiJobs(before:number):Promise<void>;
   refundAiUsage(date:string,scope:string,kind:"chat"|"brief"):Promise<void>;
   aiUsageTotals(date:string):Promise<JsonObject[]>;
   aiUsageTop(date:string,limit:number):Promise<JsonObject[]>;
@@ -942,7 +1037,7 @@ export interface CoachingServiceDependencies {
   auth:Pick<AuthService,"validCsrf">;
   requireAccess:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   trustedOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   now?:()=>number;
   events?:EventBus|null;
@@ -954,9 +1049,10 @@ export interface CoachingService {handleApi(request:HttpRequest,response:HttpRes
 export interface ProductSignalsServiceDependencies {
   store:ProductSignalsStore;
   admin:Pick<AdminService,"requireAdmin">;
+  auth:Pick<AuthService,"sessionFor"|"validCsrf">;
   trustedOrigin:(request:HttpRequest)=>boolean;
   requestAddress:(request:HttpRequest)=>string;
-  rateKeyAllowed:(key:string,limit:number,windowMs:number)=>boolean;
+  rateKeyAllowed:(key:string,limit:number,windowMs:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   now?:()=>number;
 }
@@ -973,7 +1069,7 @@ export interface AuthServiceDependencies {
   exerciseIds?:Set<string>;
   isUniqueViolation?:(error:unknown)=>boolean;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:HttpHelpers;
   getUserPayload:(account:AccountIdentityRow)=>Promise<unknown>;
   claimAdminForLogin?:(user:UserRow)=>Promise<UserRow>;
@@ -988,7 +1084,7 @@ export interface AccountSelfServiceDependencies {
   http:Pick<HttpHelpers,"json"|"bodyJson"|"securityHeaders">;
   requireSession:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   validCsrf:(request:HttpRequest,session:SessionRow)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   logger?:Pick<Console,"error">;
   now?:()=>number;
 }
@@ -1015,7 +1111,7 @@ export interface AccountDeletionDependencies {
   requireSession:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   validCsrf:(request:HttpRequest,session:SessionRow)=>boolean;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   passwordMatches:(password:string,user:CredentialUserRow)=>Promise<boolean>;
   accountEmailHash:(email:string)=>string;
   accountActionError:(message:string,status:number,code:string)=>Error&{status:number;code:string};
@@ -1038,7 +1134,7 @@ export interface AuthService {
   handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
   handleForm(request:HttpRequest,response:HttpResponse,url:URL):Promise<void>;
   cleanup(now?:number):Promise<void>;
-  sessionFor(request:HttpRequest):Promise<SessionRow|null>;
+  sessionFor(request:HttpRequest,response?:HttpResponse|null):Promise<SessionRow|null>;
   requireSession(request:HttpRequest,response:HttpResponse):Promise<SessionRow|null>;
   sessionCookie(token:string,maxAge?:number):string;
   signupCookie(token:string,maxAge?:number):string;
@@ -1061,7 +1157,7 @@ export interface SocialAuthServiceDependencies {
   getAuth:()=>AuthService|undefined;
   claimAdminForLogin?:(user:any)=>Promise<any>;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:Pick<HttpHelpers,"bodyForm"|"redirect"|"securityHeaders">;
   isUniqueViolation?:(error:unknown)=>boolean;
   client?:ReturnType<typeof import("./social-auth-client").createSocialAuthClient>|null;
@@ -1081,13 +1177,15 @@ export interface AdminServiceDependencies {
   store:AdminStore;
   adminEmail:string;
   auth:AuthService;
-  emailConfig:Pick<EmailConfig,"enabled">;
-  paymentConfig:Pick<PaymentConfig,"enabled">;
+  emailConfig:Pick<EmailConfig,"enabled">&Partial<Pick<EmailConfig,"configured">>;
+  paymentConfig:Pick<PaymentConfig,"enabled">&Partial<Pick<PaymentConfig,"configured">>;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   environment?:NodeJS.ProcessEnv;
   enforcePaddleIps?:boolean;
+  /** Setup the public status no longer shows; read when the Overview loads. */
+  serviceStatus?:()=>AdminServiceStatus;
   reconcileCheckoutCreationBeforeDeletion:(userId:string,expectedClaimId?:string)=>Promise<number>;
   reconcileUnsettledPurchases:(userId:string,options?:{includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]})=>Promise<number>;
 }
@@ -1114,7 +1212,7 @@ export interface SupportServiceDependencies {
   admin:AdminService;
   requestAddress:(request:HttpRequest)=>string;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   isUniqueViolation?:(error:unknown)=>boolean;
   http:Pick<HttpHelpers,"json"|"bodyJson"|"bodyForm"|"redirect">;
   logger?:Pick<Console,"error">;
@@ -1132,6 +1230,11 @@ export type CreateSupportService=(dependencies:SupportServiceDependencies)=>Supp
 export type CreateSetupService=(dependencies:SetupServiceDependencies)=>SetupService;
 export type CreateTrainingService=(dependencies:TrainingServiceDependencies)=>TrainingService;
 
+export interface AdminServiceStatus {
+  appStore:boolean;
+  signInProviders:readonly string[];
+}
+
 export interface ServiceCompositionDependencies {
   store:ApplicationStore;
   emailConfig:EmailConfig;
@@ -1140,7 +1243,7 @@ export interface ServiceCompositionDependencies {
   enforcePaddleIps:boolean;
   exerciseIds:Set<string>;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   requestAddress:(request:HttpRequest)=>string;
   http:HttpHelpers;
   getUserPayload:(account:AccountIdentityRow)=>Promise<unknown>;
@@ -1148,13 +1251,19 @@ export interface ServiceCompositionDependencies {
   reconcileUnsettledPurchases:(userId:string,options?:{includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]})=>Promise<number>;
   isUniqueViolation:(error:unknown)=>boolean;
   appleDeletionNotice?:(userId:string)=>Promise<AppleDeletionNotice|null>;
+  serviceStatus?:()=>AdminServiceStatus;
   createAuthService:CreateAuthService;
   createAdminService:CreateAdminService;
   createSupportService:CreateSupportService;
 }
 
 export type AppleEnvironment="Production"|"Sandbox";
-export interface AppleBillingSettings {
+/** Whether a Sandbox purchase unlocks Strata+: always outside production, else only for the listed account emails. */
+export interface AppleSandboxPolicy {
+  readonly allowSandbox:boolean;
+  readonly sandboxAccounts:ReadonlySet<string>;
+}
+export interface AppleBillingSettings extends AppleSandboxPolicy {
   readonly bundleId:string;
   readonly productIds:readonly string[];
   readonly rootFingerprint:string;
@@ -1183,7 +1292,7 @@ export interface AppleBillingStore {
   appleSubscription(originalTransactionId:string):Promise<AppleSubscriptionRow|null>;
   appleSubscriptionsForUser(userId:string):Promise<AppleSubscriptionRow[]>;
   upsertAppleSubscription(record:AppleSubscriptionWrite,replaceOwnerId?:string|null):Promise<AppleSubscriptionRow|null>;
-  hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
+  hasActiveAppleSubscription(userId:string,now:number,sandbox?:AppleSandboxPolicy):Promise<boolean>;
   appleNotification(notificationUuid:string):Promise<JsonObject|null>;
   recordAppleNotification(notification:AppleNotificationWrite):Promise<boolean>;
   deleteOldAppleNotifications(before:number):Promise<void>;
@@ -1199,7 +1308,7 @@ export interface AppleBillingServiceDependencies {
   getAuth:()=>Pick<AuthService,"requireSession"|"validCsrf">|undefined;
   getUserPayload:(account:SessionRow)=>Promise<JsonObject>;
   trustedOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:Pick<HttpHelpers,"json">;
   logger:OperationalLogger;
   now?:()=>number;
@@ -1209,7 +1318,7 @@ export interface AppleBillingService {
   handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
   handleNotification(request:HttpRequest,response:HttpResponse):Promise<void>;
   processNotification(payload:Record<string,any>):Promise<string>;
-  subscriptionForUser(userId:string):Promise<AppleSubscriptionSummary|null>;
+  subscriptionForUser(userId:string,email?:string|null):Promise<AppleSubscriptionSummary|null>;
   deletionNotice(userId:string):Promise<AppleDeletionNotice|null>;
   cleanup():Promise<void>;
 }

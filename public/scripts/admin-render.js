@@ -52,17 +52,21 @@
       setService("paymentStatus",payments===true?"Live checkout configured":payments===false?"Checkout unavailable":"Status unavailable",payments===true?"good":payments===false?"bad":"warn");
       const webhook=booleanValue(system,["webhookProtection","webhookIpAllowlist","webhookProtected"])??booleanValue(data,["webhookIpAllowlist"]);
       setService("webhookStatus",webhook===true?"Source allowlist enabled":webhook===false?"IP allowlist disabled":"Status unavailable",webhook===true?"good":"warn");
+      const appStore=booleanValue(system,["appStore"]),providers=Array.isArray(system.signInProviders)?system.signInProviders:null;
+      setService("appStoreStatus",appStore===true?"Purchases verified":appStore===false?"Not configured":"Status unavailable",appStore===true?"good":"warn");
+      setService("signInStatus",providers===null?"Status unavailable":providers.includes("google")?"On":"Off",providers?.includes("google")?"good":"warn");
     }
+    // Signed-in counts lead because product decisions use them; anonymous counts sit beside them.
     function renderProductSignals(data){
-      const totals=data?.totals&&typeof data.totals==="object"?data.totals:{},fragment=document.createDocumentFragment();
-      let total=0;
+      const object=(value)=>value&&typeof value==="object"?value:{},totals=object(data?.totals),anonymous=object(data?.anonymousTotals),fragment=document.createDocumentFragment();
+      let total=0,anonymousTotal=0;
       for(const [name,label] of Object.entries(productSignalLabels)){
-        const count=numberValue(totals[name],0);total+=count;
-        const row=create("div");row.append(create("dt","",label),create("dd","",formatCount(count)));fragment.append(row);
+        const count=numberValue(totals[name],0),guests=numberValue(anonymous[name],0);total+=count;anonymousTotal+=guests;
+        const row=create("div");row.append(create("dt","",label),create("dd","",`${formatCount(count)} signed in · ${formatCount(guests)} anonymous`));fragment.append(row);
       }
       el("productSignalRows").replaceChildren(fragment);
       const scope=data?.scope||{},since=cleanString(scope.sinceDay,"the selected start"),through=cleanString(scope.throughDay,"today");
-      setSectionStatus("productSignalStatus",`${formatCount(total)} aggregate action ${total===1?"count":"counts"} from ${since} through ${through}. Counts expire within ${formatCount(scope.retentionDays||90)} days.`);
+      setSectionStatus("productSignalStatus",`${formatCount(total)} signed-in and ${formatCount(anonymousTotal)} anonymous action ${total+anonymousTotal===1?"count":"counts"} from ${since} through ${through}. Each action counts once per account or network per day; decide from the signed-in counts. Counts expire within ${formatCount(scope.retentionDays||90)} days.`);
     }
     // Today's Strata AI requests and tokens against the organization's daily budget; dashes when unavailable.
     function renderAiUsage(usage){

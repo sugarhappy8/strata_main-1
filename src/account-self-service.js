@@ -49,7 +49,7 @@ function createAccountSelfService({store,http,requireSession,validCsrf,rateAllow
         const target=owned.find((row)=>safeEqual(publicSessionId(String(row.token_hash)),sessionId));
         if(!target){json(res,404,{error:"That signed-in session is no longer active.",code:"SESSION_NOT_FOUND"});return true;}
         if(safeEqual(target.token_hash,session.token_hash)){json(res,409,{error:"The current session cannot be revoked here. Use Sign out instead.",code:"CURRENT_SESSION_PROTECTED"});return true;}
-        if(!rateAllowed(req,`identity:account-session-revoke:${session.id}`,30)){json(res,429,{error:"Too many session changes. Wait a moment and try again.",code:"SESSION_RATE_LIMIT"});return true;}
+        if(!await rateAllowed(req,`identity:account-session-revoke:${session.id}`,30)){json(res,429,{error:"Too many session changes. Wait a moment and try again.",code:"SESSION_RATE_LIMIT"});return true;}
         const revoked=await store.revokeAccountSession(session.id,String(target.token_hash),session.token_hash,now());
         if(!revoked){json(res,404,{error:"That signed-in session is no longer active.",code:"SESSION_NOT_FOUND"});return true;}
         const sessions=await sessionsFor(session);json(res,200,{ok:true,revoked:1,sessions,otherCount:sessions.filter((item)=>!item.current).length});return true;
@@ -57,14 +57,14 @@ function createAccountSelfService({store,http,requireSession,validCsrf,rateAllow
       if(url.pathname==="/api/account/sessions/revoke-others"&&req.method==="POST"){
         const session=await mutationSession(req,res);if(!session)return true;
         await bodyJson(req);
-        if(!rateAllowed(req,`identity:account-session-revoke:${session.id}`,30)){json(res,429,{error:"Too many session changes. Wait a moment and try again.",code:"SESSION_RATE_LIMIT"});return true;}
+        if(!await rateAllowed(req,`identity:account-session-revoke:${session.id}`,30)){json(res,429,{error:"Too many session changes. Wait a moment and try again.",code:"SESSION_RATE_LIMIT"});return true;}
         const revoked=await store.revokeOtherAccountSessions(session.id,session.token_hash,now());
         const sessions=await sessionsFor(session);json(res,200,{ok:true,revoked,sessions,otherCount:sessions.filter((item)=>!item.current).length});return true;
       }
       if(url.pathname==="/api/account/export"&&req.method==="POST"){
         const session=await mutationSession(req,res);if(!session)return true;
         await bodyJson(req);
-        if(!rateAllowed(req,`identity:account-export:${session.id}`,5)){json(res,429,{error:"Too many exports were requested. Wait a moment and try again.",code:"ACCOUNT_EXPORT_RATE_LIMIT"});return true;}
+        if(!await rateAllowed(req,`identity:account-export:${session.id}`,5)){json(res,429,{error:"Too many exports were requested. Wait a moment and try again.",code:"ACCOUNT_EXPORT_RATE_LIMIT"});return true;}
         const exportedAt=now(),rows=await store.accountExport(session.id);
         if(!rows){json(res,409,{error:"The signed-in account changed. Refresh and try again.",code:"ACCOUNT_CHANGED"});return true;}
         await streamExport(res,store,session.id,rows,exportedAt,securityHeaders());return true;

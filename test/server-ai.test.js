@@ -276,6 +276,17 @@ test("model failures, busy queues, and daily limits fail with clear codes",async
   assert.equal((await request("/api/ai/status",member)).data.remainingToday,0);
 });
 
+test("simultaneous requests from one member start one job and claim one request",async()=>{
+  const member=await account("simultaneous");
+  model.delayMs=200;
+  const results=await Promise.all(Array.from({length:6},()=>ask(member)));
+  const accepted=results.filter((result)=>result.status===202);
+  assert.equal(accepted.length,1,"only one of six simultaneous requests is accepted");
+  assert.ok(results.filter((result)=>result.status!==202).every((result)=>result.status===409&&result.data.code==="AI_REQUEST_IN_PROGRESS"));
+  await settle(member,accepted[0].data.request.id);model.delayMs=0;
+  assert.equal((await request("/api/ai/status",member)).data.usedToday,1,"the refused requests never claimed the member's allowance");
+});
+
 test("context overflows and cut-off answers are retried in a smaller form",async()=>{
   const member=await account("limits");model.requests.length=0;
   const history=[{role:"user",content:"Plan a week"},{role:"assistant",content:"Here is a week."}];

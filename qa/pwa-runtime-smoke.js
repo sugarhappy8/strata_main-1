@@ -140,10 +140,7 @@ async function main() {
   const statusResponse=await fetch(`${base}/api/status`);
   assert.equal(statusResponse.headers.get("cache-control"),"no-store");
   const status=await statusResponse.json();
-  assert.equal(status.ok,true);
-  assert.equal(status.build,BUILD);
-  assert.equal(typeof status.passwordResetEnabled,"boolean");
-  assert.equal(typeof status.accountDeletionEnabled,"boolean");
+  assert.deepEqual(status,{ok:true,version:BUILD},"the public status shows only that the app is up and its build");
 
   console.log(JSON.stringify({
     installGuide:true,

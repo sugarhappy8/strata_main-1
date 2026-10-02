@@ -302,9 +302,7 @@ async function main() {
     server=await startServer(directory);
     baseUrl=server.url;
     const status=await request(users[0],"/api/status",{metric:"status"});
-    assert.equal(status.body.storage,"local");
-    assert.equal(status.body.checkoutEnabled,false);
-    assert.equal(status.body.emailVerificationEnabled,false);
+    assert.deepEqual(Object.keys(status.body).sort(),["ok","version"],"the public status shows nothing about the setup");
 
     await phase("100 simultaneous signups",()=>allUsers(users,async(user)=>{
       const result=await request(user,"/api/signup",{method:"POST",metric:"auth.signup",expected:[201],body:{name:`Load User ${user.index}`,email:user.email,password:user.password}});
