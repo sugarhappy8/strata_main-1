@@ -102,16 +102,15 @@ test("deployment smoke target is bounded to HTTPS except loopback",()=>{
   assert.equal(deploymentUrl("http://127.0.0.1:4173").href,"http://127.0.0.1:4173/");
   assert.throws(()=>deploymentUrl("http://strata.example"),/must use HTTPS/);
   assert.throws(()=>deploymentUrl("https://user:secret@strata.example"),/without credentials/);
-  assert.deepEqual(parseSmokeOptions(["https://strata.example","--require-all"],{STRATA_EXPECTED_BUILD:"7.5.0",STRATA_SMOKE_TIMEOUT_MS:"15000"}),{
-    target:"https://strata.example",expectedBuild:"7.5.0",timeoutMs:15000,json:false,requireEmail:true,requirePayments:true,requireTurso:true
+  assert.deepEqual(parseSmokeOptions(["https://strata.example","--json"],{STRATA_EXPECTED_BUILD:"7.5.0",STRATA_SMOKE_TIMEOUT_MS:"15000"}),{
+    target:"https://strata.example",expectedBuild:"7.5.0",timeoutMs:15000,json:true
   });
 });
 
-test("deployment smoke rejects wrong build or incomplete provider readiness",()=>{
-  const ready={ok:true,build:"7.5.0",storage:"turso",persistent:true,emailVerificationEnabled:true,emailVerificationConfigured:true,paymentsConfigured:true,checkoutEnabled:true};
-  assert.doesNotThrow(()=>validateStatus(ready,{expectedBuild:"7.5.0",requireTurso:true,requireEmail:true,requirePayments:true}));
-  assert.throws(()=>validateStatus({...ready,build:"7.4.1"},{expectedBuild:"7.5.0"}),/expected 7\.5\.0/);
-  assert.throws(()=>validateStatus({...ready,storage:"local"},{requireTurso:true}),/persistent Turso/);
-  assert.throws(()=>validateStatus({...ready,checkoutEnabled:false},{requirePayments:true}),/configured checkout/);
-  assert.throws(()=>validateStatus({...ready,emailVerificationEnabled:false},{requireEmail:true}),/email verification/);
+test("deployment smoke rejects a wrong version or a status that reveals the setup",()=>{
+  const ready={ok:true,version:"7.5.0"};
+  assert.doesNotThrow(()=>validateStatus(ready,{expectedBuild:"7.5.0"}));
+  assert.throws(()=>validateStatus({...ready,version:"7.4.1"},{expectedBuild:"7.5.0"}),/expected 7\.5\.0/);
+  assert.throws(()=>validateStatus({ok:false,version:"7.5.0"}),/operational/);
+  assert.throws(()=>validateStatus({...ready,storage:"turso",paymentsConfigured:true}),/reveals setup it should not: storage, paymentsConfigured/);
 });

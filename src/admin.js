@@ -23,6 +23,7 @@ function createAdminService({
   http,
   reconcileCheckoutCreationBeforeDeletion,
   reconcileUnsettledPurchases,
+  serviceStatus=()=>({appStore:false,signInProviders:[]}),
   environment=process.env
 }){
   if(!store||!auth||typeof auth.accountEmailHash!=="function"||!emailConfig||!paymentConfig||typeof trustedAuthOrigin!=="function"||typeof rateAllowed!=="function"||!http||typeof reconcileCheckoutCreationBeforeDeletion!=="function"||typeof reconcileUnsettledPurchases!=="function"){
@@ -143,7 +144,8 @@ function createAdminService({
       discovery:{activeUsers:value("discovery_users"),pendingPayments:value("pending_payments")},
       activation:{firstWorkoutAccounts:value("first_workout_users"),secondWorkoutAccounts:value("second_workout_users"),dayEightReturnAccounts:value("day_eight_return_users"),paidAccounts:value("paid_users"),renewedSubscriptions:value("renewed_subscriptions")},
       support:{open:value("open_support"),pendingDeletions:value("pending_deletions")},
-      services:{storage:store.kind,persistent:store.kind==="turso"||environment.NODE_ENV!=="production",email:emailConfig.enabled,checkout:paymentConfig.enabled,webhookProtection:enforcePaddleIps}
+      // Setup flags live here, behind the owner's session, instead of in the public /api/status.
+      services:{storage:store.kind,persistent:store.kind==="turso"||environment.NODE_ENV!=="production",email:emailConfig.enabled,emailConfigured:Boolean(emailConfig.configured),checkout:paymentConfig.enabled,paymentsConfigured:Boolean(paymentConfig.configured),webhookProtection:enforcePaddleIps,adminConfigured:Boolean(adminEmail),...serviceStatus()}
     };
   }
 

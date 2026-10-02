@@ -168,7 +168,7 @@ async function endpointEvidence(dataDirectory) {
       }));
     results.push(await benchmark("endpoint.status",async()=>{
         const {body}=await checkedJson(`${baseUrl}/api/status`);
-        if (body.ok!==true||body.storage!=="local") throw new Error("Status response was not the isolated local application.");
+        if (body.ok!==true||typeof body.version!=="string"||Object.keys(body).length!==2) throw new Error("Status response was not the minimal public status.");
       }));
     results.push(await benchmark("endpoint.authenticatedPlan",async()=>{
         const {body}=await checkedJson(`${baseUrl}/api/plan`,{headers:{Cookie:cookie}});

@@ -1093,13 +1093,15 @@ export interface AdminServiceDependencies {
   store:AdminStore;
   adminEmail:string;
   auth:AuthService;
-  emailConfig:Pick<EmailConfig,"enabled">;
-  paymentConfig:Pick<PaymentConfig,"enabled">;
+  emailConfig:Pick<EmailConfig,"enabled">&Partial<Pick<EmailConfig,"configured">>;
+  paymentConfig:Pick<PaymentConfig,"enabled">&Partial<Pick<PaymentConfig,"configured">>;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
   rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
   http:JsonHttpHelpers;
   environment?:NodeJS.ProcessEnv;
   enforcePaddleIps?:boolean;
+  /** Setup the public status no longer shows; read when the Overview loads. */
+  serviceStatus?:()=>AdminServiceStatus;
   reconcileCheckoutCreationBeforeDeletion:(userId:string,expectedClaimId?:string)=>Promise<number>;
   reconcileUnsettledPurchases:(userId:string,options?:{includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]})=>Promise<number>;
 }
@@ -1144,6 +1146,11 @@ export type CreateSupportService=(dependencies:SupportServiceDependencies)=>Supp
 export type CreateSetupService=(dependencies:SetupServiceDependencies)=>SetupService;
 export type CreateTrainingService=(dependencies:TrainingServiceDependencies)=>TrainingService;
 
+export interface AdminServiceStatus {
+  appStore:boolean;
+  signInProviders:readonly string[];
+}
+
 export interface ServiceCompositionDependencies {
   store:ApplicationStore;
   emailConfig:EmailConfig;
@@ -1160,6 +1167,7 @@ export interface ServiceCompositionDependencies {
   reconcileUnsettledPurchases:(userId:string,options?:{includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]})=>Promise<number>;
   isUniqueViolation:(error:unknown)=>boolean;
   appleDeletionNotice?:(userId:string)=>Promise<AppleDeletionNotice|null>;
+  serviceStatus?:()=>AdminServiceStatus;
   createAuthService:CreateAuthService;
   createAdminService:CreateAdminService;
   createSupportService:CreateSupportService;

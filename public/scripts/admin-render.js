@@ -52,6 +52,9 @@
       setService("paymentStatus",payments===true?"Live checkout configured":payments===false?"Checkout unavailable":"Status unavailable",payments===true?"good":payments===false?"bad":"warn");
       const webhook=booleanValue(system,["webhookProtection","webhookIpAllowlist","webhookProtected"])??booleanValue(data,["webhookIpAllowlist"]);
       setService("webhookStatus",webhook===true?"Source allowlist enabled":webhook===false?"IP allowlist disabled":"Status unavailable",webhook===true?"good":"warn");
+      const appStore=booleanValue(system,["appStore"]),providers=Array.isArray(system.signInProviders)?system.signInProviders:null;
+      setService("appStoreStatus",appStore===true?"Purchases verified":appStore===false?"Not configured":"Status unavailable",appStore===true?"good":"warn");
+      setService("signInStatus",providers===null?"Status unavailable":providers.includes("google")?"On":"Off",providers?.includes("google")?"good":"warn");
     }
     // Signed-in counts lead because product decisions use them; anonymous counts sit beside them.
     function renderProductSignals(data){

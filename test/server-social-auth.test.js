@@ -92,7 +92,7 @@ test("the account page offers each configured provider, and the CSP lets its for
   assert.equal((page.text.match(/<svg viewBox="0 0 48 48" width="18" height="18" aria-hidden="true" focusable="false">/g)||[]).length,2);
   assert.match(page.text,/<input id="socialSignupNext" type="hidden" name="next" value="\/discover\.html" \/>/);
   assert.match(page.headers.get("content-security-policy"),/form-action 'self' https:\/\/accounts\.google\.com;/);
-  assert.deepEqual((await request("/api/status")).data.signInProviders,["google"]);
+  assert.equal((await request("/api/status")).data.signInProviders,undefined,"sign-in setup is not public");
   assert.doesNotMatch(page.text,/samsung|data-social="apple"/i,"only Google is offered");
 });
 

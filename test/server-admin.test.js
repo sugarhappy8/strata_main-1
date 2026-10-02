@@ -265,10 +265,10 @@ let dotVariant;
 let admin;
 let member;
 
-test("admin configuration is public only as a boolean and invalid values fail closed",async()=>{
+test("the public status never reveals whether or how an admin is configured",async()=>{
   const configured=await request("/api/status");
   assert.equal(configured.response.status,200);
-  assert.equal(configured.data.adminConfigured,true);
+  assert.deepEqual(Object.keys(configured.data).sort(),["ok","version"]);
   assert.doesNotMatch(JSON.stringify(configured.data),/stratafitness\.official|ADMIN_EMAIL|admin-http-email-secret|fixture_key/i);
 
   for(const [label,value] of [
@@ -280,7 +280,7 @@ test("admin configuration is public only as a boolean and invalid values fail cl
     try{
       const status=await requestAt(auxiliary.base,"/api/status");
       assert.equal(status.response.status,200);
-      assert.equal(status.data.adminConfigured,false,label);
+      assert.deepEqual(Object.keys(status.data).sort(),["ok","version"],label);
       assert.doesNotMatch(JSON.stringify(status.data),/stratafitness\.official|attacker|ADMIN_EMAIL|fixture_key/i);
     }finally{
       await stopChild(auxiliary.child);
@@ -433,6 +433,8 @@ test("admin reads require the bound owner session and return bounded, explicitly
 
   const overview=await request("/api/admin/overview",{headers:{Cookie:admin.cookie}});
   assert.equal(overview.response.status,200);
+  // The setup flags that left the public status are on the owner's Overview.
+  assert.deepEqual(overview.data.overview.services,{storage:"local",persistent:true,email:true,emailConfigured:true,checkout:false,paymentsConfigured:false,webhookProtection:false,adminConfigured:true,appStore:true,signInProviders:[]});
   assert.ok(overview.data.overview.accounts.total>=3);
   assert.ok(overview.data.overview.accounts.verified>=3);
   assert.ok(overview.data.overview.discovery.activeUsers>=1);

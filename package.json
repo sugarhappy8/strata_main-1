@@ -19,7 +19,7 @@
     "performance": "node scripts/performance-check.js",
     "benchmark:calibration": "node qa/calibration-benchmark.js",
     "preflight:production": "node --env-file-if-exists=.env scripts/config-preflight.js --require-all",
-    "smoke:deploy": "node scripts/deploy-smoke.js --require-all",
+    "smoke:deploy": "node scripts/deploy-smoke.js",
     "check": "npm run release:check && npm run architecture:check && npm run typecheck && npm run lint && npm run coverage && npm run qa:runtime && npm run performance && npm run test:e2e",
     "qa": "npm run check",
     "qa:runtime": "node qa/account-runtime-smoke.js && node qa/discover-runtime-smoke.js && node qa/planner-runtime-smoke.js && node qa/workout-runtime-smoke.js && node qa/pwa-runtime-smoke.js",

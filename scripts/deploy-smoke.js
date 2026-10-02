@@ -39,15 +39,16 @@ async function jsonResponse(baseUrl,path,options) {
   return {response,body};
 }
 
-function validateStatus(body,{expectedBuild="",requireEmail=false,requirePayments=false,requireTurso=true}={}) {
+// The public status says only that the app is up and which build it runs. Storage, email, and payment setup are checked
+// before the deploy by `npm run preflight:production` and afterwards on the admin Overview, never in public.
+function validateStatus(body,{expectedBuild=""}={}) {
   if (!body||body.ok!==true) throw new Error("/api/status did not report an operational application.");
-  if (expectedBuild&&clean(body.build)!==expectedBuild) throw new Error(`/api/status reported build ${clean(body.build)||"unknown"}; expected ${expectedBuild}.`);
-  if (requireTurso&&(body.storage!=="turso"||body.persistent!==true)) throw new Error("/api/status did not confirm persistent Turso storage.");
-  if (requireEmail&&(body.emailVerificationEnabled!==true||body.emailVerificationConfigured!==true)) throw new Error("/api/status did not confirm enabled, configured email verification.");
-  if (requirePayments&&(body.paymentsConfigured!==true||body.checkoutEnabled!==true)) throw new Error("/api/status did not confirm enabled, configured checkout.");
+  if (expectedBuild&&clean(body.version)!==expectedBuild) throw new Error(`/api/status reported version ${clean(body.version)||"unknown"}; expected ${expectedBuild}.`);
+  const extra=Object.keys(body).filter((key)=>key!=="ok"&&key!=="version");
+  if (extra.length) throw new Error(`/api/status reveals setup it should not: ${extra.join(", ")}.`);
 }
 
-async function runSmoke(baseValue,{expectedBuild="",requireEmail=false,requirePayments=false,requireTurso=true,timeoutMs=DEFAULT_TIMEOUT_MS}={}) {
+async function runSmoke(baseValue,{expectedBuild="",timeoutMs=DEFAULT_TIMEOUT_MS}={}) {
   const baseUrl=deploymentUrl(baseValue),checks=[];
   const timed=async(name,operation)=>{
     const started=performance.now();
@@ -57,7 +58,7 @@ async function runSmoke(baseValue,{expectedBuild="",requireEmail=false,requirePa
 
   await timed("status",async()=>{
     const {body}=await jsonResponse(baseUrl,"/api/status",{timeoutMs});
-    validateStatus(body,{expectedBuild,requireEmail,requirePayments,requireTurso});
+    validateStatus(body,{expectedBuild});
   });
   await timed("readiness",async()=>{
     const {body}=await jsonResponse(baseUrl,"/healthz",{timeoutMs});
@@ -76,7 +77,7 @@ async function runSmoke(baseValue,{expectedBuild="",requireEmail=false,requirePa
     if (![302,303,307,308].includes(response.status)||!clean(response.headers.get("location")).startsWith("/account.html")) throw new Error("A signed-out private route did not redirect to account access.");
     if (!hasDirective(response.headers.get("cache-control"),"no-store")) throw new Error("The private-route redirect was not marked no-store.");
   });
-  return {ok:true,target:baseUrl.origin,expectedBuild:expectedBuild||null,requirements:{turso:requireTurso,email:requireEmail,payments:requirePayments},checks};
+  return {ok:true,target:baseUrl.origin,expectedBuild:expectedBuild||null,checks};
 }
 
 function parseOptions(argumentsList,environment=process.env) {
@@ -87,10 +88,7 @@ function parseOptions(argumentsList,environment=process.env) {
   if (!target) throw new Error("Provide a deployment URL or set STRATA_SMOKE_BASE_URL.");
   if (!Number.isSafeInteger(timeout)||timeout<1_000||timeout>60_000) throw new Error("STRATA_SMOKE_TIMEOUT_MS must be a whole number from 1000 to 60000.");
   return {
-    target,expectedBuild,timeoutMs:timeout,json:argumentsList.includes("--json"),
-    requireEmail:argumentsList.includes("--require-email")||argumentsList.includes("--require-all"),
-    requirePayments:argumentsList.includes("--require-payments")||argumentsList.includes("--require-all"),
-    requireTurso:!argumentsList.includes("--allow-local-storage")
+    target,expectedBuild,timeoutMs:timeout,json:argumentsList.includes("--json")
   };
 }
 

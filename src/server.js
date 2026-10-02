@@ -462,7 +462,8 @@ async function handleApi(req,res,url) {
   if (await billing.handleApi(req,res,url)) return;
   if (await appleBilling.handleApi(req,res,url)) return;
   if (url.pathname === "/api/status" && req.method === "GET") {
-    json(res,200,{ok:true,build:BUILD_NUMBER,storage:store.kind,persistent:store.kind==="turso"||process.env.NODE_ENV!=="production",paymentsConfigured:PAYMENT_CONFIG.configured,checkoutEnabled:PAYMENT_CONFIG.enabled,appStoreConfigured:APPLE_SETTINGS.configured,webhookIpAllowlist:ENFORCE_PADDLE_IPS,emailVerificationEnabled:EMAIL_CONFIG.enabled,signInProviders:social.enabledProviders(),emailVerificationConfigured:EMAIL_CONFIG.configured,passwordResetEnabled:EMAIL_CONFIG.enabled,accountDeletionEnabled:EMAIL_CONFIG.enabled,adminConfigured:Boolean(ADMIN_EMAIL)}); return;
+    // Public: only that the app is up and which build it runs. Setup flags are on the admin Overview.
+    json(res,200,{ok:true,version:BUILD_NUMBER}); return;
   }
   if (url.pathname === "/api/plan" && req.method === "GET") {
     const session=await auth.requireSession(req,res); if (!session) return;
@@ -675,6 +676,7 @@ async function start() {
     http:{json,bodyJson,bodyForm,redirect,securityHeaders},getUserPayload:userPayload,
     reconcileCheckoutCreationBeforeDeletion:billing.reconcileCheckoutCreationBeforeDeletion,
     reconcileUnsettledPurchases:billing.reconcileUnsettledPurchases,isUniqueViolation,appleDeletionNotice:appleBilling.deletionNotice,
+    serviceStatus:()=>({appStore:APPLE_SETTINGS.configured,signInProviders:social?social.enabledProviders():[]}),
     createAuthService,createAdminService,createSupportService
   }));
   social=createSocialAuthService({store,settings:SOCIAL_SETTINGS,getAuth:()=>auth,claimAdminForLogin:(user)=>admin.maybeClaimAdminForLogin(user),trustedAuthOrigin,rateAllowed,http:{bodyForm,redirect,securityHeaders},isUniqueViolation,logger:LOGGER});

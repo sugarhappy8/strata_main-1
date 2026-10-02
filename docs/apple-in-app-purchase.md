@@ -34,7 +34,7 @@ Strata+ is one entitlement, so a member is never asked to pay for it twice:
 
 - `POST /api/billing/checkout` (Paddle, on the website) answers `409 {code: "ALREADY_ENTITLED_APP_STORE", error: "You already have Strata+ through the App Store."}` while the member's App Store access is active (including Apple's billing grace period), before Paddle is contacted. Other members with Strata+ keep `409 ALREADY_ENTITLED`. Once the App Store access has ended, Paddle checkout opens as usual.
 - `POST /api/billing/portal` answers `409 {code: "APP_STORE_MANAGED", error: "Your Strata+ subscription is managed by the App Store. Manage it in Settings on your iPhone.", manageUrl: "https://apps.apple.com/account/subscriptions"}` when the member has no Paddle subscription but has an App Store subscription (current or past). A member with a Paddle subscription still gets Paddle's portal; a member with neither still gets `404 SUBSCRIPTION_NOT_FOUND`.
-- `GET /api/status` reports `appStoreConfigured: true` when signed App Store data can be verified against a pinned root for the configured bundle and products.
+- The admin Overview (System readiness) shows App Store billing as Purchases verified when signed App Store data can be verified against a pinned root for the configured bundle and products. The public `/api/status` no longer reports it.
 
 ## Accounts, export, and deletion
 

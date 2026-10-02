@@ -132,8 +132,7 @@ test.after(async()=>{
 
 test("new accounts require one delivered code while existing accounts remain safe",async()=>{
   const status=await request("/api/status");
-  assert.equal(status.data.emailVerificationEnabled,true);
-  assert.equal(status.data.emailVerificationConfigured,true);
+  assert.deepEqual(Object.keys(status.data).sort(),["ok","version"],"email setup is not public");
   assert.doesNotMatch(JSON.stringify(status.data),/fixture_key|verification-test-secret/i);
 
   const noOrigin=await postJson("/api/signup",{name:"No Origin",email:"no-origin@example.test",password:"no-origin-password-123"},"",false);
