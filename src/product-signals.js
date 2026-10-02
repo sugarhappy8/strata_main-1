@@ -73,7 +73,7 @@ function createProductSignalsService({store,admin,auth,trustedOrigin,requestAddr
       http.json(res,415,{error:"Product activity requests must use JSON.",code:"JSON_REQUIRED"});
       return;
     }
-    const session=await auth.sessionFor(req);
+    const session=await auth.sessionFor(req,res);
     if(session&&!auth.validCsrf(req,session)){
       http.json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});
       return;

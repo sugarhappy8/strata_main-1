@@ -1,6 +1,7 @@
 // @ts-check
 "use strict";
 
+const {withAppendedCookies}=require("./session-renewal");
 const { gzipSync }=require("node:zlib");
 
 const MAX_BODY_BYTES=64*1024;
@@ -102,7 +103,7 @@ function responseBody(req,body,headers) {
  * @param {import("./domain-types").HttpHeaders} headers
  */
 function json(res,status,data,headers={}) {
-  const responseHeaders={...securityHeaders(),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store",...headers};
+  const responseHeaders=withAppendedCookies(res,{...securityHeaders(),"Content-Type":"application/json; charset=utf-8","Cache-Control":"no-store",...headers});
   const body=responseBody(res.req,JSON.stringify(data),responseHeaders);
   res.writeHead(status,responseHeaders);
   if (res.req?.method==="HEAD") res.end(); else res.end(body);
@@ -158,7 +159,7 @@ async function bodyForm(req) {
  * @param {import("./domain-types").HttpHeaders} headers
  */
 function redirect(res,location,headers={}) {
-  res.writeHead(303,{...securityHeaders(),Location:location,"Cache-Control":"no-store",...headers});
+  res.writeHead(303,withAppendedCookies(res,{...securityHeaders(),Location:location,"Cache-Control":"no-store",...headers}));
   res.end();
 }
 

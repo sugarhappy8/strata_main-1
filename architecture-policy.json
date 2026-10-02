@@ -327,7 +327,9 @@
     "src/http.js": {
       "role": "HTTP transport helpers",
       "maxLines": 180,
-      "allowedDependencies": []
+      "allowedDependencies": [
+        "src/session-renewal.js"
+      ]
     },
     "src/observability.js": {
       "role": "Structured request tracing and redacted operational logging",
@@ -654,7 +656,7 @@
       ]
     },
     "src/session-renewal.js": {
-      "role": "Sliding session renewal and the response cookie choke point",
+      "role": "Sliding session renewal and adding its cookie to the response",
       "maxLines": 70,
       "allowedDependencies": []
     },

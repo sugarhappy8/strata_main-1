@@ -1090,7 +1090,7 @@ export interface AuthService {
   handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
   handleForm(request:HttpRequest,response:HttpResponse,url:URL):Promise<void>;
   cleanup(now?:number):Promise<void>;
-  sessionFor(request:HttpRequest):Promise<SessionRow|null>;
+  sessionFor(request:HttpRequest,response?:HttpResponse|null):Promise<SessionRow|null>;
   requireSession(request:HttpRequest,response:HttpResponse):Promise<SessionRow|null>;
   sessionCookie(token:string,maxAge?:number):string;
   signupCookie(token:string,maxAge?:number):string;

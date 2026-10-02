@@ -15,7 +15,7 @@ const {
 const {cleanText}=require("./plans");
 const {createAccountSelfService}=require("./account-self-service");
 const {createAccountDeletion,deletedMessage}=require("./account-deletion");
-const {queueResponseCookie,renewedSessionExpiry}=require("./session-renewal");
+const {appendSetCookie,renewedSessionExpiry}=require("./session-renewal");
 const {SOCIAL_PAGE_MESSAGES}=require("./social-auth-messages");
 
 const scryptAsync=promisify(scrypt);
@@ -129,24 +129,26 @@ function createAuthService({
     return cookies;
   }
 
-  async function sessionFor(req){
+  /** Given the response, a session past half its life slides forward and its new cookie is added before any handler writes. */
+  async function sessionFor(req,res=null){
     const token=cookieMap(req.headers.cookie)[SESSION_COOKIE];
     if(!token||token.length>200)return null;
     const now=Date.now(),session=await store.session(hashToken(token),now)||null;
     // Once verification is requested, a provider misconfiguration must fail closed.
     if(session&&emailConfig.requestedEnabled&&!Number(session.email_verified_at))return null;
-    if(session)await slideSession(req,token,session,now);
+    if(session&&res)await slideSession(res,token,session,now);
     return session;
   }
 
-  // Every authenticated request passes through sessionFor, so this is where an active session slides forward.
-  async function slideSession(req,token,session,now){
+  // Every authenticated request passes through sessionFor with its response, so this is where a session slides forward.
+  // The stored expiry moves only when the cookie can still go out with this response.
+  async function slideSession(res,token,session,now){
     const expiresAt=renewedSessionExpiry(session,{now,sessionMs:SESSION_SECONDS*1000});
-    if(!expiresAt)return;
+    if(!expiresAt||res.headersSent)return;
     try{
       if(!await store.renewSession(session.token_hash,expiresAt,now))return;
       session.expires_at=expiresAt;
-      queueResponseCookie(req,sessionCookie(token,Math.floor((expiresAt-now)/1000)));
+      appendSetCookie(res,sessionCookie(token,Math.floor((expiresAt-now)/1000)));
     }catch(error){logger.error("Session renewal failed:",error);}
   }
 
@@ -177,7 +179,7 @@ function createAuthService({
   }
 
   async function requireSession(req,res){
-    const session=await sessionFor(req);
+    const session=await sessionFor(req,res);
     if(!session){json(res,401,{error:"Sign in required."});return null;}
     return session;
   }
@@ -799,7 +801,7 @@ function createAuthService({
       return true;
     }
     if(url.pathname==="/api/me"&&req.method==="GET"){
-      const session=await sessionFor(req);
+      const session=await sessionFor(req,res);
       if(!session)json(res,401,{error:"Not signed in."});
       else json(res,200,{user:await getUserPayload(session),csrfToken:session.csrf_token});
       return true;

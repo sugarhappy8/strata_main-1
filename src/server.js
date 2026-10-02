@@ -30,7 +30,7 @@ const {createDataService}=require("./data-service");
 const {profilePayload:coachingProfilePayload}=require("./coaching");
 const { createBillingService } = require("./billing");
 const {appleBillingSettings,createAppleBillingService}=require("./apple-billing");
-const {deliverQueuedCookies}=require("./session-renewal");
+const {withAppendedCookies}=require("./session-renewal");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
 const { createLogger,observeRequest } = require("./observability");
@@ -557,7 +557,7 @@ async function serveStatic(req,res,url) {
       : normalize(url.pathname).replace(/^[/\\]+/,"");
   const section=SECTION_ROUTES.get(requested==="dashboard.html"?"/dashboard":aliasPath);
   if (section) {
-    const session=await auth.sessionFor(req),plus=Boolean(session&&await hasCurrentDiscoveryAccess(session.id));
+    const session=await auth.sessionFor(req,res),plus=Boolean(session&&await hasCurrentDiscoveryAccess(session.id));
     const location=plus?section.plus:session?section.member:section.visitor;
     if (location) {
       res.writeHead(302,{...securityHeaders(),Location:location,"Cache-Control":"private, no-store",Vary:"Cookie"});
@@ -566,7 +566,7 @@ async function serveStatic(req,res,url) {
     }
   }
   if (!STATIC_FILES.has(requested)) { json(res,404,{error:"Page not found."}); return; }
-  const activeSession=(PROTECTED_HTML.has(requested)||requested==="index.html"||requested==="admin.html")?await auth.sessionFor(req):null;
+  const activeSession=(PROTECTED_HTML.has(requested)||requested==="index.html"||requested==="admin.html")?await auth.sessionFor(req,res):null;
   if (requested==="admin.html") {
     if (!activeSession) {
       res.writeHead(302,{...securityHeaders(),Location:"/account.html?mode=login&next=admin","Cache-Control":"no-store"});
@@ -576,7 +576,7 @@ async function serveStatic(req,res,url) {
     const identity=await admin.adminIdentity(activeSession,{allowBootstrap:true});
     if (identity.boundNow) {
       const params=new URLSearchParams({mode:"login",next:"admin",error:"Admin ownership is secured. Sign in again to continue."});
-      res.writeHead(302,{...securityHeaders(),Location:`/account.html?${params}`,"Cache-Control":"no-store","Set-Cookie":auth.sessionCookie("",0)});
+      res.writeHead(302,withAppendedCookies(res,{...securityHeaders(),Location:`/account.html?${params}`,"Cache-Control":"no-store","Set-Cookie":auth.sessionCookie("",0)}));
       res.end();
       return;
     }
@@ -634,7 +634,6 @@ async function serveStatic(req,res,url) {
 
 const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keepAliveTimeout:5_000},async(req,res) => {
   observeRequest(req,res,LOGGER);
-  deliverQueuedCookies(req,res);
   try {
     const url=new URL(req.url,`http://${req.headers.host || "localhost"}`);
     if (url.pathname==="/livez") handleLiveness(req,res);
