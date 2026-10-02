@@ -656,7 +656,7 @@
       "allowedDependencies": []
     },
     "src/social-auth-config.js": {
-      "role": "Sign in with Google, Apple, or Samsung: provider settings",
+      "role": "Sign in with Google or Apple: provider settings",
       "maxLines": 120,
       "allowedDependencies": [
         "src/devices-config.js"
@@ -670,7 +670,7 @@
       ]
     },
     "src/social-auth-messages.js": {
-      "role": "Account-page messages for Google, Apple, and Samsung sign-in",
+      "role": "Account-page messages for Google and Apple sign-in",
       "maxLines": 30,
       "allowedDependencies": []
     },
@@ -687,7 +687,7 @@
       ]
     },
     "src/social-auth.js": {
-      "role": "Sign up and sign in with Google, Apple, or Samsung",
+      "role": "Sign up and sign in with Google or Apple",
       "maxLines": 260,
       "allowedDependencies": [
         "src/devices-crypto.js",

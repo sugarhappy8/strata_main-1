@@ -1,7 +1,7 @@
 // @ts-check
 "use strict";
 
-// OpenID Connect for Google, Apple, and Samsung: the authorization address, the code exchange, and the ID-token
+// OpenID Connect for Google and Apple: the authorization address, the code exchange, and the ID-token
 // check. Every ID token is verified here against the provider's published RS256 keys (signature, issuer, audience,
 // expiry, and the nonce STRATA sent), so nothing a browser carries back is trusted on its own.
 
@@ -124,16 +124,9 @@ function createSocialAuthClient({settings,fetchImpl=globalThis.fetch,now=Date.no
       const time=Math.floor(now()/1000),audience=Array.isArray(claims.aud)?claims.aud:[claims.aud];
       if(!provider.issuers.includes(claims.iss)||!audience.includes(provider.clientId)||audience.length>1&&claims.azp!==provider.clientId)throw invalid();
       if(!(Number(claims.exp)>time-SKEW_SECONDS)||Number(claims.iat)>time+SKEW_SECONDS)throw invalid();
-      if((provider.nonceRequired||claims.nonce!==undefined)&&!(typeof claims.nonce==="string"&&sameSecret(claims.nonce,nonce)))throw invalid();
+      if(!(typeof claims.nonce==="string"&&sameSecret(claims.nonce,nonce)))throw invalid();
       if(typeof claims.sub!=="string"||!claims.sub||claims.sub.length>255)throw invalid();
       return claims;
-    },
-    /** Samsung may keep the email address in its userinfo answer rather than the ID token. @param {import("./social-auth-config").SocialProviderId} id @param {string} accessToken */
-    async userinfo(id,accessToken){
-      const provider=providerFor(id);
-      if(!provider.userinfoUrl||!accessToken)return {};
-      const body=await readJson(provider.name,await send(provider.name,provider.userinfoUrl,{headers:{Authorization:`Bearer ${accessToken}`,Accept:"application/json"}}));
-      return body&&typeof body==="object"&&!Array.isArray(body)?body:{};
     },
     /** Ends STRATA's Sign in with Apple authorization; Apple requires this when the account is deleted. @param {import("./social-auth-config").SocialProviderId} id @param {string} refreshToken */
     async revoke(id,refreshToken){

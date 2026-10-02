@@ -35,7 +35,7 @@ const ACCOUNT_EXPORT_QUERIES=Object.freeze({
   // Strata AI consent and the member's own daily request and token counts.
   aiSettings:"SELECT consent_at,consent_version,daily_brief,updated_at FROM ai_settings WHERE user_id=?",
   aiUsage:"SELECT usage_date,kind,requests,tokens FROM ai_usage_days WHERE scope=? ORDER BY usage_date,kind",
-  // Linked Google, Apple, or Samsung sign-ins: the provider and email, never the provider's subject or a sealed token.
+  // Linked Google or Apple sign-ins: the provider and email, never the provider's subject or a sealed token.
   signIns:"SELECT provider,email,linked_at,last_used_at FROM account_identities WHERE user_id=? ORDER BY linked_at,provider"
 });
 const ACCOUNT_EXPORT_SINGLE_ROWS=new Set(["profile","weeklyPlan","monthlyPlan","preferences","trainingBlock","coachingProfile","aiSettings"]);

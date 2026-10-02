@@ -1,6 +1,6 @@
 "use strict";
 
-// Sign in with Google, Apple, or Samsung: which settings turn a provider on, every way an ID token is refused, and
+// Sign in with Google or Apple: which settings turn a provider on, every way an ID token is refused, and
 // how deleted accounts' Apple tokens are revoked. The full browser round trip is in server-social-auth.test.js.
 const test=require("node:test"),assert=require("node:assert/strict");
 const {generateKeyPairSync,randomBytes,sign}=require("node:crypto");
@@ -15,7 +15,7 @@ const rsa=generateKeyPairSync("rsa",{modulusLength:2048}),other=generateKeyPairS
 const applePem=generateKeyPairSync("ec",{namedCurve:"prime256v1"}).privateKey.export({type:"pkcs8",format:"pem"});
 const TOKEN_KEY=randomBytes(32).toString("base64");
 const b64=(value)=>Buffer.from(JSON.stringify(value)).toString("base64url");
-const ENV={NODE_ENV:"test",GOOGLE_SIGN_IN_CLIENT_ID:"google-client",GOOGLE_SIGN_IN_CLIENT_SECRET:"google-secret",SAMSUNG_SIGN_IN_CLIENT_ID:"samsung-client",SAMSUNG_SIGN_IN_CLIENT_SECRET:"samsung-secret",
+const ENV={NODE_ENV:"test",GOOGLE_SIGN_IN_CLIENT_ID:"google-client",GOOGLE_SIGN_IN_CLIENT_SECRET:"google-secret",
   APPLE_SIGN_IN_SERVICES_ID:"online.stratafitness.signin",APPLE_SIGN_IN_TEAM_ID:"TEAM123456",APPLE_SIGN_IN_KEY_ID:"KEY1234567",APPLE_SIGN_IN_PRIVATE_KEY:applePem.replace(/\n/g,"\\n"),SIGN_IN_TOKEN_KEY:TOKEN_KEY};
 
 function jwt(claims,{kid="key-1",alg="RS256",key=rsa.privateKey}={}){
@@ -32,8 +32,9 @@ test("a provider turns on only when every value it needs is set",()=>{
   const none=socialAuthSettings({NODE_ENV:"test"});
   assert.deepEqual(none.enabled,[]);
   assert.match(none.providers.google.problems[0],/GOOGLE_SIGN_IN_CLIENT_ID and GOOGLE_SIGN_IN_CLIENT_SECRET/);
-  assert.deepEqual(socialAuthSettings(ENV).enabled,["google","apple","samsung"]);
-  assert.deepEqual(socialAuthSettings({...ENV,GOOGLE_SIGN_IN_CLIENT_SECRET:""}).enabled,["apple","samsung"]);
+  assert.deepEqual(socialAuthSettings(ENV).enabled,["google","apple"]);
+  assert.deepEqual(socialAuthSettings({...ENV,GOOGLE_SIGN_IN_CLIENT_SECRET:""}).enabled,["apple"]);
+  assert.equal(socialAuthSettings({...ENV,SAMSUNG_SIGN_IN_CLIENT_ID:"x",SAMSUNG_SIGN_IN_CLIENT_SECRET:"y"}).providers.samsung,undefined,"Samsung is not offered");
 
   const noKey=socialAuthSettings({...ENV,SIGN_IN_TOKEN_KEY:""}).providers.apple;
   assert.equal(noKey.configured,false);assert.match(noKey.problems.join(" "),/SIGN_IN_TOKEN_KEY/);
@@ -48,7 +49,7 @@ test("a provider turns on only when every value it needs is set",()=>{
   assert.equal(live.redirectBase,"https://stratafitness.online");assert.equal(live.secureCookies,true);
   assert.equal(live.providers.google.tokenUrl,"https://oauth2.googleapis.com/token","production never uses a stand-in");
   const local=socialAuthSettings({...ENV,SIGN_IN_PROVIDER_STAND_IN:"http://127.0.0.1:9999/"});
-  assert.deepEqual([local.providers.samsung.issuers,local.providers.samsung.userinfoUrl,local.providers.google.revokeUrl],[["http://127.0.0.1:9999/samsung"],"http://127.0.0.1:9999/samsung/userinfo",""]);
+  assert.deepEqual([local.providers.apple.issuers,local.providers.apple.revokeUrl,local.providers.google.revokeUrl],[["http://127.0.0.1:9999/apple"],"http://127.0.0.1:9999/apple/revoke",""]);
   assert.equal(socialAuthSettings({...ENV,SIGN_IN_PROVIDER_STAND_IN:"https://example.test"}).providers.google.tokenUrl,"https://oauth2.googleapis.com/token","a stand-in must be this machine");
 });
 
@@ -60,8 +61,7 @@ test("authorization addresses ask for exactly what each provider needs",()=>{
   assert.deepEqual(Object.fromEntries(google.searchParams),{response_type:"code",client_id:"google-client",redirect_uri:request.redirectUri,scope:"openid email profile",state:"state-1",nonce:"nonce-1",code_challenge:codeChallenge("verifier-1"),code_challenge_method:"S256",prompt:"select_account"});
   const apple=new URL(client.authorizeUrl("apple",request));
   assert.equal(apple.searchParams.get("response_mode"),"form_post");assert.equal(apple.searchParams.get("scope"),"name email");assert.equal(apple.searchParams.has("code_challenge"),false);
-  const samsung=new URL(client.authorizeUrl("samsung",request));
-  assert.equal(samsung.origin+samsung.pathname,"https://account.samsung.com/iam/oidc/authorize");assert.equal(samsung.searchParams.has("response_mode"),false);
+  assert.equal(apple.origin+apple.pathname,"https://appleid.apple.com/auth/authorize");assert.equal(google.searchParams.has("response_mode"),false);
   assert.throws(()=>createSocialAuthClient({settings:socialAuthSettings({NODE_ENV:"test"})}).authorizeUrl("google",request),{code:"SOCIAL_NOT_CONFIGURED"});
 });
 
@@ -90,11 +90,10 @@ test("an ID token is accepted only when its signature, issuer, audience, time, n
   const tampered=jwt(claims()).split(".");tampered[1]=b64(claims({sub:"subject-2"}));
   await assert.rejects(client.verifyIdToken("google",tampered.join("."),{nonce:"nonce-1"}),{code:"SOCIAL_TOKEN_INVALID"},"a changed payload");
 
-  // Samsung's nonce is checked when present, but Samsung does not promise to echo it.
-  const samsung=createSocialAuthClient({settings:socialAuthSettings(ENV),fetchImpl:keyServer().fetchImpl,now:()=>NOW});
-  const samsungClaims={iss:"https://account.samsung.com/iam",aud:"samsung-client",sub:"s-1",iat:SECONDS,exp:SECONDS+600};
-  assert.equal((await samsung.verifyIdToken("samsung",jwt(samsungClaims),{nonce:"nonce-1"})).sub,"s-1");
-  await assert.rejects(samsung.verifyIdToken("samsung",jwt({...samsungClaims,nonce:"other"}),{nonce:"nonce-1"}),{code:"SOCIAL_TOKEN_INVALID"});
+  const apple=createSocialAuthClient({settings:socialAuthSettings(ENV),fetchImpl:keyServer().fetchImpl,now:()=>NOW});
+  const appleClaims={iss:"https://appleid.apple.com",aud:"online.stratafitness.signin",sub:"a-1",nonce:"nonce-1",email_verified:"true",iat:SECONDS,exp:SECONDS+600};
+  assert.equal((await apple.verifyIdToken("apple",jwt(appleClaims),{nonce:"nonce-1"})).sub,"a-1");
+  await assert.rejects(apple.verifyIdToken("apple",jwt(claims()),{nonce:"nonce-1"}),{code:"SOCIAL_TOKEN_INVALID"},"a Google token is not an Apple token");
 });
 
 test("signing keys are cached, and an unknown key is looked up again at most once a minute",async()=>{
@@ -163,10 +162,10 @@ test("deleted accounts' Apple tokens are revoked, retried when Apple fails, and 
 });
 
 test("the account page shows only the configured buttons, and every sign-in message is allowlisted for it",()=>{
-  const html='<div class="social-sign-in" data-social-options hidden><button data-social="apple" hidden></button><button data-social="google" hidden></button><button data-social="samsung" hidden></button></div>';
+  const html='<div class="social-sign-in" data-social-options hidden><button data-social="apple" hidden></button><button data-social="google" hidden></button></div>';
   const service=(env)=>revocationHarness({settings:socialAuthSettings(env)}).service;
   assert.equal(service({NODE_ENV:"test"}).renderAccountPage(html),html);
-  assert.equal(service({...ENV,APPLE_SIGN_IN_SERVICES_ID:""}).renderAccountPage(html),'<div class="social-sign-in" data-social-options><button data-social="apple" hidden></button><button data-social="google"></button><button data-social="samsung"></button></div>');
+  assert.equal(service({...ENV,APPLE_SIGN_IN_SERVICES_ID:""}).renderAccountPage(html),'<div class="social-sign-in" data-social-options><button data-social="apple" hidden></button><button data-social="google"></button></div>');
   const {KNOWN_AUTH_ERRORS}=loadAccountLogicAllowlist();
   for(const message of SOCIAL_PAGE_MESSAGES)assert.ok(KNOWN_AUTH_ERRORS.includes(message),`account-logic.js shows: ${message}`);
 });

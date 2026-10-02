@@ -1,12 +1,12 @@
 // @ts-check
 "use strict";
 
-// Sign in with Google, Apple, or Samsung. An identity links one provider account (its stable subject) to one STRATA
+// Sign in with Google or Apple. An identity links one provider account (its stable subject) to one STRATA
 // account. A sign-in state lives for ten minutes between leaving for the provider and coming back. Deleting a user
 // queues any sealed Apple token for revocation inside the same delete, so every deletion path (emailed link, in-app,
 // and Admin) revokes Sign in with Apple without each caller remembering to.
 
-const PROVIDERS="'google','apple','samsung'";
+const PROVIDERS="'google','apple'";
 
 const SOCIAL_AUTH_SCHEMA=Object.freeze([
   `CREATE TABLE IF NOT EXISTS account_identities (

@@ -1,6 +1,6 @@
 "use strict";
 
-// Linked Google, Apple, and Samsung sign-ins behave the same on SQLite and Turso: single-use sign-in states, account
+// Linked Google and Apple sign-ins behave the same on SQLite and Turso: single-use sign-in states, account
 // creation that never leaves a half-made account, linking only to verified accounts, and the delete trigger that
 // queues a sealed Apple token for revocation however the account is deleted.
 const test=require("node:test"),assert=require("node:assert/strict");

@@ -84,10 +84,6 @@ services:
         sync: false
       - key: APPLE_SIGN_IN_PRIVATE_KEY
         sync: false
-      - key: SAMSUNG_SIGN_IN_CLIENT_ID
-        sync: false
-      - key: SAMSUNG_SIGN_IN_CLIENT_SECRET
-        sync: false
       - key: SIGN_IN_TOKEN_KEY
         sync: false
       - key: SIGN_IN_TOKEN_KEY_PREVIOUS

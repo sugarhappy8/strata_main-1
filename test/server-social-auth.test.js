@@ -1,8 +1,8 @@
 "use strict";
 
-// Sign up and sign in with Google, Apple, and Samsung against the real server. A local stand-in plays all three
-// providers: it signs RS256 ID tokens, checks Google's PKCE verifier and Apple's ES256 client secret, and answers
-// Samsung's userinfo, so every hop the server makes is exercised without reaching the real providers.
+// Sign up and sign in with Google and Apple against the real server. A local stand-in plays both providers: it
+// signs RS256 ID tokens and checks Google's PKCE verifier and Apple's ES256 client secret, so every hop the server
+// makes is exercised without reaching the real providers.
 const test=require("node:test"),assert=require("node:assert/strict");
 const {spawn}=require("node:child_process"),{createServer}=require("node:http");
 const {createHash,generateKeyPairSync,randomBytes,sign,verify}=require("node:crypto");
@@ -10,7 +10,7 @@ const {mkdirSync,mkdtempSync,readFileSync,rmSync}=require("node:fs"),{join}=requ
 const {DatabaseSync}=require("node:sqlite");
 
 const ROOT=join(__dirname,"..");
-const CLIENTS={google:{id:"google-client",secret:"google-secret"},apple:{id:"online.stratafitness.signin"},samsung:{id:"samsung-client",secret:"samsung-secret"}};
+const CLIENTS={google:{id:"google-client",secret:"google-secret"},apple:{id:"online.stratafitness.signin"}};
 const APPLE_TEAM="TEAM123456",APPLE_KEY_ID="KEY1234567";
 const rsa=generateKeyPairSync("rsa",{modulusLength:2048}),appleKey=generateKeyPairSync("ec",{namedCurve:"prime256v1"});
 const b64=(value)=>Buffer.from(JSON.stringify(value)).toString("base64url");
@@ -27,9 +27,9 @@ function validAppleSecret(secret){
   return head.alg==="ES256"&&head.kid===APPLE_KEY_ID&&claims.iss===APPLE_TEAM&&claims.sub===CLIENTS.apple.id&&claims.aud==="https://appleid.apple.com"&&claims.exp>now;
 }
 
-/** One loopback server answering for Google, Apple, and Samsung under /<provider>/... */
+/** One loopback server answering for Google and Apple under /<provider>/... */
 function startProvider(){
-  const state={codes:new Map(),calls:[],revoked:[],userinfo:new Map()};
+  const state={codes:new Map(),calls:[],revoked:[]};
   const http=createServer(async(req,res)=>{
     const url=new URL(req.url,"http://stand-in.test");let body="";for await(const chunk of req)body+=chunk;
     const [,id,action]=url.pathname.split("/"),form=new URLSearchParams(body);state.calls.push({id,action,form:Object.fromEntries(form)});
@@ -44,7 +44,6 @@ function startProvider(){
       grant.used=true;
       return send(200,{access_token:`access-${grant.claims.sub}`,id_token:idToken(grant.claims),token_type:"Bearer",expires_in:3600,...(id==="apple"?{refresh_token:`apple-refresh-${grant.claims.sub}`}:{})});
     }
-    if(action==="userinfo"){const info=state.userinfo.get(String(req.headers.authorization||"").replace(/^Bearer access-/,""));return info?send(200,info):send(401,{});}
     if(action==="revoke"){if(!validAppleSecret(form.get("client_secret")))return send(401,{});state.revoked.push(form.get("token"));return send(200,{});}
     send(404,{});
   });
@@ -55,7 +54,7 @@ async function launch(){
   provider=await startProvider();mkdirSync(join(ROOT,"test-runtime"),{recursive:true});directory=mkdtempSync(join(ROOT,"test-runtime","social-auth-"));
   const applePem=appleKey.privateKey.export({type:"pkcs8",format:"pem"}).replace(/\n/g,"\\n");
   server=spawn(process.execPath,["server.js"],{cwd:ROOT,env:{...process.env,HOST:"127.0.0.1",PORT:"0",NODE_ENV:"test",ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS:"true",STRATA_DATA_DIR:directory,TURSO_DATABASE_URL:"",TURSO_AUTH_TOKEN:"",EMAIL_VERIFICATION_ENABLED:"false",PADDLE_CHECKOUT_ENABLED:"false",PADDLE_CLIENT_TOKEN:"",PADDLE_API_KEY:"",PADDLE_WEBHOOK_SECRET:"",PADDLE_PRICE_ID:"",PADDLE_PRODUCT_ID:"",APP_BASE_URL:"",
-    SIGN_IN_PROVIDER_STAND_IN:provider.url,GOOGLE_SIGN_IN_CLIENT_ID:CLIENTS.google.id,GOOGLE_SIGN_IN_CLIENT_SECRET:CLIENTS.google.secret,SAMSUNG_SIGN_IN_CLIENT_ID:CLIENTS.samsung.id,SAMSUNG_SIGN_IN_CLIENT_SECRET:CLIENTS.samsung.secret,
+    SIGN_IN_PROVIDER_STAND_IN:provider.url,GOOGLE_SIGN_IN_CLIENT_ID:CLIENTS.google.id,GOOGLE_SIGN_IN_CLIENT_SECRET:CLIENTS.google.secret,
     APPLE_SIGN_IN_SERVICES_ID:CLIENTS.apple.id,APPLE_SIGN_IN_TEAM_ID:APPLE_TEAM,APPLE_SIGN_IN_KEY_ID:APPLE_KEY_ID,APPLE_SIGN_IN_PRIVATE_KEY:applePem,SIGN_IN_TOKEN_KEY:randomBytes(32).toString("base64"),SIGN_IN_TOKEN_KEY_PREVIOUS:""},stdio:["ignore","pipe","pipe"]});
   base=await new Promise((resolve,reject)=>{let output="",errors="";const timer=setTimeout(()=>reject(new Error(`Sign-in server startup timed out: ${errors}`)),6000);server.stdout.on("data",(chunk)=>{output=(output+chunk).slice(-4096);const match=output.match(/Strata running at http:\/\/127\.0\.0\.1:(\d+)/);if(match){clearTimeout(timer);resolve(`http://127.0.0.1:${match[1]}`);}});server.stderr.on("data",(chunk)=>{errors=(errors+chunk).slice(-4096);});server.once("error",reject);server.once("exit",(code)=>reject(new Error(`Sign-in server exited ${code}: ${errors}`)));});
 }
@@ -100,11 +99,12 @@ test.before(launch);test.after(stop);
 test("the account page offers each configured provider, and the CSP lets its form reach them",async()=>{
   const page=await request("/account.html?mode=signup&next=discover");
   assert.equal(page.status,200);
-  for(const id of ["apple","google","samsung"])assert.equal((page.text.match(new RegExp(`data-social="${id}"(\\s+hidden)?>`,"g"))||[]).filter((match)=>!match.includes("hidden")).length,2,id);
+  for(const id of ["apple","google"])assert.equal((page.text.match(new RegExp(`data-social="${id}"(\\s+hidden)?>`,"g"))||[]).filter((match)=>!match.includes("hidden")).length,2,id);
   assert.doesNotMatch(page.text,/data-social-options\s+hidden/);
   assert.match(page.text,/<input id="socialSignupNext" type="hidden" name="next" value="\/discover\.html" \/>/);
-  assert.match(page.headers.get("content-security-policy"),/form-action 'self' https:\/\/accounts\.google\.com https:\/\/appleid\.apple\.com https:\/\/account\.samsung\.com;/);
-  assert.deepEqual((await request("/api/status")).data.signInProviders,["google","apple","samsung"]);
+  assert.match(page.headers.get("content-security-policy"),/form-action 'self' https:\/\/accounts\.google\.com https:\/\/appleid\.apple\.com;/);
+  assert.deepEqual((await request("/api/status")).data.signInProviders,["google","apple"]);
+  assert.doesNotMatch(page.text,/samsung/i,"Samsung is not offered");
 });
 
 test("Google sign-up creates a verified account without a password, and signing in again finds it",async()=>{
@@ -147,14 +147,6 @@ test("Apple returns by form POST, keeps the name it sends once, and its token is
   assert.equal(database((db)=>db.prepare("SELECT COUNT(*) AS count FROM sign_in_revocations").get().count),1,"the delete queued the Apple token for revocation");
 });
 
-test("Samsung's email comes from userinfo when the ID token leaves it out",async()=>{
-  provider.userinfo.set("samsung-sam",{sub:"samsung-sam",email:"sam@example.test",email_verified:true,name:"Sam Galaxy"});
-  const {finished,session}=await complete("samsung",await begin("samsung"),{sub:"samsung-sam"});
-  assert.equal(finished.status,200);
-  const user=await me(session);assert.deepEqual({name:user.name,email:user.email,providers:user.signIn.providers},{name:"Sam Galaxy",email:"sam@example.test",providers:["samsung"]});
-  assert.ok(provider.calls.some((call)=>call.id==="samsung"&&call.action==="userinfo"));
-});
-
 test("a provider account links to an existing account only after STRATA has verified that email",async()=>{
   const signup=await request("/api/signup",{method:"POST",body:{name:"Linus",email:"linus@example.test",password:"password-for-linus-123"}});assert.equal(signup.status,201);
   const refused=await complete("google",await begin("google",{intent:"login"}),{sub:"google-linus",email:"linus@example.test",email_verified:true});
@@ -169,7 +161,7 @@ test("a provider account links to an existing account only after STRATA has veri
   const other=await complete("google",await begin("google",{intent:"login"}),{sub:"google-linus-second",email:"linus@example.test",email_verified:true});
   assert.equal(errorOf(other.finished.location),"This STRATA account is already linked to a different account from that provider.");
   const unverified=await complete("google",await begin("google"),{sub:"google-nobody",email:"nobody@example.test",email_verified:false});
-  assert.equal(errorOf(unverified.finished.location),"Your Google, Apple, or Samsung account did not share a verified email address. Create an account with your email instead.");
+  assert.equal(errorOf(unverified.finished.location),"Your Google or Apple account did not share a verified email address. Create an account with your email instead.");
 });
 
 test("a sign-in state finishes once, only in the browser that started it, and canceling says so",async()=>{
@@ -192,6 +184,8 @@ test("a sign-in state finishes once, only in the browser that started it, and ca
   assert.equal((await request("/auth/social/start")).status,405);
   assert.equal((await request(`/auth/social/apple/callback?state=${canceled.state}`)).status,405,"Apple returns only by form POST");
   assert.equal((await request("/auth/social/unknown/callback")).status,404);
+  assert.equal((await request("/auth/social/samsung/callback")).status,404,"Samsung has no callback");
+  assert.equal(errorOf((await request("/auth/social/start",{method:"POST",form:{provider:"samsung"}})).location),"That sign-in option is not available right now. Use your email and password or try again later.");
 });
 
 test("a forged or mismatched ID token never signs anyone in",async()=>{

@@ -714,7 +714,7 @@ test("in the app, Delete account deletes the account in a dialog with the passwo
   assert.ok(!page.requests.some(({path})=>path==="/api/account/delete/request"),"no email is sent");
 });
 
-test("in the app, an account made with Apple, Google, or Samsung deletes with DELETE alone and says when to sign in again",async()=>{
+test("in the app, an account made with Apple or Google deletes with DELETE alone and says when to sign in again",async()=>{
   const attempts=[],user=memberFixture({signIn:{hasPassword:false,providers:["apple"]}}),base=accountRoutes(user);
   let fresh=false;
   const page=createPage({app:{plugin:{}},route:async(path,options)=>{
@@ -731,7 +731,7 @@ test("in the app, an account made with Apple, Google, or Samsung deletes with DE
   assert.equal(el("accountDeleteSubmit").disabled,false,"DELETE alone enables the button");
   await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
   assert.deepEqual(attempts[0],{confirmation:"DELETE"});
-  assert.match(el("accountDeleteError").textContent,/sign out and sign in again with Apple, Google, or Samsung/);
+  assert.match(el("accountDeleteError").textContent,/sign out and sign in again with Apple or Google/);
   fresh=true;await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
   assert.equal(el("accountDeleteDone").hidden,false);
 });

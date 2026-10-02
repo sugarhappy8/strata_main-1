@@ -18,13 +18,13 @@
     "Admin ownership is secured. Sign in again to continue.","Administrator access required.",
     "Unable to complete the account request.","Account storage is temporarily unavailable. Please try again.",
     "Email verification is temporarily unavailable. Please try again later.",
-    // Google, Apple, or Samsung sign-in (src/social-auth-messages.js).
+    // Google or Apple sign-in (src/social-auth-messages.js).
     "Sign-in was canceled. Choose an option to try again.","That sign-in expired or was started in another browser. Please try again.",
     "That sign-in option is not available right now. Use your email and password or try again later.","The sign-in could not be completed. Please try again.",
-    "Your Google, Apple, or Samsung account did not share a verified email address. Create an account with your email instead.",
+    "Your Google or Apple account did not share a verified email address. Create an account with your email instead.",
     "An account with that email already exists. Sign in with your password to continue.","This STRATA account is already linked to a different account from that provider."
   ]);
-  const SIGN_IN_PROVIDERS={apple:"Apple",google:"Google",samsung:"Samsung"};
+  const SIGN_IN_PROVIDERS={apple:"Apple",google:"Google"};
 
   function safeNext(raw,exerciseId){
     const addIsSafe=Boolean(exerciseId&&/^[a-z0-9-]{2,80}$/.test(exerciseId));
@@ -192,7 +192,7 @@
     if(code==="network")return "Could not reach STRATA. Check your connection and try again. Nothing was deleted.";
     if(code==="PASSWORD_INCORRECT")return "That password is incorrect.";
     if(code==="DELETE_CONFIRMATION_REQUIRED")return "Type DELETE exactly to confirm.";
-    if(code==="RECENT_SIGN_IN_REQUIRED")return "For your security, sign out and sign in again with Apple, Google, or Samsung, then delete your account within 15 minutes. Nothing was deleted.";
+    if(code==="RECENT_SIGN_IN_REQUIRED")return "For your security, sign out and sign in again with Apple or Google, then delete your account within 15 minutes. Nothing was deleted.";
     if(error?.status===429)return "Too many deletion attempts. Wait 15 minutes and try again.";
     if(error?.status===409)return error.message||"Your account could not be deleted right now. Nothing was deleted.";
     if(error?.status===401)return "Your session expired. Sign in again before deleting your account.";

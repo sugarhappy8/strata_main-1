@@ -1,36 +1,30 @@
 // @ts-check
 "use strict";
 
-// Sign in with Google, Apple, or Samsung. Each provider's button appears only when every value it needs is set,
+// Sign in with Google or Apple. Each provider's button appears only when every value it needs is set,
 // so a half-configured provider never sends a member to a sign-in page that cannot finish. SIGN_IN_TOKEN_KEY seals
 // the Apple refresh token STRATA keeps only so it can revoke Sign in with Apple when the account is deleted.
 
 const {createPrivateKey}=require("node:crypto");
 const {keyId,tokenKey}=require("./devices-config");
 
-/** @typedef {"google"|"apple"|"samsung"} SocialProviderId */
+/** @typedef {"google"|"apple"} SocialProviderId */
 
-const SOCIAL_PROVIDER_IDS=/** @type {readonly SocialProviderId[]} */(Object.freeze(["google","apple","samsung"]));
+const SOCIAL_PROVIDER_IDS=/** @type {readonly SocialProviderId[]} */(Object.freeze(["google","apple"]));
 // Published OpenID Connect endpoints (each provider's /.well-known/openid-configuration). Apple returns the code
-// with a cross-site form POST because STRATA asks for the member's name and email; the others redirect back.
+// with a cross-site form POST because STRATA asks for the member's name and email; Google redirects back.
 const PROVIDER_DEFAULTS=Object.freeze({
   google:Object.freeze({
     name:"Google",issuers:["https://accounts.google.com","accounts.google.com"],
     authorizeUrl:"https://accounts.google.com/o/oauth2/v2/auth",tokenUrl:"https://oauth2.googleapis.com/token",
-    jwksUrl:"https://www.googleapis.com/oauth2/v3/certs",userinfoUrl:"",revokeUrl:"",
-    scope:"openid email profile",responseMode:"query",pkce:true,nonceRequired:true
+    jwksUrl:"https://www.googleapis.com/oauth2/v3/certs",revokeUrl:"",
+    scope:"openid email profile",responseMode:"query",pkce:true
   }),
   apple:Object.freeze({
     name:"Apple",issuers:["https://appleid.apple.com"],
     authorizeUrl:"https://appleid.apple.com/auth/authorize",tokenUrl:"https://appleid.apple.com/auth/token",
-    jwksUrl:"https://appleid.apple.com/auth/keys",userinfoUrl:"",revokeUrl:"https://appleid.apple.com/auth/revoke",
-    scope:"name email",responseMode:"form_post",pkce:false,nonceRequired:true
-  }),
-  samsung:Object.freeze({
-    name:"Samsung",issuers:["https://account.samsung.com/iam"],
-    authorizeUrl:"https://account.samsung.com/iam/oidc/authorize",tokenUrl:"https://api.account.samsung.com/auth/oidc/token",
-    jwksUrl:"https://account.samsung.com/.well-known/jwks",userinfoUrl:"https://api.account.samsung.com/v2/profile/user/oidc/userinfo",revokeUrl:"",
-    scope:"openid email profile",responseMode:"query",pkce:false,nonceRequired:false
+    jwksUrl:"https://appleid.apple.com/auth/keys",revokeUrl:"https://appleid.apple.com/auth/revoke",
+    scope:"name email",responseMode:"form_post",pkce:false
   })
 });
 const LOCAL_HTTP=/^http:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i;
@@ -53,7 +47,7 @@ function applePrivateKey(value){
 
 /**
  * Reads the sign-in provider settings. Outside production, SIGN_IN_PROVIDER_STAND_IN may name a loopback server
- * that answers for all three providers, so tests can sign in without reaching Google, Apple, or Samsung.
+ * that answers for both providers, so tests can sign in without reaching Google or Apple.
  * @param {Record<string,string|undefined>} env
  */
 function socialAuthSettings(env){
@@ -68,8 +62,7 @@ function socialAuthSettings(env){
   const apple={teamId:clean(env.APPLE_SIGN_IN_TEAM_ID),keyId:clean(env.APPLE_SIGN_IN_KEY_ID),privateKey:appleKey};
   const credentials={
     google:{clientId:clean(env.GOOGLE_SIGN_IN_CLIENT_ID),clientSecret:clean(env.GOOGLE_SIGN_IN_CLIENT_SECRET)},
-    apple:{clientId:clean(env.APPLE_SIGN_IN_SERVICES_ID),clientSecret:""},
-    samsung:{clientId:clean(env.SAMSUNG_SIGN_IN_CLIENT_ID),clientSecret:clean(env.SAMSUNG_SIGN_IN_CLIENT_SECRET)}
+    apple:{clientId:clean(env.APPLE_SIGN_IN_SERVICES_ID),clientSecret:""}
   };
   /** @param {SocialProviderId} id */
   function provider(id){
@@ -78,7 +71,7 @@ function socialAuthSettings(env){
     const problems=[];
     const endpoints=standIn&&LOCAL_HTTP.test(standIn)
       ?{issuers:[`${standIn}/${id}`],authorizeUrl:`${standIn}/${id}/authorize`,tokenUrl:`${standIn}/${id}/token`,jwksUrl:`${standIn}/${id}/jwks`,
-        userinfoUrl:defaults.userinfoUrl?`${standIn}/${id}/userinfo`:"",revokeUrl:defaults.revokeUrl?`${standIn}/${id}/revoke`:""}
+        revokeUrl:defaults.revokeUrl?`${standIn}/${id}/revoke`:""}
       :{};
     if(id==="apple"){
       if(!clientId||!apple.teamId||!apple.keyId||!clean(env.APPLE_SIGN_IN_PRIVATE_KEY))problems.push("APPLE_SIGN_IN_SERVICES_ID, APPLE_SIGN_IN_TEAM_ID, APPLE_SIGN_IN_KEY_ID, and APPLE_SIGN_IN_PRIVATE_KEY are required.");
@@ -92,7 +85,7 @@ function socialAuthSettings(env){
     if(production&&!redirectBase)problems.push("APP_BASE_URL must be an https address in production.");
     return Object.freeze({id,...defaults,...endpoints,clientId,clientSecret,configured:problems.length===0,problems:Object.freeze(problems)});
   }
-  const providers=Object.freeze({google:provider("google"),apple:provider("apple"),samsung:provider("samsung")});
+  const providers=Object.freeze({google:provider("google"),apple:provider("apple")});
   return Object.freeze({
     providers,
     enabled:Object.freeze(SOCIAL_PROVIDER_IDS.filter((id)=>providers[id].configured)),

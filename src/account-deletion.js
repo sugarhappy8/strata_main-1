@@ -5,13 +5,13 @@
 // email). A signed-in member re-enters the account password and types DELETE; nothing is mailed. The emailed link
 // (auth.js) and this route share deleteProtectedAccount, so both refuse the same accounts and remove an account
 // through the same store path: the store consumes an account_delete action either way. An account created with
-// Google, Apple, or Samsung has no STRATA password; a sign-in within the last 15 minutes stands in for it.
+// Google or Apple has no STRATA password; a sign-in within the last 15 minutes stands in for it.
 const {createHash,randomBytes}=require("node:crypto");
 
 const ROUTE="/api/account/delete/now";
 const MAX_ATTEMPTS=5;
 const RECENT_SIGN_IN_MS=15*60*1000;
-const RECENT_SIGN_IN="For your security, sign out, sign in again with Google, Apple, or Samsung, then delete your account within 15 minutes.";
+const RECENT_SIGN_IN="For your security, sign out, sign in again with Google or Apple, then delete your account within 15 minutes.";
 const ADMIN_PROTECTED="The primary administrator account cannot be deleted while it owns site management.";
 const CHECKOUT_PREPARING="A Strata+ checkout is still being prepared. Nothing was deleted; please try again later.";
 const PURCHASE_PENDING="A Strata+ payment is still being processed. Nothing was deleted; please try again later.";

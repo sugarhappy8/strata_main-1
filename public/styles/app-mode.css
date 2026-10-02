@@ -224,5 +224,5 @@ body:has(.account-delete-dialog[open]) { overflow:hidden; }
   :root[data-app-chrome="tabs"] body { padding-bottom:0 !important; }
 }
 
-/* Google refuses sign-in inside an embedded web view, so the app offers Apple, Samsung, and email instead. */
+/* Google refuses sign-in inside an embedded web view, so the app offers Apple and email instead. */
 :root[data-app="ios"] .social-button[data-social="google"] { display:none !important; }

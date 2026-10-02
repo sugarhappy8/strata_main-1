@@ -1,7 +1,7 @@
 // @ts-check
 "use strict";
 
-// Sign up or sign in with Google, Apple, or Samsung (OpenID Connect, authorization-code flow).
+// Sign up or sign in with Google or Apple (OpenID Connect, authorization-code flow).
 //
 // 1. POST /auth/social/start is a same-site form. It records a ten-minute state, binds it to this browser with a
 //    SameSite=Lax cookie, and sends the member to the provider.
@@ -26,7 +26,7 @@ const REVOCATION_RETENTION_MS=7*24*60*60*1000;
 const BROWSER_COOKIE="strata_social";
 const BROWSER_COOKIE_PATH="/auth/social/finish";
 const TOKEN=/^[A-Za-z0-9_-]{43}$/;
-const CALLBACK=/^\/auth\/social\/(google|apple|samsung)\/callback$/;
+const CALLBACK=/^\/auth\/social\/(google|apple)\/callback$/;
 const EMAIL=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CANCELED_ERRORS=new Set(["access_denied","user_cancelled_authorize","user_cancelled","consent_required"]);
 const FALLBACK_NAME="STRATA member";
@@ -122,18 +122,8 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
   async function readProfile(id,pending){
     const tokens=await provider.exchangeCode(id,{code:text(pending.code),redirectUri:text(pending.redirect_uri),codeVerifier:text(pending.code_verifier)});
     const claims=await provider.verifyIdToken(id,tokens.idToken,{nonce:text(pending.nonce)});
-    let email=text(claims.email).trim().toLowerCase(),emailVerified=verified(claims.email_verified);
-    let name=displayName(claims.name)||displayName(`${text(claims.given_name)} ${text(claims.family_name)}`);
-    // Samsung may keep the email address and profile in userinfo rather than the ID token.
-    if(id==="samsung"&&(!email||!emailVerified||!name)){
-      const info=await provider.userinfo(id,tokens.accessToken);
-      if(info.sub===claims.sub){
-        const infoEmail=text(info.email).trim().toLowerCase();
-        if(!email)email=infoEmail;
-        if(!emailVerified&&infoEmail===email)emailVerified=verified(info.email_verified);
-        name=name||displayName(info.name)||displayName(`${text(info.given_name)} ${text(info.family_name)}`)||displayName(info.nickname);
-      }
-    }
+    const email=text(claims.email).trim().toLowerCase(),emailVerified=verified(claims.email_verified);
+    const name=displayName(claims.name)||displayName(`${text(claims.given_name)} ${text(claims.family_name)}`);
     return {subject:String(claims.sub),email:EMAIL.test(email)&&email.length<=254?email:"",emailVerified,name:name||displayName(pending.profile_name)||FALLBACK_NAME,
       refreshToken:id==="apple"?tokens.refreshToken:""};
   }

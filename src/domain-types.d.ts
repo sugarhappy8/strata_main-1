@@ -916,7 +916,7 @@ export interface TursoDeviceStoreDependencies {
   plainRow:(row:unknown,columns?:string[])=>any;
 }
 
-export type SocialProviderId="google"|"apple"|"samsung";
+export type SocialProviderId="google"|"apple";
 export interface SocialSignInStateRecord {stateHash:string;provider:SocialProviderId;browserHash:string;nonce:string;codeVerifier:string;intent:"signup"|"login";nextPath:string;redirectUri:string;createdAt:number;expiresAt:number;}
 /** `at` is when the identity was linked or, for touchAccountIdentity, last used. */
 export interface AccountIdentityRecord {provider:SocialProviderId;subject:string;userId:string;email:string;tokenSealed:string|null;at:number;}

@@ -106,7 +106,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/access-controls.js` | Complimentary access state and duration validation | 35 | 34 | 2.1 KiB | 65 | — |
 | `src/account-deletion.js` | In-app account deletion by password and the protections shared with the emailed link | 100 | 91 | 6.6 KiB | 110 | — |
 | `src/account-export.js` | Bounded streaming account export serialization | 105 | 98 | 12.1 KiB | 120 | — |
-| `src/account-self-service-schema.js` | Account self-service query catalog | 51 | 49 | 7.0 KiB | 55 | — |
+| `src/account-self-service-schema.js` | Account self-service query catalog | 51 | 49 | 6.9 KiB | 55 | — |
 | `src/account-self-service-store.js` | SQLite and Turso account self-service storage parity | 72 | 67 | 4.2 KiB | 95 | `src/account-self-service-schema.js` |
 | `src/account-self-service.js` | Authenticated session inventory, revocation, and privacy-safe data export | 84 | 80 | 6.2 KiB | 150 | `src/account-export.js` |
 | `src/admin-user-actions.js` | Audited administrator account and payment actions | 87 | 86 | 9.2 KiB | 160 | `src/access-controls.js`, `src/plans.js` |
@@ -159,7 +159,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/energy-scenarios-core.js` | Explicit dynamic sensitivity scenarios with propagated maintenance uncertainty | 27 | 25 | 2.9 KiB | 100 | — |
 | `src/entitlements.js` | Feature tiers and the can(user, feature) capability map | 70 | 63 | 2.3 KiB | 80 | — |
 | `src/events.js` | In-process event bus announcing plan, workout, and profile saves | 54 | 51 | 1.9 KiB | 60 | — |
-| `src/http.js` | HTTP transport helpers | 177 | 162 | 6.5 KiB | 180 | — |
+| `src/http.js` | HTTP transport helpers | 177 | 162 | 6.4 KiB | 180 | — |
 | `src/legacy-checkout.js` | Strict retired-checkout migration and completion policy | 71 | 66 | 7.4 KiB | 75 | `src/payments.js` |
 | `src/meal-planning-core.js` | Validated dietary preferences and deterministic remaining-day food options | 168 | 157 | 25.6 KiB | 300 | — |
 | `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 197 | 184 | 11.9 KiB | 210 | `src/billing-schema.js` |
@@ -180,12 +180,12 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/service-composition.js` | Typed auth/admin/support composition | 41 | 39 | 2.0 KiB | 60 | — |
 | `src/session-renewal.js` | Sliding session renewal and the response cookie choke point | 64 | 57 | 3.3 KiB | 70 | — |
 | `src/setup.js` | Atomic weekly-plan and preference setup | 86 | 79 | 5.1 KiB | 105 | `src/plans.js` |
-| `src/social-auth-client.js` | OpenID Connect client: authorization URL, code exchange, ID-token verification, Apple revocation | 151 | 142 | 10.1 KiB | 170 | `src/devices-crypto.js` |
-| `src/social-auth-config.js` | Sign in with Google, Apple, or Samsung: provider settings | 104 | 96 | 6.1 KiB | 120 | `src/devices-config.js` |
-| `src/social-auth-messages.js` | Account-page messages for Google, Apple, and Samsung sign-in | 20 | 18 | 1.2 KiB | 30 | — |
+| `src/social-auth-client.js` | OpenID Connect client: authorization URL, code exchange, ID-token verification, Apple revocation | 144 | 135 | 9.5 KiB | 170 | `src/devices-crypto.js` |
+| `src/social-auth-config.js` | Sign in with Google or Apple: provider settings | 97 | 89 | 5.3 KiB | 120 | `src/devices-config.js` |
+| `src/social-auth-messages.js` | Account-page messages for Google and Apple sign-in | 20 | 18 | 1.2 KiB | 30 | — |
 | `src/social-auth-schema.js` | Linked sign-in identities, sign-in states, and Apple revocation queue schema | 82 | 76 | 5.4 KiB | 90 | — |
 | `src/social-auth-store.js` | Local and Turso storage for linked sign-ins | 78 | 73 | 6.0 KiB | 90 | `src/social-auth-schema.js` |
-| `src/social-auth.js` | Sign up and sign in with Google, Apple, or Samsung | 240 | 225 | 16.1 KiB | 260 | `src/devices-crypto.js`, `src/plans.js`, `src/social-auth-client.js`, `src/social-auth-config.js`, `src/social-auth-messages.js` |
+| `src/social-auth.js` | Sign up and sign in with Google or Apple | 230 | 215 | 15.6 KiB | 260 | `src/devices-crypto.js`, `src/plans.js`, `src/social-auth-client.js`, `src/social-auth-config.js`, `src/social-auth-messages.js` |
 | `src/static-assets.js` | Bounded public asset representations | 46 | 41 | 1.9 KiB | 65 | `src/http.js` |
 | `src/store-contract.js` | Storage boundary contract | 169 | 166 | 5.6 KiB | 180 | — |
 | `src/support.js` | Public and administrative support workflow | 144 | 136 | 10.6 KiB | 160 | `src/email.js`, `src/plans.js` |

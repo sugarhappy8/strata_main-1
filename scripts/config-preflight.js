@@ -74,23 +74,22 @@ function validateDeploymentEnvironment(environment=process.env,{requireEmail=fal
     if (configured(environment.POLAR_WEBHOOK_SECRET)) warnings.push("POLAR_WEBHOOK_SECRET is ignored by AccessLink V4 and should be removed.");
   } else warnings.push("Polar connected devices are off; set POLAR_CLIENT_ID, POLAR_CLIENT_SECRET, and DEVICE_TOKEN_KEY to offer them.");
 
-  // Sign in with Google, Apple, or Samsung is optional per provider; once any of a provider's values is set, all must be valid.
+  // Sign in with Google or Apple is optional per provider; once any of a provider's values is set, all must be valid.
   const signIn=socialAuthSettings(environment),signInKeys={
     google:["GOOGLE_SIGN_IN_CLIENT_ID","GOOGLE_SIGN_IN_CLIENT_SECRET"],
-    apple:["APPLE_SIGN_IN_SERVICES_ID","APPLE_SIGN_IN_TEAM_ID","APPLE_SIGN_IN_KEY_ID","APPLE_SIGN_IN_PRIVATE_KEY"],
-    samsung:["SAMSUNG_SIGN_IN_CLIENT_ID","SAMSUNG_SIGN_IN_CLIENT_SECRET"]
+    apple:["APPLE_SIGN_IN_SERVICES_ID","APPLE_SIGN_IN_TEAM_ID","APPLE_SIGN_IN_KEY_ID","APPLE_SIGN_IN_PRIVATE_KEY"]
   };
   for (const id of SOCIAL_PROVIDER_IDS) {
     const provider=signIn.providers[id];
     if (signInKeys[id].some((key)=>configured(environment[key]))) addCheck(checks,`sign-in.${id}`,provider.configured,provider.problems.join(" ")||`Sign in with ${provider.name} is configured.`);
   }
-  if (!signIn.enabled.length) warnings.push("Sign in with Google, Apple, and Samsung is off; members sign up with email and password only.");
+  if (!signIn.enabled.length) warnings.push("Sign in with Google and Apple is off; members sign up with email and password only.");
 
   const secrets=[
     clean(environment.TURSO_AUTH_TOKEN),clean(environment.RESEND_API_KEY),clean(environment.EMAIL_VERIFICATION_SECRET),
     clean(environment.PADDLE_CLIENT_TOKEN),clean(environment.PADDLE_API_KEY),clean(environment.PADDLE_WEBHOOK_SECRET),
     clean(environment.POLAR_CLIENT_SECRET),clean(environment.DEVICE_TOKEN_KEY),clean(environment.DEVICE_TOKEN_KEY_PREVIOUS),
-    clean(environment.GOOGLE_SIGN_IN_CLIENT_SECRET),clean(environment.SAMSUNG_SIGN_IN_CLIENT_SECRET),clean(environment.SIGN_IN_TOKEN_KEY),clean(environment.SIGN_IN_TOKEN_KEY_PREVIOUS)
+    clean(environment.GOOGLE_SIGN_IN_CLIENT_SECRET),clean(environment.SIGN_IN_TOKEN_KEY),clean(environment.SIGN_IN_TOKEN_KEY_PREVIOUS)
   ].filter(Boolean);
   addCheck(checks,"secrets.separated",new Set(secrets).size===secrets.length,"Provider tokens and application secrets must not reuse the same value.");
   if (!enabled(environment.TRUST_PROXY)) warnings.push("TRUST_PROXY is false. This is correct only when Node receives traffic directly rather than through a trusted reverse proxy.");

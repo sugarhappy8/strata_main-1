@@ -154,7 +154,7 @@ test("the emailed link uses the same protections through deleteProtectedAccount"
   await assert.rejects(deletion.deleteProtectedAccount({userId:"member-1",email:"ari@example.test",purpose:"account_delete",remove:async()=>({status:"invalid"}),invalid:()=>Object.assign(new Error("This deletion link is invalid or expired."),{status:400,code:"INVALID_DELETE_LINK"})}),{code:"INVALID_DELETE_LINK"});
 });
 
-test("an account made with Google, Apple, or Samsung deletes with DELETE alone, but only within 15 minutes of signing in",async()=>{
+test("an account made with Google or Apple deletes with DELETE alone, but only within 15 minutes of signing in",async()=>{
   const credentials={id:"member-1",email:"ari@example.test",password_hash:"",password_salt:""};
   const fresh=harness({credentials,session:{...SESSION,session_created_at:NOW-14*60_000}});
   const deleted=await fresh.post({confirmation:"DELETE"});
@@ -163,7 +163,7 @@ test("an account made with Google, Apple, or Samsung deletes with DELETE alone, 
   for(const session of [{...SESSION,session_created_at:NOW-16*60_000},SESSION]){
     const stale=harness({credentials,session});
     const result=await stale.post({password:"anything",confirmation:"DELETE"});
-    assert.equal(result.status,401);assert.equal(result.data.code,"RECENT_SIGN_IN_REQUIRED");assert.match(result.data.error,/sign in again with Google, Apple, or Samsung/);
+    assert.equal(result.status,401);assert.equal(result.data.code,"RECENT_SIGN_IN_REQUIRED");assert.match(result.data.error,/sign in again with Google or Apple/);
     assert.equal(stale.calls.removed.length,0);
   }
   const confirmation=await harness({credentials,session:{...SESSION,session_created_at:NOW}}).post({});
