@@ -847,7 +847,7 @@ for (const kind of ["local", "turso"]) {
         now = BASE;
       const production = appleBillingSettings({
         NODE_ENV: "production",
-        APPLE_SANDBOX_ACCOUNTS: "Reviewer@Apple.test",
+        APPLE_SANDBOX_ACCOUNTS: "Reviewer@Apple.test, Squatter@Apple.test",
       });
       const productionApple = createAppleBillingService({
         store,
@@ -879,8 +879,8 @@ for (const kind of ["local", "turso"]) {
         .filter((feature) => feature.startsWith("plus."));
       assert.ok(plusFeatures.length > 0);
       /** What /api/me and the plus.* route gate see for the account. */
-      async function access(userId, email) {
-        const summary = await productionApple.subscriptionForUser(userId, email),
+      async function access(userId, account) {
+        const summary = await productionApple.subscriptionForUser(userId, account),
           capabilities = capabilitiesFor(
             { plusActive: Boolean(summary?.active) },
             entitlementSettings({}),
@@ -913,7 +913,7 @@ for (const kind of ["local", "turso"]) {
         true,
         "outside production it unlocks Strata+",
       );
-      const blocked = await access(userId, email);
+      const blocked = await access(userId, { email, email_verified_at: now });
       assert.equal(blocked.gate, false);
       assert.deepEqual(blocked.plus, []);
       assert.deepEqual(blocked.summary, {
@@ -955,10 +955,45 @@ for (const kind of ["local", "turso"]) {
         ),
         "applied",
       );
-      const reviewer = await access(reviewerId, "reviewer@apple.test");
+      const reviewer = await access(reviewerId, {
+        email: "reviewer@apple.test",
+        email_verified_at: now,
+      });
       assert.equal(reviewer.gate, true);
       assert.deepEqual(reviewer.plus, plusFeatures);
       assert.equal(reviewer.summary?.active, true);
+
+      // A listed address that nobody has verified gives nothing: whoever registers it first cannot take its access.
+      const squatterId = randomUUID();
+      await store.insertUser({
+        id: squatterId,
+        name: "Squatter",
+        email: "squatter@apple.test",
+        passwordHash: "hash",
+        passwordSalt: "salt",
+        createdAt: now,
+        emailVerifiedAt: null,
+      });
+      assert.equal(
+        await apple.processNotification(
+          notification("SUBSCRIBED", {
+            tx: transaction({
+              appAccountToken: squatterId,
+              transactionId: "5000000001",
+              originalTransactionId: "5000000000",
+            }),
+            renew: renewal({ originalTransactionId: "5000000000" }),
+          }),
+        ),
+        "applied",
+      );
+      const squatter = await access(squatterId, {
+        email: "squatter@apple.test",
+        email_verified_at: null,
+      });
+      assert.equal(squatter.gate, false);
+      assert.deepEqual(squatter.plus, []);
+      assert.equal(squatter.summary?.active, false);
 
       // A real (Production) purchase is unaffected.
       const buyerId = await addUser(store);

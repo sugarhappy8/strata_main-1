@@ -2021,7 +2021,7 @@ export interface AppleBillingService {
   processNotification(payload: Record<string, any>): Promise<string>;
   subscriptionForUser(
     userId: string,
-    email?: string | null,
+    account?: { email?: unknown; email_verified_at?: unknown } | null,
   ): Promise<AppleSubscriptionSummary | null>;
   deletionNotice(userId: string): Promise<AppleDeletionNotice | null>;
   cleanup(): Promise<void>;

@@ -75,12 +75,14 @@ const APPLE_BILLING_SQL = Object.freeze({
     AND CASE WHEN excluded.latest_transaction_id=apple_subscriptions.latest_transaction_id
     OR excluded.expires_at=apple_subscriptions.expires_at THEN excluded.latest_signed_at>=apple_subscriptions.latest_signed_at ELSE excluded.expires_at>apple_subscriptions.expires_at END
   RETURNING ${APPLE_SUBSCRIPTION_COLUMNS}`,
-  // A Sandbox purchase unlocks Strata+ only where Sandbox is allowed (outside production) or for a listed account.
+  // A Sandbox purchase unlocks Strata+ only where Sandbox is allowed (outside production) or for a listed account
+  // whose email is verified, so nobody can register a listed address first and take its access.
   hasActiveAppleSubscription: `SELECT 1 AS active
   FROM apple_subscriptions a
   JOIN users u ON u.id=a.user_id
   WHERE a.user_id=? AND ${activeAppleSubscription("a", "?")}
-    AND (a.environment<>'Sandbox' OR ?=1 OR lower(u.email) IN (SELECT value FROM json_each(?)))
+    AND (a.environment<>'Sandbox' OR ?=1
+      OR (u.email_verified_at IS NOT NULL AND lower(u.email) IN (SELECT value FROM json_each(?))))
   LIMIT 1`,
   appleNotification:
     "SELECT notification_uuid,notification_type,subtype,outcome,signed_at,processed_at FROM apple_notifications WHERE notification_uuid=?",

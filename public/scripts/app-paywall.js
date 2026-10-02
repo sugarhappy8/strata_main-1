@@ -171,6 +171,23 @@
       else emit();
     }
 
+    // STRATA kept the purchase but it does not unlock Strata+: a TestFlight or App Review purchase on an account
+    // that is not on the review list, or one STRATA cannot match to an active period yet.
+    // A test purchase still inside its period that STRATA keeps locked, as opposed to one that ran out or was refunded.
+    function lockedTestPurchase(apple) {
+      return (
+        apple?.environment === "Sandbox" &&
+        !apple.revoked &&
+        !(Number(apple.expiresAt) <= Date.now())
+      );
+    }
+    function lockedMessage(discovery) {
+      return lockedTestPurchase(discovery?.apple)
+        ? "This was an App Store test purchase. Test purchases do not unlock Strata+."
+        : "STRATA saved your purchase, but Strata+ is not on yet. Reopen this screen in a minute, or contact support if it stays locked.";
+    }
+
+    /** Welcomes the member only once STRATA says Strata+ is on for this account. */
     async function confirm({ transactionId, signedTransaction }) {
       say("Confirming your subscription with STRATA…");
       try {
@@ -183,14 +200,19 @@
         } catch {
           /* StoreKit redelivers it; STRATA accepts it again. */
         }
+        if (!ownership(model.user)) {
+          say(lockedMessage(discovery), "warn");
+          await refreshAccount();
+          return "locked";
+        }
         model.success = true;
         haptic("success");
         say("Welcome to Strata+. Your subscription is active.", "good");
         await refreshAccount();
-        return true;
+        return "purchased";
       } catch (error) {
         say(serverMessage(error, { purchased: true }), "error");
-        return false;
+        return "unconfirmed";
       }
     }
 
@@ -233,7 +255,7 @@
           say(storeMessage(null), "error");
           return "failed";
         }
-        return (await confirm(result)) ? "purchased" : "unconfirmed";
+        return await confirm(result);
       } finally {
         model.busy = false;
         emit();
@@ -273,7 +295,12 @@
           await refreshAccount();
           return "restored";
         }
-        say("No active Strata+ subscription was found on this Apple Account.", "warn");
+        say(
+          lockedTestPurchase(model.user?.discovery?.apple)
+            ? lockedMessage(model.user.discovery)
+            : "No active Strata+ subscription was found on this Apple Account.",
+          "warn",
+        );
         return "inactive";
       } finally {
         model.busy = false;

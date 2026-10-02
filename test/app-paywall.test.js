@@ -191,6 +191,38 @@ test("a purchase carries the STRATA user id, is confirmed by STRATA, then finish
   assert.deepEqual(page.calls.at(-1), ["manageSubscriptions"]);
 });
 
+test("a purchase STRATA keeps but does not unlock never says welcome, and a test purchase says why", async () => {
+  for (const [environment, message] of [
+    ["Sandbox", /test purchase\. Test purchases do not unlock Strata\+/],
+    ["Production", /Strata\+ is not on yet/],
+  ]) {
+    const page = paywall({
+      server: async () => ({
+        status: 200,
+        data: {
+          discovery: {
+            active: false,
+            accessType: null,
+            apple: { ...APPLE, active: false, environment, expiresAt: Date.now() + 30 * 86400000 },
+          },
+          accepted: ["2000000123"],
+        },
+      }),
+    });
+    await page.controller.load();
+    assert.equal(await page.controller.subscribe(), "locked");
+    assert.equal(page.view().tone, "warn");
+    assert.match(page.view().status, message);
+    assert.doesNotMatch(page.view().status, /Welcome/);
+    assert.deepEqual(page.haptics, [], "no success haptic for a locked purchase");
+    assert.equal(page.view().owned, null);
+    assert.ok(
+      page.calls.some((call) => call[0] === "finishTransaction"),
+      "STRATA kept the transaction, so StoreKit can finish it",
+    );
+  }
+});
+
 test("pending and cancelled purchases change nothing and send nothing", async () => {
   for (const [status, expected, tone] of [
     ["pending", /waiting for approval/, "warn"],
@@ -281,7 +313,11 @@ test("Restore Purchases sends the Apple Account's transactions and reports what 
     server: async () => ({
       status: 200,
       data: {
-        discovery: { active: false, accessType: null, apple: { ...APPLE, active: false } },
+        discovery: {
+          active: false,
+          accessType: null,
+          apple: { ...APPLE, active: false, expiresAt: Date.parse("2026-09-01T12:00:00Z") },
+        },
         accepted: ["1"],
       },
     }),
