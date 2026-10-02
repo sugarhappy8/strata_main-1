@@ -662,7 +662,8 @@ async function start() {
   }
   publicAssets=loadPublicAssets({root:PUBLIC_ROOT,files:STATIC_FILES,privateFiles:PRIVATE_HTML,mime:MIME});
   store = await createStore(PROJECT_ROOT);
-  events=createEventBus({logger:LOGGER});
+  // A reaction that fails is kept in the event_outbox table and retried with backoff (see src/events.js).
+  events=createEventBus({logger:LOGGER,outbox:store});
   billing=createBillingService({
     store,paymentConfig:PAYMENT_CONFIG,enforcePaddleIps:ENFORCE_PADDLE_IPS,
     requestAddress,rateAllowed,isUniqueViolation,getAuth:()=>auth,getUserPayload:userPayload,
@@ -707,6 +708,7 @@ async function start() {
   await dataService.cleanup();
   await appleBilling.cleanup();
   void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
+  events.start();
   if (ENFORCE_PADDLE_IPS) void billing.warmProviderTrust().catch((error)=>LOGGER.error("billing.webhook_allowlist_warm_failed",{error}));
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
@@ -717,6 +719,7 @@ async function start() {
     void aiQuota.cleanup(90).catch((error)=>LOGGER.error("cleanup.ai_usage_failed",{error}));
     void appleBilling.cleanup().catch((error)=>LOGGER.error("cleanup.apple_notifications_failed",{error}));
     void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
+    void events.cleanup().catch((error)=>LOGGER.error("cleanup.event_outbox_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
   },60*60*1000);
   cleanup.unref();
@@ -732,6 +735,7 @@ function shutdown() {
   if (cleanup) clearInterval(cleanup);
   devices?.stop();
   briefJob?.stop();
+  events?.stop();
   const deadline=setTimeout(()=>{
     console.error("Shutdown deadline reached; closing remaining connections.");
     server.closeAllConnections();

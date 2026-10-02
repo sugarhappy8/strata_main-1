@@ -29,6 +29,8 @@
     "src/social-auth-messages.js",
     "src/social-auth-schema.js",
     "src/social-auth-store.js",
+    "src/server-state-schema.js",
+    "src/server-state-store.js",
     "src/account-self-service.js",
     "src/account-self-service-schema.js",
     "src/account-self-service-store.js",

@@ -179,7 +179,8 @@
         "src/data-layer-store.js",
         "src/ai-store.js",
         "src/apple-billing-store.js",
-        "src/social-auth-store.js"
+        "src/social-auth-store.js",
+        "src/server-state-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -209,7 +210,8 @@
         "src/data-layer-schema.js",
         "src/ai-schema.js",
         "src/apple-billing-schema.js",
-        "src/social-auth-schema.js"
+        "src/social-auth-schema.js",
+        "src/server-state-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
@@ -543,8 +545,8 @@
       "allowedDependencies": []
     },
     "src/events.js": {
-      "role": "In-process event bus announcing plan, workout, and profile saves",
-      "maxLines": 60,
+      "role": "In-process event bus with an outbox that retries failed reactions",
+      "maxLines": 140,
       "allowedDependencies": []
     },
     "src/athlete-profile.js": {
@@ -683,6 +685,18 @@
       "maxLines": 90,
       "allowedDependencies": [
         "src/social-auth-schema.js"
+      ]
+    },
+    "src/server-state-schema.js": {
+      "role": "Event outbox, rate-limit, and lock tables that keep server state in the database",
+      "maxLines": 80,
+      "allowedDependencies": []
+    },
+    "src/server-state-store.js": {
+      "role": "Local and Turso storage for the event outbox, rate limits, and locks",
+      "maxLines": 80,
+      "allowedDependencies": [
+        "src/server-state-schema.js"
       ]
     },
     "src/social-auth.js": {

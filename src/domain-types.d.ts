@@ -457,7 +457,7 @@ export interface ProductSignalsStore {
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore&AppleBillingStore&SocialAuthStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore&AppleBillingStore&SocialAuthStore&ServerStateStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -660,9 +660,49 @@ export interface SetupStore {
 }
 
 export interface EventBus {
-  on(name:string,handler:(payload:Record<string,unknown>)=>unknown):()=>void;
+  on(name:string,handler:(payload:Record<string,unknown>)=>unknown,key?:string):()=>void;
   emit(name:string,payload?:Record<string,unknown>):Promise<number>;
+  retryDue?(limit?:number):Promise<number>;
+  retryFor?(userId:string,limit?:number):Promise<number>;
   names:readonly string[];
+}
+
+/** One failed reaction (a handler for an event) waiting to be retried. */
+export interface OutboxEventRecord {
+  id:string;
+  eventName:string;
+  handlerKey:string;
+  userId:string|null;
+  payloadJson:string;
+  attempts:number;
+  attemptedAt:number;
+  nextAttemptAt:number;
+  lastError:string;
+  createdAt:number;
+}
+export interface OutboxFailure {
+  attempts:number;
+  attemptedAt:number;
+  nextAttemptAt:number;
+  lastError:string;
+  gaveUpAt:number|null;
+}
+export interface OutboxEventRow extends JsonObject {
+  id:string;
+  event_name:string;
+  handler_key:string;
+  user_id:string|null;
+  payload_json:string;
+  attempts:number;
+}
+export interface ServerStateStore {
+  addOutboxEvent(record:OutboxEventRecord):Promise<void>;
+  dueOutboxEvents(now:number,limit:number):Promise<OutboxEventRow[]>;
+  userOutboxEvents(userId:string,now:number,attemptedBefore:number,limit:number):Promise<OutboxEventRow[]>;
+  claimOutboxEvent(id:string,now:number,leaseUntil:number):Promise<boolean>;
+  completeOutboxEvent(id:string):Promise<void>;
+  failOutboxEvent(id:string,failure:OutboxFailure):Promise<void>;
+  deleteOldOutboxEvents(before:number):Promise<void>;
 }
 
 export interface SetupServiceDependencies {

@@ -119,10 +119,10 @@ function createAthleteProfileSync({store,now=Date.now,logger=null}) {
     await store.upsertPreferences(userId,nextJson,now());
     return {updated:true,reason:"synced"};
   }
-  /** @param {{on:(name:string,handler:(payload:any)=>unknown)=>unknown}} events */
+  /** @param {{on:(name:string,handler:(payload:any)=>unknown,key?:string)=>unknown}} events */
   function subscribe(events) {
-    events.on("preferences.saved",afterPreferencesSaved);
-    events.on("coaching.profile_saved",afterCoachingProfileSaved);
+    events.on("preferences.saved",afterPreferencesSaved,"athlete_profile.preferences");
+    events.on("coaching.profile_saved",afterCoachingProfileSaved,"athlete_profile.coaching");
   }
   /** @param {string} userId @param {Record<string,any>|null} coachingProfile */
   async function read(userId,coachingProfile) {

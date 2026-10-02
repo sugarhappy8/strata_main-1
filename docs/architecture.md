@@ -73,7 +73,8 @@ The application is intentionally server-served and framework-light. Public HTML,
 | `src/http.js` | Security headers, JSON/redirect helpers, body limits and parsing, compression negotiation, and response semantics. |
 | `src/observability.js` | Structured JSON request logs, validated or generated request IDs, bounded fields, and defensive redaction. |
 | `src/email.js` | Browser-safe email configuration plus privately retained Resend credentials, HMAC digests, address masking, and transactional message delivery. |
-| `src/events.js` | In-process event bus: routes announce `plan.updated`, `workout.completed`, `polar.sync.finished`, `snapshot.ready`, and the rest of `DATA_MODEL.md`'s list; listeners react without the routes knowing them. |
+| `src/events.js` | In-process event bus: routes announce `plan.updated`, `workout.completed`, `polar.sync.finished`, `snapshot.ready`, and the rest of `DATA_MODEL.md`'s list; listeners react without the routes knowing them. A listener that fails is saved to the `event_outbox` table and retried with backoff. |
+| `src/server-state-schema.js`, `src/server-state-store.js` | Server state kept in the database rather than in memory, starting with the event outbox. |
 | `src/athlete-profile.js` | Athlete Profile read model (`GET /api/profile`) and the sync that keeps `preferences` and `coaching_profiles` telling one story. |
 | `src/data-service.js` | The shared data layer's front door: Athlete Profile, Training Log, Daily Snapshots, Rankings Signals, plan history, their routes, and the listeners that keep derived rows in step. |
 | `src/training-log.js` | Training Log read model: logged workouts, Polar sessions, and this week's planned days in one schema, with source tags and Polar-to-workout links. |
@@ -124,6 +125,8 @@ State-changing authenticated routes require the session's CSRF value and a trust
 ### Data ownership boundary
 
 `DATA_MODEL.md` names one owner per fact and one read model per route. Shared facts are mirrored by a listener on the event bus (`src/events.js`), never by one route writing another feature's table: `PUT /api/preferences` emits `preferences.saved` and the Athlete Profile sync updates the coaching profile's training fields; `PUT /api/coaching/profile` emits `coaching.profile_saved` and the sync updates the ranking lens. Mirror writes are ordinary revision bumps, so a client holding a stale revision gets a conflict rather than a silent overwrite.
+
+A listener that throws never fails the request that emitted the event. Each listener is registered with a stable key (for example `snapshots.workout_completed`), and when one fails the bus writes that listener's key and the event payload to `event_outbox`. A timer retries due rows every 30 seconds with doubling backoff (30 seconds up to 6 hours) and gives up after 12 attempts, logging `event.retry_gave_up` and keeping the row for 30 days. A lease (`lease_until`) lets only one retry run a row at a time. Reading a member's Daily Snapshots first retries that member's queued reactions (at most once per 15 seconds), so a failed rebuild is healed on the next read instead of leaving a stale row; today and any missing day are rebuilt on read as before. The Training Log recomputes its links on every read. Listeners are idempotent rebuilds or upserts, so a retry after a partial success is safe. Deleting a member removes their queued reactions.
 
 ### Entitlement boundary
 

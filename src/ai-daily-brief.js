@@ -136,7 +136,7 @@ function createDailyBriefJob({store,dataService,provider,quota,hasAccess,logger=
   return {
     tick,generate,due,
     /** @param {import("./domain-types").EventBus} events */
-    subscribe(events){events.on("snapshot.ready",(payload)=>{priority.add(String(payload.userId));});},
+    subscribe(events){events.on("snapshot.ready",(payload)=>{priority.add(String(payload.userId));},"daily_brief.priority");},
     start(){if(timer)return;timer=setInterval(()=>void tick().catch((error)=>logger?.error?.("ai.brief_loop_failed",{error})),intervalMs);timer.unref?.();},
     stop(){if(timer)clearInterval(timer);timer=null;}
   };

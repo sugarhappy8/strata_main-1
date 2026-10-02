@@ -14,6 +14,7 @@ const {createLocalDataLayerMethods,createTursoDataLayerMethods,dataLayerDeletion
 const {aiDeletionBatch,createLocalAiMethods,createTursoAiMethods,deleteLocalAiData}=require("./ai-store");
 const {appleDeletionBatch,createLocalAppleBillingMethods,createTursoAppleBillingMethods,deleteLocalAppleData}=require("./apple-billing-store");
 const {createLocalSocialAuthMethods,createTursoSocialAuthMethods}=require("./social-auth-store");
+const {createLocalServerStateMethods,createTursoServerStateMethods}=require("./server-state-store");
 const {migrateLocalSchema,migrateTursoSchema}=require("./migrations");
 function plainValue(value) {
   return typeof value === "bigint" ? Number(value) : value;
@@ -226,7 +227,7 @@ function localStore(root) {
     }
   }
   return defineStore("local",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createLocalAppleBillingMethods({statements,plainRow}),...createLocalSocialAuthMethods({db,statements,plainRow}),
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createLocalAppleBillingMethods({statements,plainRow}),...createLocalSocialAuthMethods({db,statements,plainRow}),...createLocalServerStateMethods({statements,plainRow}),
     ...createLocalAccessControlMethods({db,statements,plainRow}),
     async ping() { return probeConnection(() => statements.ping.get()); },
     async userByEmail(email) { return plainRow(statements.userByEmail.get(email)); },
@@ -761,7 +762,7 @@ async function tursoStore(url,authToken,tursoClientFactory) {
     return {status:"invalid"};
   }
   return defineStore("turso",{
-    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createTursoAppleBillingMethods({first,all,run}),...createTursoSocialAuthMethods({client,first,all,run,plainRow}),
+    ...coachingMethods,...deviceMethods,...dataLayerMethods,...aiMethods,...createTursoAppleBillingMethods({first,all,run}),...createTursoSocialAuthMethods({client,first,all,run,plainRow}),...createTursoServerStateMethods({first,all,run}),
     ...createTursoAccessControlMethods({client,first,plainRow,SQL}),
     // A successful query is the health signal. Some Turso-compatible row
     // implementations expose selected values only by numeric index, so the
