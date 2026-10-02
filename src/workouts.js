@@ -129,8 +129,8 @@ function pagination(value,fallback,min,max) {
   return integer(Number(value),min,max,"History pagination");
 }
 
-function createWorkoutService({store,auth,requireAccess,rateAllowed,http,events=null}) {
-  if (!store||!auth||typeof requireAccess!=="function"||typeof rateAllowed!=="function"||!http) throw new TypeError("Workout service requires store, auth, request guards, and HTTP helpers.");
+function createWorkoutService({store,auth,requireAccess,trustedOrigin,rateAllowed,http,events=null}) {
+  if (!store||!auth||typeof requireAccess!=="function"||typeof trustedOrigin!=="function"||typeof rateAllowed!=="function"||!http) throw new TypeError("Workout service requires store, auth, request guards, and HTTP helpers.");
   const {json,bodyJson}=http;
   function activeWorkoutConflict(res,workout) {
     json(res,409,{error:"You already have a workout in progress. Resume it before starting another.",code:"ACTIVE_WORKOUT_EXISTS",workout});
@@ -201,6 +201,8 @@ function createWorkoutService({store,auth,requireAccess,rateAllowed,http,events=
         }
         return true;
       }
+      // Every write comes from a STRATA page, the same as training writes; the CSRF token alone is not enough.
+      if (!trustedOrigin(req)) throw workoutError("Workout security check failed. Refresh and try again.",403,"WORKOUT_ORIGIN_REQUIRED");
       if (!auth.validCsrf(req,session)) throw workoutError("Security check failed. Refresh and try again.",403,"INVALID_CSRF");
       if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers["content-type"]||""))) throw workoutError("Workout requests must use JSON.",415,"JSON_REQUIRED");
       await mutate(req,res,session.id,id);

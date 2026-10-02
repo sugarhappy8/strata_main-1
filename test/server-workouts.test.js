@@ -21,7 +21,8 @@ async function stopServer() {
   if (directory) rmSync(directory,{recursive:true,force:true});
 }
 async function request(path,account,method="GET",body,extra={}) {
-  const response=await fetch(`${base}${path}`,{method,headers:{Origin:base,"Content-Type":"application/json",...(account?{Cookie:account.cookie,"X-CSRF-Token":account.csrfToken}:{}),...extra},...(body===undefined?{}:{body:typeof body==="string"?body:JSON.stringify(body)})});
+  const headers=Object.fromEntries(Object.entries({Origin:base,"Content-Type":"application/json",...(account?{Cookie:account.cookie,"X-CSRF-Token":account.csrfToken}:{}),...extra}).filter(([,value])=>value!==null));
+  const response=await fetch(`${base}${path}`,{method,headers,...(body===undefined?{}:{body:typeof body==="string"?body:JSON.stringify(body)})});
   return {status:response.status,data:await response.json(),cookie:response.headers.get("set-cookie")?.split(";")[0]||""};
 }
 async function account(suffix,{plus=true}={}) {
@@ -34,9 +35,17 @@ async function account(suffix,{plus=true}={}) {
 }
 test.before(startServer);test.after(stopServer);
 
-test("workout API requires authentication, CSRF, valid bounded input, and JSON",async()=>{
+test("workout API requires authentication, a STRATA origin, CSRF, valid bounded input, and JSON",async()=>{
   const member=await account("guards"),workout=workoutFixture("guarded-workout");
   assert.equal((await request("/api/workouts")).status,401);
+  // A write from another site, or with no Origin at all, is refused even with a valid session and CSRF token.
+  for (const origin of ["https://outside.example","null"]) assert.equal((await request("/api/workouts",member,"POST",{workout},{Origin:origin})).status,403);
+  const unsigned=await request("/api/workouts",member,"POST",{workout},{Origin:null});
+  assert.deepEqual([unsigned.status,unsigned.data.code],[403,"WORKOUT_ORIGIN_REQUIRED"]);
+  assert.equal((await request("/api/workouts/guarded-workout",member,"PUT",{expectedRevision:1,workout},{Origin:null})).data.code,"WORKOUT_ORIGIN_REQUIRED");
+  assert.equal((await request("/api/workouts/guarded-workout",member,"DELETE",{expectedRevision:1},{Origin:null})).data.code,"WORKOUT_ORIGIN_REQUIRED");
+  assert.equal((await request("/api/workouts",member,"GET",undefined,{Origin:null})).status,200,"reads need no origin check");
+  assert.equal((await request("/api/workouts",member)).data.workouts.length,0,"nothing refused was saved");
   assert.equal((await request("/api/workouts",member,"POST",{workout},{"X-CSRF-Token":"wrong"})).status,403);
   assert.equal((await request("/api/workouts",member,"POST",{workout},{"Content-Type":"text/plain"})).status,415);
   assert.equal((await request("/api/workouts",member,"POST","{" )).status,400);
