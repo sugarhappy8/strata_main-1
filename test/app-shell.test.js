@@ -53,10 +53,10 @@ test("app shell leaves the website untouched in browsers",()=>{
 
 test("inside the iOS app the app's stylesheet and chrome script are written into the head, render-blocking and in order",()=>{
   const page=harness();
-  assert.deepEqual(page.written,['<link rel="stylesheet" href="/app-mode.css?v=9.2.0" /><script src="/app-mode.js?v=9.2.0"></script>']);
+  assert.deepEqual(page.written,['<link rel="stylesheet" href="/app-mode.css?v=9.3.0" /><script src="/app-mode.js?v=9.3.0"></script>']);
   assert.deepEqual(harness({pathname:"/install"}).written,[],"the install page leaves before anything loads");
   assert.match(read("src/server.js"),/\["app-mode\.js","scripts\/app-mode\.js"\],\["app-mode\.css","styles\/app-mode\.css"\],\["app-paywall\.js","scripts\/app-paywall\.js"\]/);
-  for(const asset of ["/app-mode.js","/app-mode.css","/app-paywall.js"])assert.match(read("public/service-worker.js"),new RegExp(`"${asset.replace(/[.]/g,"\\.")}\\?v=9\\.2\\.0"`));
+  for(const asset of ["/app-mode.js","/app-mode.css","/app-paywall.js"])assert.match(read("public/service-worker.js"),new RegExp(`"${asset.replace(/[.]/g,"\\.")}\\?v=9\\.3\\.0"`));
   assert.match(read("scripts/release-version.js"),/"public\/scripts\/app-mode\.js",\n {4}"public\/scripts\/app-shell\.js",/,"a release bump updates the injected asset versions");
 });
 
@@ -91,11 +91,11 @@ test("every page loads the app shell first in its head, and the server and offli
   for(const page of pages){
     const html=read(`public/pages/${page}`),head=html.slice(0,html.indexOf("</head>"));
     const scripts=[...head.matchAll(/<script\b[^>]*\bsrc="([^"]+)"/g)].map((match)=>match[1]);
-    assert.equal(scripts[0],"/app-shell.js?v=9.2.0",`${page} must load app-shell.js before any other script`);
+    assert.equal(scripts[0],"/app-shell.js?v=9.3.0",`${page} must load app-shell.js before any other script`);
     assert.doesNotMatch(head.match(/<script\b[^>]*app-shell\.js[^>]*>/)[0],/\b(?:defer|async)\b/,`${page} must run app-shell.js before first paint`);
   }
   assert.match(read("src/server.js"),/\["app-shell\.js","scripts\/app-shell\.js"\]/);
-  assert.match(read("public/service-worker.js"),/"\/app-shell\.js\?v=9\.2\.0"/);
+  assert.match(read("public/service-worker.js"),/"\/app-shell\.js\?v=9\.3\.0"/);
   assert.match(read("public/styles/tokens.css"),/:root\[data-app="ios"\] a\[href\^="\/install"\] \{ display:none !important; \}/);
   // The app shows light status bar icons, so the area under them stays dark even on light pages.
   assert.match(read("public/styles/tokens.css"),/:root\[data-app="ios"\] body::before \{[^}]*position:fixed;[^}]*height:env\(safe-area-inset-top\);[^}]*background:var\(--strata-ink\);[^}]*pointer-events:none;/);

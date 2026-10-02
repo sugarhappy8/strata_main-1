@@ -305,7 +305,7 @@
         void info().then((app)=>{const line=document.querySelector(".app-more-build");if(line&&app?.appVersion)line.textContent=`${build} · App ${app.appVersion}${app.build?` (${app.build})`:""}`;});
       }
       if(screen.id==="pricing"){
-        const script=document.createElement("script");script.src="/app-paywall.js?v=9.2.0";document.head.append(script);
+        const script=document.createElement("script");script.src="/app-paywall.js?v=9.3.0";document.head.append(script);
       }
       const native=plugin();
       if(native){

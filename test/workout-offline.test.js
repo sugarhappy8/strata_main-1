@@ -5,7 +5,7 @@ const assert=require("node:assert/strict");
 const {readFileSync}=require("node:fs");
 const {join}=require("node:path");
 
-const BUILD="9.2.0";
+const BUILD="9.3.0";
 const ROOT=join(__dirname,".."),read=(path)=>readFileSync(join(ROOT,path),"utf8");
 
 test("the service worker uses a generic offline workout shell without caching private pages or APIs",()=>{
