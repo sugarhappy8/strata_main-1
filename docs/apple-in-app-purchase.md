@@ -50,9 +50,10 @@ Strata+ is one entitlement, so a member is never asked to pay for it twice:
 | --- | --- | --- |
 | `APPLE_BUNDLE_ID` | `online.stratafitness.app` | Must match the app's bundle id. |
 | `APPLE_IAP_PRODUCT_IDS` | `online.stratafitness.app.plus.monthly` | Comma list of accepted Strata+ products. |
+| `APPLE_SANDBOX_ACCOUNTS` | (unset) | Comma list of STRATA account emails a Sandbox purchase unlocks Strata+ for in production. Put the App Review demo account here. |
 | `APPLE_ROOT_FINGERPRINT` | (unset) | Test-only root override; ignored unless `NODE_ENV=test`. |
 
-There is no shared secret or API key. Both the Production and Sandbox environments are accepted, because App Review and TestFlight purchase in Sandbox.
+There is no shared secret or API key. Purchases from both the Production and Sandbox environments are verified and saved, because App Review and TestFlight purchase in Sandbox. In production (`NODE_ENV=production`) a Sandbox purchase unlocks Strata+ only for an account listed in `APPLE_SANDBOX_ACCOUNTS`; on any other account it is saved and shown with `environment: "Sandbox"` but grants nothing, so a free Sandbox purchase can never stand in for a paid one. Outside production every Sandbox purchase unlocks Strata+. Admin shows Apple's own state for the subscription, whichever environment it came from.
 
 ## App Store Connect steps
 
@@ -65,12 +66,12 @@ There is no shared secret or API key. Both the Production and Sandbox environmen
 
 - Create Sandbox Apple Accounts under Users and Access > Sandbox, and sign in to one on the device under Settings > Developer (or App Store) > Sandbox Account.
 - TestFlight builds and development builds buy in Sandbox; renewals are accelerated (a month renews about every five minutes, up to 12 times a day).
-- Check: purchase unlocks Strata+ on the same STRATA account, Restore Purchases works after reinstalling, a second STRATA account on the same Apple Account gets `APPLE_ACCOUNT_MISMATCH` or `APPLE_PURCHASE_OTHER_ACCOUNT`, cancelling in the sandbox subscription settings ends access at expiry, and a refund requested through the Sandbox account (or a `REFUND` test) removes access.
+- Check (on a local or staging server, or with the test account listed in `APPLE_SANDBOX_ACCOUNTS`): purchase unlocks Strata+ on the same STRATA account, Restore Purchases works after reinstalling, a second STRATA account on the same Apple Account gets `APPLE_ACCOUNT_MISMATCH` or `APPLE_PURCHASE_OTHER_ACCOUNT`, cancelling in the sandbox subscription settings ends access at expiry, and a refund requested through the Sandbox account (or a `REFUND` test) removes access.
 - Local tests sign with a throwaway chain from `test/support/apple-test-chain.js`; see `test/apple-billing.test.js` and `test/server-apple-billing.test.js`.
 
 ## What App Review sees
 
-- The reviewer signs in with the demo STRATA account from the review notes and buys Strata+ with their Sandbox Apple Account; the server accepts Sandbox, so Strata+ unlocks on the demo account.
+- The reviewer signs in with the demo STRATA account from the review notes and buys Strata+ with their Sandbox Apple Account. List that demo account's email in `APPLE_SANDBOX_ACCOUNTS` on Render before submitting, so the Sandbox purchase unlocks Strata+ on it.
 - The purchase screen must show the price and period from StoreKit, that it renews monthly until cancelled, how to cancel, **Restore Purchases**, and links to the [Terms](https://stratafitness.online/terms) and [Privacy Policy](https://stratafitness.online/privacy), which cover purchases through Apple.
 - The app must link to no outside payment for Strata+ (Paddle stays on the website only).
 - Account deletion must be reachable and complete in the app: Profile > Delete account, the account password, and DELETE delete the account at once with no email. The server never blocks it by the subscription; the member is told Apple keeps billing until they cancel, with a Manage subscription button.

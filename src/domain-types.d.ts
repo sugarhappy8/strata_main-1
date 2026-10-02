@@ -330,7 +330,7 @@ export type CheckoutRecovery=
 
 export interface BillingStore {
   adminControls(userId:string):Promise<AdminControlsRow|null>;
-  hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
+  hasActiveAppleSubscription(userId:string,now:number,sandbox?:AppleSandboxPolicy):Promise<boolean>;
   appleSubscriptionsForUser(userId:string):Promise<AppleSubscriptionRow[]>;
   hasPaidDiscoveryAccess(userId:string,priceId?:string|null,now?:number):Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(userId:string,priceId:string,productId:string,now?:number):Promise<boolean>;
@@ -388,6 +388,8 @@ export interface BillingServiceDependencies {
   getUserPayload:(account:SessionRow)=>Promise<JsonObject>;
   http:JsonHttpHelpers;
   logger:OperationalLogger;
+  /** Which Apple Sandbox purchases unlock Strata+; production-only when left out. */
+  appleSandbox?:AppleSandboxPolicy;
   now?:()=>number;
   makeId?:()=>string;
 }
@@ -1154,7 +1156,12 @@ export interface ServiceCompositionDependencies {
 }
 
 export type AppleEnvironment="Production"|"Sandbox";
-export interface AppleBillingSettings {
+/** Whether a Sandbox purchase unlocks Strata+: always outside production, else only for the listed account emails. */
+export interface AppleSandboxPolicy {
+  readonly allowSandbox:boolean;
+  readonly sandboxAccounts:ReadonlySet<string>;
+}
+export interface AppleBillingSettings extends AppleSandboxPolicy {
   readonly bundleId:string;
   readonly productIds:readonly string[];
   readonly rootFingerprint:string;
@@ -1183,7 +1190,7 @@ export interface AppleBillingStore {
   appleSubscription(originalTransactionId:string):Promise<AppleSubscriptionRow|null>;
   appleSubscriptionsForUser(userId:string):Promise<AppleSubscriptionRow[]>;
   upsertAppleSubscription(record:AppleSubscriptionWrite,replaceOwnerId?:string|null):Promise<AppleSubscriptionRow|null>;
-  hasActiveAppleSubscription(userId:string,now:number):Promise<boolean>;
+  hasActiveAppleSubscription(userId:string,now:number,sandbox?:AppleSandboxPolicy):Promise<boolean>;
   appleNotification(notificationUuid:string):Promise<JsonObject|null>;
   recordAppleNotification(notification:AppleNotificationWrite):Promise<boolean>;
   deleteOldAppleNotifications(before:number):Promise<void>;
@@ -1209,7 +1216,7 @@ export interface AppleBillingService {
   handleApi(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
   handleNotification(request:HttpRequest,response:HttpResponse):Promise<void>;
   processNotification(payload:Record<string,any>):Promise<string>;
-  subscriptionForUser(userId:string):Promise<AppleSubscriptionSummary|null>;
+  subscriptionForUser(userId:string,email?:string|null):Promise<AppleSubscriptionSummary|null>;
   deletionNotice(userId:string):Promise<AppleDeletionNotice|null>;
   cleanup():Promise<void>;
 }

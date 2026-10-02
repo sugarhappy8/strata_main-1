@@ -321,7 +321,7 @@ async function userPayload(session) {
     planFor(session.id),
     billing.accessSummaryForUser(session.id),
     billing.subscriptionForUser(session.id),
-    appleBilling.subscriptionForUser(session.id),
+    appleBilling.subscriptionForUser(session.id,session.email),
     store.activeAccountDeletion(session.id,now),
     admin.adminIdentity(session),
     store.adminControls(session.id),
@@ -665,7 +665,7 @@ async function start() {
   billing=createBillingService({
     store,paymentConfig:PAYMENT_CONFIG,enforcePaddleIps:ENFORCE_PADDLE_IPS,
     requestAddress,rateAllowed,isUniqueViolation,getAuth:()=>auth,getUserPayload:userPayload,
-    http:{json,bodyJson},logger:LOGGER
+    http:{json,bodyJson},logger:LOGGER,appleSandbox:APPLE_SETTINGS
   });
   appleBilling=createAppleBillingService({store,settings:APPLE_SETTINGS,getAuth:()=>auth,getUserPayload:userPayload,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json},logger:LOGGER});
   ({auth,admin,support}=composeServices({

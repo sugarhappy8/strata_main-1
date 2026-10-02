@@ -12,6 +12,10 @@ function upsertArgs(record,replaceOwnerId){
     record.latestSignedAt,record.createdAt,record.updatedAt,record.userId,replaceOwnerId
   ];
 }
+/** @param {string} userId @param {number} now @param {import("./domain-types").AppleSandboxPolicy|undefined} sandbox */
+function accessArgs(userId,now,sandbox){
+  return [userId,now,now,sandbox?.allowSandbox?1:0,JSON.stringify(sandbox?[...sandbox.sandboxAccounts]:[])];
+}
 /** @param {import("./domain-types").AppleNotificationWrite} notification */
 function notificationArgs(notification){
   return [notification.notificationUuid,notification.notificationType,notification.subtype,notification.outcome,notification.signedAt,notification.processedAt];
@@ -25,7 +29,7 @@ function createLocalAppleBillingMethods({statements,plainRow}){
     async appleSubscription(originalTransactionId){return plainRow(statement("appleSubscription").get(originalTransactionId));},
     async appleSubscriptionsForUser(userId){return statement("appleSubscriptionsForUser").all(userId).map((row)=>plainRow(row));},
     async upsertAppleSubscription(record,replaceOwnerId=null){return plainRow(statement("upsertAppleSubscription").get(...upsertArgs(record,replaceOwnerId)));},
-    async hasActiveAppleSubscription(userId,now){return Boolean(statement("hasActiveAppleSubscription").get(userId,now,now));},
+    async hasActiveAppleSubscription(userId,now,sandbox){return Boolean(statement("hasActiveAppleSubscription").get(...accessArgs(userId,now,sandbox)));},
     async appleNotification(notificationUuid){return plainRow(statement("appleNotification").get(notificationUuid));},
     async recordAppleNotification(notification){return Boolean(plainRow(statement("recordAppleNotification").get(...notificationArgs(notification))));},
     async deleteOldAppleNotifications(before){statement("deleteOldAppleNotifications").run(before);}
@@ -38,7 +42,7 @@ function createTursoAppleBillingMethods({first,all,run}){
     appleSubscription:(originalTransactionId)=>first(APPLE_BILLING_SQL.appleSubscription,[originalTransactionId]),
     appleSubscriptionsForUser:(userId)=>all(APPLE_BILLING_SQL.appleSubscriptionsForUser,[userId]),
     upsertAppleSubscription:(record,replaceOwnerId=null)=>first(APPLE_BILLING_SQL.upsertAppleSubscription,upsertArgs(record,replaceOwnerId)),
-    async hasActiveAppleSubscription(userId,now){return Boolean(await first(APPLE_BILLING_SQL.hasActiveAppleSubscription,[userId,now,now]));},
+    async hasActiveAppleSubscription(userId,now,sandbox){return Boolean(await first(APPLE_BILLING_SQL.hasActiveAppleSubscription,accessArgs(userId,now,sandbox)));},
     appleNotification:(notificationUuid)=>first(APPLE_BILLING_SQL.appleNotification,[notificationUuid]),
     async recordAppleNotification(notification){return Boolean(await first(APPLE_BILLING_SQL.recordAppleNotification,notificationArgs(notification)));},
     async deleteOldAppleNotifications(before){await run(APPLE_BILLING_SQL.deleteOldAppleNotifications,[before]);}

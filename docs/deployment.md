@@ -188,7 +188,7 @@ Keep private promotion codes in Paddle and share them privately. Never place a c
 
 Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase at the same $2.99 USD per month; Paddle on the website is unchanged. Strata+ is one entitlement whichever way it was paid for (Paddle, Apple, or an owner's grant). [apple-in-app-purchase.md](apple-in-app-purchase.md) covers how it works and the App Store Connect steps.
 
-- `APPLE_BUNDLE_ID` (default `online.stratafitness.app`) and `APPLE_IAP_PRODUCT_IDS` (comma list, default `online.stratafitness.app.plus.monthly`) are plain settings in `render.yaml`. There is no Apple secret: signed App Store data is verified against the pinned Apple Root CA - G3.
+- `APPLE_BUNDLE_ID` (default `online.stratafitness.app`) and `APPLE_IAP_PRODUCT_IDS` (comma list, default `online.stratafitness.app.plus.monthly`) are plain settings in `render.yaml`. There is no Apple secret: signed App Store data is verified against the pinned Apple Root CA - G3. Set `APPLE_SANDBOX_ACCOUNTS` to the App Review demo account's email: in production a Sandbox purchase unlocks Strata+ only for the accounts listed there.
 - `APPLE_ROOT_FINGERPRINT` is honored only when `NODE_ENV=test`. Never set it in production; the server ignores it there and logs `apple.root_override_ignored`.
 - In App Store Connect, set the App Store Server Notifications V2 URL to `https://stratafitness.online/api/billing/apple/notifications` for both Production and Sandbox.
 - `/api/status` reports `appStoreConfigured: true` once the App Store settings verify against a pinned root.

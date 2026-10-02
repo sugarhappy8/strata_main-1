@@ -632,7 +632,7 @@
     },
     "src/apple-billing.js": {
       "role": "Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state",
-      "maxLines": 360,
+      "maxLines": 380,
       "allowedDependencies": [
         "src/apple-jws.js",
         "src/http.js"
