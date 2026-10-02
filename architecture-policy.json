@@ -426,7 +426,7 @@
     },
     "src/ai.js": {
       "role": "Strata AI request queue and review-only proposal API",
-      "maxLines": 235,
+      "maxLines": 275,
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/ai-core.js",
@@ -596,12 +596,12 @@
     },
     "src/ai-schema.js": {
       "role": "Strata AI consent and daily usage storage schema",
-      "maxLines": 50,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/ai-store.js": {
       "role": "SQLite and Turso Strata AI storage parity",
-      "maxLines": 70,
+      "maxLines": 95,
       "allowedDependencies": [
         "src/ai-schema.js"
       ]

@@ -882,6 +882,34 @@ export interface CoachingWeekRecord {userId:string;weekStart:string;planKey:stri
 export interface CoachingDailyLogRecord {userId:string;logDate:string;calories:number;proteinG:number|null;carbsG:number|null;fatG:number|null;morningWeightKg:number|null;complete:boolean|null;updatedAt:number;}
 export interface CoachingDailyLogRow extends JsonObject {log_date:string;calories:number;protein_g:number|null;carbs_g:number|null;fat_g:number|null;morning_weight_kg:number|null;intake_complete:0|1|null;revision:number;updated_at:number;}
 /** Strata AI consent and the organization's daily provider budget. */
+export interface AiJobRecord {
+  id:string;
+  userId:string;
+  kind:"chat"|"suggestions";
+  requestJson:string;
+  usageDate:string;
+  createdAt:number;
+}
+export interface AiJobOutcome {
+  status:"done"|"failed";
+  tokens:number;
+  resultJson:string|null;
+  errorJson:string|null;
+  finishedAt:number;
+}
+export interface AiJobRow extends JsonObject {
+  id:string;
+  user_id:string;
+  kind:"chat"|"suggestions";
+  status:"queued"|"running"|"done"|"failed";
+  request_json:string|null;
+  usage_date:string;
+  tokens:number;
+  result_json:string|null;
+  error_json:string|null;
+  created_at:number;
+  finished_at:number|null;
+}
 export interface AiStore {
   aiSettings(userId:string):Promise<JsonObject|null>;
   upsertAiSettings(userId:string,settings:{consentAt:number|null,consentVersion:number,dailyBrief:boolean,updatedAt:number}):Promise<JsonObject|null>;
@@ -892,6 +920,16 @@ export interface AiStore {
   claimMemberAiRequest(date:string,userId:string,kind:"chat"|"brief",limit:number):Promise<boolean>;
   /** Adds one shared request unless today's total or this kind's share is spent. */
   claimGlobalAiRequest(date:string,kind:"chat"|"brief",dailyLimit:number,kindLimit:number):Promise<boolean>;
+  /** Queues a request; fails with a unique violation while the member already has one queued or running. */
+  insertAiJob(job:AiJobRecord):Promise<AiJobRow|null>;
+  aiJob(id:string,userId:string):Promise<AiJobRow|null>;
+  activeAiJob(userId:string):Promise<AiJobRow|null>;
+  queuedAiJobs():Promise<number>;
+  aiJobPosition(id:string):Promise<number>;
+  claimAiJob(leaseUntil:number):Promise<AiJobRow|null>;
+  finishAiJob(id:string,outcome:AiJobOutcome):Promise<void>;
+  requeueStaleAiJobs(now:number):Promise<void>;
+  deleteFinishedAiJobs(before:number):Promise<void>;
   refundAiUsage(date:string,scope:string,kind:"chat"|"brief"):Promise<void>;
   aiUsageTotals(date:string):Promise<JsonObject[]>;
   aiUsageTop(date:string,limit:number):Promise<JsonObject[]>;

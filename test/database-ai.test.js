@@ -75,3 +75,43 @@ test("SQLite and Turso claim AI requests with one conditional write that stops a
     }
   }finally{await pair.close();}
 });
+
+test("SQLite and Turso queue AI requests: one unfinished per member, oldest first, message dropped when finished",{concurrency:false},async()=>{
+  const {isUniqueViolation}=require("../src/database");
+  const pair=await stores();
+  try{
+    for(const store of [pair.local,pair.turso]){
+      const job=(id,userId,createdAt)=>({id,userId,kind:"chat",requestJson:JSON.stringify({message:`private ${id}`}),usageDate:"2030-05-01",createdAt});
+      for(const id of ["queue-a","queue-b"])await store.insertUser({id,name:id,email:`${id}-${store.kind}@example.test`,passwordHash:"hash",passwordSalt:"salt",createdAt:1,emailVerifiedAt:1});
+      const first=await store.insertAiJob(job("job-1","queue-a",100));
+      assert.deepEqual({...first},{id:"job-1",user_id:"queue-a",kind:"chat",status:"queued",request_json:"{\"message\":\"private job-1\"}",usage_date:"2030-05-01",tokens:0,result_json:null,error_json:null,created_at:100,finished_at:null});
+      await assert.rejects(store.insertAiJob(job("job-2","queue-a",101)),(error)=>isUniqueViolation(error),"a member has one unfinished request");
+      await store.insertAiJob(job("job-3","queue-b",102));
+      assert.deepEqual([await store.queuedAiJobs(),await store.aiJobPosition("job-1"),await store.aiJobPosition("job-3")],[2,1,2]);
+      assert.equal((await store.activeAiJob("queue-a"))?.id,"job-1");
+      assert.equal(await store.aiJob("job-1","queue-b"),null,"a member reads only their own request");
+
+      const claimed=await store.claimAiJob(5_000);
+      assert.deepEqual([claimed?.id,claimed?.status],["job-1","running"],"the oldest queued request is claimed");
+      assert.deepEqual([await store.queuedAiJobs(),await store.aiJobPosition("job-3")],[1,1]);
+      await store.requeueStaleAiJobs(4_999);
+      assert.equal((await store.aiJob("job-1","queue-a"))?.status,"running","a live lease is left alone");
+      await store.requeueStaleAiJobs(5_001);
+      assert.equal((await store.aiJob("job-1","queue-a"))?.status,"queued","an expired lease is queued again");
+      assert.equal((await store.claimAiJob(9_000))?.id,"job-1");
+
+      await store.finishAiJob("job-1",{status:"done",tokens:321,resultJson:"{\"reply\":\"ok\"}",errorJson:null,finishedAt:6_000});
+      const done=await store.aiJob("job-1","queue-a");
+      assert.deepEqual([done?.status,done?.request_json,done?.result_json,Number(done?.tokens)],["done",null,"{\"reply\":\"ok\"}",321],"the member's message is dropped once answered");
+      assert.equal(await store.activeAiJob("queue-a"),null);
+      await store.insertAiJob(job("job-4","queue-a",200));
+      await store.deleteFinishedAiJobs(6_000);assert.ok(await store.aiJob("job-1","queue-a"));
+      await store.deleteFinishedAiJobs(6_001);assert.equal(await store.aiJob("job-1","queue-a"),null,"answers are removed after their time");
+
+      await store.upsertAccountAction({requestId:`jobs-delete-${store.kind}`,userId:"queue-a",purpose:"account_delete",tokenHash:`jobs-delete-${store.kind}`,expiresAt:1e12,deliveryState:"sent",createdAt:1,updatedAt:1});
+      assert.equal((await store.deleteAccount(`jobs-delete-${store.kind}`,2,"hash")).status,"deleted");
+      assert.equal(await store.aiJob("job-4","queue-a"),null,"deleting the member removes their requests");
+      assert.ok(await store.aiJob("job-3","queue-b"));
+    }
+  }finally{await pair.close();}
+});

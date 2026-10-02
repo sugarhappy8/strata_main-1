@@ -687,7 +687,7 @@ async function start() {
   devices=createDevicesService({store,auth,requireAccess:requireFeature("plus.recovery"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson,bodyBuffer,redirect},settings:devicesSettings(process.env),hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,isUniqueViolation,events});devices.start();
   if (AI_SETTINGS.insecure) LOGGER.warn("ai.insecure_base_url_ignored",{});
   const aiProvider=createAiProvider(AI_SETTINGS.provider),aiQuota=createAiQuota({store,limits:AI_SETTINGS.limits});
-  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:aiProvider,getPlanSnapshot:planSnapshotFor,quota:aiQuota,dataService,logger:LOGGER,config:AI_SETTINGS.limits});
+  ai=createAiService({store,auth,requireAccess:requireFeature("plus.ai"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},provider:aiProvider,getPlanSnapshot:planSnapshotFor,quota:aiQuota,dataService,logger:LOGGER,config:AI_SETTINGS.limits,isUniqueViolation});void ai.start().catch((error)=>LOGGER.error("ai.queue_start_failed",{error}));
   aiSettingsService=createAiSettingsService({store,auth,trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},quota:aiQuota,admin});
   // The Daily Brief runs through the night's queue; tests turn it on explicitly.
   briefJob=createDailyBriefJob({store,dataService,provider:aiProvider,quota:aiQuota,hasAccess:hasCurrentDiscoveryAccess,logger:LOGGER,settings:{hour:AI_SETTINGS.brief.hour}});briefJob.subscribe(events);
@@ -718,6 +718,7 @@ async function start() {
     void appleBilling.cleanup().catch((error)=>LOGGER.error("cleanup.apple_notifications_failed",{error}));
     void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
     void events.cleanup().catch((error)=>LOGGER.error("cleanup.event_outbox_failed",{error}));
+    void ai.cleanup().catch((error)=>LOGGER.error("cleanup.ai_jobs_failed",{error}));
     void store.deleteOldRateBuckets(Date.now()-24*60*60*1000).catch((error)=>LOGGER.error("cleanup.rate_buckets_failed",{error}));
   },60*60*1000);
   cleanup.unref();
