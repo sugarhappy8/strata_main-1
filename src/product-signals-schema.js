@@ -46,8 +46,10 @@ const PRODUCT_SIGNAL_TRIGGER = Object.freeze([
 const PRODUCT_SIGNAL_SQL = Object.freeze({
   recordProductSignal:
     "INSERT INTO product_signal_actors(event_day,event_name,actor_key,audience) VALUES(?,?,?,?) ON CONFLICT DO NOTHING RETURNING event_name",
-  productSignalCounts:
-    "SELECT event_day,event_name,event_count,member_count,anonymous_count FROM product_signal_counts WHERE event_day>=? AND event_day<=? ORDER BY event_day,event_name",
+  productSignalCounts: `SELECT event_day,event_name,event_count,member_count,anonymous_count
+    FROM product_signal_counts
+    WHERE event_day>=? AND event_day<=?
+    ORDER BY event_day,event_name`,
   deleteOldProductSignals: "DELETE FROM product_signal_counts WHERE event_day<?",
   deleteProductSignalActors: "DELETE FROM product_signal_actors WHERE event_day<?",
 });

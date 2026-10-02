@@ -18,7 +18,8 @@ function settingsPayload(row) {
 
 /**
  * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
- *   http:{json:Function,bodyJson:Function},quota:{adminSummary:(limit?:number)=>Promise<any>},admin:{requireAdmin:Function},now?:()=>number}} dependencies
+ *   http:{json:Function,bodyJson:Function},quota:{adminSummary:(limit?:number)=>Promise<any>},
+ *   admin:{requireAdmin:Function},now?:()=>number}} dependencies
  */
 function createAiSettingsService({
   store,

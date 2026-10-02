@@ -87,7 +87,12 @@ function createSocialAuthClient({
     }
   }
 
-  /** The provider's current signing keys, fetched again when stale or when a token names an unknown key. @param {ReturnType<typeof providerFor>} provider @param {boolean} refresh */
+  /**
+   * The provider's current signing keys, fetched again when stale or when a token names an unknown
+   * key.
+   * @param {ReturnType<typeof providerFor>} provider
+   * @param {boolean} refresh
+   */
   async function signingKeys(provider, refresh) {
     const cached = keyCache.get(provider.id),
       time = now();

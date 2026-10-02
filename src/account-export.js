@@ -36,7 +36,11 @@ function exportWorkout(row) {
 function optionalText(value) {
   return value == null ? null : String(value);
 }
-/** Connected-device data STRATA stored for the member; tokens and Polar identifiers are never exported. @param {import("./domain-types").AccountExportStoreRows} rows */
+/**
+ * Connected-device data STRATA stored for the member; tokens and Polar identifiers are never
+ * exported.
+ * @param {import("./domain-types").AccountExportStoreRows} rows
+ */
 function exportDevices(rows) {
   return {
     connections: (rows.deviceConnections || []).map((row) => ({

@@ -15,9 +15,11 @@ const GROQ_BASE_URL = "https://api.groq.com/openai/v1";
 function providerError(code, message, status = 503) {
   return Object.assign(new Error(message), { code, status });
 }
-/** Releases the connection of a response STRATA will not read, such as a rejected JSON mode. @param {Response} response */ function discard(
-  response,
-) {
+/**
+ * Releases the connection of a response STRATA will not read, such as a rejected JSON mode.
+ * @param {Response} response
+ */
+function discard(response) {
   void response.body?.cancel().catch(() => {});
 }
 
@@ -52,7 +54,11 @@ function extractJson(value) {
   return null;
 }
 
-/** How long a rate-limited model rests: Retry-After in seconds or as a date, bounded to an hour. @param {Response} response @param {number} now */
+/**
+ * How long a rate-limited model rests: Retry-After in seconds or as a date, bounded to an hour.
+ * @param {Response} response
+ * @param {number} now
+ */
 function retryAfterMs(response, now) {
   const raw = response.headers.get("retry-after");
   if (!raw) return 60000;

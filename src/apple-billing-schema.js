@@ -39,7 +39,12 @@ const APPLE_BILLING_SCHEMA = Object.freeze([
   "CREATE INDEX IF NOT EXISTS apple_notifications_processed_at ON apple_notifications(processed_at)",
 ]);
 
-/** Strata+ access from Apple: not revoked, and paid through a future expiry or a billing grace period. @param {string} alias @param {string} [now] */
+/**
+ * Strata+ access from Apple: not revoked, and paid through a future expiry or a billing grace
+ * period.
+ * @param {string} alias
+ * @param {string} [now]
+ */
 function activeAppleSubscription(
   alias = "apple_subscriptions",
   now = "(SELECT now FROM entitlement_clock)",
@@ -53,13 +58,36 @@ const APPLE_BILLING_SQL = Object.freeze({
   // Inserts only for an existing account. An update keeps the owner unless the caller names the inactive previous owner it
   // may replace, and never moves either clock back: the current period moves only to a later one, or to data about the
   // same period signed no earlier (the order nextAppleState in src/apple-billing.js applies).
-  upsertAppleSubscription: `INSERT INTO apple_subscriptions(${APPLE_SUBSCRIPTION_COLUMNS}) SELECT ?,u.id,?,?,?,?,?,?,?,?,?,?,?,?,?,? FROM users u WHERE u.id=? ON CONFLICT(original_transaction_id) DO UPDATE SET user_id=excluded.user_id,product_id=excluded.product_id,environment=excluded.environment,latest_transaction_id=excluded.latest_transaction_id,purchased_at=excluded.purchased_at,original_purchased_at=excluded.original_purchased_at,expires_at=excluded.expires_at,revoked_at=excluded.revoked_at,revocation_reason=excluded.revocation_reason,auto_renew=excluded.auto_renew,grace_period_expires_at=excluded.grace_period_expires_at,last_signed_at=excluded.last_signed_at,latest_signed_at=excluded.latest_signed_at,updated_at=excluded.updated_at WHERE (apple_subscriptions.user_id=excluded.user_id OR apple_subscriptions.user_id=?) AND excluded.last_signed_at>=apple_subscriptions.last_signed_at AND CASE WHEN excluded.latest_transaction_id=apple_subscriptions.latest_transaction_id OR excluded.expires_at=apple_subscriptions.expires_at THEN excluded.latest_signed_at>=apple_subscriptions.latest_signed_at ELSE excluded.expires_at>apple_subscriptions.expires_at END RETURNING ${APPLE_SUBSCRIPTION_COLUMNS}`,
+  upsertAppleSubscription: `INSERT INTO apple_subscriptions(${APPLE_SUBSCRIPTION_COLUMNS})
+  SELECT ?,u.id,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+  FROM users u
+  WHERE u.id=?
+  ON CONFLICT(original_transaction_id) DO UPDATE
+  SET user_id=excluded.user_id,product_id=excluded.product_id,environment=excluded.environment,
+    latest_transaction_id=excluded.latest_transaction_id,purchased_at=excluded.purchased_at,
+    original_purchased_at=excluded.original_purchased_at,expires_at=excluded.expires_at,
+    revoked_at=excluded.revoked_at,revocation_reason=excluded.revocation_reason,
+    auto_renew=excluded.auto_renew,grace_period_expires_at=excluded.grace_period_expires_at,
+    last_signed_at=excluded.last_signed_at,latest_signed_at=excluded.latest_signed_at,
+    updated_at=excluded.updated_at
+  WHERE (apple_subscriptions.user_id=excluded.user_id OR apple_subscriptions.user_id=?)
+    AND excluded.last_signed_at>=apple_subscriptions.last_signed_at
+    AND CASE WHEN excluded.latest_transaction_id=apple_subscriptions.latest_transaction_id
+    OR excluded.expires_at=apple_subscriptions.expires_at THEN excluded.latest_signed_at>=apple_subscriptions.latest_signed_at ELSE excluded.expires_at>apple_subscriptions.expires_at END
+  RETURNING ${APPLE_SUBSCRIPTION_COLUMNS}`,
   // A Sandbox purchase unlocks Strata+ only where Sandbox is allowed (outside production) or for a listed account.
-  hasActiveAppleSubscription: `SELECT 1 AS active FROM apple_subscriptions a JOIN users u ON u.id=a.user_id WHERE a.user_id=? AND ${activeAppleSubscription("a", "?")} AND (a.environment<>'Sandbox' OR ?=1 OR lower(u.email) IN (SELECT value FROM json_each(?))) LIMIT 1`,
+  hasActiveAppleSubscription: `SELECT 1 AS active
+  FROM apple_subscriptions a
+  JOIN users u ON u.id=a.user_id
+  WHERE a.user_id=? AND ${activeAppleSubscription("a", "?")}
+    AND (a.environment<>'Sandbox' OR ?=1 OR lower(u.email) IN (SELECT value FROM json_each(?)))
+  LIMIT 1`,
   appleNotification:
     "SELECT notification_uuid,notification_type,subtype,outcome,signed_at,processed_at FROM apple_notifications WHERE notification_uuid=?",
-  recordAppleNotification:
-    "INSERT INTO apple_notifications(notification_uuid,notification_type,subtype,outcome,signed_at,processed_at) VALUES(?,?,?,?,?,?) ON CONFLICT(notification_uuid) DO NOTHING RETURNING notification_uuid",
+  recordAppleNotification: `INSERT INTO apple_notifications(notification_uuid,notification_type,subtype,outcome,signed_at,processed_at)
+    VALUES(?,?,?,?,?,?)
+    ON CONFLICT(notification_uuid) DO NOTHING
+    RETURNING notification_uuid`,
   deleteOldAppleNotifications: "DELETE FROM apple_notifications WHERE processed_at<?",
   deleteAppleSubscriptionsForDeletedUser:
     "DELETE FROM apple_subscriptions WHERE user_id=? AND NOT EXISTS(SELECT 1 FROM users WHERE id=?)",

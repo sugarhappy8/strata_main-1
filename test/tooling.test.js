@@ -11,6 +11,7 @@ const read = (relative) => fs.readFileSync(path.join(ROOT, relative), "utf8");
 test("one check command owns the complete pre-release verification sequence", () => {
   const manifest = JSON.parse(read("package.json"));
   assert.deepEqual(manifest.scripts.check.split(" && "), [
+    "npm run format:check",
     "npm run release:check",
     "npm run architecture:check",
     "npm run typecheck",
@@ -22,6 +23,9 @@ test("one check command owns the complete pre-release verification sequence", ()
   ]);
   assert.equal(manifest.scripts.qa, "npm run check");
   assert.equal(manifest.scripts.lint, "eslint . --max-warnings=0");
+  assert.equal(manifest.scripts["format:check"], "prettier --check .");
+  assert.equal(JSON.parse(read(".prettierrc.json")).printWidth, 100);
+  assert.match(read("eslint.config.mjs"), /"max-len":\s*\[\s*"error",\s*\{\s*code:\s*140,/);
   assert.match(manifest.devDependencies.eslint, /^10\./);
   for (const layer of ["unit", "integration", "contract", "e2e"]) {
     assert.equal(manifest.scripts[`test:${layer}`], `node scripts/run-test-layer.js ${layer}`);

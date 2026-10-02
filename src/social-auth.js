@@ -123,7 +123,12 @@ function createSocialAuthService({
     }
     return "";
   }
-  /** Outside production the address may follow the request host, so a local server needs no extra settings. @param {import("./domain-types").HttpRequest} req @param {string} id */
+  /**
+   * Outside production the address may follow the request host, so a local server needs no extra
+   * settings.
+   * @param {import("./domain-types").HttpRequest} req
+   * @param {string} id
+   */
   function redirectUriFor(req, id) {
     if (settings.redirectBase) return `${settings.redirectBase}/auth/social/${id}/callback`;
     const protocol =
@@ -197,7 +202,14 @@ function createSocialAuthService({
     });
   }
 
-  /** The provider sends the member back here. No STRATA cookie can be trusted to arrive, so nothing signs in yet. @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url @param {import("./domain-types").SocialProviderId} id */
+  /**
+   * The provider sends the member back here. No STRATA cookie can be trusted to arrive, so nothing
+   * signs in yet.
+   * @param {import("./domain-types").HttpRequest} req
+   * @param {import("./domain-types").HttpResponse} res
+   * @param {URL} url
+   * @param {import("./domain-types").SocialProviderId} id
+   */
   async function callback(req, res, url, id) {
     if (req.method !== "GET") {
       notAllowed(res, "GET");
@@ -236,7 +248,12 @@ function createSocialAuthService({
     redirect(res, `/auth/social/finish?${new URLSearchParams({ state })}`);
   }
 
-  /** What the provider vouches for: the stable subject, the email address and whether it verified it, and a name. @param {import("./domain-types").SocialProviderId} id @param {any} pending */
+  /**
+   * What the provider vouches for: the stable subject, the email address and whether it verified
+   * it, and a name.
+   * @param {import("./domain-types").SocialProviderId} id
+   * @param {any} pending
+   */
   async function readProfile(id, pending) {
     const tokens = await provider.exchangeCode(id, {
       code: text(pending.code),
@@ -257,7 +274,11 @@ function createSocialAuthService({
     };
   }
 
-  /** Signs in the linked account, links a verified account with the same email, or creates one. @param {import("./domain-types").SocialProviderId} id @param {Awaited<ReturnType<typeof readProfile>>} profile */
+  /**
+   * Signs in the linked account, links a verified account with the same email, or creates one.
+   * @param {import("./domain-types").SocialProviderId} id
+   * @param {Awaited<ReturnType<typeof readProfile>>} profile
+   */
   async function resolveAccount(id, profile) {
     const time = now();
     const known = await store.accountIdentity(id, profile.subject);

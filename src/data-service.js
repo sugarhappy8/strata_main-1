@@ -37,7 +37,8 @@ const parsed = (value) => {
 
 /**
  * @param {{store:any,events:import("./domain-types").EventBus,getPlan:(userId:string)=>Promise<any>,coachingProfile:(userId:string)=>Promise<any>,
- *   requireSession:(req:any,res:any)=>Promise<any>,requireFeature:(feature:string)=>(req:any,res:any)=>Promise<any>,http:{json:Function},logger?:any,now?:()=>number}} dependencies
+ *   requireSession:(req:any,res:any)=>Promise<any>,requireFeature:(feature:string)=>(req:any,res:any)=>Promise<any>,
+ *   http:{json:Function},logger?:any,now?:()=>number}} dependencies
  */
 function createDataService({
   store,

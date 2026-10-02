@@ -1,6 +1,7 @@
 /* The STRATA iOS app (repository sugarhappy8/strata-fitness-ios) is a native shell around this site. Its web view
-   appends "StrataApp/<shell version>" to the user agent (its capacitor.config.json). This script runs in <head>, before the page paints, so pages can
-   adapt with `:root[data-app="ios"]` styles. Installing the site makes no sense inside the installed app, so Install
+   appends "StrataApp/<shell version>" to the user agent (its capacitor.config.json). This script runs in <head>,
+   before the page paints, so pages can adapt with `:root[data-app="ios"]` styles. Installing the site makes no
+   sense inside the installed app, so Install
    links and the install page are removed there. Only the app loads its chrome (app-mode.css and app-mode.js: tab bar,
    top bar, motion, and the App Store paywall); writing them here keeps them parser-inserted, so the stylesheet blocks
    first paint and the script runs before the body exists, on every page including ones this file is the only hook in. */

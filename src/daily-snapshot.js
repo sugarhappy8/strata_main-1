@@ -170,7 +170,13 @@ function createDailySnapshots({
   logger = null,
   now = Date.now,
 }) {
-  /** Builds and stores every day in a range, then announces each one. @param {string} userId @param {string} from @param {string} to @param {string} today */
+  /**
+   * Builds and stores every day in a range, then announces each one.
+   * @param {string} userId
+   * @param {string} from
+   * @param {string} to
+   * @param {string} today
+   */
   async function build(userId, from, to, today) {
     const last = to > today ? today : to;
     if (!isDate(from) || !isDate(last) || from > last) return [];

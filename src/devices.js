@@ -63,9 +63,12 @@ function publicConnection(row) {
 
 /**
  * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,
- *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,http:{json:Function,bodyJson:Function,redirect:Function},
- *   settings:ReturnType<typeof devicesSettings>,hasAccess:(userId:string)=>Promise<boolean>,logger?:{info?:Function,warn?:Function,error?:Function}|null,
- *   now?:()=>number,polar?:any,sync?:any,fetchImpl?:typeof fetch,isUniqueViolation?:(error:unknown)=>boolean,events?:import("./domain-types").EventBus|null}} dependencies
+ *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
+ *   http:{json:Function,bodyJson:Function,redirect:Function},
+ *   settings:ReturnType<typeof devicesSettings>,hasAccess:(userId:string)=>Promise<boolean>,
+ *   logger?:{info?:Function,warn?:Function,error?:Function}|null,
+ *   now?:()=>number,polar?:any,sync?:any,fetchImpl?:typeof fetch,isUniqueViolation?:(error:unknown)=>boolean,
+ *   events?:import("./domain-types").EventBus|null}} dependencies
  */
 function createDevicesService({
   store,
@@ -240,7 +243,12 @@ function createDevicesService({
     });
   }
 
-  /** Polar sends the member back here. No session cookie arrives, so nothing is linked yet. @param {any} req @param {any} res @param {URL} url */
+  /**
+   * Polar sends the member back here. No session cookie arrives, so nothing is linked yet.
+   * @param {any} req
+   * @param {any} res
+   * @param {URL} url
+   */
   async function callback(req, res, url) {
     const state = String(url.searchParams.get("state") || ""),
       code = String(url.searchParams.get("code") || ""),
@@ -299,7 +307,11 @@ function createDevicesService({
       fail(409, "DEVICES_CONNECT_EXPIRED", expired);
       return;
     }
-    /** Polar failures while connecting become answers the Account page can show; a sign-in problem is not the member's session. @param {unknown} error */
+    /**
+     * Polar failures while connecting become answers the Account page can show; a sign-in problem
+     * is not the member's session.
+     * @param {unknown} error
+     */
     const polarFailed = (error) => {
       const failure = /** @type {any} */ (error);
       if (!String(failure?.code || "").startsWith("POLAR_")) throw error;

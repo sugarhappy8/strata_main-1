@@ -150,7 +150,7 @@
     },
     "src/account-self-service-schema.js": {
       "role": "Account self-service query catalog",
-      "maxLines": 110,
+      "maxLines": 160,
       "allowedDependencies": []
     },
     "src/database.js": {
@@ -185,7 +185,7 @@
     },
     "src/schema.js": {
       "role": "Shared storage schema and statements",
-      "maxLines": 520,
+      "maxLines": 850,
       "allowedDependencies": [
         "src/access-controls-schema.js",
         "src/account-self-service-schema.js",
@@ -213,7 +213,7 @@
     },
     "src/training-loop-schema.js": {
       "role": "Check-in, training-block, and adaptation storage schema",
-      "maxLines": 90,
+      "maxLines": 130,
       "allowedDependencies": []
     },
     "src/training-loop-store.js": {
@@ -251,7 +251,7 @@
     },
     "src/billing-schema.js": {
       "role": "Commercial entitlement and recurring-subscription schema",
-      "maxLines": 190,
+      "maxLines": 330,
       "allowedDependencies": []
     },
     "src/billing-store.js": {
@@ -444,7 +444,7 @@
     },
     "src/devices-schema.js": {
       "role": "Connected-device, legacy-revocation, and wellness tables",
-      "maxLines": 200,
+      "maxLines": 230,
       "allowedDependencies": []
     },
     "src/devices-store.js": {
@@ -522,7 +522,7 @@
     },
     "src/ai-schema.js": {
       "role": "Strata AI consent and daily usage storage schema",
-      "maxLines": 110,
+      "maxLines": 150,
       "allowedDependencies": []
     },
     "src/ai-store.js": {
@@ -562,7 +562,7 @@
     },
     "src/apple-billing-schema.js": {
       "role": "Apple subscription and notification-ledger schema",
-      "maxLines": 90,
+      "maxLines": 110,
       "allowedDependencies": []
     },
     "src/apple-billing-store.js": {

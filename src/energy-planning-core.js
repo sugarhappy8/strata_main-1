@@ -312,7 +312,13 @@ function distribute(target, weights) {
   }
   return days;
 }
-/** Integer grams reconcile exactly with the 4/4/9 planning convention. @param {number} calories @param {number} weightKg @param {string|null} preference @param {string} goal */
+/**
+ * Integer grams reconcile exactly with the 4/4/9 planning convention.
+ * @param {number} calories
+ * @param {number} weightKg
+ * @param {string|null} preference
+ * @param {string} goal
+ */
 function macroTarget(calories, weightKg, preference, goal) {
   if (!preference) return null;
   const requestedRate = preference === "higher_protein" ? 2 : goal === "fat_loss" ? 1.8 : 1.6,

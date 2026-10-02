@@ -228,7 +228,10 @@ function directAnswerOnly(/** @type {unknown} */ message) {
     ).test(value);
   return sensitive || (question && !request);
 }
-/** The member's recent words, used to choose the exercise shortlist. @param {{kind:string,message?:string,history?:Array<{role:string,content:string}>}} input */
+/**
+ * The member's recent words, used to choose the exercise shortlist.
+ * @param {{kind:string,message?:string,history?:Array<{role:string,content:string}>}} input
+ */
 function requestText({ kind, message = "", history = [] }) {
   if (kind === "suggestions") return "";
   return [

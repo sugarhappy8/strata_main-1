@@ -72,7 +72,10 @@ const productSignalRebuild = (table) => [
     "CREATE TABLE IF NOT EXISTS product_signal_counts",
     "CREATE TABLE product_signal_counts_build9",
   ),
-  "INSERT INTO product_signal_counts_build9(event_day,event_name,event_count) SELECT event_day,event_name,event_count FROM product_signal_counts WHERE event_name<>'trial_started'",
+  `INSERT INTO product_signal_counts_build9(event_day,event_name,event_count)
+  SELECT event_day,event_name,event_count
+  FROM product_signal_counts
+  WHERE event_name<>'trial_started'`,
   "DROP TABLE product_signal_counts",
   "ALTER TABLE product_signal_counts_build9 RENAME TO product_signal_counts",
 ];

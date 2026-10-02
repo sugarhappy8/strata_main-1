@@ -1,4 +1,5 @@
-/* global StrataAccountApi, StrataAccountDeleteDialog, StrataAccountDevices, StrataAccountEvents, StrataAccountLogic, StrataAccountRender, StrataAccountState, StrataDevicesCore */
+/* global StrataAccountApi, StrataAccountDeleteDialog, StrataAccountDevices, StrataAccountEvents,
+   StrataAccountLogic, StrataAccountRender, StrataAccountState, StrataDevicesCore */
 "use strict";
 
 const logic = StrataAccountLogic;

@@ -62,8 +62,12 @@ function weekdayName(time, zone) {
 
 /**
  * @param {{store:any,auth:any,requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
- *   http:{json:Function,bodyJson:Function},provider:{configured:boolean,model:string,complete:Function,health:Function},getPlanSnapshot:(userId:string)=>Promise<{plan:any,updatedAt:number}>,
- *   quota:ReturnType<typeof import("./ai-quota").createAiQuota>,dataService?:any,logger?:{info:Function,warn:Function}|null,now?:()=>number,config?:{maxConcurrent?:number,maxQueue?:number,resultTtlMs?:number,healthTtlMs?:number},
+ *   http:{json:Function,bodyJson:Function},
+ *   provider:{configured:boolean,model:string,complete:Function,health:Function},
+ *   getPlanSnapshot:(userId:string)=>Promise<{plan:any,updatedAt:number}>,
+ *   quota:ReturnType<typeof import("./ai-quota").createAiQuota>,dataService?:any,
+ *   logger?:{info:Function,warn:Function}|null,now?:()=>number,
+ *   config?:{maxConcurrent?:number,maxQueue?:number,resultTtlMs?:number,healthTtlMs?:number},
  *   isUniqueViolation?:(error:unknown)=>boolean}} dependencies
  */
 function createAiService({
@@ -227,7 +231,13 @@ function createAiService({
       dataContext: await recentDays(userId, profile, time),
     };
   }
-  /** Recent days from the shared data layer (snapshots, Training Log, signals, plan history), compact and capped. @param {string} userId @param {any} profile @param {number} time */
+  /**
+   * Recent days from the shared data layer (snapshots, Training Log, signals, plan history),
+   * compact and capped.
+   * @param {string} userId
+   * @param {any} profile
+   * @param {number} time
+   */
   async function recentDays(userId, profile, time) {
     if (!dataService) return "";
     const date = localDate(time, profile?.timeZone || "UTC"),
@@ -647,7 +657,12 @@ function createAiService({
   const inProgress = () =>
     aiError("AI_REQUEST_IN_PROGRESS", "Strata AI is still working on your last request.", 409);
 
-  /** Reads, checks, and queues one new request while the member is marked in flight. @param {any} req @param {any} res @param {any} session */
+  /**
+   * Reads, checks, and queues one new request while the member is marked in flight.
+   * @param {any} req
+   * @param {any} res
+   * @param {any} session
+   */
   async function submit(req, res, session) {
     if (await store.activeAiJob(String(session.id))) throw inProgress();
     const input = await bodyJson(req),

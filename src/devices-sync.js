@@ -28,7 +28,8 @@ const isoDate = (time) => new Date(time).toISOString().slice(0, 10);
 
 /**
  * @param {{store:import("./domain-types").DeviceStore,polar:any,keys:import("./devices-crypto").DeviceKey[],hasAccess:(userId:string)=>Promise<boolean>,
- *   logger?:{info?:Function,warn?:Function,error?:Function}|null,now?:()=>number,intervalMs?:number,batchSize?:number,events?:import("./domain-types").EventBus|null,
+ *   logger?:{info?:Function,warn?:Function,error?:Function}|null,now?:()=>number,intervalMs?:number,batchSize?:number,
+ *   events?:import("./domain-types").EventBus|null,
  *   locks?:Pick<import("./domain-types").ServerStateStore,"acquireLock"|"releaseLock">|null,holder?:string}} dependencies
  */
 function createDeviceSync({

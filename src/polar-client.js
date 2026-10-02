@@ -22,7 +22,11 @@ function polarError(code, message, status = 502, extra = {}) {
 function discard(response) {
   void response.body?.cancel().catch(() => {});
 }
-/** One number of a header such as "RateLimit-Usage: 50, 700", or null when it is missing. @param {string|null} value @param {number} index */
+/**
+ * One number of a header such as "RateLimit-Usage: 50, 700", or null when it is missing.
+ * @param {string|null} value
+ * @param {number} index
+ */
 function headerNumber(value, index) {
   const part = String(value ?? "")
       .split(",")
@@ -310,7 +314,12 @@ function createPolarClient({
         refreshed: true,
       };
     },
-    /** Sleep details require one V4 request per date after the range listing. @param {string} token @param {string} from @param {string} to */
+    /**
+     * Sleep details require one V4 request per date after the range listing.
+     * @param {string} token
+     * @param {string} from
+     * @param {string} to
+     */
     async sleep(token, from, to) {
       const listed = validBody(
         await memberRead(token, rangedPath("/sleeps", from, to, 30)),

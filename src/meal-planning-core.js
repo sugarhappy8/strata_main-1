@@ -733,7 +733,13 @@ function menuScore(meals, target, fraction) {
     score - meals.reduce((sum, meal) => sum + Math.min(2, meal.favoriteMatches.length) * 0.35, 0)
   );
 }
-/** A bounded beam compares whole menus so a favorite cannot mask a large macro gap. @param {CandidateMeal[]} candidates @param {any} remaining @param {number} count @param {string} seed */
+/**
+ * A bounded beam compares whole menus so a favorite cannot mask a large macro gap.
+ * @param {CandidateMeal[]} candidates
+ * @param {any} remaining
+ * @param {number} count
+ * @param {string} seed
+ */
 function rankedMenus(candidates, remaining, count, seed) {
   /** @type {{meals:any[],score:number,tie:number}[]} */ let beam = [
     { meals: [], score: 0, tie: 0 },

@@ -64,7 +64,11 @@ function intervalRate(value) {
   return Number.isFinite(interval) && interval > 0 ? 60000 / interval : null;
 }
 
-/** An empty night, so sleep and Nightly Recharge for one date merge into a single row. @param {string} nightDate @param {number} updatedAt */
+/**
+ * An empty night, so sleep and Nightly Recharge for one date merge into a single row.
+ * @param {string} nightDate
+ * @param {number} updatedAt
+ */
 function blankNight(nightDate, updatedAt) {
   return {
     nightDate,

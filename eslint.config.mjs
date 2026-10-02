@@ -23,6 +23,23 @@ const correctnessRules = {
   "no-useless-return": "error",
 };
 
+// Prettier wraps code at 100 columns; this ceiling keeps lines from growing back where Prettier cannot
+// wrap. Strings, templates, regexes, URLs, and JSDoc type tags are exempt because breaking them would
+// change their meaning or make them harder to read.
+const layoutRules = {
+  "max-len": [
+    "error",
+    {
+      code: 140,
+      ignoreUrls: true,
+      ignoreStrings: true,
+      ignoreTemplateLiterals: true,
+      ignoreRegExpLiterals: true,
+      ignorePattern: String.raw`^\s*(?:/\*\*|\*)\s*@(?:param|returns?|type|typedef|template|property|callback)\b`,
+    },
+  ],
+};
+
 export default [
   {
     ignores: ["node_modules/**", "coverage/**", "data/**", "test-runtime/**"],
@@ -32,7 +49,7 @@ export default [
     files: ["**/*.js", "**/*.mjs"],
     languageOptions: { ecmaVersion: "latest" },
     linterOptions: { reportUnusedDisableDirectives: "error" },
-    rules: correctnessRules,
+    rules: { ...correctnessRules, ...layoutRules },
   },
   {
     files: ["server.js", "src/**/*.js", "scripts/**/*.js", "test/**/*.js", "qa/**/*.js"],

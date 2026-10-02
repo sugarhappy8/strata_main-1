@@ -179,7 +179,12 @@ async function readCoachingEvidence(store, userId, weekStart, profile) {
   return { dailyLogs, previousWeek, workouts, checkIns, limited };
 }
 
-/** Old profile targets remain valid for their own dates; duplicate or out-of-week dates do not. @param {any} week @param {string} start @param {string} end */
+/**
+ * Old profile targets remain valid for their own dates; duplicate or out-of-week dates do not.
+ * @param {any} week
+ * @param {string} start
+ * @param {string} end
+ */
 function targetsForWeek(week, start, end) {
   const targets = new Map(),
     conflicts = new Set();

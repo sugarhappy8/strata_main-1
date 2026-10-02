@@ -40,7 +40,12 @@ function scheduleBucket(plan) {
     ? bucket(minutes(days.reduce((sum, day) => sum + daySets(plan, day), 0) / days.length))
     : null;
 }
-/** Choose a balanced schedule while preserving the current days when adding, or only removing from them. @param {string[]} base @param {number} count */
+/**
+ * Choose a balanced schedule while preserving the current days when adding, or only removing from
+ * them.
+ * @param {string[]} base
+ * @param {number} count
+ */
 function balancedDays(base, count) {
   const required = new Set(base),
     adding = count >= base.length;
@@ -175,7 +180,11 @@ function wordsOnly(value, allowed) {
     .every((word) => /^\d+$/.test(word) || allowed.has(word));
 }
 
-/** Convert plain-language schedule edits into requirements that can be checked after generation. @param {unknown} message @param {any} basePlan */
+/**
+ * Convert plain-language schedule edits into requirements that can be checked after generation.
+ * @param {unknown} message
+ * @param {any} basePlan
+ */
 function planEditContract(message, basePlan) {
   const text = numbered(String(message ?? "")),
     baseDays = trainingDays(basePlan),
@@ -282,7 +291,10 @@ function planEditContract(message, basePlan) {
   };
 }
 
-/** Complete base-plan context plus requirements for the model. @param {{basePlan:any,source?:unknown,candidates?:any[],contract:any}} input */
+/**
+ * Complete base-plan context plus requirements for the model.
+ * @param {{basePlan:any,source?:unknown,candidates?:any[],contract:any}} input
+ */
 function planEditContext({ basePlan, source, candidates = [], contract }) {
   const codes = new Map(candidates.map((item) => [String(item.id), String(item.code)]));
   const rows = DAYS.map((day) => {

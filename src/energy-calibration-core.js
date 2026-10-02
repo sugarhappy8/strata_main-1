@@ -130,7 +130,12 @@ function weightFit(points) {
     );
   return { slope, residuals, mad: median(residuals) };
 }
-/** Independent recent-weight context; never mutates the profile or estimates new body fat. @param {any} profile @param {string} weekStart @param {any} evidence */
+/**
+ * Independent recent-weight context; never mutates the profile or estimates new body fat.
+ * @param {any} profile
+ * @param {string} weekStart
+ * @param {any} evidence
+ */
 function deriveWeightAnchor(profile, weekStart, evidence) {
   const observed = observations(evidence, weekStart),
     fallback = {
@@ -211,7 +216,11 @@ function deriveWeightAnchor(profile, weekStart, evidence) {
   };
 }
 
-/** Complete daily intake runs are bounded by actual morning measurements. @param {ReturnType<typeof observations>} observed @param {string} weekStart */
+/**
+ * Complete daily intake runs are bounded by actual morning measurements.
+ * @param {ReturnType<typeof observations>} observed
+ * @param {string} weekStart
+ */
 function intervals(observed, weekStart) {
   const runs = [];
   let run = [];
@@ -342,7 +351,12 @@ function previousTarget(evidence, weekStart, acceptedModelVersions) {
     ageDays: daysBetween(previousDate, weekStart),
   };
 }
-/** Bound before and after rounding so rounding never exceeds the declared limits. @param {number} requested @param {number} baseline @param {ReturnType<typeof previousTarget>} previous */
+/**
+ * Bound before and after rounding so rounding never exceeds the declared limits.
+ * @param {number} requested
+ * @param {number} baseline
+ * @param {ReturnType<typeof previousTarget>} previous
+ */
 function limitedTarget(requested, baseline, previous) {
   const lower = Math.ceil((baseline * (1 - POLICY.maxPriorDeviation)) / 25) * 25,
     upper = Math.floor((baseline * (1 + POLICY.maxPriorDeviation)) / 25) * 25,

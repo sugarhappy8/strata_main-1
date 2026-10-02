@@ -79,14 +79,25 @@ function createAiQuota({ store, now = Date.now, limits }) {
       throw error;
     }
   }
-  /** Tokens are counted on the day the request was claimed. @param {"chat"|"brief"} kind @param {string} userId @param {string} date @param {number} tokens */
+  /**
+   * Tokens are counted on the day the request was claimed.
+   * @param {"chat"|"brief"} kind
+   * @param {string} userId
+   * @param {string} date
+   * @param {number} tokens
+   */
   async function record(kind, userId, date, tokens) {
     const count = Math.max(0, Math.floor(Number(tokens) || 0));
     if (!count) return;
     await store.addAiUsage(date, "global", kind, 0, count);
     await store.addAiUsage(date, userId, kind, 0, count);
   }
-  /** A request that failed before the provider did any work is given back. @param {"chat"|"brief"} kind @param {string} userId @param {string} date */
+  /**
+   * A request that failed before the provider did any work is given back.
+   * @param {"chat"|"brief"} kind
+   * @param {string} userId
+   * @param {string} date
+   */
   async function refund(kind, userId, date) {
     await store.refundAiUsage(date, "global", kind);
     await store.refundAiUsage(date, userId, kind);

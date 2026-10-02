@@ -216,7 +216,10 @@
     const value = Number(status);
     return !finite(status) ? "none" : value <= 2 ? "low" : value === 3 ? "mid" : "good";
   }
-  /** Overnight stress signals in plain words. @param {{level:string,nights?:number,needed?:number,signals?:string[]}|null|undefined} stress */
+  /**
+   * Overnight stress signals in plain words.
+   * @param {{level:string,nights?:number,needed?:number,signals?:string[]}|null|undefined} stress
+   */
   function stressView(stress) {
     if (!stress) return { label: "—", detail: "", tone: "none" };
     if (stress.level === "learning")
@@ -242,7 +245,10 @@
       tone: "mid",
     };
   }
-  /** The optional lighter-session offer and its reason. @param {{offer?:boolean,reason?:string|null,note?:string|null}|null|undefined} advice */
+  /**
+   * The optional lighter-session offer and its reason.
+   * @param {{offer?:boolean,reason?:string|null,note?:string|null}|null|undefined} advice
+   */
   function lighterText(advice) {
     if (advice?.offer && advice.reason === "recovery")
       return "Last night’s Nightly Recharge was poor. You can start a lighter session: the same exercises with one set fewer each.";

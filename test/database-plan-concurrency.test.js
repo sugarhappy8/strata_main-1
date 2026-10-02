@@ -294,7 +294,7 @@ test(
 
       assert.match(
         transport.planRequests[0].sql,
-        /WHERE \?<>0 AND plans\.updated_at=\? RETURNING plan_json,updated_at$/,
+        /WHERE\s+\?<>0\s+AND\s+plans\.updated_at=\?\s+RETURNING\s+plan_json,updated_at$/,
       );
       assert.deepEqual(transport.planRequests[0].args, [firstPlan, 2_000, userId, 0, 0, 0, 0]);
       assert.deepEqual(transport.planRequests[1].args, [

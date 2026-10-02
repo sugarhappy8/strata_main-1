@@ -21,7 +21,16 @@ const ACCESS_CONTROLS_SQL = {
   activeAdminGrant: `SELECT user_id FROM admin_account_controls WHERE user_id=? AND ${activeGrant("admin_account_controls", "?")}`,
   deleteAdminControlsForDeletedUser:
     "DELETE FROM admin_account_controls WHERE user_id=? AND NOT EXISTS (SELECT 1 FROM users WHERE id=?)",
-  writeAdminControls: `INSERT INTO admin_account_controls(user_id,grant_starts_at,grant_expires_at,grant_revoked_at,checkout_blocked_at,revision,updated_at) SELECT u.id,?,?,?,?,1,? FROM users u WHERE u.id=? AND ${ADMIN_ACTOR_VALID} AND COALESCE((SELECT revision FROM admin_account_controls WHERE user_id=u.id),0)=? ON CONFLICT(user_id) DO UPDATE SET grant_starts_at=excluded.grant_starts_at,grant_expires_at=excluded.grant_expires_at,grant_revoked_at=excluded.grant_revoked_at,checkout_blocked_at=excluded.checkout_blocked_at,revision=admin_account_controls.revision+1,updated_at=excluded.updated_at RETURNING *`,
+  writeAdminControls: `INSERT INTO admin_account_controls(user_id,grant_starts_at,grant_expires_at,grant_revoked_at,checkout_blocked_at,revision,updated_at)
+  SELECT u.id,?,?,?,?,1,?
+  FROM users u
+  WHERE u.id=? AND ${ADMIN_ACTOR_VALID}
+    AND COALESCE((SELECT revision FROM admin_account_controls WHERE user_id=u.id),0)=?
+  ON CONFLICT(user_id) DO UPDATE
+  SET grant_starts_at=excluded.grant_starts_at,grant_expires_at=excluded.grant_expires_at,
+    grant_revoked_at=excluded.grant_revoked_at,checkout_blocked_at=excluded.checkout_blocked_at,
+    revision=admin_account_controls.revision+1,updated_at=excluded.updated_at
+  RETURNING *`,
 };
 module.exports = {
   ADMIN_CONTROLS_TABLE,

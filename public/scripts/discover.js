@@ -2023,7 +2023,9 @@ document.addEventListener("submit", async (event) => {
   }
 });
 
-// Tab return re-checks the session behind a hidden view (visibility keeps layout and scroll). The same session gets its view back as left, unsaved input included; any other answer clears it; a failed check keeps the input in memory until a retry.
+// Tab return re-checks the session behind a hidden view (visibility keeps layout and scroll). The same
+// session gets its view back as left, unsaved input included; any other answer clears it; a failed check
+// keeps the input in memory until a retry.
 async function revalidateMemberWorkspaceWhenVisible() {
   if (
     (document.visibilityState && document.visibilityState !== "visible") ||

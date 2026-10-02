@@ -311,7 +311,12 @@ function candidateExercises({
   return list;
 }
 
-/** Library exercises for the model's own search terms, never including ones the member's limits exclude. @param {unknown} terms @param {string[]} limitations */
+/**
+ * Library exercises for the model's own search terms, never including ones the member's limits
+ * exclude.
+ * @param {unknown} terms
+ * @param {string[]} limitations
+ */
 function searchCatalog(terms, limitations = []) {
   const blocked = limitations.map((item) => String(item).replace(/^no-/, "")),
     words = (Array.isArray(terms) ? terms : [terms])

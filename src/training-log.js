@@ -320,7 +320,13 @@ function createTrainingLog({ store, getPlan, logger = null, now = Date.now }) {
       today,
     });
   }
-  /** Re-links the days a Polar sync or a finished workout touched. @param {string} userId @param {string} from @param {string} to @param {string} today */
+  /**
+   * Re-links the days a Polar sync or a finished workout touched.
+   * @param {string} userId
+   * @param {string} from
+   * @param {string} to
+   * @param {string} today
+   */
   async function relink(userId, from, to, today) {
     if (validRange(from, to)) await load(userId, from, to, today, true);
   }

@@ -68,7 +68,10 @@ function tuneDay(source, target, candidates) {
   return items;
 }
 
-/** A narrow, validated last resort for measurable edits when a local model cannot format its plan. @param {{basePlan:any,contract:any,candidates:any[]}} input */
+/**
+ * A narrow, validated last resort for measurable edits when a local model cannot format its plan.
+ * @param {{basePlan:any,contract:any,candidates:any[]}} input
+ */
 function fallbackPlanResponse({ basePlan, contract, candidates }) {
   if (!contract?.fallbackSafe) return null;
   const base = activeDays(basePlan),

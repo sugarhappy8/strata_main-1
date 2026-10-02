@@ -32,9 +32,13 @@ function validateRetiredPaddleCheckoutTransaction(data) {
 
 /**
  * @param {{
- *   transactionRequest:(config:import("./domain-types").PaymentConfig,transactionId:unknown,options:{method:string,body:unknown,fetchImpl:import("./domain-types").FetchLike})=>Promise<import("./domain-types").PaddleFetchedTransactionResult>,
+ *   transactionRequest:(config:import("./domain-types").PaymentConfig,transactionId:unknown,
+ *     options:{method:string,body:unknown,fetchImpl:import("./domain-types").FetchLike})=>
+ *     Promise<import("./domain-types").PaddleFetchedTransactionResult>,
  *   transactionError:(message:string,code:string)=>Error,
- *   validateTransaction:(data:import("./domain-types").PaddleTransactionData|null|undefined,config:import("./domain-types").PaymentConfig,identity:import("./domain-types").CheckoutIdentity)=>{ok:boolean,reason?:string},
+ *   validateTransaction:(data:import("./domain-types").PaddleTransactionData|null|undefined,
+ *     config:import("./domain-types").PaymentConfig,identity:import("./domain-types").CheckoutIdentity)=>
+ *     {ok:boolean,reason?:string},
  *   defaultProductId:string,
  *   defaultPriceId:string
  * }} dependencies

@@ -257,7 +257,13 @@ function adverseCheckIn(checkIns, ids) {
     enjoyment: Math.min(...rows.map((row) => row.enjoyment)),
   };
 }
-/** Keep actual targets separate from generic starting prescriptions. @param {Value} item @param {ReturnType<typeof prepareEvidence>} evidence @param {string} weekStart @returns {Value} */
+/**
+ * Keep actual targets separate from generic starting prescriptions.
+ * @param {Value} item
+ * @param {ReturnType<typeof prepareEvidence>} evidence
+ * @param {string} weekStart
+ * @returns {Value}
+ */
 function withPerformance(item, evidence, weekStart) {
   const source = evidence.workouts.find((workout) =>
     workout.entries.some((/** @type {Value} */ entry) => entry.exerciseId === item.exerciseId),
