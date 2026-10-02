@@ -759,7 +759,7 @@ test("password recovery is private, preserves account data, and revokes every se
   assert.equal(replayedReset.data.code, "INVALID_RESET_LINK");
 });
 
-test("checkout rejects an unknown abandoned checkout catalog before any provider request", async () => {
+test("checkout switches off an abandoned checkout on another price, then starts a current one", async () => {
   const arbitrary = await verifiedSignup({
     name: "Unknown Catalog",
     email: "unknown-catalog@example.test",
@@ -787,12 +787,36 @@ test("checkout rejects an unknown abandoned checkout catalog before any provider
   }
   const arbitraryBefore = paddleRequests.length,
     arbitraryResult = await checkout(arbitrary);
-  assert.equal(arbitraryResult.response.status, 503);
-  assert.equal(arbitraryResult.data.code, "PURCHASE_RECONCILIATION_INVALID");
-  assert.equal(
-    paddleRequests.length,
-    arbitraryBefore,
-    "an unrecognized monthly pair is rejected before any provider request or mutation",
+  assert.equal(arbitraryResult.response.status, 201, JSON.stringify(arbitraryResult.data));
+  assert.deepEqual(
+    paddleRequests
+      .slice(arbitraryBefore)
+      .filter((entry) => entry.url === `/transactions/${arbitraryTransactionId}`)
+      .map((entry) => entry.method),
+    ["GET", "PATCH"],
+    "the old checkout is read, checked against its recorded price, and switched off",
+  );
+  const retired = paddleTransactions.get(arbitraryTransactionId);
+  assert.equal(retired.billing_details.enable_checkout, false);
+  assert.equal(retired.custom_data, null);
+  {
+    const db = database({ readOnly: true });
+    assert.deepEqual(
+      {
+        ...db
+          .prepare(
+            "SELECT revocation_reason,access_revoked_at IS NOT NULL AS revoked FROM paddle_purchases WHERE transaction_id=?",
+          )
+          .get(arbitraryTransactionId),
+      },
+      { revocation_reason: "checkout_disabled", revoked: 1 },
+    );
+    db.close();
+  }
+  assert.notEqual(
+    arbitraryResult.data.transactionId,
+    arbitraryTransactionId,
+    "the new checkout is a fresh one on the current price",
   );
 });
 

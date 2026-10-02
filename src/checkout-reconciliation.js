@@ -90,13 +90,11 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
       .slice(0, MAX_DELETION_RECONCILIATIONS);
     const reconciled = await Promise.allSettled(
       stale.map(async (purchase) => {
-        const current = currentPurchase(purchase);
-        if (!current && reuseDraft)
-          throw authService().accountActionError(
-            "STRATA could not safely validate an abandoned Strata+ checkout catalog. Please contact support.",
-            503,
-            "PURCHASE_RECONCILIATION_INVALID",
-          );
+        // Only a checkout on the current catalog can be reused. One on any other price (an earlier
+        // monthly price, the retired one-time price) is switched off like an abandoned one, after it is
+        // checked against the price and product STRATA recorded for it.
+        const current = currentPurchase(purchase),
+          reuse = reuseDraft && current;
         let remote;
         try {
           remote = await fetchPaddleTransaction(paymentConfig, purchase.transaction_id);
@@ -129,7 +127,7 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
           return;
         }
         if (remote.status === "canceled") {
-          const validation = reuseDraft
+          const validation = reuse
             ? validatePurchaseCheckoutForCancellation(remote, purchase)
             : retirementValidation;
           if (!validation.ok)
@@ -142,7 +140,7 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
           return;
         }
         if (remote.status === "draft") {
-          if (reuseDraft) {
+          if (reuse) {
             if (!exactCurrentCheckoutPrice(remote.data))
               throw authService().accountActionError(
                 "STRATA could not safely validate the current checkout price. Please contact support.",
@@ -175,7 +173,7 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
           return;
         }
         if (PADDLE_CANCELABLE_STALE_STATUSES.has(remote.status)) {
-          const validation = reuseDraft
+          const validation = reuse
             ? validatePurchaseCheckoutForCancellation(remote, purchase)
             : retirementValidation;
           if (!validation.ok)

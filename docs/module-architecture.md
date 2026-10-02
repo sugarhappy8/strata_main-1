@@ -133,7 +133,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 259 | 253 | 15.0 KiB | 330 | — |
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 571 | 564 | 21.4 KiB | 770 | `src/access-controls-schema.js`, `src/billing-schema.js` |
 | `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 1119 | 1093 | 41.8 KiB | 1400 | `src/access-controls.js`, `src/apple-billing.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/payments.js`, `src/plans.js` |
-| `src/checkout-reconciliation.js` | Current-catalog checkout checks, validated closure, and settlement reconciliation | 246 | 245 | 10.4 KiB | 330 | `src/payments.js`, `src/plans.js` |
+| `src/checkout-reconciliation.js` | Current-catalog checkout checks, validated closure, and settlement reconciliation | 244 | 243 | 10.4 KiB | 330 | `src/payments.js`, `src/plans.js` |
 | `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 564 | 557 | 23.3 KiB | 1250 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
 | `src/coaching-evidence.js` | Owner-filtered coaching history and original-target diary assembly | 268 | 262 | 8.5 KiB | 420 | `src/coaching-core.js`, `src/energy-calibration-core.js` |
 | `src/coaching-prescription-core.js` | Measurement-aware prescriptions from comparable completed training history | 385 | 384 | 14.9 KiB | 750 | `src/progression.js` |
