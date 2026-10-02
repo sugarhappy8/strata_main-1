@@ -106,17 +106,28 @@
     render();
   }
 
+  // A signed-in count carries the session and its security token; a signed-out one carries no credentials at all.
+  let securityToken=null;
+  function signedInToken(){
+    securityToken||=root.fetch("/api/me",{credentials:"same-origin",cache:"no-store",headers:{Accept:"application/json"}})
+      .then(async(response)=>response?.ok?String((await response.json())?.csrfToken||""):"")
+      .catch(()=>"");
+    return securityToken;
+  }
+
   async function transmit(name){
     if(!sharingEnabled()||!SERVER_EVENT_SET.has(name))return false;
     try{
+      const token=await signedInToken();
       const response=await root.fetch("/api/product-signals",{
         method:"POST",
-        credentials:"omit",
+        credentials:token?"same-origin":"omit",
         referrerPolicy:"no-referrer",
         keepalive:true,
-        headers:{Accept:"application/json","Content-Type":"application/json"},
+        headers:{Accept:"application/json","Content-Type":"application/json",...(token?{"X-CSRF-Token":token}:{})},
         body:JSON.stringify({event:name})
       });
+      if(response?.status===403&&token)securityToken=null;
       return Boolean(response?.ok);
     }catch{return false;}
   }
@@ -130,7 +141,7 @@
     panel.setAttribute("role","region");
     panel.setAttribute("aria-labelledby","productSignalsConsentTitle");
     panel.setAttribute("aria-live","polite");
-    panel.innerHTML='<div><p class="signal-consent-kicker">Optional product activity</p><h2 id="productSignalsConsentTitle">Share aggregate action counts?</h2><p>STRATA would receive only an allowlisted action name; the server adds the current UTC day. No cookie, account, URL, exercise, plan, or workout detail is sent. Counts are not unique people or conversion cohorts, and repeating an action increments its count again.</p></div><div class="signal-consent-actions"><button type="button" data-signal-consent="share">Share counts</button><button type="button" data-signal-consent="local">Keep on this device</button><button type="button" data-signal-consent="later">Not now</button><a href="/privacy#localProductSignals">Read privacy details</a></div>';
+    panel.innerHTML='<div><p class="signal-consent-kicker">Optional product activity</p><h2 id="productSignalsConsentTitle">Share aggregate action counts?</h2><p>STRATA would receive only an allowlisted action name; the server adds the current UTC day. No URL, exercise, plan, or workout detail is sent. If you are signed in, your sign-in is checked so the count is marked signed in, but no account is stored with it. Each action counts once per day; counts are not unique people or conversion cohorts.</p></div><div class="signal-consent-actions"><button type="button" data-signal-consent="share">Share counts</button><button type="button" data-signal-consent="local">Keep on this device</button><button type="button" data-signal-consent="later">Not now</button><a href="/privacy#localProductSignals">Read privacy details</a></div>';
     const host=document.querySelector?.("[data-product-signals-consent-host]")||document.querySelector?.("main")||document.body;
     host.append(panel);
   }
@@ -212,7 +223,7 @@
     if(!storage()||typeof root.fetch!=="function")return "Unavailable in this browser.";
     if(!enabled())return "Off because device product insights are off.";
     const value=sharingPreference();
-    if(value===true)return "On for future actions. STRATA receives only an allowlisted action name; its server adds the UTC day and increments an aggregate count.";
+    if(value===true)return "On for future actions. STRATA receives only an allowlisted action name; its server adds the UTC day and counts each action once per day.";
     if(value===false)return "Off. Future product actions stay on this device.";
     return "Not chosen. Nothing has been sent; STRATA will ask after a relevant action.";
   }

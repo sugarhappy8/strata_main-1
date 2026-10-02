@@ -6,6 +6,7 @@ const {mkdirSync,mkdtempSync,rmSync}=require("node:fs");
 const {join}=require("node:path");
 const {DatabaseSync}=require("node:sqlite");
 const {SCHEMA,SQL}=require("../src/schema");
+const {PRODUCT_SIGNAL_TRIGGER}=require("../src/product-signals-schema");
 const {createStore}=require("../src/database");
 
 const PROJECT_ROOT=join(__dirname,"..");
@@ -32,8 +33,10 @@ test("schema indexes match the exercised authentication, entitlement, and abuse-
     assert.equal(uses(queryPlan(database,SQL.purchaseByTransaction,["transaction"]),"sqlite_autoindex_paddle_purchases_1"),true);
     assert.equal(uses(queryPlan(database,SQL.hasDiscoveryAccess,["user",null,null]),"paddle_purchases_user_id"),true);
     assert.equal(uses(queryPlan(database,SQL.productSignalCounts,["2026-01-01","2026-12-31"]),"sqlite_autoindex_product_signal_counts_1"),true);
-    assert.deepEqual(database.prepare("PRAGMA table_info(product_signal_counts)").all().map((row)=>row.name),["event_day","event_name","event_count"]);
-    assert.throws(()=>database.prepare(SQL.incrementProductSignal).get("2026-09-07","not_allowlisted"),/check constraint/i);
+    assert.deepEqual(database.prepare("PRAGMA table_info(product_signal_counts)").all().map((row)=>row.name),["event_day","event_name","event_count","member_count","anonymous_count"]);
+    for (const statement of PRODUCT_SIGNAL_TRIGGER) database.exec(statement);
+    assert.throws(()=>database.prepare(SQL.recordProductSignal).get("2026-09-07","not_allowlisted","a".repeat(64),"member"),/check constraint/i);
+    assert.equal(database.prepare("SELECT COUNT(*) AS count FROM product_signal_actors").get().count,0,"a refused count leaves no daily key behind");
 
     const supportPlan=queryPlan(database,SQL.claimSupportRequestEvent,[
       "event","ip","email",1_000,"ip",0,10,"email",0,10,0,100

@@ -23,8 +23,8 @@ class FakeElement{
   async emit(type){for(const handler of this.listeners[type]||[])await handler({target:this});}
 }
 
-function harness({gpc=false,dnt="",values={},blockedStorage=false,withFetch=true}={}){
-  const store=new Map(Object.entries(values)),windowListeners={},documentListeners={},requests=[];
+function harness({gpc=false,dnt="",values={},blockedStorage=false,withFetch=true,csrfToken=""}={}){
+  const store=new Map(Object.entries(values)),windowListeners={},documentListeners={},requests=[],identityRequests=[];
   const elements=new Map([
     "localSignalsToggle","localSignalsStatus","localSignalsSummary","localSignalsActionStatus","aggregateSignalsToggle","aggregateSignalsStatus","recommendationFeedbackStatus","clearLocalSignals","copyLocalSignals"
   ].map((id)=>[id,new FakeElement({id})]));
@@ -49,11 +49,16 @@ function harness({gpc=false,dnt="",values={},blockedStorage=false,withFetch=true
     addEventListener(type,handler){(windowListeners[type]||=[]).push(handler);},
     dispatchEvent(event){for(const handler of windowListeners[event.type]||[])handler(event);return true;}
   };
-  if(withFetch)context.fetch=async(path,options)=>{requests.push({path,options});return {ok:true,status:202};};
+  if(withFetch)context.fetch=async(path,options)=>{
+    // The signed-in check reads the CSRF token from /api/me; a signed-out browser gets a 401 there.
+    if(path==="/api/me"){identityRequests.push({path,options});return csrfToken?{ok:true,status:200,json:async()=>({csrfToken})}:{ok:false,status:401,json:async()=>({error:"Sign in required."})};}
+    requests.push({path,options});return {ok:true,status:202};
+  };
   context.globalThis=context;
   vm.createContext(context);vm.runInContext(SCRIPT,context,{filename:"product-signals.js"});
   return{
-    api:context.StrataSignals,store,elements,feedback,navigator,requests,
+    api:context.StrataSignals,store,elements,feedback,navigator,requests,identityRequests,
+    async settle(){for(let turn=0;turn<5;turn+=1)await new Promise((resolve)=>setImmediate(resolve));},
     dispatch(name,extra={}){context.dispatchEvent(new context.CustomEvent("strata:milestone",{detail:{name,...extra}}));},
     click(element){for(const handler of documentListeners.click||[])handler({target:element});}
   };
@@ -91,7 +96,7 @@ test("normalization drops unknown fields, clamps counters, and exposes a reviewa
   assert.match(page.api.summary(),/Future aggregate count sharing: not chosen/);
 });
 
-test("privacy signals and explicit opt-out stop local storage and aggregate sharing",()=>{
+test("privacy signals and explicit opt-out stop local storage and aggregate sharing",async()=>{
   const gpc=harness({gpc:true,values:{[SHARE_PREFERENCE_KEY]:"on"}});
   assert.equal(gpc.api.enabled(),false);
   assert.equal(gpc.api.sharingEnabled(),false);
@@ -103,7 +108,7 @@ test("privacy signals and explicit opt-out stop local storage and aggregate shar
   assert.match(gpc.elements.get("localSignalsStatus").textContent,/privacy signal/i);
   assert.equal(gpc.requests.length,0);
 
-  const page=harness({values:{[SHARE_PREFERENCE_KEY]:"on"}});page.api.record("workout_started");
+  const page=harness({values:{[SHARE_PREFERENCE_KEY]:"on"}});page.api.record("workout_started");await page.settle();
   assert.equal(page.requests.length,1);
   assert.equal(page.api.setEnabled(false),true);
   assert.equal(page.store.get(PREFERENCE_KEY),"off");
@@ -111,6 +116,7 @@ test("privacy signals and explicit opt-out stop local storage and aggregate shar
   assert.equal(page.store.has(STORAGE_KEY),false);
   assert.equal(page.api.record("workout_completed"),false);
   assert.equal(page.api.feedback("useful"),false);
+  await page.settle();
   assert.equal(page.requests.length,1);
 
   const blocked=harness({blockedStorage:true});
@@ -134,26 +140,46 @@ test("recommendation feedback stores only the latest allowlisted answer",()=>{
   assert.equal(page.requests.length,0);
 });
 
-test("aggregate transport starts only after consent and sends one allowlisted name",()=>{
+test("aggregate transport starts only after consent and sends one allowlisted name",async()=>{
   const page=harness();
   page.dispatch("preview_generated",{email:"private@example.test",url:"/account"});
   assert.ok(page.elements.has("productSignalsConsent"),"a non-blocking consent region should appear after a relevant action");
   assert.equal(page.requests.length,0);
 
   page.click(new FakeElement({dataset:{signalConsent:"share"}}));
+  await page.settle();
   assert.equal(page.store.get(SHARE_PREFERENCE_KEY),"on");
   assert.equal(page.requests.length,1);
   assert.equal(page.requests[0].path,"/api/product-signals");
   assert.equal(page.requests[0].options.method,"POST");
-  assert.equal(page.requests[0].options.credentials,"omit");
+  assert.equal(page.requests[0].options.credentials,"omit","a signed-out browser sends no cookie");
+  assert.equal(page.requests[0].options.headers["X-CSRF-Token"],undefined);
   assert.equal(page.requests[0].options.referrerPolicy,"no-referrer");
   assert.deepEqual(JSON.parse(page.requests[0].options.body),{event:"preview_generated"});
   assert.doesNotMatch(page.requests[0].options.body,/private@example|account/);
 
   page.api.feedback("not_clear");
+  await page.settle();
   assert.deepEqual(JSON.parse(page.requests[1].options.body),{event:"recommendation_feedback_not_clear"});
   assert.equal(page.api.feedback("private free text"),false);
+  await page.settle();
   assert.equal(page.requests.length,2);
+  assert.equal(page.identityRequests.length,1,"the sign-in check runs once per page");
+});
+
+test("a signed-in browser sends its session and CSRF token so the count is marked signed in",async()=>{
+  const page=harness({csrfToken:"member-token",values:{[SHARE_PREFERENCE_KEY]:"on"}});
+  page.api.record("plan_saved");page.api.record("workout_started");
+  await page.settle();
+  assert.equal(page.identityRequests.length,1);
+  assert.equal(page.identityRequests[0].options.credentials,"same-origin");
+  assert.equal(page.requests.length,2);
+  for(const request of page.requests){
+    assert.equal(request.options.credentials,"same-origin");
+    assert.equal(request.options.headers["X-CSRF-Token"],"member-token");
+    assert.equal(request.options.referrerPolicy,"no-referrer");
+  }
+  assert.deepEqual(page.requests.map((request)=>JSON.parse(request.options.body)),[{event:"plan_saved"},{event:"workout_started"}]);
 });
 
 test("keeping insights on-device records the choice without transmitting",()=>{
@@ -177,11 +203,12 @@ test("the consent region can be deferred without changing a preference",()=>{
   assert.equal(page.requests.length,0);
 });
 
-test("browser transport and server storage share one exact allowlist",()=>{
+test("browser transport and server storage share one exact allowlist",async()=>{
   const page=harness();
   assert.equal(page.api.setSharing(true),true);
   for(const name of page.api.MILESTONES)page.api.record(name);
   for(const response of page.api.FEEDBACK)page.api.feedback(response);
+  await page.settle();
   const sent=page.requests.map((entry)=>JSON.parse(entry.options.body).event).sort();
   assert.deepEqual(sent,[...SERVER_EVENTS].sort());
 });

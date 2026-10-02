@@ -679,7 +679,7 @@ async function start() {
   }));
   social=createSocialAuthService({store,settings:SOCIAL_SETTINGS,getAuth:()=>auth,claimAdminForLogin:(user)=>admin.maybeClaimAdminForLogin(user),trustedAuthOrigin,rateAllowed,http:{bodyForm,redirect,securityHeaders},isUniqueViolation,logger:LOGGER});
   dataService=createDataService({store,events,getPlan:planFor,coachingProfile:async(userId)=>coachingProfilePayload(await store.coachingProfile(userId)),requireSession:(req,res)=>auth.requireSession(req,res),requireFeature,http:{json},logger:LOGGER});
-  productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
+  productSignals=createProductSignalsService({store,admin,auth,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
   workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
   training=createTrainingService({store,auth,requireAccess:requireFeature("plus.train"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events});
   coaching=createCoachingService({store,auth,requireAccess:requireFeature("plus.nutrition"),trustedOrigin:trustedAuthOrigin,rateAllowed,http:{json,bodyJson},events,getPlan:planFor});

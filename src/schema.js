@@ -1,6 +1,6 @@
 "use strict";
 
-const {PRODUCT_SIGNAL_TABLE,PRODUCT_SIGNAL_SQL}=require("./product-signals-schema");
+const {PRODUCT_SIGNAL_TABLE,PRODUCT_SIGNAL_SCHEMA,PRODUCT_SIGNAL_SQL}=require("./product-signals-schema");
 const {TRAINING_LOOP_SCHEMA,TRAINING_LOOP_SQL}=require("./training-loop-schema");
 const {BILLING_SCHEMA,BILLING_SQL,BILLING_DELETION_BLOCKER,activeEntitlement,withEntitlementClock}=require("./billing-schema");
 const {ACCOUNT_SELF_SERVICE_SQL}=require("./account-self-service-schema");
@@ -183,6 +183,7 @@ const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS support_request_events_email_time ON support_request_events(email_hash,created_at)",
   "CREATE INDEX IF NOT EXISTS support_request_events_time ON support_request_events(created_at)",
   PRODUCT_SIGNAL_TABLE,
+  ...PRODUCT_SIGNAL_SCHEMA,
   `CREATE TABLE IF NOT EXISTS admin_principal (
     slot TEXT PRIMARY KEY CHECK(slot='primary'),
     user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE RESTRICT,

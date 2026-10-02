@@ -443,10 +443,11 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.equal(signal.response.status,202);
   const productSignals=await request("/api/admin/product-signals?days=30",{headers:{Cookie:admin.cookie}});
   assert.equal(productSignals.response.status,200);
-  assert.equal(productSignals.data.totals.preview_generated,1);
-  assert.equal(productSignals.data.scope.measure,"aggregate_action_counts");
+  assert.equal(productSignals.data.totals.preview_generated,0,"a signed-out count is not a signed-in one");
+  assert.equal(productSignals.data.anonymousTotals.preview_generated,1);
+  assert.equal(productSignals.data.scope.measure,"daily_action_counts");
   assert.equal(productSignals.data.scope.uniquePeople,false);
-  assert.equal(productSignals.data.scope.repeatedActionsIncrement,true);
+  assert.equal(productSignals.data.scope.decisionTotals,"signed_in");
   assertPrivateJson(productSignals.response);
   assertAdminResponseRedacted(productSignals.data,secrets);
 

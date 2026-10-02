@@ -65,15 +65,30 @@ test("the production route accepts consented same-origin counts without creating
     assert.equal(accepted.response.headers.get("cache-control"),"no-store");
   }
 
+  // A signed-in count needs the session's CSRF token, and counts once per account per day.
+  const signup=await request("/api/signup",{method:"POST",headers:{Origin:base,"Content-Type":"application/json"},body:JSON.stringify({name:"Signal Member",email:"signal-member@example.test",password:"signal-member-password-123"})});
+  assert.equal(signup.response.status,201);
+  const cookie=signup.response.headers.getSetCookie().map((value)=>value.split(";")[0]).find((value)=>value.startsWith("strata_session="));
+  const me=await request("/api/me",{headers:{Cookie:cookie}});
+  const signedIn=(csrf)=>request("/api/product-signals",{method:"POST",headers:{Origin:base,"Content-Type":"application/json",Cookie:cookie,...(csrf?{"X-CSRF-Token":csrf}:{})},body:JSON.stringify({event:"preview_generated"})});
+  const forged=await signedIn("");
+  assert.deepEqual([forged.response.status,forged.data.code],[403,"INVALID_CSRF"]);
+  for(let attempt=0;attempt<2;attempt+=1)assert.equal((await signedIn(me.data.csrfToken)).response.status,202);
+
   const database=new DatabaseSync(join(directory,"strata.sqlite"),{readOnly:true});
   try{
     const columns=database.prepare("PRAGMA table_info(product_signal_counts)").all().map((row)=>row.name);
-    assert.deepEqual(columns,["event_day","event_name","event_count"]);
-    const rows=database.prepare("SELECT event_name,event_count FROM product_signal_counts ORDER BY event_name").all().map((row)=>({...row}));
+    assert.deepEqual(columns,["event_day","event_name","event_count","member_count","anonymous_count"]);
+    const rows=database.prepare("SELECT event_name,event_count,member_count,anonymous_count FROM product_signal_counts ORDER BY event_name").all().map((row)=>({...row}));
     assert.deepEqual(rows,[
-      {event_name:"preview_generated",event_count:2},
-      {event_name:"recommendation_feedback_useful",event_count:1}
-    ]);
+      {event_name:"preview_generated",event_count:2,member_count:1,anonymous_count:1},
+      {event_name:"recommendation_feedback_useful",event_count:1,member_count:0,anonymous_count:1}
+    ],"each action counts once per network or account per day");
+    const keys=database.prepare("SELECT actor_key,audience FROM product_signal_actors").all();
+    assert.equal(keys.length,3);
+    assert.ok(keys.every((row)=>/^[a-f0-9]{64}$/.test(row.actor_key)),"only one-way keys are stored");
+    const stored=JSON.stringify(database.prepare("SELECT * FROM product_signal_actors").all());
+    assert.doesNotMatch(stored,new RegExp(`${me.data.user.id}|127\\.0\\.0\\.1|signal-member`),"no account or address is stored");
   }finally{database.close();}
 });
 

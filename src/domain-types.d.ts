@@ -441,12 +441,17 @@ export interface ProductSignalCountRow {
   event_day:string;
   event_name:ProductSignalEvent;
   event_count:number;
+  member_count:number;
+  anonymous_count:number;
 }
 
+export type ProductSignalAudience="member"|"anonymous";
 export interface ProductSignalsStore {
-  incrementProductSignal(eventDay:string,eventName:ProductSignalEvent):Promise<unknown>;
+  /** True when this is the action's first count for the actor's daily key; a repeat changes nothing. */
+  recordProductSignal(eventDay:string,eventName:ProductSignalEvent,actorKey:string,audience:ProductSignalAudience):Promise<boolean>;
   productSignalCounts(sinceDay:string,throughDay:string):Promise<ProductSignalCountRow[]>;
   deleteOldProductSignals(beforeDay:string):Promise<unknown>;
+  deleteProductSignalActors(beforeDay:string):Promise<unknown>;
 }
 
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
@@ -956,9 +961,10 @@ export interface CoachingService {handleApi(request:HttpRequest,response:HttpRes
 export interface ProductSignalsServiceDependencies {
   store:ProductSignalsStore;
   admin:Pick<AdminService,"requireAdmin">;
+  auth:Pick<AuthService,"sessionFor"|"validCsrf">;
   trustedOrigin:(request:HttpRequest)=>boolean;
   requestAddress:(request:HttpRequest)=>string;
-  rateKeyAllowed:(key:string,limit:number,windowMs:number)=>boolean;
+  rateKeyAllowed:(key:string,limit:number,windowMs:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   now?:()=>number;
 }

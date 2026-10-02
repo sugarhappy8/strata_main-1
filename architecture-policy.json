@@ -189,9 +189,10 @@
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 210,
+      "maxLines": 220,
       "allowedDependencies": [
-        "src/billing-schema.js"
+        "src/billing-schema.js",
+        "src/product-signals-schema.js"
       ]
     },
     "src/schema.js": {
@@ -212,13 +213,13 @@
       ]
     },
     "src/product-signals-schema.js": {
-      "role": "Aggregate product-activity schema and statements",
-      "maxLines": 35,
+      "role": "Aggregate product-activity schema, daily keys, and statements",
+      "maxLines": 60,
       "allowedDependencies": []
     },
     "src/product-signals.js": {
       "role": "Consent-gated aggregate product-activity boundary",
-      "maxLines": 140,
+      "maxLines": 170,
       "allowedDependencies": []
     },
     "src/training-loop-schema.js": {
