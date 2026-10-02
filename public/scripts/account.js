@@ -20,7 +20,7 @@ let foregroundRecheck=null,signedInUser=null;
 
 preferredPanel.classList.add("active");
 if(mode==="login")document.querySelector(".auth-grid").prepend(preferredPanel);
-el("signupNext").value=next;el("loginNext").value=next;
+for(const id of ["signupNext","loginNext","socialSignupNext","socialLoginNext"])if(el(id))el(id).value=next;
 
 if(params.has("error")){
   const cleanUrl=new URL(location.href);cleanUrl.searchParams.delete("error");

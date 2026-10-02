@@ -128,6 +128,23 @@ How it runs:
 - STRATA keeps imported nights, days, and workouts for about 13 months and half-hour heart-rate detail for 28 days. Logs record only event names such as `device.synced` and `device.sync_failed` with an outcome code, never tokens or health values.
 - `POLAR_WEBHOOK_SECRET` and the former `npm run polar:webhook` command are not used by V4 and should be removed from deployment settings.
 
+## Sign in with Google
+
+Members can create an account or sign in with Google from the account page, next to email and password. The button is off until both settings are present, and `GET /api/status` lists `google` in `signInProviders` once it is on. Google returns to `https://<your domain>/auth/social/google/callback`, built from `APP_BASE_URL` (which must be HTTPS in production).
+
+1. In the Google Cloud console, open **Google Auth Platform**: set the app name and support email, the `/privacy` and `/terms` links, the authorized domain, and the scopes `openid`, `email`, `profile`, then publish the app. Under **Clients**, create a client of type *Web application* with the redirect URI `https://<your domain>/auth/social/google/callback`. Set `GOOGLE_SIGN_IN_CLIENT_ID` and `GOOGLE_SIGN_IN_CLIENT_SECRET`.
+2. Run `npm run preflight:production`; once either value is set, the `sign-in.google` check must pass. Deploy, then create an account with Google, sign in again, and link Google to an existing verified account.
+
+How it runs:
+
+- The button posts a same-site form to `/auth/social/start`, which records a ten-minute sign-in state (with a nonce and a PKCE verifier) and binds it to the browser with a `SameSite=Lax` cookie limited to `/auth/social/finish`. The Content-Security-Policy's `form-action` names `accounts.google.com` so that redirect is allowed.
+- Google's return to the callback only parks the one-time code on its state. `/auth/social/finish` then checks the browser cookie, exchanges the code, verifies the ID token against Google's published keys (signature, issuer, audience, expiry, nonce), and signs in. A state finishes once and only in the browser that started it. Session cookies stay `SameSite=Strict`; finish answers with a short page that moves on by itself, because a navigation that began on Google's site would not carry them.
+- A Google account signs in to the STRATA account it is linked to. Otherwise, when Google says the email is verified, it links to the STRATA account with that email if STRATA has verified it too, or creates a new account with the email already verified. An unverified STRATA account with that email must sign in with its password first. A STRATA account has at most one linked Google account.
+- Accounts created this way have no STRATA password: password sign-in fails for them, and *Email a link to set a password* on Account adds one.
+- Google refuses sign-in inside embedded web views, so the iOS app hides Google sign-in and keeps email and password. A member who signed up with Google on the web uses *Forgot password?* to set a password for the app; the app's sign-in panel says so. Because the app offers no third-party sign-in, Sign in with Apple is not required there (App Review Guideline 4.8).
+- STRATA keeps Google's stable account identifier and the email it shared; exports list the linked sign-in without the identifier, and deleting the account removes it. Logs record only the provider and an outcome such as `auth.social_sign_in`.
+- Outside production, `SIGN_IN_PROVIDER_STAND_IN` may name a local server that answers for Google; `test/server-social-auth.test.js` uses one. It is ignored in production.
+
 ## Paddle monthly subscription
 
 Paddle is the merchant of record for the $2.99 USD per month Strata+ subscription. The public amount, USD currency, monthly frequency, and catalog identifiers must stay aligned with the live catalog. Since Build 7.5.1, the application does not embed either current catalog ID: `PADDLE_PRODUCT_ID` and `PADDLE_PRICE_ID` are operator-supplied `sync: false` values in `render.yaml`, and checkout remains unavailable until both identify the same valid monthly catalog item. The browser consumes the product selected and validated by the same-origin server instead of pinning an older product in public code. New checkout creation also fails closed unless Paddle's returned current catalog item reports a unit price of exactly 299 minor units in USD.

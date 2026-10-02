@@ -127,7 +127,7 @@
 .account-delete-dialog::backdrop { background:rgba(10,11,9,.62); }
 body:has(.account-delete-dialog[open]) { overflow:hidden; }
 .account-delete-form,.account-delete-done { display:grid; gap:10px; padding:22px 20px 18px; }
-.account-delete-form[hidden],.account-delete-done[hidden],.account-delete-apple[hidden] { display:none; }
+.account-delete-form[hidden],.account-delete-done[hidden],.account-delete-apple[hidden],.account-delete-form [hidden] { display:none; }
 .account-delete-dialog h2 { margin:0; color:var(--strata-ink); font:800 1.375rem/1.2 var(--strata-font); letter-spacing:-.02em; }
 .account-delete-dialog :is(h2,.account-delete-done):focus { outline:none; }
 .account-delete-dialog p { margin:0; color:var(--muted,#62675e); font-size:.9375rem; line-height:1.5; }
@@ -223,3 +223,6 @@ body:has(.account-delete-dialog[open]) { overflow:hidden; }
   .app-topbar,.app-tabbar,.app-more { display:none !important; }
   :root[data-app-chrome="tabs"] body { padding-bottom:0 !important; }
 }
+
+/* Google refuses sign-in inside an embedded web view, so the app keeps email sign-in only. */
+:root[data-app="ios"] .social-sign-in { display:none !important; }

@@ -72,3 +72,7 @@ services:
         sync: false
       - key: DEVICE_TOKEN_KEY_PREVIOUS
         sync: false
+      - key: GOOGLE_SIGN_IN_CLIENT_ID
+        sync: false
+      - key: GOOGLE_SIGN_IN_CLIENT_SECRET
+        sync: false

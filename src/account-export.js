@@ -29,7 +29,8 @@ function exportPayload(rows,now){
   const profile=rows.profile;
   return{
     format:"strata-account-export",schemaVersion:1,exportedAt:new Date(now).toISOString(),
-    account:{id:String(profile.id),name:String(profile.name),email:String(profile.email),createdAt:Number(profile.created_at),emailVerifiedAt:optionalNumber(profile.email_verified_at)},
+    account:{id:String(profile.id),name:String(profile.name),email:String(profile.email),createdAt:Number(profile.created_at),emailVerifiedAt:optionalNumber(profile.email_verified_at),
+      signIns:(rows.signIns||[]).map((row)=>({provider:String(row.provider),email:String(row.email),linkedAt:Number(row.linked_at),lastUsedAt:Number(row.last_used_at)}))},
     weeklyPlan:jsonSnapshot(rows.weeklyPlan,"plan_json"),monthlyPlan:jsonSnapshot(rows.monthlyPlan,"plan_json"),preferences:jsonSnapshot(rows.preferences,"preferences_json"),
     ratings:rows.ratings.map((row)=>({exerciseId:String(row.exercise_id),comfort:Number(row.comfort),pump:Number(row.pump),enjoyment:Number(row.enjoyment),stability:Number(row.stability),setup:Number(row.setup),overall:Number(row.overall),createdAt:Number(row.created_at),updatedAt:Number(row.updated_at)})),
     workouts:rows.workouts.map(exportWorkout),

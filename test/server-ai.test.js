@@ -263,11 +263,13 @@ test("model failures, busy queues, and daily limits fail with clear codes",async
   assert.equal((await request("/api/ai/status",member)).data.usedToday,2,"a request the model never received does not count");
   model.status=524;const slowGateway=await settle(member,(await ask(member)).data.request.id);assert.equal(slowGateway.data.request.error.code,"AI_TIMEOUT","a tunnel timeout reads as a slow answer");model.status=200;
   assert.equal((await request(`/api/ai/requests/${fallback.data.request.id}`,other)).status,404,"members cannot read each other's requests");
+  // Create the third member first: a signup's deliberately slow password hash must not eat the 400 ms window below.
+  const third=await account("failures-third");
   model.delayMs=400;
   const slow=await ask(member);assert.equal(slow.status,202);
   const second=await ask(member);assert.equal(second.status,409);assert.equal(second.data.code,"AI_REQUEST_IN_PROGRESS");
   const queued=await ask(other);assert.equal(queued.status,202);assert.equal(queued.data.request.status,"queued");assert.equal(queued.data.request.position,1);
-  const third=await account("failures-third"),full=await ask(third);assert.equal(full.status,503);assert.equal(full.data.code,"AI_BUSY");
+  const full=await ask(third);assert.equal(full.status,503);assert.equal(full.data.code,"AI_BUSY");
   await settle(member,slow.data.request.id);await settle(other,queued.data.request.id);model.delayMs=0;
   while((await request("/api/ai/status",member)).data.usedToday<6)await settle(member,(await ask(member)).data.request.id);
   const limited=await ask(member);assert.equal(limited.status,429);assert.equal(limited.data.code,"AI_DAILY_LIMIT");

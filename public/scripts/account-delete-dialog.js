@@ -2,7 +2,8 @@
 /* In the iOS app, Delete account deletes the account right here (App Review Guideline 5.1.1(v): App Review cannot open
    an email). The member re-enters the account password and types DELETE in a modal dialog; showModal keeps focus
    inside it and Escape closes it. Browsers never open it and keep the emailed deletion link, which the dialog still
-   offers as "Email me a deletion link instead". */
+   offers as "Email me a deletion link instead". An account made with Google has no password: it
+   types DELETE only, and the server accepts that within 15 minutes of signing in. */
 (function(root,factory){
   const api=factory();
   if(typeof module==="object"&&module.exports)module.exports=api;
@@ -21,7 +22,8 @@
     let busy=false,deleted=false,left=false,trigger=null;
 
     const available=()=>Boolean(app&&dialog&&typeof dialog.showModal==="function");
-    const ready=()=>confirmation.value==="DELETE"&&password.value.length>0;
+    const passwordless=()=>logic.hasPassword(getUser())===false;
+    const ready=()=>confirmation.value==="DELETE"&&(passwordless()||password.value.length>0);
     function sync(){submit.disabled=busy||!ready();}
     function leave(){if(left)return;left=true;navigate("/");}
 
@@ -48,6 +50,7 @@
       if(!available()||dialog.open||deleted)return false;
       trigger=from;reset();
       element("accountDeleteApple").hidden=!logic.appleMayBill(getUser());
+      const noPassword=passwordless();password.hidden=noPassword;password.required=!noPassword;for(const label of password.labels||[])label.hidden=noPassword;element("accountDeleteRecentNote").hidden=!noPassword;
       dialog.showModal();
       element("accountDeleteTitle").focus();
       return true;
@@ -67,12 +70,12 @@
       event?.preventDefault?.();
       if(busy||deleted)return;
       if(confirmation.value!=="DELETE"){showError("Type DELETE exactly to confirm.",confirmation);return;}
-      if(!password.value){showError("Enter your STRATA password.",password);return;}
+      if(!passwordless()&&!password.value){showError("Enter your STRATA password.",password);return;}
       clearError();setBusy(true);
       // The outcome of a deletion is always shown, even if the web view closed the dialog while it was being sent.
       const reveal=()=>{if(!dialog.open)dialog.showModal();};
       try{
-        const result=await api.deleteNow({password:password.value,confirmation:"DELETE"},String(getUser()?.id||""));
+        const result=await api.deleteNow(passwordless()?{confirmation:"DELETE"}:{password:password.value,confirmation:"DELETE"},String(getUser()?.id||""));
         deleted=true;password.value="";setBusy(false);
         reveal();showDone(result);
       }catch(failure){

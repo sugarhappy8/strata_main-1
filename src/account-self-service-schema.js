@@ -34,7 +34,9 @@ const ACCOUNT_EXPORT_QUERIES=Object.freeze({
   trainingLinks:"SELECT provider,external_id,workout_id,method,linked_at FROM training_links WHERE user_id=? ORDER BY linked_at,external_id",
   // Strata AI consent and the member's own daily request and token counts.
   aiSettings:"SELECT consent_at,consent_version,daily_brief,updated_at FROM ai_settings WHERE user_id=?",
-  aiUsage:"SELECT usage_date,kind,requests,tokens FROM ai_usage_days WHERE scope=? ORDER BY usage_date,kind"
+  aiUsage:"SELECT usage_date,kind,requests,tokens FROM ai_usage_days WHERE scope=? ORDER BY usage_date,kind",
+  // Linked Google sign-ins: the provider and email, never the provider's subject.
+  signIns:"SELECT provider,email,linked_at,last_used_at FROM account_identities WHERE user_id=? ORDER BY linked_at,provider"
 });
 const ACCOUNT_EXPORT_SINGLE_ROWS=new Set(["profile","weeklyPlan","monthlyPlan","preferences","trainingBlock","coachingProfile","aiSettings"]);
 const ACCOUNT_EXPORT_WORKOUTS_QUERY="SELECT id,workout_json,summary_json,started_at,revision,updated_at FROM workouts WHERE user_id=? AND (started_at>? OR (started_at=? AND id>?)) ORDER BY started_at,id LIMIT ?";

@@ -450,7 +450,7 @@ export interface ProductSignalsStore {
 export type AuthStore=StoreCapabilities<AuthStoreMethod>;
 export type AdminStore={readonly kind:string}&StoreCapabilities<AdminStoreMethod>;
 export type SupportStore=StoreCapabilities<SupportStoreMethod>;
-export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore&AppleBillingStore;
+export type ApplicationStore={readonly kind:string}&AuthStore&AdminStore&SupportStore&SetupStore&ProductSignalsStore&TrainingStore&BillingStore&CoachingStore&DeviceStore&DataLayerStore&AiStore&AppleBillingStore&SocialAuthStore;
 
 export interface AccountIdentityRow extends JsonObject {
   id:string;
@@ -521,6 +521,7 @@ export interface AccountExportStoreRows {
   aiSettings:JsonObject|null;
   aiUsage:JsonObject[];
   appleSubscriptions?:JsonObject[];
+  signIns?:JsonObject[];
 }
 
 export interface AccountSelfServiceStore {
@@ -914,6 +915,28 @@ export interface TursoDeviceStoreDependencies {
   run(sql:string,args?:any[]):Promise<QueryResultLike>;
   plainRow:(row:unknown,columns?:string[])=>any;
 }
+
+export type SocialProviderId="google";
+export interface SocialSignInStateRecord {stateHash:string;provider:SocialProviderId;browserHash:string;nonce:string;codeVerifier:string;intent:"signup"|"login";nextPath:string;redirectUri:string;createdAt:number;expiresAt:number;}
+/** `at` is when the identity was linked or, for touchAccountIdentity, last used. */
+export interface AccountIdentityRecord {provider:SocialProviderId;subject:string;userId:string;email:string;at:number;}
+export interface SocialAccountRecord {id:string;name:string;email:string;createdAt:number;}
+export interface SignInMethods {hasPassword:boolean;providers:string[];}
+export interface SocialAuthStore {
+  insertSocialSignInState(record:SocialSignInStateRecord):Promise<boolean>;
+  recordSocialSignInReturn(stateHash:string,provider:SocialProviderId,code:string,now:number):Promise<any>;
+  discardSocialSignInState(stateHash:string):Promise<any>;
+  consumeSocialSignInState(stateHash:string,browserHash:string,now:number):Promise<any>;
+  accountIdentity(provider:SocialProviderId,subject:string):Promise<any>;
+  accountIdentities(userId:string):Promise<any[]>;
+  accountSignInMethods(userId:string):Promise<SignInMethods|null>;
+  linkAccountIdentity(identity:AccountIdentityRecord):Promise<boolean>;
+  touchAccountIdentity(identity:AccountIdentityRecord):Promise<boolean>;
+  createSocialAccount(account:SocialAccountRecord,identity:AccountIdentityRecord):Promise<AccountIdentityRow|null>;
+  deleteExpiredSocialSignInData(now:number):Promise<void>;
+}
+export type LocalSocialAuthStoreDependencies=LocalDeviceStoreDependencies;
+export type TursoSocialAuthStoreDependencies=TursoDeviceStoreDependencies;
 export interface CoachingServiceDependencies {
   store:CoachingStore&Pick<TrainingServiceStore,"workouts"|"workout"|"workoutCheckIn">;
   auth:Pick<AuthService,"validCsrf">;
@@ -1027,7 +1050,31 @@ export interface AuthService {
   accountEmailHash(email:string):string;
   normalizeEmail(value:unknown):string;
   hashToken(token:string):string;
+  safeAccountNext(value:unknown):string;
+  accountErrorLocation(mode:string,message:string,requestedNext:unknown):string;
   [method:string]:unknown;
+}
+
+export interface SocialAuthServiceDependencies {
+  store:SocialAuthStore&StoreCapabilities<"userByEmail"|"insertSession">;
+  settings:ReturnType<typeof import("./social-auth-config").socialAuthSettings>;
+  getAuth:()=>AuthService|undefined;
+  claimAdminForLogin?:(user:any)=>Promise<any>;
+  trustedAuthOrigin:(request:HttpRequest)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  http:Pick<HttpHelpers,"bodyForm"|"redirect"|"securityHeaders">;
+  isUniqueViolation?:(error:unknown)=>boolean;
+  client?:ReturnType<typeof import("./social-auth-client").createSocialAuthClient>|null;
+  fetchImpl?:typeof fetch;
+  logger?:{info?:Function;warn?:Function;error?:Function}|null;
+  now?:()=>number;
+}
+
+export interface SocialAuthService {
+  handle(request:HttpRequest,response:HttpResponse,url:URL):Promise<boolean>;
+  renderAccountPage(html:string):string;
+  enabledProviders():SocialProviderId[];
+  cleanup(now?:number):Promise<void>;
 }
 
 export interface AdminServiceDependencies {

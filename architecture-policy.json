@@ -40,7 +40,9 @@
         "src/ai-settings.js",
         "src/ai-daily-brief.js",
         "src/apple-billing.js",
-        "src/session-renewal.js"
+        "src/session-renewal.js",
+        "src/social-auth.js",
+        "src/social-auth-config.js"
       ]
     },
     "src/service-composition.js": {
@@ -109,7 +111,8 @@
         "src/account-self-service.js",
         "src/email.js",
         "src/plans.js",
-        "src/session-renewal.js"
+        "src/session-renewal.js",
+        "src/social-auth-messages.js"
       ]
     },
     "src/admin.js": {
@@ -175,7 +178,8 @@
         "src/training-loop-store.js",
         "src/data-layer-store.js",
         "src/ai-store.js",
-        "src/apple-billing-store.js"
+        "src/apple-billing-store.js",
+        "src/social-auth-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -203,7 +207,8 @@
         "src/training-loop-schema.js",
         "src/data-layer-schema.js",
         "src/ai-schema.js",
-        "src/apple-billing-schema.js"
+        "src/apple-billing-schema.js",
+        "src/social-auth-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
@@ -649,6 +654,46 @@
       "role": "Sliding session renewal and the response cookie choke point",
       "maxLines": 70,
       "allowedDependencies": []
+    },
+    "src/social-auth-config.js": {
+      "role": "Sign in with Google: provider settings",
+      "maxLines": 80,
+      "allowedDependencies": []
+    },
+    "src/social-auth-client.js": {
+      "role": "OpenID Connect client: authorization URL with PKCE, code exchange, ID-token verification",
+      "maxLines": 170,
+      "allowedDependencies": [
+        "src/devices-crypto.js"
+      ]
+    },
+    "src/social-auth-messages.js": {
+      "role": "Account-page messages for Google sign-in",
+      "maxLines": 30,
+      "allowedDependencies": []
+    },
+    "src/social-auth-schema.js": {
+      "role": "Linked sign-in identities and sign-in state schema",
+      "maxLines": 90,
+      "allowedDependencies": []
+    },
+    "src/social-auth-store.js": {
+      "role": "Local and Turso storage for linked sign-ins",
+      "maxLines": 90,
+      "allowedDependencies": [
+        "src/social-auth-schema.js"
+      ]
+    },
+    "src/social-auth.js": {
+      "role": "Sign up and sign in with Google",
+      "maxLines": 260,
+      "allowedDependencies": [
+        "src/devices-crypto.js",
+        "src/plans.js",
+        "src/social-auth-client.js",
+        "src/social-auth-config.js",
+        "src/social-auth-messages.js"
+      ]
     }
   }
 }
