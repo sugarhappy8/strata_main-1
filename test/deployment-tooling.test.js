@@ -146,24 +146,6 @@ test("preflight and runtime reject the same malformed provider credentials", () 
   assert.equal(getPaymentConfig(environment).configured, false);
 });
 
-test("preflight and runtime fail closed on a malformed legacy recurring-price allowlist", () => {
-  const current = "pri_recurringprice123456789012";
-  for (const value of [current, "pri_invalid", `${current},${current}`, `${current},`]) {
-    const environment = productionEnvironment({ PADDLE_LEGACY_RECURRING_PRICE_IDS: value });
-    const result = validateDeploymentEnvironment(environment, { requirePayments: true });
-    assert.ok(
-      result.failures.some(({ name }) => name === "payments.legacy-prices"),
-      value,
-    );
-    assert.equal(getPaymentConfig(environment).configured, false, value);
-  }
-  const valid = productionEnvironment({
-    PADDLE_LEGACY_RECURRING_PRICE_IDS: "pri_previousmonthlyprice123456789",
-  });
-  assert.equal(validateDeploymentEnvironment(valid, { requirePayments: true }).ok, true);
-  assert.equal(getPaymentConfig(valid).configured, true);
-});
-
 test("preflight accepts runtime-valid sender syntax and rejects production sandbox", () => {
   const live = productionEnvironment();
   assert.equal(

@@ -13,8 +13,6 @@ const PROJECT_ROOT = join(__dirname, "..");
 
 const PRODUCT_ID = "pro_01m1ky8j916ybyacs836dxbz8x";
 const PRICE_ID = "pri_01monthlyfixture00000000000000";
-const LEGACY_RECURRING_PRICE_ID = "pri_01legacymonthly0000000000000";
-const SECOND_LEGACY_RECURRING_PRICE_ID = "pri_01legacymonthly0000000000001";
 const PREVIOUS_PRODUCT_ID = "pro_01previousmonthly000000000000";
 const PREVIOUS_PRICE_ID = "pri_01previousmonthly0000000000000";
 const CLIENT_TOKEN = "live_browser_token_for_server_payment_test";
@@ -235,7 +233,6 @@ async function startApp() {
       STRATA_DATA_DIR: runtimeDir,
       PADDLE_PRODUCT_ID: PRODUCT_ID,
       PADDLE_PRICE_ID: PRICE_ID,
-      PADDLE_LEGACY_RECURRING_PRICE_IDS: `${LEGACY_RECURRING_PRICE_ID},${SECOND_LEGACY_RECURRING_PRICE_ID}`,
       PADDLE_CLIENT_TOKEN: CLIENT_TOKEN,
       PADDLE_API_KEY: API_KEY,
       PADDLE_WEBHOOK_SECRET: WEBHOOK_SECRET,
@@ -1013,43 +1010,35 @@ test("live monthly checkout grants, manages, updates, and revokes Strata+ secure
     );
 });
 
-test("an allowlisted earlier monthly price stays entitled without becoming a checkout option", async () => {
+test("a subscription on another catalog loses access until Paddle restores the current price", async () => {
   const account = await signup({
-    name: "Grandfathered Monthly Tester",
-    email: "grandfathered-monthly@example.test",
-    password: "grandfathered-monthly-password-123",
+    name: "Catalog Restore",
+    email: "catalog-restore@example.test",
+    password: "catalog-recovery-password-123",
   });
-  const transactionId = "txn_legacyrecurring00000000000";
-  const timestamp = Date.now();
+  const transactionId = `txn_${"s".repeat(26)}`,
+    stamp = Date.now();
   {
     const db = database();
     db.prepare(
       "INSERT INTO paddle_purchases(transaction_id,user_id,price_id,product_id,paddle_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
-    ).run(
-      transactionId,
-      account.user.id,
-      LEGACY_RECURRING_PRICE_ID,
-      PRODUCT_ID,
-      "ready",
-      timestamp,
-      timestamp,
-    );
+    ).run(transactionId, account.user.id, PRICE_ID, PRODUCT_ID, "ready", stamp, stamp);
     db.close();
   }
-
-  const completion = completedEvent({
-    id: eventId("legacydone", 10),
-    transactionId,
-    userId: account.user.id,
-    priceId: LEGACY_RECURRING_PRICE_ID,
-  });
-  assert.equal((await signedWebhook(completion)).data.outcome, "subscription-payment-recorded");
+  assert.equal(
+    (
+      await signedWebhook(
+        completedEvent({ id: eventId("restoredone", 20), transactionId, userId: account.user.id }),
+      )
+    ).data.outcome,
+    "subscription-payment-recorded",
+  );
   const mismatchedCreated = subscriptionEvent({
-    id: eventId("legacymismatch", 11),
+    id: eventId("restoremismatch", 21),
     transactionId,
     userId: account.user.id,
-    sequence: 11,
-    priceId: PRICE_ID,
+    sequence: 21,
+    priceId: PREVIOUS_PRICE_ID,
   });
   assert.equal(
     (await signedWebhook(mismatchedCreated)).data.outcome,
@@ -1057,265 +1046,61 @@ test("an allowlisted earlier monthly price stays entitled without becoming a che
     "subscription creation must match the linked purchase catalog",
   );
   assert.equal(
-    (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
-    402,
+    (
+      await signedWebhook(
+        subscriptionEvent({
+          id: eventId("restorecreate", 22),
+          transactionId,
+          userId: account.user.id,
+          sequence: 22,
+        }),
+      )
+    ).data.outcome,
+    "subscription-created",
   );
-  const created = subscriptionEvent({
-    id: eventId("legacysub", 12),
-    transactionId,
-    userId: account.user.id,
-    sequence: 12,
-    priceId: LEGACY_RECURRING_PRICE_ID,
-  });
-  assert.equal((await signedWebhook(created)).data.outcome, "subscription-created");
   assert.equal(
     (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
     200,
   );
-
-  const sideways = subscriptionEvent({
-    id: eventId("legacysideways", 13),
+  const invalid = subscriptionEvent({
+    id: eventId("restoreinvalid", 23),
     transactionId,
     userId: account.user.id,
     eventType: "subscription.updated",
-    sequence: 13,
-    priceId: SECOND_LEGACY_RECURRING_PRICE_ID,
-  });
-  assert.equal(
-    (await signedWebhook(sideways)).data.outcome,
-    "rejected:catalog",
-    "one grandfathered price cannot silently replace another",
-  );
-  const staleMigration = subscriptionEvent({
-    id: eventId("legacystale", 11),
-    transactionId,
-    userId: account.user.id,
-    eventType: "subscription.updated",
-    sequence: 11,
-    priceId: PRICE_ID,
-  });
-  assert.equal(
-    (await signedWebhook(staleMigration)).data.outcome,
-    "subscription-stale",
-    "an older catalog migration is acknowledged without retrying forever",
-  );
-  {
-    const db = database({ readOnly: true });
-    assert.equal(
-      db.prepare("SELECT price_id FROM paddle_purchases WHERE transaction_id=?").get(transactionId)
-        .price_id,
-      LEGACY_RECURRING_PRICE_ID,
-    );
-    assert.equal(
-      db
-        .prepare("SELECT price_id FROM paddle_subscriptions WHERE transaction_id=?")
-        .get(transactionId).price_id,
-      LEGACY_RECURRING_PRICE_ID,
-    );
-    db.close();
-  }
-
-  const requestsBefore = paddleRequests.length;
-  const duplicate = await checkout(account);
-  assert.equal(duplicate.response.status, 409);
-  assert.equal(duplicate.data.code, "ALREADY_ENTITLED");
-  assert.equal(
-    paddleRequests.length,
-    requestsBefore,
-    "legacy entitlement must block a second purchase instead of creating an old-price checkout",
-  );
-
-  const annual = subscriptionEvent({
-    id: eventId("legacyyear", 13),
-    transactionId,
-    userId: account.user.id,
-    eventType: "subscription.updated",
-    sequence: 13,
-    priceId: LEGACY_RECURRING_PRICE_ID,
-    billingCycle: { interval: "year", frequency: 1 },
-  });
-  assert.equal((await signedWebhook(annual)).data.outcome, "rejected:billing_cycle");
-  assert.equal(
-    (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
-    200,
-    "a rejected annual snapshot cannot replace the valid monthly state",
-  );
-
-  const migrated = subscriptionEvent({
-    id: eventId("legacycurrent", 14),
-    transactionId,
-    userId: account.user.id,
-    eventType: "subscription.updated",
-    sequence: 14,
-    priceId: PRICE_ID,
-  });
-  assert.equal((await signedWebhook(migrated)).data.outcome, "subscription-updated");
-  {
-    const db = database({ readOnly: true });
-    assert.deepEqual(
-      {
-        ...db
-          .prepare("SELECT price_id,product_id FROM paddle_purchases WHERE transaction_id=?")
-          .get(transactionId),
-      },
-      { price_id: PRICE_ID, product_id: PRODUCT_ID },
-    );
-    assert.deepEqual(
-      {
-        ...db
-          .prepare("SELECT price_id,product_id FROM paddle_subscriptions WHERE transaction_id=?")
-          .get(transactionId),
-      },
-      { price_id: PRICE_ID, product_id: PRODUCT_ID },
-    );
-    db.close();
-  }
-  assert.equal(
-    (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
-    200,
-    "an allowlisted subscription keeps access when Paddle moves it to the current catalog",
-  );
-
-  const downgrade = subscriptionEvent({
-    id: eventId("legacydowngrade", 15),
-    transactionId,
-    userId: account.user.id,
-    eventType: "subscription.updated",
-    sequence: 15,
-    priceId: LEGACY_RECURRING_PRICE_ID,
-  });
-  assert.equal(
-    (await signedWebhook(downgrade)).data.outcome,
-    "rejected:catalog",
-    "the current catalog cannot be downgraded by an old-price snapshot",
-  );
-  {
-    const db = database({ readOnly: true });
-    assert.equal(
-      db.prepare("SELECT price_id FROM paddle_purchases WHERE transaction_id=?").get(transactionId)
-        .price_id,
-      PRICE_ID,
-    );
-    assert.equal(
-      db
-        .prepare("SELECT price_id FROM paddle_subscriptions WHERE transaction_id=?")
-        .get(transactionId).price_id,
-      PRICE_ID,
-    );
-    db.close();
-  }
-
-  const wrongProduct = subscriptionEvent({
-    id: eventId("legacyprod", 16),
-    transactionId,
-    userId: account.user.id,
-    eventType: "subscription.updated",
-    sequence: 16,
-    priceId: LEGACY_RECURRING_PRICE_ID,
+    sequence: 23,
+    priceId: PREVIOUS_PRICE_ID,
     productId: PREVIOUS_PRODUCT_ID,
   });
-  assert.equal((await signedWebhook(wrongProduct)).data.outcome, "subscription-catalog-changed");
+  assert.equal((await signedWebhook(invalid)).data.outcome, "subscription-catalog-changed");
   assert.equal(
     (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
     402,
-    "an allowlisted price on another product is not entitled",
   );
-});
-
-test("a legacy subscription recovers from an invalid catalog snapshot using its linked purchase", async () => {
-  for (const correction of ["legacy", "current"]) {
-    const account = await signup({
-      name: `Catalog ${correction}`,
-      email: `catalog-${correction}@example.test`,
-      password: "catalog-recovery-password-123",
-    });
-    const transactionId = `txn_${correction === "legacy" ? "r".repeat(26) : "s".repeat(26)}`,
-      stamp = Date.now();
-    {
-      const db = database();
-      db.prepare(
-        "INSERT INTO paddle_purchases(transaction_id,user_id,price_id,product_id,paddle_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
-      ).run(
-        transactionId,
-        account.user.id,
-        LEGACY_RECURRING_PRICE_ID,
-        PRODUCT_ID,
-        "ready",
-        stamp,
-        stamp,
-      );
-      db.close();
-    }
-    assert.equal(
-      (
-        await signedWebhook(
-          completedEvent({
-            id: eventId(`${correction}done`, 20),
-            transactionId,
-            userId: account.user.id,
-            priceId: LEGACY_RECURRING_PRICE_ID,
-          }),
-        )
-      ).data.outcome,
-      "subscription-payment-recorded",
-    );
-    assert.equal(
-      (
-        await signedWebhook(
-          subscriptionEvent({
-            id: eventId(`${correction}create`, 21),
-            transactionId,
-            userId: account.user.id,
-            sequence: 21,
-            priceId: LEGACY_RECURRING_PRICE_ID,
-          }),
-        )
-      ).data.outcome,
-      "subscription-created",
-    );
-    const invalid = subscriptionEvent({
-      id: eventId(`${correction}invalid`, 22),
-      transactionId,
-      userId: account.user.id,
-      eventType: "subscription.updated",
-      sequence: 22,
-      priceId: PREVIOUS_PRICE_ID,
-      productId: PREVIOUS_PRODUCT_ID,
-    });
-    assert.equal((await signedWebhook(invalid)).data.outcome, "subscription-catalog-changed");
-    assert.equal(
-      (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
-      402,
-    );
-
-    const expectedPrice = correction === "legacy" ? LEGACY_RECURRING_PRICE_ID : PRICE_ID;
-    const repaired = subscriptionEvent({
-      id: eventId(`${correction}fixed`, 23),
-      transactionId,
-      userId: account.user.id,
-      eventType: "subscription.updated",
-      sequence: 23,
-      priceId: expectedPrice,
-    });
-    assert.equal((await signedWebhook(repaired)).data.outcome, "subscription-updated");
-    const db = database({ readOnly: true });
-    assert.equal(
-      db.prepare("SELECT price_id FROM paddle_purchases WHERE transaction_id=?").get(transactionId)
-        .price_id,
-      expectedPrice,
-    );
-    assert.equal(
-      db
-        .prepare("SELECT price_id FROM paddle_subscriptions WHERE transaction_id=?")
-        .get(transactionId).price_id,
-      expectedPrice,
-    );
-    db.close();
-    assert.equal(
-      (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
-      200,
-    );
-  }
+  const repaired = subscriptionEvent({
+    id: eventId("restorefixed", 24),
+    transactionId,
+    userId: account.user.id,
+    eventType: "subscription.updated",
+    sequence: 24,
+  });
+  assert.equal((await signedWebhook(repaired)).data.outcome, "subscription-updated");
+  const db = database({ readOnly: true });
+  assert.equal(
+    db.prepare("SELECT price_id FROM paddle_purchases WHERE transaction_id=?").get(transactionId)
+      .price_id,
+    PRICE_ID,
+  );
+  assert.equal(
+    db
+      .prepare("SELECT price_id FROM paddle_subscriptions WHERE transaction_id=?")
+      .get(transactionId).price_id,
+    PRICE_ID,
+  );
+  db.close();
+  assert.equal(
+    (await request("/api/discovery", { headers: { Cookie: account.cookie } })).response.status,
+    200,
+  );
 });
 
 test("completed webhook trust boundaries reject mismatches and keep an existing purchase identity immutable", async () => {
@@ -2439,67 +2224,4 @@ test("admin closure records a completed interrupted checkout while the payment h
     "completed",
     "settled payment must never be canceled by checkout closure",
   );
-});
-
-test("admin closure preserves exact legacy completions and converges lost catalog migrations", async () => {
-  for (const providerCatalog of ["legacy", "current"]) {
-    const account = await signup({
-      name: `Closure ${providerCatalog}`,
-      email: `closure-${providerCatalog}@example.test`,
-      password: "closure-catalog-password-123",
-    });
-    malformedCreateResponses = 1;
-    assert.equal((await checkout(account)).response.status, 502);
-    const remote = [...paddleTransactions.values()].find(
-      (entry) => entry.custom_data?.strata_user_id === account.user.id,
-    );
-    const claimId = remote.custom_data.strata_checkout_id,
-      stamp = Date.now();
-    remote.status = "completed";
-    remote.customer_id = "ctm_00000000000000000000000009";
-    remote.subscription_id = subscriptionId(remote.id);
-    remote.updated_at = new Date(stamp + 1).toISOString();
-    if (providerCatalog === "legacy") remote.items[0].price.id = LEGACY_RECURRING_PRICE_ID;
-    {
-      const db = database();
-      db.prepare(
-        "UPDATE paddle_checkout_claims SET price_id=?,transaction_id=?,updated_at=? WHERE user_id=? AND claim_id=?",
-      ).run(LEGACY_RECURRING_PRICE_ID, remote.id, stamp, account.user.id, claimId);
-      db.prepare(
-        "INSERT INTO paddle_purchases(transaction_id,user_id,price_id,product_id,paddle_status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
-      ).run(
-        remote.id,
-        account.user.id,
-        LEGACY_RECURRING_PRICE_ID,
-        PRODUCT_ID,
-        "ready",
-        stamp,
-        stamp,
-      );
-      db.close();
-    }
-    const closed = await controlPaymentAccount(account, "close-checkouts", 0);
-    assert.equal(closed.response.status, 200, JSON.stringify(closed.data));
-    const db = database({ readOnly: true }),
-      purchase = db
-        .prepare(
-          "SELECT price_id,product_id,paddle_status,completed_at,subscription_id FROM paddle_purchases WHERE transaction_id=?",
-        )
-        .get(remote.id);
-    assert.equal(
-      purchase.price_id,
-      providerCatalog === "current" ? PRICE_ID : LEGACY_RECURRING_PRICE_ID,
-    );
-    assert.equal(purchase.product_id, PRODUCT_ID);
-    assert.equal(purchase.paddle_status, "completed");
-    assert.ok(purchase.completed_at);
-    assert.equal(purchase.subscription_id, remote.subscription_id);
-    assert.equal(
-      db
-        .prepare("SELECT COUNT(*) AS count FROM paddle_checkout_claims WHERE user_id=?")
-        .get(account.user.id).count,
-      0,
-    );
-    db.close();
-  }
 });

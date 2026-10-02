@@ -1,6 +1,8 @@
 // @ts-check
 "use strict";
 
+// Live IDs of the retired Build 7.4 one-time price. They are configuration guards only: that price
+// is never accepted as the checkout price, and the live product is refused in sandbox.
 const DEFAULT_PRODUCT_ID = "pro_01m1ky8j916ybyacs836dxbz8x";
 const DEFAULT_PRICE_ID = "pri_01m1kyc2zd313d7a3ssmg02424";
 const CURRENT_PRICE_AMOUNT = "2.99";
@@ -36,28 +38,6 @@ function validPaddleProductId(value, sandbox = false) {
 function validPaddlePriceId(value) {
   const id = clean(value);
   return validId(id, "pri") && id !== DEFAULT_PRICE_ID;
-}
-/**
- * Parse a bounded, unique allowlist of earlier recurring prices. The current
- * and retired one-time prices are deliberately rejected.
- * @param {unknown} value
- * @param {string} currentPriceId
- * @returns {{ids:string[];valid:boolean}}
- */
-function parseLegacyRecurringPriceIds(value, currentPriceId) {
-  const raw = clean(value);
-  if (!raw) return { ids: [], valid: true };
-  const ids = raw.split(",").map(clean),
-    unique = new Set(ids);
-  const valid =
-    ids.length <= 20 &&
-    ids.length === unique.size &&
-    ids.every((id) => validPaddlePriceId(id) && id !== currentPriceId);
-  return { ids: valid ? ids : [], valid };
-}
-/** @param {unknown} value @param {unknown} currentPriceId */
-function validPaddleLegacyRecurringPriceIds(value, currentPriceId) {
-  return parseLegacyRecurringPriceIds(value, clean(currentPriceId)).valid;
 }
 /** @param {unknown} value @param {boolean} [sandbox] */
 function validPaddleClientToken(value, sandbox = false) {
@@ -107,24 +87,6 @@ function exactCurrentCheckoutPrice(data) {
   );
 }
 
-/** @param {import("./domain-types").SubscriptionRow} existing @param {import("./domain-types").PurchaseRow|null} purchase @param {Extract<import("./domain-types").SubscriptionValidationResult,{ok:true}>} next @param {import("./domain-types").PaymentConfig} config */
-function subscriptionCatalogTransition(existing, purchase, next, config) {
-  if (purchase?.price_id === next.priceId && purchase.product_id === next.productId)
-    return existing.price_id === next.priceId && existing.product_id === next.productId
-      ? "same"
-      : "restore";
-  const current = next.priceId === config.priceId && next.productId === config.productId;
-  const legacy =
-    purchase?.product_id === config.productId &&
-    config.legacyRecurringPriceIds.includes(purchase.price_id);
-  if (legacy && current) return "migrate";
-  if (next.productId === config.productId && config.legacyRecurringPriceIds.includes(next.priceId))
-    return "reject";
-  return existing.price_id === next.priceId && existing.product_id === next.productId
-    ? "same"
-    : "change";
-}
-
 module.exports = {
   DEFAULT_PRODUCT_ID,
   DEFAULT_PRICE_ID,
@@ -135,12 +97,9 @@ module.exports = {
   validPaddleEnvironment,
   validPaddleProductId,
   validPaddlePriceId,
-  parseLegacyRecurringPriceIds,
-  validPaddleLegacyRecurringPriceIds,
   validPaddleClientToken,
   validPaddleApiKey,
   validPaddleWebhookSecret,
   currentPublicPrice,
   exactCurrentCheckoutPrice,
-  subscriptionCatalogTransition,
 };

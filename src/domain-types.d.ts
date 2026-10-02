@@ -17,7 +17,6 @@ export interface PaymentConfig {
   readonly environment: "live" | "sandbox";
   readonly productId: string;
   readonly priceId: string;
-  readonly legacyRecurringPriceIds: readonly string[];
   readonly clientToken: string;
   readonly price: PaymentPrice;
   readonly requestedEnabled: boolean;
@@ -106,7 +105,6 @@ export interface CheckoutIdentity {
   checkoutId?: unknown;
   priceId?: unknown;
   productId?: unknown;
-  retiredOneTimeCancellation?: boolean;
 }
 
 export interface CheckoutRecoveryIdentity extends CheckoutIdentity {
@@ -351,7 +349,7 @@ export interface BillingStore {
   ): Promise<boolean>;
   hasEntitledPaidDiscoveryAccess(
     userId: string,
-    priceIds: readonly string[],
+    priceId: string,
     productId: string,
     now?: number,
   ): Promise<boolean>;
@@ -363,7 +361,7 @@ export interface BillingStore {
   ): Promise<DiscoveryAccessSummary>;
   entitledDiscoveryAccessSummary(
     userId: string,
-    priceIds: readonly string[],
+    priceId: string,
     productId: string,
     now?: number,
   ): Promise<DiscoveryAccessSummary>;
@@ -396,21 +394,6 @@ export interface BillingStore {
     purchase: PendingPurchaseWrite,
     claimId: string,
   ): Promise<PurchaseRow | null>;
-  replacePendingPurchaseCatalog(
-    purchase: PurchaseRow,
-    replacement: { priceId: string; productId: string; paddleStatus: string; updatedAt: number },
-  ): Promise<PurchaseRow | null>;
-  completePurchaseCatalogMigration(
-    purchase: PurchaseRow,
-    replacement: {
-      priceId: string;
-      productId: string;
-      customerId: string | null;
-      subscriptionId: string;
-      completedAt: number;
-      updatedAt: number;
-    },
-  ): Promise<PurchaseRow | null>;
   completePurchase(
     transactionId: string,
     completion: PurchaseCompletion,
@@ -422,11 +405,6 @@ export interface BillingStore {
   ): Promise<PurchaseRow | null>;
   createPaddleSubscription(subscription: SubscriptionCreate): Promise<SubscriptionRow | null>;
   updatePaddleSubscription(subscription: SubscriptionWrite): Promise<SubscriptionRow | null>;
-  updatePaddleSubscriptionCatalog(
-    existing: SubscriptionRow,
-    purchase: PurchaseRow,
-    subscription: SubscriptionWrite,
-  ): Promise<SubscriptionRow | null>;
   subscriptionById(subscriptionId: string): Promise<SubscriptionRow | null>;
   subscriptionForUser(userId: string): Promise<SubscriptionRow | null>;
   webhookEvent(eventId: string): Promise<JsonObject | null>;
@@ -1024,8 +1002,6 @@ export type BillingPreparedStatementName =
   | "unsettledPurchasesForUser"
   | "insertPendingPurchase"
   | "recordClaimedPurchase"
-  | "replacePendingPurchaseCatalog"
-  | "completePurchaseCatalogMigration"
   | "checkoutCreationForUser"
   | "claimCheckoutCreation"
   | "recordCheckoutCreationTransaction"
@@ -1038,8 +1014,6 @@ export type BillingPreparedStatementName =
   | "bindPurchaseSubscription"
   | "createPaddleSubscription"
   | "updatePaddleSubscription"
-  | "updatePaddleSubscriptionAfterCatalog"
-  | "replaceSubscriptionPurchaseCatalog"
   | "subscriptionById"
   | "subscriptionForUser"
   | "upsertAdjustment"

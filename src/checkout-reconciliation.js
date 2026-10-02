@@ -5,10 +5,12 @@ const {
   cancelPaddleTransaction,
   retirePaddleDraftTransaction,
   validateRetiredPaddleCheckoutTransaction,
+  validateCheckoutTransaction,
   validateCheckoutTransactionForRetirement,
+  validateCheckoutRecoveryTransaction,
   validateCompletedTransaction,
+  exactCurrentCheckoutPrice,
 } = require("./payments");
-const { validateRetiredCompletedTransaction } = require("./legacy-checkout");
 const { cleanText } = require("./plans");
 const ABANDONED_CHECKOUT_MS = 30 * 60 * 1000,
   MAX_DELETION_RECONCILIATIONS = 8;
@@ -18,15 +20,31 @@ const eventTime = (value, fallback) => {
   const parsed = Date.parse(String(value || ""));
   return Number.isFinite(parsed) ? parsed : fallback;
 };
-/** @param {{store:import("./domain-types").BillingStore;paymentConfig:import("./domain-types").PaymentConfig;now:()=>number;authService:()=>import("./domain-types").AuthService;legacy:ReturnType<typeof import("./legacy-checkout").createLegacyCheckoutPolicy>}} dependencies */
-function createCheckoutReconciliation({ store, paymentConfig, now, authService, legacy }) {
-  const {
-    purchaseCatalog,
-    checkoutCatalog,
-    validatePurchaseCheckoutForCancellation,
-    migrateReusableDraft,
-    completeCatalogMigration,
-  } = legacy;
+/** @param {{store:import("./domain-types").BillingStore;paymentConfig:import("./domain-types").PaymentConfig;now:()=>number;authService:()=>import("./domain-types").AuthService}} dependencies */
+function createCheckoutReconciliation({ store, paymentConfig, now, authService }) {
+  /** @param {{price_id:string;product_id:string}} purchase */
+  function currentPurchase(purchase) {
+    return (
+      purchase.product_id === paymentConfig.productId && purchase.price_id === paymentConfig.priceId
+    );
+  }
+  // A draft or ready checkout must also carry the exact public price, not only the price ID.
+  /** @param {import("./domain-types").PaddleFetchedTransactionResult} remote @param {string} userId @param {string} checkoutId */
+  function currentCheckout(remote, userId, checkoutId) {
+    return (
+      validateCheckoutRecoveryTransaction(remote.data, paymentConfig, { userId, checkoutId }).ok &&
+      (!["draft", "ready"].includes(remote.status) || exactCurrentCheckoutPrice(remote.data))
+    );
+  }
+  /** @param {import("./domain-types").PaddleFetchedTransactionResult} remote @param {import("./domain-types").PurchaseRow} purchase */
+  function validatePurchaseCheckoutForCancellation(remote, purchase) {
+    return validateCheckoutTransaction(remote.data, paymentConfig, {
+      userId: purchase.user_id,
+      checkoutId: String(remote.data.custom_data?.strata_checkout_id || "").trim(),
+      priceId: purchase.price_id,
+      productId: purchase.product_id,
+    });
+  }
   /** @param {string} userId @param {{reuseDraft?:boolean;includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]}} [options] */
   async function reconcileUnsettledPurchases(
     userId,
@@ -72,8 +90,8 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService, 
       .slice(0, MAX_DELETION_RECONCILIATIONS);
     const reconciled = await Promise.allSettled(
       stale.map(async (purchase) => {
-        const sourceCatalog = purchaseCatalog(purchase);
-        if (!sourceCatalog && reuseDraft)
+        const current = currentPurchase(purchase);
+        if (!current && reuseDraft)
           throw authService().accountActionError(
             "STRATA could not safely validate an abandoned Strata+ checkout catalog. Please contact support.",
             503,
@@ -91,7 +109,6 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService, 
         }
         const reconciledAt = Math.max(now(), Number(purchase.updated_at) + 1);
         const checkoutId = cleanText(remote.data.custom_data?.strata_checkout_id, 100);
-        const remoteCatalog = checkoutCatalog(remote, purchase.user_id, checkoutId);
         const retirementValidation = validateCheckoutTransactionForRetirement(
           remote.data,
           paymentConfig,
@@ -125,8 +142,14 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService, 
           return;
         }
         if (remote.status === "draft") {
-          if (reuseDraft) await migrateReusableDraft(remote, purchase);
-          else {
+          if (reuseDraft) {
+            if (!exactCurrentCheckoutPrice(remote.data))
+              throw authService().accountActionError(
+                "STRATA could not safely validate the current checkout price. Please contact support.",
+                503,
+                "PURCHASE_RECONCILIATION_INVALID",
+              );
+          } else {
             if (!retirementValidation.ok)
               throw authService().accountActionError(
                 "STRATA could not safely validate an abandoned Strata+ checkout. Please contact support.",
@@ -152,15 +175,6 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService, 
           return;
         }
         if (PADDLE_CANCELABLE_STALE_STATUSES.has(remote.status)) {
-          if (
-            reuseDraft &&
-            ["retired", "legacy-recurring"].includes(sourceCatalog) &&
-            remoteCatalog === "current" &&
-            remote.status === "ready"
-          ) {
-            await migrateReusableDraft(remote, purchase);
-            return;
-          }
           const validation = reuseDraft
             ? validatePurchaseCheckoutForCancellation(remote, purchase)
             : retirementValidation;
@@ -183,29 +197,13 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService, 
           return;
         }
         if (remote.status === "completed") {
-          if (!sourceCatalog)
+          if (!current)
             throw authService().accountActionError(
               "STRATA could not safely validate a completed Strata+ checkout catalog. Please contact support.",
               503,
               "PURCHASE_RECONCILIATION_INVALID",
             );
-          if (
-            ["retired", "legacy-recurring"].includes(sourceCatalog) &&
-            remoteCatalog === "current"
-          ) {
-            await completeCatalogMigration(remote, purchase, reconciledAt);
-            return;
-          }
-          const validation =
-            sourceCatalog === "retired"
-              ? validateRetiredCompletedTransaction(remote.data, paymentConfig, {
-                  userId: purchase.user_id,
-                  checkoutId,
-                })
-              : validateCompletedTransaction(remote.data, paymentConfig, {
-                  priceId: purchase.price_id,
-                  productId: paymentConfig.productId,
-                });
+          const validation = validateCompletedTransaction(remote.data, paymentConfig);
           const claimedUser = cleanText(remote.data.custom_data?.strata_user_id, 100);
           if (!validation.ok || claimedUser !== purchase.user_id) {
             throw authService().accountActionError(
@@ -215,8 +213,7 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService, 
             );
           }
           const completedAt = eventTime(remote.data.updated_at, now());
-          const subscriptionId =
-            sourceCatalog === "retired" ? null : cleanText(remote.data.subscription_id, 100);
+          const subscriptionId = cleanText(remote.data.subscription_id, 100);
           const completed = await store.completePurchase(purchase.transaction_id, {
             customerId: cleanText(remote.data.customer_id, 100) || null,
             subscriptionId,
@@ -239,6 +236,11 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService, 
       : (await store.unsettledPurchasesForUser(userId)).length;
   }
 
-  return { reconcileUnsettledPurchases };
+  return {
+    currentPurchase,
+    currentCheckout,
+    validatePurchaseCheckoutForCancellation,
+    reconcileUnsettledPurchases,
+  };
 }
 module.exports = { createCheckoutReconciliation };

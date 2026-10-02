@@ -283,71 +283,6 @@ test("purchase ledger grants access from any completed, unrevoked purchase", asy
   }
 });
 
-test("a legacy draft can move to the recurring catalog only through an exact pending-row CAS", async () => {
-  const { store, close } = await fixture();
-  try {
-    const draft = await store.insertPendingPurchase(
-      pending("txn_catalog_migration", 1_000, "draft", LEGACY_PRICE_ID),
-    );
-    const migrated = await store.replacePendingPurchaseCatalog(draft, {
-      priceId: PRICE_ID,
-      productId: PRODUCT_ID,
-      paddleStatus: "draft",
-      updatedAt: 1_100,
-    });
-    assert.equal(migrated.price_id, PRICE_ID);
-    assert.equal(migrated.updated_at, 1_100);
-    assert.equal(
-      await store.replacePendingPurchaseCatalog(draft, {
-        priceId: PRICE_ID,
-        productId: PRODUCT_ID,
-        paddleStatus: "draft",
-        updatedAt: 1_200,
-      }),
-      null,
-      "the stale source snapshot cannot replay",
-    );
-    const ready = await store.updatePurchaseStatus("txn_catalog_migration", "ready", 1_200);
-    assert.equal(
-      (
-        await store.replacePendingPurchaseCatalog(ready, {
-          priceId: PRICE_ID,
-          productId: PRODUCT_ID,
-          paddleStatus: "ready",
-          updatedAt: 1_300,
-        })
-      ).paddle_status,
-      "ready",
-      "a provider-ready/local-stale row can finish the same exact CAS after a response is lost",
-    );
-    assert.equal((await store.purchaseByTransaction("txn_catalog_migration")).price_id, PRICE_ID);
-    await store.updatePurchaseStatus("txn_catalog_migration", "canceled", 1_400);
-    for (const [index, status] of ["paid", "past_due", "canceled"].entries()) {
-      const blocked = await store.insertPendingPurchase(
-        pending(`txn_catalog_blocked_${index}`, 2_000 + index, status, LEGACY_PRICE_ID),
-      );
-      assert.equal(
-        await store.replacePendingPurchaseCatalog(blocked, {
-          priceId: PRICE_ID,
-          productId: PRODUCT_ID,
-          paddleStatus: "ready",
-          updatedAt: 2_100 + index,
-        }),
-        null,
-        `${status} source rows cannot be catalog-rewritten`,
-      );
-      assert.equal(
-        (await store.purchaseByTransaction(blocked.transaction_id)).price_id,
-        LEGACY_PRICE_ID,
-      );
-      if (status !== "canceled")
-        await store.updatePurchaseStatus(blocked.transaction_id, "canceled", 2_200 + index);
-    }
-  } finally {
-    await close();
-  }
-});
-
 test("monthly subscription cache is linked, ordered, fail-closed, and keeps legacy buyers", async () => {
   const { store, close } = await fixture();
   const transactionId = "txn_monthly",
@@ -367,6 +302,16 @@ test("monthly subscription cache is linked, ordered, fail-closed, and keeps lega
       await store.hasCurrentPaidDiscoveryAccess("user-1", "", "", Number.MAX_SAFE_INTEGER),
       true,
       "legacy lifetime access survives missing or replaced recurring catalog configuration",
+    );
+    assert.equal(
+      await store.hasEntitledPaidDiscoveryAccess("user-1", PRICE_ID, PRODUCT_ID, 650),
+      true,
+      "a lifetime purchase skips the recurring catalog check",
+    );
+    assert.equal(
+      (await store.entitledDiscoveryAccessSummary("user-1", PRICE_ID, PRODUCT_ID, 650))
+        .activePurchaseCount,
+      1,
     );
     await store.revokePurchase("txn_legacy", "test_subscription_isolation", 700, 700);
 
@@ -433,6 +378,15 @@ test("monthly subscription cache is linked, ordered, fail-closed, and keeps lega
       (await store.currentDiscoveryAccessSummary("user-1", OTHER_PRICE_ID, PRODUCT_ID, 4_999))
         .active,
       false,
+    );
+    assert.equal(
+      await store.hasEntitledPaidDiscoveryAccess("user-1", PRICE_ID, PRODUCT_ID, 4_999),
+      true,
+    );
+    assert.equal(
+      await store.hasEntitledPaidDiscoveryAccess("user-1", OTHER_PRICE_ID, PRODUCT_ID, 4_999),
+      false,
+      "only the configured price is entitled",
     );
     assert.equal(
       await store.pendingPurchasesForUser("user-1"),
@@ -569,92 +523,6 @@ test("monthly subscription cache is linked, ordered, fail-closed, and keeps lega
       0,
       "a terminal subscription no longer blocks account deletion",
     );
-  } finally {
-    await close();
-  }
-});
-
-test("subscription catalog migration updates the linked purchase atomically", async () => {
-  const { store, close } = await fixture();
-  const transactionId = "txn_catalog_subscription",
-    subscriptionId = "sub_catalog_subscription",
-    customerId = "ctm_catalog_subscription";
-  try {
-    await store.insertPendingPurchase(pending(transactionId, 1_000, "ready", OTHER_PRICE_ID));
-    await store.completePurchase(transactionId, {
-      customerId,
-      subscriptionId,
-      completedAt: 1_100,
-      updatedAt: 1_100,
-    });
-    const legacy = await store.createPaddleSubscription({
-      subscriptionId,
-      userId: "user-1",
-      transactionId,
-      customerId,
-      status: "active",
-      priceId: OTHER_PRICE_ID,
-      productId: PRODUCT_ID,
-      scheduledChangeAction: null,
-      scheduledChangeAt: null,
-      currentPeriodEndsAt: 9_000,
-      eventOccurredAt: 2_000,
-      createdAt: 2_000,
-      updatedAt: 2_000,
-    });
-    const update = {
-      subscriptionId,
-      userId: "user-1",
-      customerId,
-      status: "active",
-      priceId: PRICE_ID,
-      productId: PRODUCT_ID,
-      scheduledChangeAction: null,
-      scheduledChangeAt: null,
-      currentPeriodEndsAt: 10_000,
-      eventOccurredAt: 3_000,
-      updatedAt: 3_000,
-    };
-    const purchase = await store.purchaseByTransaction(transactionId);
-    const migrated = await store.updatePaddleSubscriptionCatalog(legacy, purchase, update);
-    assert.equal(migrated.price_id, PRICE_ID);
-    assert.equal((await store.purchaseByTransaction(transactionId)).price_id, PRICE_ID);
-    assert.equal(
-      await store.hasEntitledPaidDiscoveryAccess(
-        "user-1",
-        [PRICE_ID, OTHER_PRICE_ID],
-        PRODUCT_ID,
-        9_999,
-      ),
-      true,
-    );
-    assert.equal(
-      (
-        await store.entitledDiscoveryAccessSummary(
-          "user-1",
-          [PRICE_ID, OTHER_PRICE_ID],
-          PRODUCT_ID,
-          9_999,
-        )
-      ).activePurchaseCount,
-      1,
-    );
-
-    const stale = { ...legacy, price_id: "pri_01stalelegacy000000000000000" };
-    assert.equal(
-      await store.updatePaddleSubscriptionCatalog(
-        stale,
-        { ...purchase, price_id: "pri_01stalelegacy000000000000000" },
-        { ...update, eventOccurredAt: 4_000, updatedAt: 4_000 },
-      ),
-      null,
-    );
-    assert.equal(
-      (await store.purchaseByTransaction(transactionId)).price_id,
-      PRICE_ID,
-      "a stale source cannot partially rewrite either side of the link",
-    );
-    assert.equal((await store.subscriptionById(subscriptionId)).event_occurred_at, 3_000);
   } finally {
     await close();
   }

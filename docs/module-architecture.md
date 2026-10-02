@@ -130,10 +130,10 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/apple-jws.js` | App Store JWS verification: Apple Root CA - G3 chain, marker extensions, ES256 | 135 | 124 | 6.3 KiB | 150 | — |
 | `src/athlete-profile.js` | Athlete Profile read model and the sync that keeps preferences and the coaching profile in step | 204 | 197 | 8.5 KiB | 230 | `src/plans.js` |
 | `src/auth.js` | Authentication and account lifecycle | 1859 | 1801 | 64.3 KiB | 1930 | `src/account-deletion.js`, `src/account-self-service.js`, `src/email.js`, `src/plans.js`, `src/session-renewal.js`, `src/social-auth-messages.js` |
-| `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 303 | 297 | 17.8 KiB | 330 | — |
-| `src/billing-store.js` | SQLite and Turso commercial storage parity | 734 | 727 | 26.7 KiB | 770 | `src/access-controls-schema.js`, `src/billing-schema.js` |
-| `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 1322 | 1294 | 50.1 KiB | 1400 | `src/access-controls.js`, `src/apple-billing.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
-| `src/checkout-reconciliation.js` | Validated checkout closure and settlement reconciliation | 244 | 243 | 10.1 KiB | 330 | `src/legacy-checkout.js`, `src/payments.js`, `src/plans.js` |
+| `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 259 | 253 | 15.0 KiB | 330 | — |
+| `src/billing-store.js` | SQLite and Turso commercial storage parity | 571 | 564 | 21.4 KiB | 770 | `src/access-controls-schema.js`, `src/billing-schema.js` |
+| `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 1119 | 1093 | 41.8 KiB | 1400 | `src/access-controls.js`, `src/apple-billing.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/payments.js`, `src/plans.js` |
+| `src/checkout-reconciliation.js` | Current-catalog checkout checks, validated closure, and settlement reconciliation | 246 | 245 | 10.4 KiB | 330 | `src/payments.js`, `src/plans.js` |
 | `src/coaching-core.js` | Validated coaching inputs and deterministic weekly training composition | 564 | 557 | 23.3 KiB | 1250 | `src/coaching-training-core.js`, `src/energy-planning-core.js`, `src/meal-planning-core.js`, `src/plans.js` |
 | `src/coaching-evidence.js` | Owner-filtered coaching history and original-target diary assembly | 268 | 262 | 8.5 KiB | 420 | `src/coaching-core.js`, `src/energy-calibration-core.js` |
 | `src/coaching-prescription-core.js` | Measurement-aware prescriptions from comparable completed training history | 385 | 384 | 14.9 KiB | 750 | `src/progression.js` |
@@ -160,15 +160,14 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/entitlements.js` | Feature tiers and the can(user, feature) capability map | 74 | 67 | 2.4 KiB | 90 | — |
 | `src/events.js` | In-process event bus with an outbox that retries failed reactions | 194 | 189 | 7.1 KiB | 220 | — |
 | `src/http.js` | HTTP transport helpers | 209 | 194 | 6.9 KiB | 220 | `src/session-renewal.js` |
-| `src/legacy-checkout.js` | Strict retired-checkout migration and completion policy | 223 | 218 | 8.8 KiB | 240 | `src/payments.js` |
 | `src/meal-planning-core.js` | Validated dietary preferences and deterministic remaining-day food options | 914 | 903 | 31.7 KiB | 1630 | — |
-| `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 518 | 505 | 16.0 KiB | 560 | `src/billing-schema.js`, `src/product-signals-schema.js` |
+| `src/migrations.js` | Ordered, idempotent SQLite and Turso schema migration ledger | 566 | 553 | 17.6 KiB | 600 | `src/billing-schema.js`, `src/product-signals-schema.js` |
 | `src/observability.js` | Structured request tracing and redacted operational logging | 132 | 123 | 4.5 KiB | 150 | — |
-| `src/paddle-catalog.js` | Paddle catalog, credential, exact checkout-price, and subscription-transition policy | 146 | 142 | 5.2 KiB | 170 | — |
-| `src/paddle-checkout-retirement.js` | Interrupted Paddle checkout retirement policy | 100 | 93 | 3.7 KiB | 150 | — |
-| `src/paddle-subscriptions.js` | Recurring subscription validation and temporary customer-portal links | 242 | 235 | 9.2 KiB | 300 | — |
+| `src/paddle-catalog.js` | Paddle catalog, credential, and exact checkout-price policy | 105 | 102 | 3.4 KiB | 170 | — |
+| `src/paddle-checkout-retirement.js` | Interrupted Paddle checkout retirement policy | 93 | 86 | 3.4 KiB | 150 | — |
+| `src/paddle-subscriptions.js` | Recurring subscription validation and temporary customer-portal links | 240 | 233 | 9.1 KiB | 300 | — |
 | `src/paddle-webhooks.js` | Paddle signature and webhook source verification | 141 | 131 | 5.0 KiB | 180 | — |
-| `src/payments.js` | Paddle integration boundary | 660 | 637 | 22.9 KiB | 690 | `src/paddle-catalog.js`, `src/paddle-checkout-retirement.js`, `src/paddle-subscriptions.js`, `src/paddle-webhooks.js` |
+| `src/payments.js` | Paddle integration boundary | 610 | 588 | 21.2 KiB | 690 | `src/paddle-catalog.js`, `src/paddle-checkout-retirement.js`, `src/paddle-subscriptions.js`, `src/paddle-webhooks.js` |
 | `src/plans.js` | Plan domain validation | 442 | 416 | 16.3 KiB | 630 | — |
 | `src/polar-client.js` | Polar AccessLink V4 OAuth, credential refresh, date ranges, and rate limits | 387 | 379 | 13.3 KiB | 440 | — |
 | `src/polar-mapping.js` | Range-checked Polar V4 and legacy V3 payloads as wellness rows | 375 | 362 | 13.7 KiB | 410 | — |
@@ -191,7 +190,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/social-auth-store.js` | Local and Turso storage for linked sign-ins | 187 | 182 | 6.0 KiB | 250 | `src/social-auth-schema.js` |
 | `src/social-auth.js` | Sign up and sign in with Google | 432 | 419 | 15.9 KiB | 540 | `src/devices-crypto.js`, `src/plans.js`, `src/social-auth-client.js`, `src/social-auth-config.js`, `src/social-auth-messages.js` |
 | `src/static-assets.js` | Bounded public asset representations | 50 | 45 | 2.0 KiB | 80 | `src/http.js` |
-| `src/store-contract.js` | Storage boundary contract | 249 | 246 | 6.2 KiB | 270 | — |
+| `src/store-contract.js` | Storage boundary contract | 246 | 243 | 6.1 KiB | 270 | — |
 | `src/support.js` | Public and administrative support workflow | 364 | 353 | 12.3 KiB | 430 | `src/email.js`, `src/plans.js` |
 | `src/training-log.js` | Training Log read model: logged, planned, and Polar sessions with source tags and links | 382 | 372 | 13.5 KiB | 390 | `src/plans.js` |
 | `src/training-loop-schema.js` | Check-in, training-block, and adaptation storage schema | 113 | 110 | 6.7 KiB | 130 | — |
