@@ -1,5 +1,19 @@
 # Changelog
 
+## 9.4.0 — Hardening
+
+- Apple Sandbox purchases are still verified and saved, but in production they unlock Strata+ only for accounts listed in `APPLE_SANDBOX_ACCOUNTS` (put the App Review demo account there).
+- `POST`, `PUT`, and `DELETE` on `/api/workouts` require a trusted origin; a write with no `Origin` header is refused with `WORKOUT_ORIGIN_REQUIRED`.
+- Product activity counts: a signed-in count needs the session's CSRF token, anonymous counts have their own rate limit and total, each action counts once per account or network per UTC day, and signed-in and anonymous counts are stored apart, with decisions made from the signed-in ones.
+- The Strata AI member allowance and shared daily budget are claimed with one conditional write each, and a member's simultaneous requests can no longer each claim the quota.
+- `/api/status` returns only `{ ok, version }`; setup flags moved to the admin Overview, and the deploy smoke checks that nothing else is public.
+- A failed event reaction is saved to an outbox and retried with backoff; reading a member's Daily Snapshots retries their queued reactions first, so a failed rebuild heals on the next read.
+- The renewed session cookie is added with `appendSetCookie` before handlers write, replacing the `res.writeHead` override.
+- Rate limits (`rate_buckets`), the Strata AI queue (`ai_jobs`), and the Polar sync loop's lock (`locks`) live in the database. STRATA runs as one server (`numInstances: 1`) and logs `service.multiple_instances` if a second one shares the database.
+- Advance every asset version and the offline cache to 9.4.0.
+
+See the [9.4.0 release guide](docs/release-9.4.0.md).
+
 ## 9.3.0 — Sign in with Google
 
 - Members can create an account or sign in with Google from Profile, next to email and password. STRATA uses Google's OpenID Connect sign-in with PKCE and a nonce, checks every ID token against Google's published keys, and finishes only in the browser that started. A Google account links to an existing STRATA account only when both have verified the same email; otherwise it creates a verified account without a password, which can add one through the emailed set-a-password link. The button stays off until `GOOGLE_SIGN_IN_CLIENT_ID` and `GOOGLE_SIGN_IN_CLIENT_SECRET` are set.
