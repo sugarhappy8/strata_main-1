@@ -124,7 +124,7 @@ function paywall({
     haptics,
     views,
     view: () => views.at(-1),
-    html: () => context.StrataAppPaywall.bodyHtml(views.at(-1)),
+    html: () => String(context.StrataAppPaywall.bodyHtml(views.at(-1))),
     api: context.StrataAppPaywall,
   };
 }
@@ -161,7 +161,7 @@ test("the paywall shows StoreKit's price and period, what Strata+ includes, and 
   assert.equal(page.api.periodLabel({ unit: "month", value: 3 }), "every 3 months");
   assert.equal(page.api.periodLabel(null), "");
   assert.match(
-    page.api.benefitsHtml(["<span><strong>Know what’s next.</strong> Overview</span>"]),
+    String(page.api.benefitsHtml(["<span><strong>Know what’s next.</strong> Overview</span>"])),
     /<ul class="app-paywall-benefits"><li><span><strong>Know what’s next\./,
   );
   const pricing = read("public/pages/pricing.html");

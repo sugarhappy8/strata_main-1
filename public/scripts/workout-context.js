@@ -8,6 +8,7 @@
   else root.StrataWorkoutContext = context;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   function activeWorkout(state) {
     return state.workout?.status === "active"
@@ -18,7 +19,7 @@
           null;
   }
 
-  function create({ $, state, workout: W, view, esc, openDetail, recover }) {
+  function create({ $, state, workout: W, view, openDetail, recover }) {
     function render() {
       const items = state.plan?.days?.[state.day] || [],
         hasWeek = W.DAYS.some((day) => (state.plan?.days?.[day] || []).length),
@@ -39,8 +40,8 @@
         $("planDay"),
         W.DAYS.map(
           (day) =>
-            `<option value="${day}"${day === state.day ? " selected" : ""}>${day}${day === W.today() ? " · today" : ""}</option>`,
-        ).join(""),
+            html`<option value="${day}"${day === state.day ? " selected" : ""}>${day}${day === W.today() ? " · today" : ""}</option>`,
+        ),
       );
       $("todayLabel").textContent = active
         ? "Workout in progress"
@@ -100,7 +101,7 @@
         if (scheduledDay) {
           choose.hidden = false;
           choose.dataset.day = scheduledDay;
-          StrataHtml.setHtml(choose, `Go to ${scheduledDay} <span aria-hidden="true">→</span>`);
+          StrataHtml.setHtml(choose, html`Go to ${scheduledDay} <span aria-hidden="true">→</span>`);
         } else delete choose.dataset.day;
         return;
       }
@@ -108,13 +109,13 @@
       const summary = W.planDaySummary(state.plan, state.day);
       $("planStatus").textContent = "Scheduled in your weekly plan.";
       start.hidden = false;
-      StrataHtml.setHtml(start, 'Start workout <span aria-hidden="true">↗</span>');
+      StrataHtml.setHtml(start, html`Start workout <span aria-hidden="true">↗</span>`);
       $("differentWorkout").hidden = false;
       preview.hidden = false;
       brief.hidden = false;
       StrataHtml.setHtml(
         brief,
-        `<div><span>Exercises</span><strong>${summary.movements}</strong></div><div><span>Working sets</span><strong>${summary.workingSets}</strong></div><div><span>Plan day</span><strong>${esc(summary.day)}</strong></div>`,
+        html`<div><span>Exercises</span><strong>${summary.movements}</strong></div><div><span>Working sets</span><strong>${summary.workingSets}</strong></div><div><span>Plan day</span><strong>${summary.day}</strong></div>`,
       );
       StrataHtml.setHtml($("planPreview"), view.planPreview(items));
       $("startHint").textContent = state.historyLoadError

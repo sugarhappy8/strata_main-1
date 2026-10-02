@@ -290,7 +290,7 @@ test("screens map every page to its tab, title, and Back target", () => {
 test("the tab bar marks the current section, keeps studio panels in place, and has five labelled targets", () => {
   const { window } = realm();
   const { resolveScreen, tabBarHtml, topBarHtml } = window.StrataAppMode;
-  const train = tabBarHtml(resolveScreen({ pathname: "/workout.html" }));
+  const train = String(tabBarHtml(resolveScreen({ pathname: "/workout.html" })));
   assert.equal((train.match(/class="app-tab"/g) || []).length, 5);
   assert.deepEqual(
     [...train.matchAll(/data-app-tab="(\w+)"/g)].map((match) => match[1]),
@@ -306,8 +306,8 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
   );
   assert.match(train, /<svg[^>]*aria-hidden="true"/);
   assert.doesNotMatch(train, /data-section/);
-  const studio = tabBarHtml(
-    resolveScreen({ pathname: "/discover.html", hash: "#recoveryWorkspace" }),
+  const studio = String(
+    tabBarHtml(resolveScreen({ pathname: "/discover.html", hash: "#recoveryWorkspace" })),
   );
   assert.match(studio, /href="#exerciseExplorer" data-app-tab="rankings" data-section="rankings"/);
   assert.match(
@@ -316,10 +316,10 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
   );
   assert.match(studio, /data-app-tab="dashboard" data-section="week"/);
   assert.match(
-    topBarHtml(resolveScreen({ pathname: "/privacy" })),
+    String(topBarHtml(resolveScreen({ pathname: "/privacy" }))),
     /<a class="app-back" href="\/policies" data-app-back>[\s\S]*Back<\/span><\/a><p class="app-title" data-app-title>Privacy<\/p>/,
   );
-  assert.doesNotMatch(topBarHtml(resolveScreen({ pathname: "/dashboard" })), /app-back/);
+  assert.doesNotMatch(String(topBarHtml(resolveScreen({ pathname: "/dashboard" }))), /app-back/);
   // 44pt+ targets, safe areas, no live blur, and the bars stay put through view transitions.
   assert.match(
     CSS,

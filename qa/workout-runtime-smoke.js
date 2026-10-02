@@ -130,6 +130,21 @@ past.entries[0].sets = [10, 9].map((reps) => ({
 const history = [Workout.summary(past)];
 const progressionRequests = [];
 const storage = new Map();
+// A finished device draft whose title is member text with every markup character in it.
+const hostileTitle = '<b>"Tom & Jerry"</b>',
+  draft = JSON.parse(JSON.stringify(past));
+draft.id = "runtime-draft";
+draft.title = hostileTitle;
+storage.set(
+  `${Workout.draftPrefix("account:runtime-user")}runtime-context:runtime-draft`,
+  JSON.stringify({
+    ownerId: "account:runtime-user",
+    contextId: "runtime-context",
+    workout: draft,
+    dirty: true,
+    savedAt: Date.now(),
+  }),
+);
 const previewDetails = new Element("planPreviewDetails"),
   document = {
     visibilityState: "visible",
@@ -225,6 +240,13 @@ for (const [name, source] of sources) vm.runInContext(source, context, { filenam
     await new Promise(setImmediate);
   await new Promise(setImmediate);
   assert.match(elements.get("planPreview").innerHTML, /runtime-first|Setup, cues/);
+  const recoveryList = elements.get("recoveryList").innerHTML;
+  assert.ok(
+    recoveryList.includes("<strong>&lt;b&gt;&quot;Tom &amp; Jerry&quot;&lt;/b&gt;</strong>"),
+    "a device draft's title is escaped exactly once",
+  );
+  assert.doesNotMatch(recoveryList, /&amp;(?:lt|gt|quot|amp|#39);/);
+  assert.match(recoveryList, /Review &amp; recover<\/button>/);
   assert.equal(
     elements.get("calendarWeekly").hidden,
     false,

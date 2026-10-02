@@ -4,12 +4,10 @@
     typeof module === "object" && module.exports
       ? require("./entitlements")
       : root.StrataEntitlements;
-  const StrataHtml =
-    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
-  const api = factory(entitlements, StrataHtml);
+  const api = factory(entitlements);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataAccountLogic = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements, StrataHtml) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements) {
   "use strict";
 
   function hasPlus(user) {
@@ -112,8 +110,6 @@
       ? "Could not create the account. Check the details and try again."
       : "Could not sign in. Check the details and try again.";
   }
-
-  const escapeHtml = StrataHtml.escape;
 
   function localDateKey(date) {
     const year = date.getFullYear(),
@@ -432,7 +428,6 @@
     verificationLocation,
     safeQueryError,
     friendlyAuthError,
-    escapeHtml,
     localDateKey,
     localNoon,
     subscriptionFor,

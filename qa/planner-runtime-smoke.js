@@ -427,6 +427,18 @@ function clickSelectDay(day) {
     "12–15",
     "Typing must update plan state before the field blurs",
   );
+  vm.runInContext(`state.plan.days.Monday[0].reps='5 <b> & "x"';renderWeek()`, context);
+  assert.match(
+    elements.get("weekBoard").innerHTML,
+    /value="5 &lt;b&gt; &amp; &quot;x&quot;"/,
+    "A member's own text reaches the week board escaped",
+  );
+  assert.doesNotMatch(
+    elements.get("weekBoard").innerHTML,
+    /&amp;(?:lt|gt|quot|amp|#39);/,
+    "Week board text is escaped exactly once",
+  );
+  vm.runInContext("state.plan.days.Monday[0].reps='12–15';renderWeek()", context);
 
   clickLoadMore();
 
@@ -1568,6 +1580,17 @@ function clickSelectDay(day) {
     run("state.draftKey"),
     /user-u1:/,
     "Account-change recovery stays scoped to the original owner",
+  );
+  run(`renderLoadError(new Error('Plan <b> & "x" failed'))`);
+  assert.equal(
+    elements.get("libraryList").innerHTML,
+    '<div class="loading">Plan &lt;b&gt; &amp; &quot;x&quot; failed</div>',
+    "A load error is shown as text, escaped exactly once",
+  );
+  assert.match(
+    elements.get("weekBoard").innerHTML,
+    /<p>Plan &lt;b&gt; &amp; &quot;x&quot; failed<\/p><button type="button" data-retry-init>/,
+    "The week board repeats the load error as escaped text",
   );
   console.log(
     JSON.stringify(

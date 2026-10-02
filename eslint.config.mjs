@@ -54,6 +54,31 @@ const htmlSinkRules = {
       selector: "CallExpression > MemberExpression.callee[property.name='insertAdjacentHTML']",
       message: "Use StrataHtml.insertHtml (public/scripts/html.js).",
     },
+    {
+      selector:
+        'TemplateLiteral:not(TaggedTemplateExpression > TemplateLiteral) > TemplateElement[value.raw=/<[/!]?[A-Za-z]|&(?:#\\d+|[a-z]+);|(?:^|\\s)[a-z][a-z-]*="/]',
+      message: "Build markup with html`` (public/scripts/html.js), which escapes every value.",
+    },
+    {
+      selector: 'Literal[value=/<[/!]?[A-Za-z][^>]*>|&(?:#\\d+|[a-z]+);|(?:^|\\s)[a-z][a-z-]*="/]',
+      message:
+        "Build markup with html`` (public/scripts/html.js), so it is trusted markup, not a string.",
+    },
+    {
+      selector: "MemberExpression[object.name='StrataHtml'][property.name='escape']",
+      message: "Put the value into html`` instead of escaping it by hand.",
+    },
+    {
+      selector:
+        "CallExpression[callee.property.name='join'][callee.object.callee.property.name='map']:has(TaggedTemplateExpression)",
+      message:
+        "Joining html`` markup makes it a string. Put the list straight into html`` or setHtml.",
+    },
+    {
+      selector:
+        "TemplateLiteral:not(TaggedTemplateExpression > TemplateLiteral) > TaggedTemplateExpression, BinaryExpression[operator='+'] > TaggedTemplateExpression",
+      message: "html`` markup turned into a string here. Build the whole fragment with html``.",
+    },
   ],
 };
 

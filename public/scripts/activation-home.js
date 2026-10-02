@@ -2,6 +2,7 @@
 (() => {
   const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     $ = (id) => document.getElementById(id);
+  const { html } = StrataHtml;
   function profileFrom(sample) {
     const availability = {
       2: ["Monday", "Thursday"],
@@ -40,8 +41,8 @@
     const byId = new Map(exercises.map((exercise) => [exercise.id, exercise]));
     return DAYS.map((day) => {
       const items = Array.isArray(plan?.days?.[day]) ? plan.days[day] : [];
-      return `<article class="quick-week-day ${items.length ? "" : "is-recovery"}"><div><span>${day.slice(0, 3)}</span><strong>${items.length ? `${items.length} movement${items.length === 1 ? "" : "s"}` : "Recovery"}</strong></div>${items.length ? `<ol>${items.map((item) => StrataHtml.html`<li><b>${byId.get(item.exerciseId)?.name || "Movement unavailable"}</b><small>${item.sets} × ${item.reps}</small></li>`).join("")}</ol>` : "<p>No scheduled session.</p>"}</article>`;
-    }).join("");
+      return html`<article class="quick-week-day ${items.length ? "" : "is-recovery"}"><div><span>${day.slice(0, 3)}</span><strong>${items.length ? `${items.length} movement${items.length === 1 ? "" : "s"}` : "Recovery"}</strong></div>${items.length ? html`<ol>${items.map((item) => html`<li><b>${byId.get(item.exerciseId)?.name || "Movement unavailable"}</b><small>${item.sets} × ${item.reps}</small></li>`)}</ol>` : html`<p>No scheduled session.</p>`}</article>`;
+    });
   }
   function renderWeek(plan, profile, exercises, { restored = false } = {}) {
     const movementCount = DAYS.reduce(
@@ -65,7 +66,7 @@
       limit: 3,
     });
     $("quickPreviewSummary").textContent = `${profile.availability.length}-day week ready`;
-    StrataHtml.setHtml($("quickPreviewResults"), result.items.map(previewResultMarkup).join(""));
+    StrataHtml.setHtml($("quickPreviewResults"), result.items.map(previewResultMarkup));
     renderWeek(plan, profile, exercises, { restored });
     $("quickPreviewActions").hidden = false;
     $("quickPreviewStatus").textContent = restored

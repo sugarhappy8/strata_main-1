@@ -10,6 +10,8 @@ const Render = require("../public/scripts/discover-render");
 const Catalog = require("../public/scripts/discover-catalog");
 const Detail = require("../public/scripts/discover-detail");
 const Session = require("../public/scripts/discover-session");
+const Recovery = require("../public/scripts/discover-recovery");
+const DevicesCore = require("../public/scripts/devices-core");
 
 function classList() {
   const values = new Set();
@@ -567,4 +569,234 @@ test("Discover detail and session factories expose focused responsibilities", ()
   });
   assert.equal(session.preferredDay("Tuesday"), "Tuesday");
   state.recommendations = [{ exercise: { name: "Press" }, result: { match: 91 } }];
+});
+
+// Member and partner text reaches every Discover view through html``, so it shows escaped exactly once.
+const HOSTILE = `Tom's <b>"Press"</b> & Row`;
+const HOSTILE_ESCAPED = "Tom&#39;s &lt;b&gt;&quot;Press&quot;&lt;/b&gt; &amp; Row";
+function assertEscapedOnce(markup, label) {
+  assert.ok(markup.includes(HOSTILE_ESCAPED), `${label} shows the text escaped`);
+  assert.doesNotMatch(markup, /&amp;(?:lt|gt|quot|amp|#39);/, `${label} is not escaped twice`);
+  assert.doesNotMatch(markup, /<b>"Press"/, `${label} never turns the text into a tag`);
+}
+function elements() {
+  const nodes = new Map();
+  return (id) => {
+    if (!nodes.has(id))
+      nodes.set(
+        id,
+        Object.assign(element(id), {
+          innerHTML: "",
+          textContent: "",
+          value: "",
+          addEventListener() {},
+          querySelectorAll: () => [],
+          firstChild: { textContent: "" },
+        }),
+      );
+    return nodes.get(id);
+  };
+}
+const hostileExercise = (id, fields = {}) => ({
+  id,
+  name: HOSTILE,
+  group: "chest",
+  sub: HOSTILE,
+  equipment: "Dumbbell",
+  pattern: "Press",
+  level: "Beginner",
+  why: HOSTILE,
+  score: 88,
+  sets: "3",
+  reps: "8-12",
+  rest: "90 s",
+  metrics: { stability: 80, range: 70, stimulus: 75, progression: 85 },
+  ...fields,
+});
+
+test("the Progress renderer escapes exercise names once and keeps its own markup", () => {
+  const node = elements(),
+    renderer = Render.createProgressRenderer({
+      element: node,
+      exerciseName: () => HOSTILE,
+      readableDate: (value) => value,
+      days: [],
+    });
+  renderer.renderRecords(
+    [
+      {
+        exerciseId: "press",
+        newBest: true,
+        change: { direction: "up", text: "+2.5 kg" },
+        best: { metric: { formatted: "20 kg" } },
+        latest: {
+          metric: { label: "Top set", formatted: "20 kg × 8" },
+          workout: { date: "Sep 9" },
+        },
+      },
+    ],
+    false,
+  );
+  const records = node("progressRecordList").innerHTML;
+  assertEscapedOnce(records, "a progress record");
+  assert.match(records, /<dd>20 kg <em>New best<\/em><\/dd>/);
+  renderer.renderRecords([], false);
+  assert.match(
+    node("progressRecordList").innerHTML,
+    /^<p class="progress-empty">Complete a workout/,
+  );
+});
+
+test("the catalog escapes exercise text once in recommendations, the explorer, and its buttons", () => {
+  const state = State.createState(),
+    node = elements();
+  state.exercises = [hostileExercise("press")];
+  state.preferences = { goal: "balanced", level: "Beginner", days: 3, equipment: ["Dumbbell"] };
+  state.shortlist = ["press"];
+  const catalog = Catalog.createCatalog({
+    state,
+    core: { filterExercises: (items) => items },
+    labels: { chest: "Chest" },
+    desktopPageSize: 12,
+    mobilePageSize: 6,
+    window: {},
+    element: node,
+    titleCase: (value) => value,
+    personalResult: () => ({ eligible: true, match: 90, reasons: [] }),
+    aggregateFor: () => null,
+  });
+  catalog.renderRecommendations();
+  catalog.renderExplorer();
+  for (const id of ["recommendationGrid", "exerciseGrid"]) {
+    const markup = node(id).innerHTML;
+    assertEscapedOnce(markup, id);
+    assert.match(
+      markup,
+      /<button class="movement-save is-saved is-compact" data-toggle-shortlist="press"/,
+    );
+    assert.match(
+      markup,
+      new RegExp(`aria-label="Remove ${HOSTILE_ESCAPED} from your decision board"`),
+    );
+  }
+  assertEscapedOnce(String(catalog.compareButton(state.exercises[0])), "the compare button");
+});
+
+test("the detail comparison escapes exercise text once and keeps its winner markup", () => {
+  const state = State.createState(),
+    node = elements(),
+    exercises = [hostileExercise("press"), hostileExercise("row", { score: 70 })];
+  state.compare = ["press", "row"];
+  const detail = Detail.createDetail({
+    state,
+    core: { comparisonRecommendation: () => ({ winner: exercises[0], reason: HOSTILE }) },
+    element: node,
+    exerciseById: (id) => exercises.find((exercise) => exercise.id === id),
+    personalResult: () => ({ eligible: true, match: 90 }),
+    communityLabel: () => HOSTILE,
+    resistanceProfile: () => HOSTILE,
+    setupLabel: () => "Quick",
+    practicality: () => 80,
+  });
+  detail.openComparison();
+  const markup = node("battleResults").innerHTML;
+  assertEscapedOnce(markup, "the comparison table");
+  assert.match(
+    markup,
+    new RegExp(`<strong>${HOSTILE_ESCAPED} leads</strong><p>${HOSTILE_ESCAPED}</p>`),
+  );
+  assert.match(
+    markup,
+    /<td class="winner"><span class="sr-only">Best in this comparison\. <\/span>88\/100<\/td>/,
+  );
+  assert.match(markup, /<td class="">3 × 8-12<br>90 s rest<\/td>/);
+});
+
+test("the session builder escapes exercise and session text once", () => {
+  const state = State.createState(),
+    node = elements();
+  node("sessionDay").value = "Monday";
+  const session = Session.createSession({
+    state,
+    core: {
+      WEEKDAYS: ["Monday"],
+      mergeSessionIntoPlan: () => ({ changed: true, added: 2, skipped: 0 }),
+    },
+    labels: { chest: "Chest" },
+    element: node,
+    window: {},
+    titleCase: (value) => value,
+  });
+  session.render({
+    selectionLabel: "Random",
+    timeLabel: "Short",
+    focusLabel: "Upper",
+    minutes: 20,
+    summary: HOSTILE,
+    selectionNote: HOSTILE,
+    items: [
+      {
+        exercise: hostileExercise("press"),
+        roleLabel: "Primary",
+        reasons: [HOSTILE, "fits your equipment"],
+        sets: 3,
+        reps: "8-12",
+        rest: "90 s",
+        match: 90,
+      },
+    ],
+  });
+  const markup = node("sessionResults").innerHTML;
+  assertEscapedOnce(markup, "the session results");
+  assert.match(markup, new RegExp(`<h4>${HOSTILE_ESCAPED}</h4>`));
+  assert.match(markup, new RegExp(`${HOSTILE_ESCAPED} · fits your equipment\\.`));
+  assert.equal(
+    node("sessionAddAll").innerHTML,
+    'Add 2 movements to Monday <span aria-hidden="true">→</span>',
+  );
+});
+
+test("the Recovery views escape Polar text once", async () => {
+  const node = elements(),
+    summary = {
+      state: "current",
+      date: "2026-09-28",
+      ageDays: 0,
+      recovery: { status: 2, label: HOSTILE, ansCharge: -2.5, ansChargeLabel: "Below usual" },
+      stress: { level: "usual", signals: [] },
+      sleep: { asleepSeconds: 24000, deepSeconds: 4000, lightSeconds: 14000, remSeconds: 6000 },
+      heart: { overnight: 54, hrv: 48 },
+      lighterSession: { offer: true, reason: "recovery" },
+    },
+    trends = {
+      series: [{ date: "2026-09-28", recoveryStatus: 2, hrv: 48, heartRate: 54 }],
+      usual: {},
+      weekly: [],
+      training: [],
+    };
+  const controller = Recovery.createController({
+    element: node,
+    api: async (path) =>
+      path.startsWith("/api/wellness/today")
+        ? { configured: true, connected: true, connection: { status: "active" }, summary }
+        : { trends },
+    state: { user: { id: "m" } },
+    core: DevicesCore,
+    getGeneration: () => 1,
+  });
+  controller.activate("plan");
+  for (let index = 0; index < 6; index += 1) await new Promise(setImmediate);
+  const badge = node("planReadiness").innerHTML;
+  assertEscapedOnce(badge, "the Plan readiness badge");
+  assert.match(
+    badge,
+    /<a href="\/workout\.html">Lighter session in Train <span aria-hidden="true">↗<\/span><\/a>/,
+  );
+  controller.activate("recovery");
+  for (let index = 0; index < 6; index += 1) await new Promise(setImmediate);
+  const today = node("recoveryToday").innerHTML;
+  assertEscapedOnce(today, "the Recovery night");
+  assert.match(today, /<div class="recovery-stages" role="img"[^>]*><i class="stage-deep"/);
+  assert.match(today, /<a href="\/workout\.html">Open Train/);
+  assert.match(node("recoveryCharts").innerHTML, /<circle cx="[^"]+" cy="[^"]+" r="2\.6"><title>/);
 });

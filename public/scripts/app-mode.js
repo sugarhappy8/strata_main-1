@@ -23,17 +23,18 @@
   const NAV_KEY = "strata-app-nav",
     SYNC_KEY = "strata-app-entitlements-synced",
     MAX_TRANSACTIONS = 20;
+  const { html } = StrataHtml;
   const svg = (body) =>
-    `<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+    html`<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
   const ICONS = Object.freeze({
-    rankings: svg('<path d="M5 20v-6M12 20V5M19 20v-9"/><path d="M3 20h18"/>'),
+    rankings: svg(html`<path d="M5 20v-6M12 20V5M19 20v-9"/><path d="M3 20h18"/>`),
     dashboard: svg(
-      '<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>',
+      html`<rect x="3.5" y="3.5" width="7" height="7" rx="2"/><rect x="13.5" y="3.5" width="7" height="7" rx="2"/><rect x="3.5" y="13.5" width="7" height="7" rx="2"/><rect x="13.5" y="13.5" width="7" height="7" rx="2"/>`,
     ),
-    train: svg('<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>'),
-    recovery: svg('<path d="M20 12.8A8 8 0 1 1 11.2 4a6.2 6.2 0 0 0 8.8 8.8Z"/>'),
-    profile: svg('<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>'),
-    back: svg('<path d="m14.5 5-7 7 7 7"/>'),
+    train: svg(html`<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>`),
+    recovery: svg(html`<path d="M20 12.8A8 8 0 1 1 11.2 4a6.2 6.2 0 0 0 8.8 8.8Z"/>`),
+    profile: svg(html`<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>`),
+    back: svg(html`<path d="m14.5 5-7 7 7 7"/>`),
   });
   const TABS = Object.freeze([
     { id: "rankings", label: "Rankings", href: "/rankings", section: "rankings" },
@@ -154,7 +155,6 @@
   });
   const STUDIO_TITLES = Object.freeze({ rankings: "Rankings", recovery: "Recovery" });
 
-  const escapeHtml = StrataHtml.escape;
   const clean = (pathname) => {
     const path = String(pathname || "/");
     return path.length > 1 ? path.replace(/\/+$/, "") : path;
@@ -203,26 +203,21 @@
           : studio && tab.id === "recovery"
             ? "#recoveryWorkspace"
             : tab.href;
-      const current = tab.id === screen.tab ? ' aria-current="page"' : "";
-      return `<a class="app-tab" href="${href}" data-app-tab="${tab.id}"${studio ? ` data-section="${tab.section}"` : ""}${current}><span class="app-tab-icon">${ICONS[tab.id]}</span><span class="app-tab-label">${tab.label}</span></a>`;
-    }).join("");
-    return `<nav class="app-tabbar" aria-label="Primary navigation">${items}</nav>`;
+      const current = tab.id === screen.tab ? html` aria-current="page"` : "";
+      return html`<a class="app-tab" href="${href}" data-app-tab="${tab.id}"${studio ? html` data-section="${tab.section}"` : ""}${current}><span class="app-tab-icon">${ICONS[tab.id]}</span><span class="app-tab-label">${tab.label}</span></a>`;
+    });
+    return html`<nav class="app-tabbar" aria-label="Primary navigation">${items}</nav>`;
   }
 
   function topBarHtml(screen) {
     const back = screen.parent
-      ? `<a class="app-back" href="${escapeHtml(screen.parent)}" data-app-back>${ICONS.back}<span>Back</span></a>`
+      ? html`<a class="app-back" href="${screen.parent}" data-app-back>${ICONS.back}<span>Back</span></a>`
       : "";
-    return `<header class="app-topbar"><div class="app-topbar-inner">${back}<p class="app-title" data-app-title>${escapeHtml(screen.title)}</p><div class="app-topbar-status" data-app-status></div></div></header>`;
+    return html`<header class="app-topbar"><div class="app-topbar-inner">${back}<p class="app-title" data-app-title>${screen.title}</p><div class="app-topbar-status" data-app-status></div></div></header>`;
   }
 
   function welcomeHtml() {
-    return (
-      '<section class="app-welcome" aria-labelledby="appWelcomeTitle"><div class="app-welcome-brand"><span class="app-welcome-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>STRATA</span></div>' +
-      '<h1 id="appWelcomeTitle">Your next workout. <em>Ready.</em></h1><p>Build a week around your equipment and your time, log every set, and see what you did last time.</p>' +
-      '<div class="app-welcome-actions"><a class="app-button app-button-primary" href="/account.html?mode=signup">Create account</a><a class="app-button" href="/account.html?mode=login">Sign in</a></div>' +
-      '<nav class="app-welcome-explore" aria-label="Explore without an account"><a href="/#rankings"><strong>Explore the exercise rankings</strong><span>Every movement scored and explained</span></a><a href="/#preview"><strong>Preview a free week</strong><span>No account needed</span></a></nav></section>'
-    );
+    return html`<section class="app-welcome" aria-labelledby="appWelcomeTitle"><div class="app-welcome-brand"><span class="app-welcome-mark" aria-hidden="true"><i></i><i></i><i></i></span><span>STRATA</span></div><h1 id="appWelcomeTitle">Your next workout. <em>Ready.</em></h1><p>Build a week around your equipment and your time, log every set, and see what you did last time.</p><div class="app-welcome-actions"><a class="app-button app-button-primary" href="/account.html?mode=signup">Create account</a><a class="app-button" href="/account.html?mode=login">Sign in</a></div><nav class="app-welcome-explore" aria-label="Explore without an account"><a href="/#rankings"><strong>Explore the exercise rankings</strong><span>Every movement scored and explained</span></a><a href="/#preview"><strong>Preview a free week</strong><span>No account needed</span></a></nav></section>`;
   }
 
   function moreHtml(build) {
@@ -233,7 +228,7 @@
       ["/terms", "Terms of Service", ""],
       ["/privacy", "Privacy Policy", ""],
     ];
-    return `<section class="app-more" aria-labelledby="appMoreTitle"><h2 id="appMoreTitle">More</h2><ul class="app-list">${links.map(([href, label, detail]) => `<li><a href="${href}"><span>${label}</span>${detail ? `<small>${detail}</small>` : ""}</a></li>`).join("")}</ul>${build ? StrataHtml.html`<p class="app-more-build">${build}</p>` : ""}</section>`;
+    return html`<section class="app-more" aria-labelledby="appMoreTitle"><h2 id="appMoreTitle">More</h2><ul class="app-list">${links.map(([href, label, detail]) => html`<li><a href="${href}"><span>${label}</span>${detail ? html`<small>${detail}</small>` : ""}</a></li>`)}</ul>${build ? html`<p class="app-more-build">${build}</p>` : ""}</section>`;
   }
 
   // Native bridge. Every call is optional: an older app build has no StrataNative plugin and nothing may break.
@@ -508,7 +503,7 @@
       if (title) title.textContent = text;
     }
     function mountChrome() {
-      StrataHtml.insertHtml(document.body, "afterbegin", topBarHtml(screen) + tabBarHtml(screen));
+      StrataHtml.insertHtml(document.body, "afterbegin", [topBarHtml(screen), tabBarHtml(screen)]);
       tabBar = document.body.querySelector(".app-tabbar");
       title = document.body.querySelector("[data-app-title]");
       tabBar.addEventListener("click", (event) => {

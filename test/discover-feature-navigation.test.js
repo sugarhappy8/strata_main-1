@@ -523,15 +523,15 @@ test("Today distinguishes completed planned days from plan coverage and preserve
   );
   assert.match(
     script,
-    /start\s*\.href\s*=\s*`\/workout\s*\.html\s*\?\s*day\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*next\s*\.day\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*'Start\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/,
+    /start\s*\.href\s*=\s*`\/workout\s*\.html\s*\?\s*day\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*next\s*\.day\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*StrataHtml\s*\.html\s*`Start\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*`/,
   );
   assert.match(
     script,
-    /start\s*\.href\s*=\s*`\/workout\s*\.html#resume\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*active\s*\.id\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*'Resume\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*'/,
+    /start\s*\.href\s*=\s*`\/workout\s*\.html#resume\s*=\s*\$\s*\{\s*encodeURIComponent\s*\(\s*active\s*\.id\s*,?\s*\)\s*[;,]?\s*\}\s*`\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*StrataHtml\s*\.html\s*`Resume\s*workout\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*↗\s*<\s*\/span\s*>\s*`/,
   );
   assert.match(
     script,
-    /start\s*\.href\s*=\s*"\/planner\s*\.html"\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*'Build\s*your\s*first\s*week\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/,
+    /start\s*\.href\s*=\s*"\/planner\s*\.html"\s*;\s*StrataHtml\s*\.setHtml\s*\(\s*start\s*,\s*StrataHtml\s*\.html\s*`Build\s*your\s*first\s*week\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*`/,
   );
   assert.match(script, /historyStatus\s*===\s*"loading"[\s\S]*start\s*\.hidden\s*=\s*true/);
   assert.match(script, /historyStatus\s*===\s*"error"[\s\S]*start\s*\.hidden\s*=\s*true/);
@@ -539,7 +539,7 @@ test("Today distinguishes completed planned days from plan coverage and preserve
   assert.match(script, /planAction\s*\.href\s*=\s*"#planWorkspace"/);
   assert.match(
     script,
-    /StrataHtml\s*\.setHtml\s*\(\s*planAction\s*,\s*'Review\s*plan\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*'/,
+    /StrataHtml\s*\.setHtml\s*\(\s*planAction\s*,\s*StrataHtml\s*\.html\s*`Review\s*plan\s*<\s*span\s*aria-hidden\s*=\s*"true"\s*>\s*→\s*<\s*\/span\s*>\s*`/,
   );
   assert.doesNotMatch(script, /weeklyPulse[^\n]*(?:recovered|readiness)/i);
 });

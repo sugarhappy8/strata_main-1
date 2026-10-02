@@ -8,6 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
+  const { html } = StrataHtml;
   const value = (node) => String(node?.value || "").trim();
   const number = (node) => (value(node) === "" ? null : Number(value(node)));
   const integer = (node) => (value(node) === "" ? null : Number(value(node)));
@@ -93,7 +94,6 @@
         expected,
       );
     };
-    const escapeHtml = StrataHtml.escape;
     const exerciseById = (id) => state.exercises.find((exercise) => exercise.id === id);
     const exerciseIdFor = (name) => {
       const text = String(name || "")
@@ -114,12 +114,10 @@
     function populateExerciseOptions() {
       StrataHtml.setHtml(
         el("coachingExerciseOptions"),
-        state.exercises
-          .map(
-            (exercise) =>
-              StrataHtml.html`<option value="${exercise.name}">${exercise.group} · ${exercise.equipment}</option>`,
-          )
-          .join(""),
+        state.exercises.map(
+          (exercise) =>
+            html`<option value="${exercise.name}">${exercise.group} · ${exercise.equipment}</option>`,
+        ),
       );
     }
     function capabilityRow(entry = {}) {
@@ -136,7 +134,7 @@
       row.className = "coaching-capability-row";
       StrataHtml.setHtml(
         row,
-        `<label class="coaching-capability-exercise"><span>Exercise</span><input data-capability-exercise list="coachingExerciseOptions" value="${escapeHtml(name)}" placeholder="Search an exercise" aria-label="Known exercise" autocomplete="off"/></label><label class="coaching-capability-sets"><span>Sets</span><input data-capability-sets type="number" min="1" max="20" step="1" value="${entry.maxSets ?? ""}" placeholder="Sets" aria-label="Maximum sets" inputmode="numeric"/></label><label class="coaching-capability-reps"><span>Reps</span><input data-capability-reps type="number" min="1" max="100" step="1" value="${entry.maxReps ?? ""}" placeholder="Reps" aria-label="Maximum repetitions" inputmode="numeric"/></label><label class="coaching-capability-weight"><span>Weight</span><input data-capability-weight type="number" min="0" max="2200" step="0.1" value="${load}" placeholder="Optional" aria-label="Maximum external weight" inputmode="decimal"/></label><label class="coaching-capability-unit"><span>Unit</span><select data-capability-unit aria-label="Weight unit"><option value="kg"${unit === "kg" ? " selected" : ""}>kg</option><option value="lb"${unit === "lb" ? " selected" : ""}>lb</option></select></label><button data-remove-capability type="button" aria-label="Remove known exercise">×</button>`,
+        html`<label class="coaching-capability-exercise"><span>Exercise</span><input data-capability-exercise list="coachingExerciseOptions" value="${name}" placeholder="Search an exercise" aria-label="Known exercise" autocomplete="off"/></label><label class="coaching-capability-sets"><span>Sets</span><input data-capability-sets type="number" min="1" max="20" step="1" value="${entry.maxSets ?? ""}" placeholder="Sets" aria-label="Maximum sets" inputmode="numeric"/></label><label class="coaching-capability-reps"><span>Reps</span><input data-capability-reps type="number" min="1" max="100" step="1" value="${entry.maxReps ?? ""}" placeholder="Reps" aria-label="Maximum repetitions" inputmode="numeric"/></label><label class="coaching-capability-weight"><span>Weight</span><input data-capability-weight type="number" min="0" max="2200" step="0.1" value="${load}" placeholder="Optional" aria-label="Maximum external weight" inputmode="decimal"/></label><label class="coaching-capability-unit"><span>Unit</span><select data-capability-unit aria-label="Weight unit"><option value="kg"${unit === "kg" ? " selected" : ""}>kg</option><option value="lb"${unit === "lb" ? " selected" : ""}>lb</option></select></label><button data-remove-capability type="button" aria-label="Remove known exercise">×</button>`,
       );
       return row;
     }

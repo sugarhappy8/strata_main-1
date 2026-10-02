@@ -7,6 +7,7 @@
   root.StrataPlannerActivation = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   function createController({
     state,
@@ -14,7 +15,6 @@
     storage,
     activation,
     logic,
-    escapeHtml,
     planMovementCount,
     validateWeekPlan,
     planConflictSummary,
@@ -63,7 +63,7 @@
         : "Your preview survived";
       StrataHtml.setHtml(
         el("devicePlanTitle"),
-        directClaim ? "Save your <em>week.</em>" : "Bring your <em>week with you.</em>",
+        directClaim ? html`Save your <em>week.</em>` : html`Bring your <em>week with you.</em>`,
       );
       el("devicePlanLead").textContent = directClaim
         ? "Your account week is empty. Save this device week directly—there is no existing schedule to compare or replace."
@@ -81,14 +81,14 @@
       StrataHtml.setHtml(
         el("claimDevicePlan"),
         directClaim
-          ? 'Save week to my account <span aria-hidden="true">→</span>'
-          : 'Use device week <span aria-hidden="true">→</span>',
+          ? html`Save week to my account <span aria-hidden="true">→</span>`
+          : html`Use device week <span aria-hidden="true">→</span>`,
       );
       if (!directClaim) el("claimDevicePlan").disabled = true;
       el("compareDevicePlan").setAttribute("aria-expanded", "false");
       StrataHtml.setHtml(
         el("compareDevicePlan"),
-        'Compare both weeks <span aria-hidden="true">↘</span>',
+        html`Compare both weeks <span aria-hidden="true">↘</span>`,
       );
       setActivationStatus(
         directClaim
@@ -139,12 +139,10 @@
       const source = el("devicePlanSource");
       StrataHtml.setHtml(
         source,
-        candidates
-          .map(
-            (candidate) =>
-              `<option value="${escapeHtml(candidate.id)}">${escapeHtml(candidate.label)} · ${planMovementCount(candidate.plan)} movements</option>`,
-          )
-          .join(""),
+        candidates.map(
+          (candidate) =>
+            html`<option value="${candidate.id}">${candidate.label} · ${planMovementCount(candidate.plan)} movements</option>`,
+        ),
       );
       source.value = state.activationCandidateId;
       el("devicePlanSourceLabel").hidden = candidates.length < 2;
@@ -163,8 +161,8 @@
       StrataHtml.setHtml(
         el("compareDevicePlan"),
         opening
-          ? 'Hide comparison <span aria-hidden="true">↖</span>'
-          : 'Compare both weeks <span aria-hidden="true">↘</span>',
+          ? html`Hide comparison <span aria-hidden="true">↖</span>`
+          : html`Compare both weeks <span aria-hidden="true">↘</span>`,
       );
       setActivationStatus(
         opening

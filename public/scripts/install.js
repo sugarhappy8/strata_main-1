@@ -50,7 +50,10 @@
     if (pwa?.canPrompt()) {
       installButton.hidden = false;
       installButton.disabled = false;
-      StrataHtml.setHtml(installButton, 'Install STRATA <span aria-hidden="true">→</span>');
+      StrataHtml.setHtml(
+        installButton,
+        StrataHtml.html`Install STRATA <span aria-hidden="true">→</span>`,
+      );
       installStatus.textContent =
         "This browser can install STRATA now. Use the button or follow the steps for your device.";
       return;

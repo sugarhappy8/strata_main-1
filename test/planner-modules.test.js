@@ -240,28 +240,251 @@ test("planner guidance requires a fresh entitlement and schedules boundaries, pe
 });
 
 test("planner rendering names the destination and safely escapes catalog content", () => {
-  const markup = PlannerRender.libraryMarkup(
-    [
-      {
-        id: "safe-id",
-        name: "Press <script>",
-        sub: "Chest",
-        equipment: "Dumbbell",
-        youtube: "https://example.test",
-        score: 88,
-      },
-    ],
-    { selectedDay: "Wednesday", visibleLimit: 16, pageSize: 16 },
+  const markup = String(
+    PlannerRender.libraryMarkup(
+      [
+        {
+          id: "safe-id",
+          name: "Press <script>",
+          sub: "Chest",
+          equipment: "Dumbbell",
+          youtube: "https://example.test",
+          score: 88,
+        },
+      ],
+      { selectedDay: "Wednesday", visibleLimit: 16, pageSize: 16 },
+    ),
   );
   assert.match(markup, />Add to Wednesday<\/button>/);
   assert.match(markup, /aria-label="Add Press &lt;script&gt; to Wednesday"/);
   assert.doesNotMatch(markup, /<\s*script\s*>/);
-  const navigation = PlannerRender.dayNavMarkup(Logic.DAYS, {
-    selectedDay: "Wednesday",
-    restDays: ["Sunday"],
-  });
+  const navigation = String(
+    PlannerRender.dayNavMarkup(Logic.DAYS, {
+      selectedDay: "Wednesday",
+      restDays: ["Sunday"],
+    }),
+  );
   assert.equal((navigation.match(/aria-pressed="true"/g) || []).length, 1);
   assert.match(navigation, /Sunday, recovery day/);
+});
+
+const HOSTILE = 'Press <b> & "x"',
+  HOSTILE_ESCAPED = "Press &lt;b&gt; &amp; &quot;x&quot;",
+  DOUBLE_ESCAPED = /&amp;(?:lt|gt|quot|amp|#39);/;
+
+function fakeElements() {
+  const elements = new Map();
+  return (id) => {
+    if (!elements.has(id))
+      elements.set(id, {
+        id,
+        innerHTML: "",
+        textContent: "",
+        value: "",
+        hidden: false,
+        disabled: false,
+        checked: false,
+        dataset: {},
+        setAttribute() {},
+      });
+    return elements.get(id);
+  };
+}
+
+function hostilePlan() {
+  const value = Logic.emptyPlan();
+  value.days.Monday.push(
+    { instanceId: 'one"<&', exerciseId: "press", sets: 3, reps: '5 <b> & "x"' },
+    { instanceId: "two", exerciseId: "press", sets: 2, reps: "8–12" },
+  );
+  return value;
+}
+
+const hostileExercise = {
+  id: 'press"<&',
+  name: HOSTILE,
+  sub: "Chest & <i>",
+  equipment: "Cable",
+  youtube: "https://example.test/?a=1&b=2",
+  score: 88,
+};
+
+function hostileSummary(value) {
+  return PlannerRender.planConflictSummaryMarkup({
+    plan: value,
+    days: Logic.DAYS,
+    restDays: Logic.restDays(value),
+    exerciseById: () => hostileExercise,
+    movementCount: Logic.planMovementCount(value),
+  });
+}
+
+test("planner views escape member and catalog text exactly once", () => {
+  const value = hostilePlan();
+  const library = String(
+    PlannerRender.libraryMarkup([hostileExercise], {
+      selectedDay: "Monday",
+      visibleLimit: 16,
+      pageSize: 16,
+    }),
+  );
+  assert.match(
+    library,
+    new RegExp(`<h3>${HOSTILE_ESCAPED}</h3><p>Chest &amp; &lt;i&gt; · Cable</p>`),
+  );
+  assert.match(library, /data-library-id="press&quot;&lt;&amp;"/);
+  assert.match(library, /href="https:\/\/example\.test\/\?a=1&amp;b=2"/);
+  assert.doesNotMatch(library, DOUBLE_ESCAPED);
+
+  const board = String(
+    PlannerRender.weekBoardMarkup({
+      plan: value,
+      days: Logic.DAYS,
+      selectedDay: "Monday",
+      restDays: Logic.restDays(value),
+      exerciseById: () => hostileExercise,
+    }),
+  );
+  assert.match(board, new RegExp(`<h3 id="scheduled-one&quot;&lt;&amp;">${HOSTILE_ESCAPED}</h3>`));
+  assert.match(board, /value="5 &lt;b&gt; &amp; &quot;x&quot;"/);
+  assert.match(board, /<option value="Monday" selected>Monday<\/option>/);
+  assert.doesNotMatch(board, DOUBLE_ESCAPED);
+
+  const summary = String(hostileSummary(value));
+  assert.match(
+    summary,
+    new RegExp(
+      `<li><strong>Monday</strong><p>${HOSTILE_ESCAPED} <span>3 × 5 &lt;b&gt; &amp; &quot;x&quot;</span>, ${HOSTILE_ESCAPED} <span>2 × 8–12</span></p></li>`,
+    ),
+  );
+  assert.match(summary, /<li><strong>Sunday · recovery<\/strong><p>No movements<\/p><\/li>/);
+  assert.doesNotMatch(summary, DOUBLE_ESCAPED);
+
+  const overview = String(
+    PlannerRender.activationOverviewMarkup({
+      candidate: {
+        label: HOSTILE,
+        profile: {
+          goal: "build-muscle",
+          availability: ["Monday"],
+          minutes: 35,
+          equipment: ["Bands & <i>"],
+        },
+      },
+      accountCount: 1,
+      deviceCount: 2,
+    }),
+  );
+  assert.match(overview, new RegExp(`<strong>${HOSTILE_ESCAPED}</strong>`));
+  assert.match(overview, /<strong>Bands &amp; &lt;i&gt;<\/strong>/);
+  assert.doesNotMatch(overview, DOUBLE_ESCAPED);
+
+  assert.match(
+    String(PlannerRender.modeNoticeMarkup({ guest: true, oversized: true })),
+    /href="\/account\.html\?mode=login&amp;next=planner">Use a synced plan<\/a>\.<p><strong>Large saved draft preserved\.<\/strong>/,
+  );
+});
+
+test("planner conflict, template and device-week workflows escape stored text exactly once", async () => {
+  const value = hostilePlan();
+  const conflictEl = fakeElements();
+  const conflicts = PlannerConflicts.createController({
+    state: {
+      guest: false,
+      user: { id: "u1" },
+      conflictLatest: value,
+      conflictDraft: value,
+      conflictReview: false,
+      recoveredDrafts: [{ key: 'draft"<&', data: { updatedAt: 0, plan: value } }],
+      recoverySource: null,
+    },
+    el: conflictEl,
+    storage: new MemoryStorage(),
+    planMovementCount: Logic.planMovementCount,
+    planConflictSummary: hostileSummary,
+  });
+  conflicts.renderPlanConflict();
+  assert.match(
+    conflictEl("latestPlanSummary").innerHTML,
+    new RegExp(`<p>${HOSTILE_ESCAPED} <span>`),
+  );
+  assert.match(
+    conflictEl("draftRecoverySelect").innerHTML,
+    /^<option value="draft&quot;&lt;&amp;">Draft 1 · /,
+  );
+  for (const id of ["latestPlanSummary", "localPlanSummary", "draftRecoverySelect"])
+    assert.doesNotMatch(conflictEl(id).innerHTML, DOUBLE_ESCAPED, id);
+
+  const storage = new MemoryStorage(),
+    key = `${PlannerTemplates.TEMPLATE_PREFIX}guest:id"<&`;
+  storage.setItem(
+    key,
+    JSON.stringify({
+      format: "strata-week-template",
+      version: 1,
+      name: HOSTILE,
+      updatedAt: 1,
+      plan: value,
+    }),
+  );
+  Object.defineProperty(storage, "length", { get: () => storage.values.size });
+  storage.key = (index) => [...storage.values.keys()][index] ?? null;
+  const templateEl = fakeElements();
+  const templates = PlannerTemplates.createController({
+    state: { guest: true },
+    el: templateEl,
+    storage,
+    validateWeekPlan: (input) => input,
+    planConflictSummary: hostileSummary,
+  });
+  templates.renderTemplates();
+  assert.equal(
+    templateEl("weekTemplateSelect").innerHTML,
+    `<option value="">Choose a saved week</option><option value="${PlannerTemplates.TEMPLATE_PREFIX}guest:id&quot;&lt;&amp;">${HOSTILE_ESCAPED}</option>`,
+  );
+  assert.equal(templates.previewTemplate(value, HOSTILE, key), true);
+  assert.equal(templateEl("templatePreviewTitle").textContent, HOSTILE);
+  assert.match(
+    templateEl("templatePreviewSummary").innerHTML,
+    new RegExp(`<p>${HOSTILE_ESCAPED} <span>`),
+  );
+  assert.doesNotMatch(templateEl("templatePreviewSummary").innerHTML, DOUBLE_ESCAPED);
+
+  const deviceEl = fakeElements();
+  const candidate = {
+    id: 'device"<&',
+    label: HOSTILE,
+    plan: value,
+    profile: { goal: "build-muscle", availability: ["Monday"], minutes: 35, equipment: ["Cable"] },
+  };
+  const activation = PlannerActivation.createController({
+    state: { guest: false, user: { id: "u1" }, plan: Logic.emptyPlan(), planUpdatedAt: 1 },
+    el: deviceEl,
+    storage: new MemoryStorage(),
+    activation: { deviceCandidates: () => [candidate], shouldOffer: () => true },
+    logic: Logic,
+    planMovementCount: Logic.planMovementCount,
+    validateWeekPlan: (input) => input,
+    planConflictSummary: hostileSummary,
+    renderActivationOverview: PlannerRender.activationOverviewMarkup,
+    focusSoon() {},
+  });
+  assert.equal(activation.offerDevicePlan(), true);
+  assert.equal(
+    deviceEl("devicePlanSource").innerHTML,
+    `<option value="device&quot;&lt;&amp;">${HOSTILE_ESCAPED} · 2 movements</option>`,
+  );
+  assert.equal(deviceEl("devicePlanTitle").innerHTML, "Save your <em>week.</em>");
+  assert.equal(
+    deviceEl("claimDevicePlan").innerHTML,
+    'Save week to my account <span aria-hidden="true">→</span>',
+  );
+  assert.match(
+    deviceEl("devicePlanOverview").innerHTML,
+    new RegExp(`<strong>${HOSTILE_ESCAPED}</strong>`),
+  );
+  for (const id of ["devicePlanSource", "devicePlanOverview", "deviceCandidatePlanSummary"])
+    assert.doesNotMatch(deviceEl(id).innerHTML, DOUBLE_ESCAPED, id);
 });
 
 test("planner API applies identity-bound mutation headers and reports typed failures", async () => {

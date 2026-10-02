@@ -129,15 +129,74 @@ test("homepage API normalizes transport and HTTP failures", async () => {
 });
 
 test("homepage rendering escapes preview content at its boundary", () => {
-  const html = Render.previewResultMarkup({
-    rank: 1,
-    match: 97,
-    officialScore: 94,
-    reasons: ["<reason>"],
-    tradeoffText: 'safe "tradeoff"',
-    exercise: { name: "<script>", sub: "Chest", equipment: "Cable", why: "<b>why</b>" },
-  });
+  const html = String(
+    Render.previewResultMarkup({
+      rank: 1,
+      match: 97,
+      officialScore: 94,
+      reasons: ["<reason>"],
+      tradeoffText: 'safe "tradeoff"',
+      exercise: {
+        name: "<script>",
+        sub: "Chest & <i>",
+        equipment: "Cable",
+        why: "<b>why</b>",
+      },
+    }),
+  );
   assert.doesNotMatch(html, /<\s*script\s*>|<\s*b\s*>\s*why\s*<\s*\/b\s*>|<\s*reason\s*>/);
   assert.match(html, /&lt;script&gt;/);
   assert.match(html, /&lt;reason&gt;/);
+  assert.match(html, /Chest &amp; &lt;i&gt;/);
+  assert.match(html, /safe &quot;tradeoff&quot;\./);
+  assert.doesNotMatch(html, /&amp;(?:lt|gt|quot|amp|#39);/, "each value is escaped exactly once");
+});
+
+test("homepage rankings and details escape a catalog name exactly once", () => {
+  const elements = new Map(),
+    element = (id) => {
+      if (!elements.has(id))
+        elements.set(id, {
+          id,
+          innerHTML: "",
+          textContent: "",
+          hidden: false,
+          open: false,
+          setAttribute() {},
+          querySelector: () => null,
+        });
+      return elements.get(id);
+    };
+  const state = State.createState(),
+    name = 'Press <b> & "x"';
+  State.setCatalog(state, [{ ...catalog[0], name, youtube: "https://example.test/?a=1&b=2" }]);
+  state.group = state.exercises[0].group;
+  const renderer = Render.createRenderer({
+    document: {
+      getElementById: element,
+      activeElement: null,
+      body: { classList: { toggle() {} } },
+    },
+    window: {
+      StrataDiscovery: { exerciseGuidance: () => ({ alternatives: [], cues: [name] }) },
+    },
+    state,
+    readPreviewProfile: () => ({}),
+    guestPlanCount: () => 0,
+  });
+  renderer.renderExercises();
+  const rows = element("exerciseList").innerHTML;
+  assert.match(rows, /<h3>Press &lt;b&gt; &amp; &quot;x&quot;<\/h3>/);
+  assert.match(rows, /aria-label="Add Press &lt;b&gt; &amp; &quot;x&quot; to weekly planner"/);
+  assert.match(rows, /href="https:\/\/example\.test\/\?a=1&amp;b=2"/);
+  assert.doesNotMatch(rows, /&amp;(?:lt|gt|quot|amp|#39);/, "row values are escaped exactly once");
+  renderer.openDetail(state.exercises[0].id, { focus: false });
+  const detail = element("detailContent").innerHTML;
+  assert.match(detail, /<h2 id="detailTitle">Press &lt;b&gt; &amp; &quot;x&quot;<\/h2>/);
+  assert.match(detail, /<li>Press &lt;b&gt; &amp; &quot;x&quot;<\/li>/);
+  assert.doesNotMatch(
+    detail,
+    /&amp;(?:lt|gt|quot|amp|#39);/,
+    "detail values are escaped exactly once",
+  );
 });

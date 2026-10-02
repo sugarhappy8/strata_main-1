@@ -8,11 +8,12 @@
   else root.StrataWorkoutRecovery = recovery;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   // Train's recovery line from the member's own Polar data, and the optional lighter session. A lighter session
   // keeps every exercise with one set fewer each (never below one) for today only; the weekly Plan never changes.
 
-  function create({ $, state, request, core, esc, renderHistory = () => {} }) {
+  function create({ $, state, request, core, renderHistory = () => {} }) {
     let today = null,
       deviceWorkouts = [],
       loaded = false,
@@ -57,7 +58,7 @@
       box.dataset.tone = core.recoveryTone(summary.recovery?.status);
       StrataHtml.setHtml(
         box,
-        `<div><strong>${esc(summary.recovery?.label ? `Polar recovery: ${summary.recovery.label}` : "Polar recovery")}</strong><span>${esc(facts)}</span>${note ? StrataHtml.html`<p>${note}</p>` : ""}</div><div class="device-recovery-actions">${offer ? '<button class="button secondary" type="button" id="startLighterWorkout">Start a lighter session</button>' : ""}<a class="text-link" href="/discover.html#recoveryWorkspace">Recovery details ↗</a></div>`,
+        html`<div><strong>${summary.recovery?.label ? `Polar recovery: ${summary.recovery.label}` : "Polar recovery"}</strong><span>${facts}</span>${note ? html`<p>${note}</p>` : ""}</div><div class="device-recovery-actions">${offer ? html`<button class="button secondary" type="button" id="startLighterWorkout">Start a lighter session</button>` : ""}<a class="text-link" href="/discover.html#recoveryWorkspace">Recovery details ↗</a></div>`,
       );
     }
     /** The Start button runs this on every new workout; only the lighter-session button asks for the change. */

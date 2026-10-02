@@ -12,7 +12,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (diary, StrataHtml) {
   "use strict";
   const KG_PER_LB = 0.45359237;
-  const escape = StrataHtml.escape;
+  const { html } = StrataHtml;
   const dateLabel = (value) => {
     const date = new Date(`${value}T12:00:00`);
     return Number.isNaN(date.getTime())
@@ -46,32 +46,26 @@
         ((Date.parse(`${date}T00:00:00Z`) - first) / 86400000 / days) *
           (width - pad.left - pad.right),
       y = (value) => pad.top + ((high - value) / span) * (height - pad.top - pad.bottom);
-    const grid = [high, (low + high) / 2, low]
-      .map(
-        (tick, index) =>
-          `<line class="trend-grid" x1="${pad.left}" x2="${width - pad.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"/><text class="trend-axis" x="${pad.left - 10}" y="${(y(tick) + 4).toFixed(1)}" text-anchor="end">${Number.isInteger(tick) ? tick.toLocaleString() : decimal(tick)}${index ? "" : ` ${unit}`}</text>`,
-      )
-      .join("");
+    const grid = [high, (low + high) / 2, low].map(
+      (tick, index) =>
+        html`<line class="trend-grid" x1="${pad.left}" x2="${width - pad.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"/><text class="trend-axis" x="${pad.left - 10}" y="${(y(tick) + 4).toFixed(1)}" text-anchor="end">${Number.isInteger(tick) ? tick.toLocaleString() : decimal(tick)}${index ? "" : ` ${unit}`}</text>`,
+    );
     const line = points
       .map(
         (point, index) =>
           `${index ? "L" : "M"}${x(point.date).toFixed(1)},${y(convert(point.averageKg)).toFixed(1)}`,
       )
       .join(" ");
-    const dots = points
-      .map(
-        (point) =>
-          `<circle class="trend-dot" cx="${x(point.date).toFixed(1)}" cy="${y(convert(point.kg)).toFixed(1)}" r="4"><title>${escape(dateLabel(point.date))}: ${decimal(convert(point.kg))} ${unit} · seven-day average ${decimal(convert(point.averageKg))} ${unit}</title></circle>`,
-      )
-      .join("");
-    const axis = `<text class="trend-axis" x="${pad.left}" y="${height - 8}">${escape(dateLabel(points[0].date))}</text><text class="trend-axis" x="${width - pad.right}" y="${height - 8}" text-anchor="end">${escape(dateLabel(points.at(-1).date))}</text>`;
-    const rows = points
-      .map(
-        (point) =>
-          `<tr><th scope="row">${escape(dateLabel(point.date))}</th><td>${decimal(convert(point.kg))}</td><td>${decimal(convert(point.averageKg))}</td></tr>`,
-      )
-      .join("");
-    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Morning weight from ${escape(dateLabel(points[0].date))} to ${escape(dateLabel(points.at(-1).date))} with its seven-day average, in ${unit}">${grid}<path class="trend-line" d="${line}"/>${dots}${axis}</svg><figcaption class="trend-legend"><span><i class="trend-key-dot" aria-hidden="true"></i>Morning weight</span><span><i class="trend-key-line" aria-hidden="true"></i>Seven-day average</span></figcaption><table class="sr-only"><caption>Morning weights and seven-day average in ${unit}</caption><thead><tr><th scope="col">Date</th><th scope="col">Weight</th><th scope="col">Seven-day average</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const dots = points.map(
+      (point) =>
+        html`<circle class="trend-dot" cx="${x(point.date).toFixed(1)}" cy="${y(convert(point.kg)).toFixed(1)}" r="4"><title>${dateLabel(point.date)}: ${decimal(convert(point.kg))} ${unit} · seven-day average ${decimal(convert(point.averageKg))} ${unit}</title></circle>`,
+    );
+    const axis = html`<text class="trend-axis" x="${pad.left}" y="${height - 8}">${dateLabel(points[0].date)}</text><text class="trend-axis" x="${width - pad.right}" y="${height - 8}" text-anchor="end">${dateLabel(points.at(-1).date)}</text>`;
+    const rows = points.map(
+      (point) =>
+        html`<tr><th scope="row">${dateLabel(point.date)}</th><td>${decimal(convert(point.kg))}</td><td>${decimal(convert(point.averageKg))}</td></tr>`,
+    );
+    return html`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Morning weight from ${dateLabel(points[0].date)} to ${dateLabel(points.at(-1).date)} with its seven-day average, in ${unit}">${grid}<path class="trend-line" d="${line}"/>${dots}${axis}</svg><figcaption class="trend-legend"><span><i class="trend-key-dot" aria-hidden="true"></i>Morning weight</span><span><i class="trend-key-line" aria-hidden="true"></i>Seven-day average</span></figcaption><table class="sr-only"><caption>Morning weights and seven-day average in ${unit}</caption><thead><tr><th scope="col">Date</th><th scope="col">Weight</th><th scope="col">Seven-day average</th></tr></thead><tbody>${rows}</tbody></table>`;
   }
 
   function createTrend({ element }) {
