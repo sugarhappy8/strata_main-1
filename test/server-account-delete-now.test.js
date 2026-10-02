@@ -211,14 +211,14 @@ test("a wrong password, a missing DELETE, a missing CSRF token, or another origi
     { origin: "" },
   );
   assert.equal(noOrigin.response.status, 403);
-  assert.equal(noOrigin.data.error, "Cross-origin request rejected.");
+  assert.equal(noOrigin.data.code, "ORIGIN_REQUIRED");
   const crossOrigin = await deleteNow(
     account,
     { password: PASSWORD, confirmation: "DELETE" },
     { origin: "https://attacker.example" },
   );
   assert.equal(crossOrigin.response.status, 403);
-  assert.equal(crossOrigin.data.error, "Cross-origin request rejected.");
+  assert.equal(crossOrigin.data.code, "ORIGIN_REQUIRED");
   const noCsrf = await deleteNow(
     account,
     { password: PASSWORD, confirmation: "DELETE" },

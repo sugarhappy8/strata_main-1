@@ -37,7 +37,6 @@ const parsed = (value) => {
 
 /**
  * @param {{store:any,events:import("./domain-types").EventBus,getPlan:(userId:string)=>Promise<any>,coachingProfile:(userId:string)=>Promise<any>,
- *   requireSession:(req:any,res:any)=>Promise<any>,requireFeature:(feature:string)=>(req:any,res:any)=>Promise<any>,
  *   http:{json:Function},logger?:any,now?:()=>number}} dependencies
  */
 function createDataService({
@@ -45,8 +44,6 @@ function createDataService({
   events,
   getPlan,
   coachingProfile,
-  requireSession,
-  requireFeature,
   http,
   logger = null,
   now = Date.now,
@@ -171,48 +168,39 @@ function createDataService({
     json(res, error.status, { error: error.message, code: error.code || "DATA_REQUEST_FAILED" });
   }
 
-  /** @param {any} req @param {any} res @param {URL} url */
-  async function handleApi(req, res, url) {
-    const routes = ["/api/profile", "/api/training-log", "/api/snapshots"];
-    if (!routes.includes(url.pathname)) return false;
-    if (req.method !== "GET") {
-      json(res, 405, { error: "Method not allowed." }, { Allow: "GET" });
-      return true;
-    }
-    const headers = { "Cache-Control": "private, no-store" };
-    if (url.pathname === "/api/profile") {
-      // One Athlete Profile for every client: the ranking lens for everyone, body/energy/food when a coaching profile exists.
-      const session = await requireSession(req, res);
-      if (!session) return true;
+  const headers = { "Cache-Control": "private, no-store" };
+  /**
+   * One Athlete Profile for every client: the ranking lens for everyone, body/energy/food when a
+   * coaching profile exists.
+   * @param {{res:any,session:any}} context
+   */
+  async function profile({ res, session }) {
+    json(
+      res,
+      200,
+      {
+        profile: await athleteProfile.read(session.id, await coachingProfile(session.id)),
+        csrfToken: session.csrf_token,
+      },
+      headers,
+    );
+  }
+  /** @param {{res:any,url:URL,session:any}} context */
+  async function trainingLogEntries({ res, url, session }) {
+    try {
+      const window = await range(url, 28, session.id);
       json(
         res,
         200,
-        {
-          profile: await athleteProfile.read(session.id, await coachingProfile(session.id)),
-          csrfToken: session.csrf_token,
-        },
+        { from: window.from, to: window.to, entries: await trainingLog.read(session.id, window) },
         headers,
       );
-      return true;
+    } catch (error) {
+      failed(res, error);
     }
-    if (url.pathname === "/api/training-log") {
-      const session = await requireFeature("plus.train")(req, res);
-      if (!session) return true;
-      try {
-        const window = await range(url, 28, session.id);
-        json(
-          res,
-          200,
-          { from: window.from, to: window.to, entries: await trainingLog.read(session.id, window) },
-          headers,
-        );
-      } catch (error) {
-        failed(res, error);
-      }
-      return true;
-    }
-    const session = await requireFeature("plus.progress")(req, res);
-    if (!session) return true;
+  }
+  /** @param {{res:any,url:URL,session:any}} context */
+  async function dailySnapshots({ res, url, session }) {
     try {
       const window = await range(url, 7, session.id);
       json(
@@ -224,11 +212,21 @@ function createDataService({
     } catch (error) {
       failed(res, error);
     }
-    return true;
   }
+  // Session and feature checks happen once, in src/router.js.
+  const routes = [
+    { method: "GET", path: "/api/profile", handler: profile },
+    {
+      method: "GET",
+      path: "/api/training-log",
+      feature: "plus.train",
+      handler: trainingLogEntries,
+    },
+    { method: "GET", path: "/api/snapshots", feature: "plus.progress", handler: dailySnapshots },
+  ];
 
   return {
-    handleApi,
+    routes,
     athleteProfile,
     trainingLog,
     snapshots,

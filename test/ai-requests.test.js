@@ -6,6 +6,7 @@
 const test = require("node:test"),
   assert = require("node:assert/strict");
 const { createAiService } = require("../src/ai");
+const { routeHarness } = require("./support/route-harness");
 
 const pause = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -118,18 +119,16 @@ function harness({
   };
   // By default the model never answers, so an accepted request stays running.
   const provider = { configured: true, model: "m", complete, health: async () => ({}) };
-  const service = createAiService({
+  const json = (res, status, data) => {
+    responses.push({ status, data });
+    res.status = status;
+    res.data = data;
+  };
+  const ai = createAiService({
     store,
-    auth: { validCsrf: () => true },
-    requireAccess: async () => ({ id: "member-1", csrf_token: "token" }),
-    trustedOrigin: () => true,
     rateAllowed: () => true,
     http: {
-      json(res, status, data) {
-        responses.push({ status, data });
-        res.status = status;
-        res.data = data;
-      },
+      json,
       async bodyJson(req) {
         await pause();
         return req.body;
@@ -144,6 +143,14 @@ function harness({
     quota,
     config: { maxConcurrent: 1, maxQueue: 20 },
   });
+  const service = {
+    ...ai,
+    ...routeHarness(ai.routes, {
+      json,
+      requireFeature: () => async () => ({ id: "member-1", csrf_token: "token" }),
+      validCsrf: () => true,
+    }),
+  };
   const ask = async () => {
     const res = {};
     await service.handleApi(

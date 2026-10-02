@@ -486,8 +486,7 @@ export interface BillingServiceDependencies {
 }
 
 export interface BillingService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
-  handleWebhook(request: HttpRequest, response: HttpResponse): Promise<void>;
+  routes: ApiRoute[];
   hasCurrentAccess(userId: string, now?: number): Promise<boolean>;
   accessSummaryForUser(userId: string): Promise<DiscoveryAccessSummary>;
   subscriptionForUser(userId: string): Promise<SubscriptionSummary | null>;
@@ -920,11 +919,30 @@ export interface ServerStateStore {
   releaseLock(name: string, holder: string): Promise<void>;
 }
 
+/** What a route handler receives from src/router.js once every check its route declares has passed. */
+export interface RouteContext<Session = SessionRow> {
+  req: HttpRequest;
+  res: HttpResponse;
+  url: URL;
+  params: Record<string, string>;
+  session: Session;
+}
+
+/** One API route. src/router.js applies the access it declares; the handler never repeats those checks. */
+export interface ApiRoute {
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  path: string;
+  handler: (context: RouteContext<any>) => unknown;
+  public?: boolean;
+  feature?: string;
+  auth?: "session" | "admin" | "optional";
+  allowBootstrap?: boolean;
+  form?: boolean;
+  webhook?: boolean;
+}
+
 export interface SetupServiceDependencies {
   store: SetupStore;
-  auth: Pick<AuthService, "validCsrf">;
-  requireAccess: (request: HttpRequest, response: HttpResponse) => Promise<SessionRow | null>;
-  trustedOrigin: (request: HttpRequest) => boolean;
   getPlanSnapshot: (userId: string) => Promise<PlanSnapshot>;
   getPreferencesSnapshot: (userId: string) => Promise<PreferencesSnapshot>;
   getUserPayload: (account: SessionRow) => Promise<unknown>;
@@ -933,7 +951,7 @@ export interface SetupServiceDependencies {
 }
 
 export interface SetupService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
 }
 
 export interface WorkoutCheckInRecord {
@@ -1102,9 +1120,6 @@ export interface TrainingServiceStore extends TrainingStore {
 
 export interface TrainingServiceDependencies {
   store: TrainingServiceStore;
-  auth: Pick<AuthService, "validCsrf">;
-  requireAccess: (request: HttpRequest, response: HttpResponse) => Promise<SessionRow | null>;
-  trustedOrigin: (request: HttpRequest) => boolean;
   rateAllowed: (
     request: HttpRequest,
     key: string,
@@ -1116,7 +1131,7 @@ export interface TrainingServiceDependencies {
 }
 
 export interface TrainingService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
 }
 
 export type CoachingGoal = "fat_loss" | "maintenance" | "muscle_gain";
@@ -1573,9 +1588,6 @@ export type LocalSocialAuthStoreDependencies = LocalDeviceStoreDependencies;
 export type TursoSocialAuthStoreDependencies = TursoDeviceStoreDependencies;
 export interface CoachingServiceDependencies {
   store: CoachingStore & Pick<TrainingServiceStore, "workouts" | "workout" | "workoutCheckIn">;
-  auth: Pick<AuthService, "validCsrf">;
-  requireAccess: (request: HttpRequest, response: HttpResponse) => Promise<SessionRow | null>;
-  trustedOrigin: (request: HttpRequest) => boolean;
   rateAllowed: (
     request: HttpRequest,
     key: string,
@@ -1589,14 +1601,11 @@ export interface CoachingServiceDependencies {
   getPlan?: (userId: string) => Promise<unknown>;
 }
 export interface CoachingService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
 }
 
 export interface ProductSignalsServiceDependencies {
   store: ProductSignalsStore;
-  admin: Pick<AdminService, "requireAdmin">;
-  auth: Pick<AuthService, "sessionFor" | "validCsrf">;
-  trustedOrigin: (request: HttpRequest) => boolean;
   requestAddress: (request: HttpRequest) => string;
   rateKeyAllowed: (key: string, limit: number, windowMs: number) => boolean | Promise<boolean>;
   http: JsonHttpHelpers;
@@ -1604,7 +1613,7 @@ export interface ProductSignalsServiceDependencies {
 }
 
 export interface ProductSignalsService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
   cleanup(timestamp?: number): Promise<unknown>;
 }
 
@@ -1639,8 +1648,6 @@ export interface AuthServiceDependencies {
 export interface AccountSelfServiceDependencies {
   store: AccountSelfServiceStore;
   http: Pick<HttpHelpers, "json" | "bodyJson" | "securityHeaders">;
-  requireSession: (request: HttpRequest, response: HttpResponse) => Promise<SessionRow | null>;
-  validCsrf: (request: HttpRequest, session: SessionRow) => boolean;
   rateAllowed: (
     request: HttpRequest,
     key: string,
@@ -1652,7 +1659,7 @@ export interface AccountSelfServiceDependencies {
 }
 
 export interface AccountSelfService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
 }
 
 export interface AccountDeletionResult {
@@ -1676,9 +1683,6 @@ export interface ProtectedAccountDeletion {
 export interface AccountDeletionDependencies {
   store: StoreCapabilities<"adminPrincipal" | "accountCredentialsById" | "deleteAccountForUser">;
   http: JsonHttpHelpers;
-  requireSession: (request: HttpRequest, response: HttpResponse) => Promise<SessionRow | null>;
-  validCsrf: (request: HttpRequest, session: SessionRow) => boolean;
-  trustedAuthOrigin: (request: HttpRequest) => boolean;
   rateAllowed: (
     request: HttpRequest,
     key: string,
@@ -1702,13 +1706,13 @@ export interface AccountDeletionDependencies {
 }
 
 export interface AccountDeletion {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
   deleteProtectedAccount(request: ProtectedAccountDeletion): Promise<DeletedAccount>;
   deleteSignedInAccount(session: SessionRow, input: unknown): Promise<DeletedAccount>;
 }
 
 export interface AuthService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
   handleForm(request: HttpRequest, response: HttpResponse, url: URL): Promise<void>;
   cleanup(now?: number): Promise<void>;
   sessionFor(request: HttpRequest, response?: HttpResponse | null): Promise<SessionRow | null>;
@@ -1768,7 +1772,6 @@ export interface AdminServiceDependencies {
   auth: AuthService;
   emailConfig: Pick<EmailConfig, "enabled"> & Partial<Pick<EmailConfig, "configured">>;
   paymentConfig: Pick<PaymentConfig, "enabled"> & Partial<Pick<PaymentConfig, "configured">>;
-  trustedAuthOrigin: (request: HttpRequest) => boolean;
   rateAllowed: (
     request: HttpRequest,
     key: string,
@@ -1791,7 +1794,7 @@ export interface AdminServiceDependencies {
 }
 
 export interface AdminService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
   bootstrap(): Promise<void>;
   cleanup(now?: number): Promise<void>;
   adminIdentity(
@@ -1804,7 +1807,6 @@ export interface AdminService {
     response: HttpResponse,
     options?: { allowBootstrap?: boolean },
   ): Promise<SessionRow | null>;
-  requireAdminMutation(request: HttpRequest, response: HttpResponse, session: SessionRow): boolean;
   sensitiveAdminText(value: unknown): boolean;
   cleanAdminTarget(value: unknown): string;
   adminAuditEvent(
@@ -1830,7 +1832,6 @@ export interface SupportServiceDependencies {
   auth: AuthService;
   admin: AdminService;
   requestAddress: (request: HttpRequest) => string;
-  trustedAuthOrigin: (request: HttpRequest) => boolean;
   rateAllowed: (
     request: HttpRequest,
     key: string,
@@ -1843,7 +1844,7 @@ export interface SupportServiceDependencies {
 }
 
 export interface SupportService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
+  routes: ApiRoute[];
   cleanup(now?: number): Promise<void>;
   supportTicketPayload(row: JsonObject): JsonObject;
 }
@@ -2000,9 +2001,7 @@ export interface AppleDeletionNotice {
 export interface AppleBillingServiceDependencies {
   store: AppleBillingStore & { userById(userId: string): Promise<JsonObject | null> };
   settings: AppleBillingSettings;
-  getAuth: () => Pick<AuthService, "requireSession" | "validCsrf"> | undefined;
   getUserPayload: (account: SessionRow) => Promise<JsonObject>;
-  trustedOrigin: (request: HttpRequest) => boolean;
   rateAllowed: (
     request: HttpRequest,
     key: string,
@@ -2018,8 +2017,7 @@ export interface AppleBillingServiceDependencies {
   ) => Record<string, any>;
 }
 export interface AppleBillingService {
-  handleApi(request: HttpRequest, response: HttpResponse, url: URL): Promise<boolean>;
-  handleNotification(request: HttpRequest, response: HttpResponse): Promise<void>;
+  routes: ApiRoute[];
   processNotification(payload: Record<string, any>): Promise<string>;
   subscriptionForUser(
     userId: string,

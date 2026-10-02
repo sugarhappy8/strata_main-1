@@ -18,7 +18,6 @@ function createAdminService({
   emailConfig,
   paymentConfig,
   enforcePaddleIps = false,
-  trustedAuthOrigin,
   rateAllowed,
   http,
   reconcileCheckoutCreationBeforeDeletion,
@@ -32,7 +31,6 @@ function createAdminService({
     typeof auth.accountEmailHash !== "function" ||
     !emailConfig ||
     !paymentConfig ||
-    typeof trustedAuthOrigin !== "function" ||
     typeof rateAllowed !== "function" ||
     !http ||
     typeof reconcileCheckoutCreationBeforeDeletion !== "function" ||
@@ -108,32 +106,6 @@ function createAdminService({
       return null;
     }
     return session;
-  }
-
-  function requireAdminMutation(req, res, session) {
-    if (!trustedAuthOrigin(req)) {
-      json(res, 403, {
-        error: "Admin security check failed. Refresh and try again.",
-        code: "ADMIN_ORIGIN_REQUIRED",
-      });
-      return false;
-    }
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return false;
-    }
-    if (
-      !String(req.headers["content-type"] || "")
-        .toLowerCase()
-        .startsWith("application/json")
-    ) {
-      json(res, 415, { error: "Admin requests must use JSON.", code: "JSON_REQUIRED" });
-      return false;
-    }
-    return true;
   }
 
   function sensitiveAdminText(value) {
@@ -301,116 +273,112 @@ function createAdminService({
     reconcileUnsettledPurchases,
   });
 
-  async function handleApi(req, res, url) {
-    if (!url.pathname.startsWith("/api/admin/") || url.pathname.startsWith("/api/admin/support"))
-      return false;
-    if (url.pathname === "/api/admin/session" && req.method === "GET") {
-      const session = await requireAdmin(req, res, { allowBootstrap: true });
-      if (!session) return true;
-      json(res, 200, { admin: true, elevated: true, elevatedUntil: null });
-      return true;
-    }
-    if (url.pathname === "/api/admin/overview" && req.method === "GET") {
-      const session = await requireAdmin(req, res);
-      if (!session) return true;
-      json(res, 200, { overview: adminOverviewPayload(await store.adminOverview(Date.now())) });
-      return true;
-    }
-    if (url.pathname === "/api/admin/users" && req.method === "GET") {
-      const session = await requireAdmin(req, res);
-      if (!session) return true;
-      const query = cleanText(url.searchParams.get("q"), 100),
-        limit = Math.max(1, Math.min(50, Math.floor(Number(url.searchParams.get("limit")) || 20))),
-        offset = Math.max(
-          0,
-          Math.min(10000, Math.floor(Number(url.searchParams.get("offset")) || 0)),
-        );
-      const result = await store.adminUsers(query, limit, offset, Date.now());
-      json(res, 200, {
-        users: result.users.map((user) => adminUserPayload(user)),
-        total: result.total,
-        limit,
-        offset,
-      });
-      return true;
-    }
-    const userDetailMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)$/);
-    if (userDetailMatch && req.method === "GET") {
-      const session = await requireAdmin(req, res);
-      if (!session) return true;
-      const targetId = cleanAdminTarget(userDetailMatch[1]),
-        user = targetId ? await store.adminUserById(targetId, Date.now()) : null;
-      if (!user) json(res, 404, { error: "Account not found.", code: "ADMIN_TARGET_NOT_FOUND" });
-      else {
-        // The detail view also carries the member's Apple subscription state beside the Paddle purchase state.
-        const payload = adminUserPayload(user, { detail: true });
-        payload.discovery.apple = {
-          ...payload.discovery.apple,
-          subscription: appleSubscriptionSummary(
-            await store.appleSubscriptionsForUser(user.id),
-            Date.now(),
-          ),
-        };
-        json(res, 200, { user: payload });
-      }
-      return true;
-    }
-    const actionMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/actions$/);
-    if (actionMatch && req.method === "POST") {
-      const session = await requireAdmin(req, res);
-      if (!session) return true;
-      if (!requireAdminMutation(req, res, session)) return true;
-      if (!(await rateAllowed(req, `admin-user-action:${session.id}`, 30, 15 * 60 * 1000))) {
-        json(res, 429, {
-          error: "Too many admin actions. Wait and try again.",
-          code: "ADMIN_RATE_LIMIT",
-        });
-        return true;
-      }
-      const targetId = cleanAdminTarget(actionMatch[1]);
-      if (!targetId) {
-        json(res, 404, { error: "Account not found.", code: "ADMIN_TARGET_NOT_FOUND" });
-        return true;
-      }
-      try {
-        json(res, 200, await performAdminUserAction(session, targetId, await bodyJson(req)));
-      } catch (error) {
-        if (!error.status) throw error;
-        json(res, error.status, {
-          error: error.message,
-          code: error.code || "ADMIN_ACTION_FAILED",
-        });
-      }
-      return true;
-    }
-    if (url.pathname === "/api/admin/audit" && req.method === "GET") {
-      const session = await requireAdmin(req, res);
-      if (!session) return true;
-      const limit = Math.max(
-        1,
-        Math.min(100, Math.floor(Number(url.searchParams.get("limit")) || 40)),
-      );
-      const events = (await store.adminAudit(limit)).map((event) => ({
-        id: event.id,
-        action: event.action,
-        reason: event.reason,
-        result: event.result,
-        createdAt: Number(event.created_at),
-        actor: { id: event.actor_id, name: event.actor_name, email: event.actor_email },
-        target:
-          event.target_id || event.target_user_id
-            ? {
-                id: event.target_id || event.target_user_id,
-                name: event.target_name || null,
-                email: event.target_email || null,
-              }
-            : null,
-      }));
-      json(res, 200, { events, limit });
-      return true;
-    }
-    return false;
+  async function adminSession({ res }) {
+    json(res, 200, { admin: true, elevated: true, elevatedUntil: null });
   }
+
+  async function overview({ res }) {
+    json(res, 200, { overview: adminOverviewPayload(await store.adminOverview(Date.now())) });
+  }
+
+  async function listUsers({ res, url }) {
+    const query = cleanText(url.searchParams.get("q"), 100),
+      limit = Math.max(1, Math.min(50, Math.floor(Number(url.searchParams.get("limit")) || 20))),
+      offset = Math.max(
+        0,
+        Math.min(10000, Math.floor(Number(url.searchParams.get("offset")) || 0)),
+      );
+    const result = await store.adminUsers(query, limit, offset, Date.now());
+    json(res, 200, {
+      users: result.users.map((user) => adminUserPayload(user)),
+      total: result.total,
+      limit,
+      offset,
+    });
+  }
+
+  async function userDetail({ res, params }) {
+    const targetId = cleanAdminTarget(params.id),
+      user = targetId ? await store.adminUserById(targetId, Date.now()) : null;
+    if (!user) json(res, 404, { error: "Account not found.", code: "ADMIN_TARGET_NOT_FOUND" });
+    else {
+      // The detail view also carries the member's Apple subscription state beside the Paddle purchase state.
+      const payload = adminUserPayload(user, { detail: true });
+      payload.discovery.apple = {
+        ...payload.discovery.apple,
+        subscription: appleSubscriptionSummary(
+          await store.appleSubscriptionsForUser(user.id),
+          Date.now(),
+        ),
+      };
+      json(res, 200, { user: payload });
+    }
+  }
+
+  async function userAction({ req, res, params, session }) {
+    if (!(await rateAllowed(req, `admin-user-action:${session.id}`, 30, 15 * 60 * 1000))) {
+      json(res, 429, {
+        error: "Too many admin actions. Wait and try again.",
+        code: "ADMIN_RATE_LIMIT",
+      });
+      return;
+    }
+    const targetId = cleanAdminTarget(params.id);
+    if (!targetId) {
+      json(res, 404, { error: "Account not found.", code: "ADMIN_TARGET_NOT_FOUND" });
+      return;
+    }
+    try {
+      json(res, 200, await performAdminUserAction(session, targetId, await bodyJson(req)));
+    } catch (error) {
+      if (!error.status) throw error;
+      json(res, error.status, {
+        error: error.message,
+        code: error.code || "ADMIN_ACTION_FAILED",
+      });
+    }
+  }
+
+  async function audit({ res, url }) {
+    const limit = Math.max(
+      1,
+      Math.min(100, Math.floor(Number(url.searchParams.get("limit")) || 40)),
+    );
+    const events = (await store.adminAudit(limit)).map((event) => ({
+      id: event.id,
+      action: event.action,
+      reason: event.reason,
+      result: event.result,
+      createdAt: Number(event.created_at),
+      actor: { id: event.actor_id, name: event.actor_name, email: event.actor_email },
+      target:
+        event.target_id || event.target_user_id
+          ? {
+              id: event.target_id || event.target_user_id,
+              name: event.target_name || null,
+              email: event.target_email || null,
+            }
+          : null,
+    }));
+    json(res, 200, { events, limit });
+  }
+
+  // The bound owner's routes; src/router.js checks the admin session and, for writes, origin, CSRF, and JSON.
+  // /api/admin/support and /api/admin/product-signals belong to their own modules.
+  const routes = [
+    {
+      method: "GET",
+      path: "/api/admin/session",
+      auth: "admin",
+      allowBootstrap: true,
+      handler: adminSession,
+    },
+    { method: "GET", path: "/api/admin/overview", auth: "admin", handler: overview },
+    { method: "GET", path: "/api/admin/users", auth: "admin", handler: listUsers },
+    { method: "GET", path: "/api/admin/users/:id", auth: "admin", handler: userDetail },
+    { method: "POST", path: "/api/admin/users/:id/actions", auth: "admin", handler: userAction },
+    { method: "GET", path: "/api/admin/audit", auth: "admin", handler: audit },
+  ];
 
   async function bootstrap() {
     if (!adminEmail) return;
@@ -425,12 +393,11 @@ function createAdminService({
   }
 
   return Object.freeze({
-    handleApi,
+    routes,
     bootstrap,
     adminIdentity,
     maybeClaimAdminForLogin,
     requireAdmin,
-    requireAdminMutation,
     sensitiveAdminText,
     cleanAdminTarget,
     adminAuditEvent,

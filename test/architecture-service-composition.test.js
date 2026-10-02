@@ -40,9 +40,15 @@ test("server composition keeps auth, admin, and support implementations behind m
   assert.match(composition, /createAuthService\(\{/);
   assert.match(composition, /createAdminService\(\{/);
   assert.match(composition, /createSupportService\(\{/);
-  assert.match(server, /await\s*auth\s*\.handleApi\s*\(\s*req\s*,\s*res\s*,\s*url\s*,?\s*\)/);
-  assert.match(server, /await\s*admin\s*\.handleApi\s*\(\s*req\s*,\s*res\s*,\s*url\s*,?\s*\)/);
-  assert.match(server, /await\s*support\s*\.handleApi\s*\(\s*req\s*,\s*res\s*,\s*url\s*,?\s*\)/);
+  // Each service hands the server a route table; src/router.js dispatches every API request.
+  const registered = server.match(/router\.add\(([\s\S]*?)\);/)?.[1] || "";
+  for (const service of ["auth", "admin", "support"])
+    assert.match(
+      registered,
+      new RegExp(`\\b${service}\\.routes\\b`),
+      `${service} routes are registered`,
+    );
+  assert.doesNotMatch(server, /\.handleApi\s*\(/, "no service is asked to route requests itself");
   assert.doesNotMatch(
     server,
     /function\s*(?:passwordMatches|beginAccountRegistration|verifyAccountEmail|resetPassword|adminIdentity|performAdminUserAction|createSupportRequest)\b/,

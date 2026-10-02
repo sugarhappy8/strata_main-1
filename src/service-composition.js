@@ -59,7 +59,6 @@ function composeServices({
     emailConfig,
     paymentConfig,
     enforcePaddleIps,
-    trustedAuthOrigin,
     rateAllowed,
     http: { json: http.json, bodyJson: http.bodyJson },
     reconcileCheckoutCreationBeforeDeletion,
@@ -72,7 +71,6 @@ function composeServices({
     auth,
     admin,
     requestAddress,
-    trustedAuthOrigin,
     rateAllowed,
     isUniqueViolation,
     http: {

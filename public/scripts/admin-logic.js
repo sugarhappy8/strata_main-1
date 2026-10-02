@@ -120,7 +120,7 @@
   function friendlyError(error) {
     if (error?.code === "network")
       return "Could not reach STRATA. Check the connection and try again.";
-    if (error?.code === "ADMIN_ORIGIN_REQUIRED" || error?.code === "INVALID_CSRF")
+    if (error?.code === "ORIGIN_REQUIRED" || error?.code === "INVALID_CSRF")
       return "The security check expired. Refresh this page and try again.";
     if (error?.status === 401) return "Your session expired. Sign in again to continue.";
     if (error?.status === 403) return "This verified account does not have administrator access.";

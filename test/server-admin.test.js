@@ -810,7 +810,7 @@ test("denied admin mutations enforce authorization, strict Origin, CSRF, and JSO
     origin: false,
   });
   assert.equal(missingOrigin.response.status, 403);
-  assert.equal(missingOrigin.data.code, "ADMIN_ORIGIN_REQUIRED");
+  assert.equal(missingOrigin.data.code, "ORIGIN_REQUIRED");
   const nullOrigin = await jsonRequest(path, body, {
     cookie: admin.cookie,
     csrf: admin.csrf,
@@ -1212,7 +1212,7 @@ test("support management is admin-only, mutation-protected, auditable, and redac
     origin: false,
   });
   assert.equal(noOrigin.response.status, 403);
-  assert.equal(noOrigin.data.code, "ADMIN_ORIGIN_REQUIRED");
+  assert.equal(noOrigin.data.code, "ORIGIN_REQUIRED");
   const badCsrf = await jsonRequest(`/api/admin/support/${ticket.id}`, update, {
     cookie: admin.cookie,
     csrf: "wrong-support-csrf",

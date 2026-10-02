@@ -35,7 +35,6 @@ function createSupportService({
   auth,
   admin,
   requestAddress,
-  trustedAuthOrigin,
   rateAllowed,
   isUniqueViolation = () => false,
   http,
@@ -47,7 +46,6 @@ function createSupportService({
     !auth ||
     !admin ||
     typeof requestAddress !== "function" ||
-    typeof trustedAuthOrigin !== "function" ||
     typeof rateAllowed !== "function" ||
     !http
   ) {
@@ -206,176 +204,161 @@ function createSupportService({
     };
   }
 
-  async function handleApi(req, res, url) {
-    if (url.pathname === "/api/support" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, {
-          error: "Support security check failed. Refresh and try again.",
-          code: "SUPPORT_ORIGIN_REQUIRED",
-        });
-        return true;
-      }
-      const contentType = String(req.headers["content-type"] || "").toLowerCase();
-      if (contentType.startsWith("application/x-www-form-urlencoded")) {
-        // The contact form works without JavaScript: a plain post lands back on /contact with the outcome in the query string.
-        try {
-          const result = await createSupportRequest(req, await bodyForm(req));
-          redirect(res, `/contact?sent=${encodeURIComponent(result.reference)}#supportStatus`);
-        } catch (error) {
-          if (!error.status) throw error;
-          redirect(
-            res,
-            `/contact?error=${encodeURIComponent(error.code || "SUPPORT_REQUEST_FAILED")}#supportStatus`,
-          );
-        }
-        return true;
-      }
-      if (!contentType.startsWith("application/json")) {
-        json(res, 415, { error: "Support requests must use JSON.", code: "JSON_REQUIRED" });
-        return true;
-      }
+  async function createRequest({ req, res }) {
+    const contentType = String(req.headers["content-type"] || "").toLowerCase();
+    if (contentType.startsWith("application/x-www-form-urlencoded")) {
+      // The contact form works without JavaScript: a plain post lands back on /contact with the outcome in the query string.
       try {
-        json(res, 201, { ok: true, ...(await createSupportRequest(req, await bodyJson(req))) });
+        const result = await createSupportRequest(req, await bodyForm(req));
+        redirect(res, `/contact?sent=${encodeURIComponent(result.reference)}#supportStatus`);
       } catch (error) {
         if (!error.status) throw error;
-        json(res, error.status, {
-          error: error.message,
-          code: error.code || "SUPPORT_REQUEST_FAILED",
-        });
-      }
-      return true;
-    }
-    if (url.pathname === "/api/admin/support" && req.method === "GET") {
-      const session = await admin.requireAdmin(req, res);
-      if (!session) return true;
-      const requestedStatus = cleanText(url.searchParams.get("status"), 20),
-        status = SUPPORT_STATUSES.has(requestedStatus) ? requestedStatus : "";
-      const limit = Math.max(
-          1,
-          Math.min(50, Math.floor(Number(url.searchParams.get("limit")) || 20)),
-        ),
-        offset = Math.max(
-          0,
-          Math.min(10000, Math.floor(Number(url.searchParams.get("offset")) || 0)),
-        );
-      const result = await store.adminSupportTickets(status, limit, offset);
-      json(res, 200, {
-        tickets: result.tickets.map(supportTicketPayload),
-        total: result.total,
-        limit,
-        offset,
-        status,
-      });
-      return true;
-    }
-    const supportMatch = url.pathname.match(/^\/api\/admin\/support\/([^/]+)$/);
-    if (supportMatch && req.method === "POST") {
-      const session = await admin.requireAdmin(req, res);
-      if (!session) return true;
-      if (!admin.requireAdminMutation(req, res, session)) return true;
-      if (!(await rateAllowed(req, `admin-support:${session.id}`, 30, 15 * 60 * 1000))) {
-        json(res, 429, {
-          error: "Too many support updates. Wait and try again.",
-          code: "ADMIN_RATE_LIMIT",
-        });
-        return true;
-      }
-      const ticketId = admin.cleanAdminTarget(supportMatch[1]),
-        ticket = ticketId ? await store.supportTicketById(ticketId) : null;
-      if (!ticket) {
-        json(res, 404, { error: "Support request not found.", code: "SUPPORT_NOT_FOUND" });
-        return true;
-      }
-      const input = await bodyJson(req),
-        candidateStatus = cleanText(input?.status, 20),
-        status = SUPPORT_STATUSES.has(candidateStatus) ? candidateStatus : ticket.status;
-      const note = cleanSupportMessage(input?.note, 1000),
-        response = cleanSupportMessage(input?.response, 2000),
-        expectedUpdatedAt = Number(input?.expectedUpdatedAt);
-      if (admin.sensitiveAdminText(note) || admin.sensitiveAdminText(response)) {
-        json(res, 400, {
-          error:
-            "Do not put passwords, codes, API keys, tokens, or private action links in support notes or responses.",
-          code: "SENSITIVE_SUPPORT_CONTENT",
-        });
-        return true;
-      }
-      if (!Number.isSafeInteger(expectedUpdatedAt) || expectedUpdatedAt <= 0) {
-        json(res, 400, {
-          error: "Refresh the help request before updating it.",
-          code: "SUPPORT_VERSION_REQUIRED",
-        });
-        return true;
-      }
-      if (expectedUpdatedAt !== Number(ticket.updated_at)) {
-        json(res, 409, {
-          error: "The support request changed in another tab. Refresh and try again.",
-          code: "SUPPORT_STATE_CHANGED",
-        });
-        return true;
-      }
-      if (!note && !response && status === ticket.status) {
-        json(res, 400, {
-          error: "Change the status, add a private note, or write a response.",
-          code: "EMPTY_SUPPORT_UPDATE",
-        });
-        return true;
-      }
-      const updatedAt = Math.max(Date.now(), expectedUpdatedAt + 1);
-      let updated = await store.updateSupportTicket(
-        ticket.id,
-        { status, note, responseSent: false, updatedAt, expectedUpdatedAt },
-        admin.adminAuditEvent(
-          session.id,
-          ticket.user_id || null,
-          "support-updated",
-          note || `Support request ${status}`,
-          response ? "response-pending" : "success",
-        ),
-      );
-      if (!updated) {
-        json(res, 409, {
-          error: "The support request changed. Refresh and try again.",
-          code: "SUPPORT_STATE_CHANGED",
-        });
-        return true;
-      }
-      if (response.length > 0) {
-        try {
-          await sendSupportResponse(emailConfig, updated, response);
-        } catch {
-          json(res, 502, {
-            error:
-              "The help-request workflow was saved, but the email response was not sent. Open the request and try the response again.",
-            code: "SUPPORT_RESPONSE_DELIVERY_FAILED",
-            ticket: supportTicketPayload(updated),
-          });
-          return true;
-        }
-        updated = (await store.markSupportResponseSent(ticket.id, Date.now())) || updated;
-        await admin.recordAdminAudit(
-          session.id,
-          ticket.user_id || null,
-          "support-response-sent",
-          "Response delivered through the configured support email",
+        redirect(
+          res,
+          `/contact?error=${encodeURIComponent(error.code || "SUPPORT_REQUEST_FAILED")}#supportStatus`,
         );
       }
-      json(res, 200, {
-        ok: true,
-        ticket: supportTicketPayload(updated),
-        message: response
-          ? "Response sent and support request updated."
-          : "Support request updated.",
-      });
-      return true;
+      return;
     }
-    return false;
+    try {
+      json(res, 201, { ok: true, ...(await createSupportRequest(req, await bodyJson(req))) });
+    } catch (error) {
+      if (!error.status) throw error;
+      json(res, error.status, {
+        error: error.message,
+        code: error.code || "SUPPORT_REQUEST_FAILED",
+      });
+    }
   }
+
+  async function listTickets({ res, url }) {
+    const requestedStatus = cleanText(url.searchParams.get("status"), 20),
+      status = SUPPORT_STATUSES.has(requestedStatus) ? requestedStatus : "";
+    const limit = Math.max(
+        1,
+        Math.min(50, Math.floor(Number(url.searchParams.get("limit")) || 20)),
+      ),
+      offset = Math.max(
+        0,
+        Math.min(10000, Math.floor(Number(url.searchParams.get("offset")) || 0)),
+      );
+    const result = await store.adminSupportTickets(status, limit, offset);
+    json(res, 200, {
+      tickets: result.tickets.map(supportTicketPayload),
+      total: result.total,
+      limit,
+      offset,
+      status,
+    });
+  }
+
+  async function updateTicket({ req, res, params, session }) {
+    if (!(await rateAllowed(req, `admin-support:${session.id}`, 30, 15 * 60 * 1000))) {
+      json(res, 429, {
+        error: "Too many support updates. Wait and try again.",
+        code: "ADMIN_RATE_LIMIT",
+      });
+      return;
+    }
+    const ticketId = admin.cleanAdminTarget(params.id),
+      ticket = ticketId ? await store.supportTicketById(ticketId) : null;
+    if (!ticket) {
+      json(res, 404, { error: "Support request not found.", code: "SUPPORT_NOT_FOUND" });
+      return;
+    }
+    const input = await bodyJson(req),
+      candidateStatus = cleanText(input?.status, 20),
+      status = SUPPORT_STATUSES.has(candidateStatus) ? candidateStatus : ticket.status;
+    const note = cleanSupportMessage(input?.note, 1000),
+      response = cleanSupportMessage(input?.response, 2000),
+      expectedUpdatedAt = Number(input?.expectedUpdatedAt);
+    if (admin.sensitiveAdminText(note) || admin.sensitiveAdminText(response)) {
+      json(res, 400, {
+        error:
+          "Do not put passwords, codes, API keys, tokens, or private action links in support notes or responses.",
+        code: "SENSITIVE_SUPPORT_CONTENT",
+      });
+      return;
+    }
+    if (!Number.isSafeInteger(expectedUpdatedAt) || expectedUpdatedAt <= 0) {
+      json(res, 400, {
+        error: "Refresh the help request before updating it.",
+        code: "SUPPORT_VERSION_REQUIRED",
+      });
+      return;
+    }
+    if (expectedUpdatedAt !== Number(ticket.updated_at)) {
+      json(res, 409, {
+        error: "The support request changed in another tab. Refresh and try again.",
+        code: "SUPPORT_STATE_CHANGED",
+      });
+      return;
+    }
+    if (!note && !response && status === ticket.status) {
+      json(res, 400, {
+        error: "Change the status, add a private note, or write a response.",
+        code: "EMPTY_SUPPORT_UPDATE",
+      });
+      return;
+    }
+    const updatedAt = Math.max(Date.now(), expectedUpdatedAt + 1);
+    let updated = await store.updateSupportTicket(
+      ticket.id,
+      { status, note, responseSent: false, updatedAt, expectedUpdatedAt },
+      admin.adminAuditEvent(
+        session.id,
+        ticket.user_id || null,
+        "support-updated",
+        note || `Support request ${status}`,
+        response ? "response-pending" : "success",
+      ),
+    );
+    if (!updated) {
+      json(res, 409, {
+        error: "The support request changed. Refresh and try again.",
+        code: "SUPPORT_STATE_CHANGED",
+      });
+      return;
+    }
+    if (response.length > 0) {
+      try {
+        await sendSupportResponse(emailConfig, updated, response);
+      } catch {
+        json(res, 502, {
+          error:
+            "The help-request workflow was saved, but the email response was not sent. Open the request and try the response again.",
+          code: "SUPPORT_RESPONSE_DELIVERY_FAILED",
+          ticket: supportTicketPayload(updated),
+        });
+        return;
+      }
+      updated = (await store.markSupportResponseSent(ticket.id, Date.now())) || updated;
+      await admin.recordAdminAudit(
+        session.id,
+        ticket.user_id || null,
+        "support-response-sent",
+        "Response delivered through the configured support email",
+      );
+    }
+    json(res, 200, {
+      ok: true,
+      ticket: supportTicketPayload(updated),
+      message: response ? "Response sent and support request updated." : "Support request updated.",
+    });
+  }
+
+  // Origin, session, CSRF, and JSON checks happen once, in src/router.js.
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    { method: "POST", path: "/api/support", public: true, form: true, handler: createRequest },
+    { method: "GET", path: "/api/admin/support", auth: "admin", handler: listTickets },
+    { method: "POST", path: "/api/admin/support/:id", auth: "admin", handler: updateTicket },
+  ];
 
   async function cleanup(now = Date.now()) {
     await store.deleteOldSupportRequestEvents(now - SUPPORT_REQUEST_RETENTION_MS);
   }
-  return Object.freeze({ handleApi, cleanup, supportTicketPayload });
+  return Object.freeze({ routes, cleanup, supportTicketPayload });
 }
 
 module.exports = { createSupportService };

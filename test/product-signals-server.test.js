@@ -9,6 +9,7 @@ const {
   createProductSignalsService,
 } = require("../src/product-signals");
 const { PRODUCT_SIGNAL_TABLE } = require("../src/product-signals-schema");
+const { routeHarness } = require("./support/route-harness");
 
 const NOW = Date.UTC(2026, 8, 7, 18, 30);
 
@@ -78,19 +79,26 @@ function harness({
       return req.body;
     },
   };
-  const service = createProductSignalsService({
+  const signals = createProductSignalsService({
     store,
-    admin,
-    auth,
     http,
     now: () => NOW,
-    trustedOrigin: (req) => req.trusted === true,
     requestAddress: (req) => req.address,
     rateKeyAllowed: (key, max, windowMs) => {
       rateKeys.push({ key, max, windowMs });
       return allowRate(key, max, windowMs);
     },
   });
+  const service = {
+    cleanup: signals.cleanup,
+    ...routeHarness(signals.routes, {
+      json: http.json,
+      sessionFor: auth.sessionFor,
+      validCsrf: auth.validCsrf,
+      requireAdmin: admin.requireAdmin,
+      trustedOrigin: (req) => req.trusted === true,
+    }),
+  };
   return { service, store, writes, cleanups, rateKeys };
 }
 
@@ -268,8 +276,8 @@ test("anonymous traffic cannot use up the signed-in total", async () => {
 
 test("the public counter enforces method, origin, content type, and transient rate limits", async () => {
   const cases = [
-    { input: request({ method: "GET" }), status: 405, code: "PRODUCT_SIGNAL_METHOD" },
-    { input: request({ trusted: false }), status: 403, code: "PRODUCT_SIGNAL_ORIGIN_REQUIRED" },
+    { input: request({ method: "GET" }), status: 405, code: "METHOD_NOT_ALLOWED" },
+    { input: request({ trusted: false }), status: 403, code: "ORIGIN_REQUIRED" },
     { input: request({ type: "text/plain" }), status: 415, code: "JSON_REQUIRED" },
   ];
   for (const entry of cases) {

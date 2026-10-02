@@ -275,24 +275,10 @@ function pagination(value, fallback, min, max) {
   return integer(Number(value), min, max, "History pagination");
 }
 
-function createWorkoutService({
-  store,
-  auth,
-  requireAccess,
-  trustedOrigin,
-  rateAllowed,
-  http,
-  events = null,
-}) {
-  if (
-    !store ||
-    !auth ||
-    typeof requireAccess !== "function" ||
-    typeof trustedOrigin !== "function" ||
-    typeof rateAllowed !== "function" ||
-    !http
-  )
-    throw new TypeError("Workout service requires store, auth, request guards, and HTTP helpers.");
+// Session, feature, origin, CSRF, and JSON checks happen once, in src/router.js.
+function createWorkoutService({ store, rateAllowed, http, events = null }) {
+  if (!store || typeof rateAllowed !== "function" || !http)
+    throw new TypeError("Workout service requires store, a rate limiter, and HTTP helpers.");
   const { json, bodyJson } = http;
   function activeWorkoutConflict(res, workout) {
     json(res, 409, {
@@ -415,72 +401,81 @@ function createWorkoutService({
     }
     await existingOrConflict(res, userId, id);
   }
-  async function handleApi(req, res, url) {
-    if (url.pathname !== "/api/workouts" && !url.pathname.startsWith("/api/workouts/"))
-      return false;
-    const session = await requireAccess(req, res);
-    if (!session) return true;
-    try {
-      const match = url.pathname.match(/^\/api\/workouts(?:\/([A-Za-z0-9_-]{1,100}))?$/);
-      if (!match) throw workoutError("Workout not found.", 404, "WORKOUT_NOT_FOUND");
-      const id = match[1],
-        allowed = id ? ["GET", "PUT", "DELETE"] : ["GET", "POST"];
-      if (!allowed.includes(req.method)) {
-        json(res, 405, { error: "Method not allowed." }, { Allow: allowed.join(", ") });
-        return true;
+  const WORKOUT_ID = /^[A-Za-z0-9_-]{1,100}$/;
+  /** Every workout route shares the ID check, the rate limit, and this module's error replies. */
+  function workoutRoute(run) {
+    return async ({ req, res, url, params, session }) => {
+      try {
+        if (params.id !== undefined && !WORKOUT_ID.test(params.id))
+          throw workoutError("Workout not found.", 404, "WORKOUT_NOT_FOUND");
+        const read = req.method === "GET";
+        if (
+          !(await rateAllowed(
+            req,
+            `identity:workout:${read ? "read" : "write"}:${session.id}`,
+            read ? 300 : 180,
+            60000,
+          ))
+        )
+          throw workoutError(
+            "Too many workout requests. Wait a moment and retry.",
+            429,
+            "WORKOUT_RATE_LIMIT",
+          );
+        await run({ req, res, url, id: params.id, session });
+      } catch (error) {
+        if (!error.status) throw error;
+        json(res, error.status, { error: error.message, code: error.code || "INVALID_WORKOUT" });
       }
-      if (
-        !(await rateAllowed(
-          req,
-          `identity:workout:${req.method === "GET" ? "read" : "write"}:${session.id}`,
-          req.method === "GET" ? 300 : 180,
-          60000,
-        ))
-      )
-        throw workoutError(
-          "Too many workout requests. Wait a moment and retry.",
-          429,
-          "WORKOUT_RATE_LIMIT",
-        );
-      if (req.method === "GET") {
-        if (id) {
-          const workout = workoutPayload(await store.workout(session.id, id));
-          if (!workout) throw workoutError("Workout not found.", 404, "WORKOUT_NOT_FOUND");
-          json(res, 200, { workout, csrfToken: session.csrf_token });
-        } else {
-          const limit = pagination(url.searchParams.get("limit"), 20, 1, 100),
-            offset = pagination(url.searchParams.get("offset"), 0, 0, 10000),
-            memory = url.searchParams.get("memory");
-          if (memory !== null && memory !== "1")
-            throw workoutError("Workout memory selection is invalid.");
-          const rows = await store.workouts(session.id, limit + 1, offset);
-          json(res, 200, {
-            workouts: rows.slice(0, limit).map((row) => workoutPayload(row, true, memory === "1")),
-            hasMore: rows.length > limit,
-            csrfToken: session.csrf_token,
-          });
-        }
-        return true;
-      }
-      // Every write comes from a STRATA page, the same as training writes; the CSRF token alone is not enough.
-      if (!trustedOrigin(req))
-        throw workoutError(
-          "Workout security check failed. Refresh and try again.",
-          403,
-          "WORKOUT_ORIGIN_REQUIRED",
-        );
-      if (!auth.validCsrf(req, session))
-        throw workoutError("Security check failed. Refresh and try again.", 403, "INVALID_CSRF");
-      if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers["content-type"] || "")))
-        throw workoutError("Workout requests must use JSON.", 415, "JSON_REQUIRED");
-      await mutate(req, res, session.id, id);
-    } catch (error) {
-      if (!error.status) throw error;
-      json(res, error.status, { error: error.message, code: error.code || "INVALID_WORKOUT" });
-    }
-    return true;
+    };
   }
-  return { handleApi };
+  async function listWorkouts({ res, url, session }) {
+    const limit = pagination(url.searchParams.get("limit"), 20, 1, 100),
+      offset = pagination(url.searchParams.get("offset"), 0, 0, 10000),
+      memory = url.searchParams.get("memory");
+    if (memory !== null && memory !== "1")
+      throw workoutError("Workout memory selection is invalid.");
+    const rows = await store.workouts(session.id, limit + 1, offset);
+    json(res, 200, {
+      workouts: rows.slice(0, limit).map((row) => workoutPayload(row, true, memory === "1")),
+      hasMore: rows.length > limit,
+      csrfToken: session.csrf_token,
+    });
+  }
+  async function getWorkout({ res, id, session }) {
+    const workout = workoutPayload(await store.workout(session.id, id));
+    if (!workout) throw workoutError("Workout not found.", 404, "WORKOUT_NOT_FOUND");
+    json(res, 200, { workout, csrfToken: session.csrf_token });
+  }
+  const write = ({ req, res, id, session }) => mutate(req, res, session.id, id);
+  const routes = [
+    {
+      method: "GET",
+      path: "/api/workouts",
+      feature: "plus.train",
+      handler: workoutRoute(listWorkouts),
+    },
+    { method: "POST", path: "/api/workouts", feature: "plus.train", handler: workoutRoute(write) },
+    {
+      method: "GET",
+      path: "/api/workouts/:id",
+      feature: "plus.train",
+      handler: workoutRoute(getWorkout),
+    },
+    {
+      method: "PUT",
+      path: "/api/workouts/:id",
+      feature: "plus.train",
+      handler: workoutRoute(write),
+    },
+    {
+      method: "DELETE",
+      path: "/api/workouts/:id",
+      feature: "plus.train",
+      handler: workoutRoute(write),
+    },
+  ];
+  return { routes };
 }
 
 module.exports = { createWorkoutService, sanitizeWorkout, summarizeWorkout, workoutPayload };

@@ -19,6 +19,7 @@
   const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
   const KNOWN_AUTH_ERRORS = new Set([
     "Cross-origin request rejected.",
+    "Security check failed. Refresh and try again.",
     "Too many attempts. Try again later.",
     "Use a valid name, email, and password of 10–128 characters.",
     "An account with that email already exists.",

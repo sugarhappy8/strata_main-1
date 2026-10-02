@@ -175,7 +175,7 @@ test("training APIs require Strata+, preserve owner isolation, CSRF, JSON, compl
     valid = { checkIn: { difficulty: 3, energy: 4, comfort: 4, enjoyment: 4 } };
   const missingOrigin = await requestWithoutOrigin(path, owner, "POST", valid);
   assert.equal(missingOrigin.status, 403);
-  assert.equal(missingOrigin.data.code, "TRAINING_ORIGIN_REQUIRED");
+  assert.equal(missingOrigin.data.code, "ORIGIN_REQUIRED");
   assert.equal((await request(path, owner, "POST", valid, { Origin: "null" })).status, 403);
   assert.equal(
     (await request(path, owner, "POST", valid, { Origin: "https://foreign.example" })).status,

@@ -262,26 +262,9 @@ function planWithAdaptation(value, adaptation) {
  * @param {import("./domain-types").TrainingServiceDependencies} dependencies
  * @returns {import("./domain-types").TrainingService}
  */
-function createTrainingService({
-  store,
-  auth,
-  requireAccess,
-  trustedOrigin,
-  rateAllowed,
-  http,
-  events = null,
-}) {
-  if (
-    !store ||
-    !auth ||
-    typeof requireAccess !== "function" ||
-    typeof trustedOrigin !== "function" ||
-    typeof rateAllowed !== "function" ||
-    !http
-  )
-    throw new TypeError(
-      "Training service requires storage, access guards, rate limiting, and HTTP helpers.",
-    );
+function createTrainingService({ store, rateAllowed, http, events = null }) {
+  if (!store || typeof rateAllowed !== "function" || !http)
+    throw new TypeError("Training service requires storage, rate limiting, and HTTP helpers.");
   const { json, bodyJson } = http;
   /** @param {string} userId @param {string} id */
   async function completedWorkout(userId, id) {
@@ -451,19 +434,6 @@ function createTrainingService({
       }),
     );
   }
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").SessionRow} session */
-  function validMutation(req, session) {
-    if (!trustedOrigin(req))
-      throw trainingError(
-        "Training security check failed. Refresh and try again.",
-        403,
-        "TRAINING_ORIGIN_REQUIRED",
-      );
-    if (!auth.validCsrf(req, session))
-      throw trainingError("Security check failed. Refresh and try again.", 403, "INVALID_CSRF");
-    if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers["content-type"] || "")))
-      throw trainingError("Training updates must use JSON.", 415, "JSON_REQUIRED");
-  }
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {import("./domain-types").SessionRow} session @param {string} id */
   async function resolveAdaptation(req, res, session, id) {
     const input = object(await bodyJson(req), "Request"),
@@ -575,8 +545,13 @@ function createTrainingService({
       planUpdatedAt: Number(accepted.plan.updated_at),
     });
   }
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url */
-  async function handleApi(req, res, url) {
+  /**
+   * One handler serves every training route; src/router.js has already checked the session, the Strata+
+   * training feature, and, for writes, origin, CSRF, and JSON.
+   * @param {{req:import("./domain-types").HttpRequest,res:import("./domain-types").HttpResponse,url:URL,
+   *   params:Record<string,string>,session:import("./domain-types").SessionRow}} context
+   */
+  async function serve({ req, res, url, params, session }) {
     const checkInMatch = url.pathname.match(/^\/api\/workouts\/([A-Za-z0-9_-]{1,100})\/check-in$/);
     const progressionMatch = url.pathname.match(
       /^\/api\/workouts\/([A-Za-z0-9_-]{1,100})\/progression$/,
@@ -584,34 +559,9 @@ function createTrainingService({
     const adaptationMatch = url.pathname.match(
       /^\/api\/training\/adaptations\/([A-Za-z0-9_-]{1,100})$/,
     );
-    const recognized = Boolean(
-      checkInMatch ||
-      progressionMatch ||
-      adaptationMatch ||
-      [
-        "/api/training",
-        "/api/training-block",
-        "/api/training/progression/latest",
-        "/api/training/adaptations/latest",
-      ].includes(url.pathname),
-    );
-    if (!recognized) return false;
-    const session = await requireAccess(req, res);
-    if (!session) return true;
     try {
-      const allowed = checkInMatch
-        ? ["GET", "POST"]
-        : progressionMatch
-          ? ["GET"]
-          : adaptationMatch
-            ? ["POST"]
-            : url.pathname === "/api/training-block"
-              ? ["GET", "PUT"]
-              : ["GET"];
-      if (!allowed.includes(String(req.method))) {
-        json(res, 405, { error: "Method not allowed." }, { Allow: allowed.join(", ") });
-        return true;
-      }
+      if (params.id !== undefined && !checkInMatch && !progressionMatch && !adaptationMatch)
+        throw trainingError("Training route not found.", 404, "TRAINING_ROUTE_NOT_FOUND");
       const write = req.method !== "GET";
       if (
         !(await rateAllowed(
@@ -626,7 +576,6 @@ function createTrainingService({
           429,
           "TRAINING_RATE_LIMIT",
         );
-      if (write) validMutation(req, session);
       if (checkInMatch) {
         const workout = await completedWorkout(session.id, String(checkInMatch[1]));
         if (req.method === "POST") {
@@ -662,7 +611,7 @@ function createTrainingService({
             adaptation,
             csrfToken: session.csrf_token,
           });
-          return true;
+          return;
         }
         const saved = checkInPayload(await store.workoutCheckIn(session.id, workout.id));
         const proposal = await store.trainingAdaptation(
@@ -675,7 +624,7 @@ function createTrainingService({
           adaptation: proposal?.status === "pending" ? adaptationPayload(proposal) : null,
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       if (progressionMatch) {
         const workout = await completedWorkout(session.id, String(progressionMatch[1]));
@@ -685,11 +634,11 @@ function createTrainingService({
           checkIn,
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       if (adaptationMatch) {
         await resolveAdaptation(req, res, session, String(adaptationMatch[1]));
-        return true;
+        return;
       }
       if (url.pathname === "/api/training-block") {
         if (req.method === "PUT") {
@@ -718,34 +667,34 @@ function createTrainingService({
               code: "TRAINING_BLOCK_CHANGED",
               block: blockPayload(await store.trainingBlock(session.id)),
             });
-            return true;
+            return;
           }
           json(res, 200, {
             block: blockPayload(saved),
             adaptation: adaptationPayload(await store.latestTrainingAdaptation(session.id)),
             csrfToken: session.csrf_token,
           });
-          return true;
+          return;
         }
         json(res, 200, {
           block: blockPayload(await store.trainingBlock(session.id)),
           adaptation: adaptationPayload(await store.latestTrainingAdaptation(session.id)),
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       const adaptationRow = await store.latestTrainingAdaptation(session.id),
         adaptation = adaptationPayload(adaptationRow);
       if (url.pathname === "/api/training/adaptations/latest") {
         json(res, 200, { adaptation, csrfToken: session.csrf_token });
-        return true;
+        return;
       }
       if (url.pathname === "/api/training/progression/latest") {
         json(res, 200, {
           progression: await latestProgression(session.id),
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       let latest = null;
       if (adaptationRow) {
@@ -771,9 +720,21 @@ function createTrainingService({
         code: failure.code || "INVALID_TRAINING_REQUEST",
       });
     }
-    return true;
   }
-  return { handleApi };
+  const train = "plus.train";
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    { method: "GET", path: "/api/training", feature: train, handler: serve },
+    { method: "GET", path: "/api/training-block", feature: train, handler: serve },
+    { method: "PUT", path: "/api/training-block", feature: train, handler: serve },
+    { method: "GET", path: "/api/training/progression/latest", feature: train, handler: serve },
+    { method: "GET", path: "/api/training/adaptations/latest", feature: train, handler: serve },
+    { method: "POST", path: "/api/training/adaptations/:id", feature: train, handler: serve },
+    { method: "GET", path: "/api/workouts/:id/check-in", feature: train, handler: serve },
+    { method: "POST", path: "/api/workouts/:id/check-in", feature: train, handler: serve },
+    { method: "GET", path: "/api/workouts/:id/progression", feature: train, handler: serve },
+  ];
+  return { routes };
 }
 
 module.exports = {

@@ -316,9 +316,7 @@ function appleSubscriptionSummary(rows, now, user = null, settings = null) {
 function createAppleBillingService({
   store,
   settings,
-  getAuth,
   getUserPayload,
-  trustedOrigin,
   rateAllowed,
   http,
   logger,
@@ -328,9 +326,7 @@ function createAppleBillingService({
   if (
     !store ||
     !settings ||
-    typeof getAuth !== "function" ||
     typeof getUserPayload !== "function" ||
-    typeof trustedOrigin !== "function" ||
     typeof rateAllowed !== "function" ||
     !http ||
     !logger
@@ -341,12 +337,6 @@ function createAppleBillingService({
   }
   const { json } = http;
   if (settings.rootOverrideIgnored) logger.warn("apple.root_override_ignored", {});
-
-  function authService() {
-    const service = getAuth();
-    if (!service) throw new Error("Apple billing account policy is unavailable.");
-    return service;
-  }
 
   /** @param {unknown} token @returns {Record<string,any>} */
   function verifySigned(token) {
@@ -430,25 +420,11 @@ function createAppleBillingService({
     );
   }
 
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
-  async function acceptTransactions(req, res) {
-    const auth = authService();
-    const session = await auth.requireSession(req, res);
-    if (!session) return;
-    if (!trustedOrigin(req)) {
-      json(res, 403, {
-        error: "Purchase security check failed. Refresh and try again.",
-        code: "APPLE_ORIGIN_REQUIRED",
-      });
-      return;
-    }
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
+  /**
+   * @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res
+   * @param {import("./domain-types").SessionRow} session
+   */
+  async function acceptTransactions(req, res, session) {
     if (
       !(await rateAllowed(
         req,
@@ -627,10 +603,6 @@ function createAppleBillingService({
 
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
   async function handleNotification(req, res) {
-    if (req.method !== "POST") {
-      json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
-      return;
-    }
     if (!(await rateAllowed(req, "apple-notifications", NOTIFICATIONS_PER_WINDOW))) {
       json(res, 429, { error: "Too many notifications. Retry later." });
       return;
@@ -643,16 +615,22 @@ function createAppleBillingService({
     json(res, 200, {});
   }
 
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url */
-  async function handleApi(req, res, url) {
-    if (url.pathname !== "/api/billing/apple/transactions") return false;
-    if (req.method !== "POST") {
-      json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
-      return true;
-    }
-    await acceptTransactions(req, res);
-    return true;
-  }
+  // Session, origin, CSRF, and JSON checks happen once, in src/router.js. App Store Server Notifications come from
+  // Apple, not a page, so that route is a webhook that proves itself with Apple's signature.
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    {
+      method: "POST",
+      path: "/api/billing/apple/transactions",
+      handler: ({ req, res, session }) => acceptTransactions(req, res, session),
+    },
+    {
+      method: "POST",
+      path: "/api/billing/apple/notifications",
+      webhook: true,
+      handler: ({ req, res }) => handleNotification(req, res),
+    },
+  ];
 
   /** @param {string} userId @param {string|null} [email] */
   async function subscriptionForUser(userId, email = null) {
@@ -681,8 +659,7 @@ function createAppleBillingService({
   }
 
   return Object.freeze({
-    handleApi,
-    handleNotification,
+    routes,
     processNotification,
     subscriptionForUser,
     deletionNotice,

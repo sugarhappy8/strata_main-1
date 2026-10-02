@@ -46,9 +46,6 @@ function dayBefore(timestamp, days) {
  */
 function createProductSignalsService({
   store,
-  admin,
-  auth,
-  trustedOrigin,
   requestAddress,
   rateKeyAllowed,
   http,
@@ -56,10 +53,6 @@ function createProductSignalsService({
 }) {
   if (
     !store ||
-    !admin ||
-    typeof auth?.sessionFor !== "function" ||
-    typeof auth?.validCsrf !== "function" ||
-    typeof trustedOrigin !== "function" ||
     typeof requestAddress !== "function" ||
     typeof rateKeyAllowed !== "function" ||
     !http?.json ||
@@ -76,46 +69,13 @@ function createProductSignalsService({
   /** @param {import("./domain-types").HttpRequest} req */
   const networkKey = (req) => oneWay(`network:${String(requestAddress(req) || "unknown")}`);
 
-  /** @param {import("./domain-types").HttpRequest} req */
-  function validJsonRequest(req) {
-    return String(req.headers["content-type"] || "")
-      .toLowerCase()
-      .startsWith("application/json");
-  }
-
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
-  async function accept(req, res) {
-    if (req.method !== "POST") {
-      http.json(
-        res,
-        405,
-        { error: "Method not allowed.", code: "PRODUCT_SIGNAL_METHOD" },
-        { Allow: "POST" },
-      );
-      return;
-    }
-    if (!trustedOrigin(req)) {
-      http.json(res, 403, {
-        error: "Product activity sharing requires a same-origin request.",
-        code: "PRODUCT_SIGNAL_ORIGIN_REQUIRED",
-      });
-      return;
-    }
-    if (!validJsonRequest(req)) {
-      http.json(res, 415, {
-        error: "Product activity requests must use JSON.",
-        code: "JSON_REQUIRED",
-      });
-      return;
-    }
-    const session = await auth.sessionFor(req, res);
-    if (session && !auth.validCsrf(req, session)) {
-      http.json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
+  /**
+   * Visitors and members both share counts; a member's write has passed the CSRF check in src/router.js.
+   * @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res
+   * @param {import("./domain-types").SessionRow|null} session
+   */
+  async function accept(req, res, session) {
     const actor = session ? `member:${session.id}` : networkKey(req);
     const allowed = session
       ? (await rateKeyAllowed(`signal:${oneWay(actor)}`, LIMITS.member, RATE_WINDOW_MS)) &&
@@ -156,22 +116,10 @@ function createProductSignalsService({
   }
 
   /**
-   * @param {import("./domain-types").HttpRequest} req
-   * @param {import("./domain-types").HttpResponse} res
    * @param {URL} url
+   * @param {import("./domain-types").HttpResponse} res
    */
-  async function readAggregate(req, res, url) {
-    if (req.method !== "GET") {
-      http.json(
-        res,
-        405,
-        { error: "Method not allowed.", code: "PRODUCT_SIGNAL_ADMIN_METHOD" },
-        { Allow: "GET" },
-      );
-      return;
-    }
-    const session = await admin.requireAdmin(req, res);
-    if (!session) return;
+  async function readAggregate(url, res) {
     // Number(null) and Number("") are 0, so a missing or blank range must be
     // recognized before conversion to keep the intended 30-day default.
     const rawDays = url.searchParams.get("days")?.trim() || "",
@@ -220,22 +168,21 @@ function createProductSignalsService({
     });
   }
 
-  /**
-   * @param {import("./domain-types").HttpRequest} req
-   * @param {import("./domain-types").HttpResponse} res
-   * @param {URL} url
-   */
-  async function handleApi(req, res, url) {
-    if (url.pathname === "/api/product-signals") {
-      await accept(req, res);
-      return true;
-    }
-    if (url.pathname === "/api/admin/product-signals") {
-      await readAggregate(req, res, url);
-      return true;
-    }
-    return false;
-  }
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    {
+      method: "POST",
+      path: "/api/product-signals",
+      auth: "optional",
+      handler: ({ req, res, session }) => accept(req, res, session),
+    },
+    {
+      method: "GET",
+      path: "/api/admin/product-signals",
+      auth: "admin",
+      handler: ({ url, res }) => readAggregate(url, res),
+    },
+  ];
 
   // Daily keys are only needed for the current UTC day; counts are kept for the retention window.
   /** @param {number} [timestamp] */
@@ -244,7 +191,7 @@ function createProductSignalsService({
     return store.deleteOldProductSignals(dayBefore(Number(timestamp), RETENTION_DAYS - 1));
   }
 
-  return Object.freeze({ handleApi, cleanup });
+  return Object.freeze({ routes, cleanup });
 }
 
 module.exports = { EVENTS, RETENTION_DAYS, utcDay, createProductSignalsService };

@@ -11,6 +11,7 @@ const {
 } = require("../src/training");
 const { defaultPlan } = require("../src/plans");
 const { workoutFixture } = require("./support/workout-fixtures");
+const { routeHarness } = require("./support/route-harness");
 
 function completed(id, startedAt, reps = 10, weight = 40) {
   const workout = workoutFixture(id);
@@ -231,7 +232,10 @@ async function serviceProgression(current, rows, rawWorkouts) {
     pages = [],
     reads = [];
   let response;
-  const service = createTrainingService({
+  const json = (_res, status, payload) => {
+    response = { status, payload };
+  };
+  const training = createTrainingService({
     store: {
       async workout(_user, id) {
         reads.push(id);
@@ -249,16 +253,12 @@ async function serviceProgression(current, rows, rawWorkouts) {
         return null;
       },
     },
-    auth: {},
-    requireAccess: async () => ({ id: "member", csrf_token: "token" }),
-    trustedOrigin: () => true,
     rateAllowed: () => true,
-    http: {
-      json(_res, status, payload) {
-        response = { status, payload };
-      },
-      bodyJson: async () => ({}),
-    },
+    http: { json, bodyJson: async () => ({}) },
+  });
+  const service = routeHarness(training.routes, {
+    json,
+    requireFeature: () => async () => ({ id: "member", csrf_token: "token" }),
   });
   await service.handleApi(
     { method: "GET", headers: {} },

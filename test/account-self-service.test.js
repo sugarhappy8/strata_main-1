@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createAccountSelfService, publicSessionId } = require("../src/account-self-service");
 const { EXPORT_PAGE_SIZE, streamExport } = require("../src/account-export");
+const { routeHarness } = require("./support/route-harness");
 
 const NOW = 1_800_000_000_000;
 const currentSession = {
@@ -246,18 +247,21 @@ function harness({ rateAllowed = () => true } = {}) {
       return { "X-Content-Type-Options": "nosniff" };
     },
   };
-  const service = createAccountSelfService({
+  const selfService = createAccountSelfService({
     store,
     http,
     now: () => NOW,
     rateAllowed,
+    logger: { error() {} },
+  });
+  const service = routeHarness(selfService.routes, {
+    json: http.json,
     requireSession: async (req, res) => {
       if (req.session) return req.session;
       http.json(res, 401, { error: "Sign in required." });
       return null;
     },
     validCsrf: (req, session) => req.headers["x-csrf-token"] === session.csrf_token,
-    logger: { error() {} },
   });
   async function invoke(
     path,

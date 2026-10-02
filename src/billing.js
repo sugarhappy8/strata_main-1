@@ -915,10 +915,6 @@ function createBillingService({
 
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
   async function handleWebhook(req, res) {
-    if (req.method !== "POST") {
-      json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
-      return;
-    }
     if (!(await webhookSourceAllowed(req))) {
       json(res, 403, { error: "Webhook source rejected." });
       return;
@@ -969,18 +965,11 @@ function createBillingService({
       });
   }
 
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
-  async function beginCheckout(req, res) {
-    const auth = authService();
-    const session = await auth.requireSession(req, res);
-    if (!session) return;
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
+  /**
+   * @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res
+   * @param {import("./domain-types").SessionRow} session
+   */
+  async function beginCheckout(req, res, session) {
     await bodyJson(req);
     if ((await store.adminControls(session.id))?.checkout_blocked_at) {
       json(res, 403, {
@@ -1013,7 +1002,7 @@ function createBillingService({
       if (await checkoutAllowed()) json(res, status, data);
     };
     const checkoutAllowed = async () => {
-      if (!(await auth.requireSession(req, res))) return false;
+      if (!(await authService().requireSession(req, res))) return false;
       const controls = await store.adminControls(session.id);
       if (controls?.checkout_blocked_at != null) {
         json(res, 403, {
@@ -1245,18 +1234,11 @@ function createBillingService({
     }
   }
 
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
-  async function openPortal(req, res) {
-    const auth = authService();
-    const session = await auth.requireSession(req, res);
-    if (!session) return;
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
+  /**
+   * @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res
+   * @param {import("./domain-types").SessionRow} session
+   */
+  async function openPortal(req, res, session) {
     await bodyJson(req);
     const subscription = await store.subscriptionForUser(session.id);
     if (!subscription) {
@@ -1292,46 +1274,58 @@ function createBillingService({
     );
   }
 
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url */
-  async function handleApi(req, res, url) {
-    if (url.pathname === "/api/billing/config" && req.method === "GET") {
-      json(res, 200, publicPaymentConfig(paymentConfig));
-      return true;
-    }
-    if (url.pathname === "/api/discovery/trial" && req.method === "POST") {
-      retiredTrial(res);
-      return true;
-    }
-    if (url.pathname === "/api/billing/checkout" && req.method === "POST") {
-      await beginCheckout(req, res);
-      return true;
-    }
-    if (url.pathname === "/api/billing/subscription" && req.method === "GET") {
-      const session = await authService().requireSession(req, res);
-      if (session) {
+  // Session, origin, CSRF, and JSON checks happen once, in src/router.js. Paddle's webhook comes from Paddle, not a
+  // page: it is checked by source address and signature instead.
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    {
+      method: "GET",
+      path: "/api/billing/config",
+      public: true,
+      handler: ({ res }) => json(res, 200, publicPaymentConfig(paymentConfig)),
+    },
+    // Installed apps from earlier builds may still offer the old trial button.
+    {
+      method: "POST",
+      path: "/api/discovery/trial",
+      public: true,
+      handler: ({ res }) => retiredTrial(res),
+    },
+    {
+      method: "POST",
+      path: "/api/billing/checkout",
+      handler: ({ req, res, session }) => beginCheckout(req, res, session),
+    },
+    {
+      method: "GET",
+      path: "/api/billing/subscription",
+      handler: async ({ res, session }) =>
         json(
           res,
           200,
           { subscription: await subscriptionForUser(session.id) },
           { "Cache-Control": "private, no-store" },
-        );
-      }
-      return true;
-    }
-    if (url.pathname === "/api/billing/portal" && req.method === "POST") {
-      await openPortal(req, res);
-      return true;
-    }
-    return false;
-  }
+        ),
+    },
+    {
+      method: "POST",
+      path: "/api/billing/portal",
+      handler: ({ req, res, session }) => openPortal(req, res, session),
+    },
+    {
+      method: "POST",
+      path: "/api/paddle/webhook",
+      webhook: true,
+      handler: ({ req, res }) => handleWebhook(req, res),
+    },
+  ];
 
   async function warmProviderTrust() {
     if (enforcePaddleIps) await currentPaddleIps();
   }
 
   return {
-    handleApi,
-    handleWebhook,
+    routes,
     hasCurrentAccess,
     accessSummaryForUser,
     reconcileCheckoutCreationBeforeDeletion,

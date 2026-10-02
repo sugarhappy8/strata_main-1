@@ -5,6 +5,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { ROUTE, createAccountDeletion, deletedMessage } = require("../src/account-deletion");
+const { routeHarness } = require("./support/route-harness");
 
 const NOW = 1_800_000_000_000;
 const APPLE = {
@@ -55,25 +56,15 @@ function harness({
     },
   };
   const responses = new Map();
+  const json = (res, status, data, headers = {}) => responses.set(res, { status, data, headers });
   const deletion = createAccountDeletion({
     store,
     http: {
-      json(res, status, data, headers = {}) {
-        responses.set(res, { status, data, headers });
-      },
+      json,
       async bodyJson(req) {
         return req.body;
       },
     },
-    async requireSession(req, res) {
-      if (!session) {
-        responses.set(res, { status: 401, data: { error: "Sign in required." }, headers: {} });
-        return null;
-      }
-      return session;
-    },
-    validCsrf: () => csrf,
-    trustedAuthOrigin: () => origin,
     rateAllowed(req, key, limit) {
       calls.rates.push({ key, limit });
       return rate(key);
@@ -108,9 +99,21 @@ function harness({
     },
     now: () => NOW,
   });
+  const routed = routeHarness(deletion.routes, {
+    json,
+    async requireSession(req, res) {
+      if (!session) {
+        json(res, 401, { error: "Sign in required." });
+        return null;
+      }
+      return session;
+    },
+    validCsrf: () => csrf,
+    trustedOrigin: () => origin,
+  });
   async function post(body, { method = "POST", path = ROUTE } = {}) {
     const res = {};
-    const handled = await deletion.handleApi(
+    const handled = await routed.handleApi(
       { method, body },
       res,
       new URL(`https://strata.test${path}`),
@@ -203,7 +206,7 @@ test("requires a trusted origin, a session, a valid CSRF token, and stays within
     confirmation: "DELETE",
   });
   assert.equal(crossOrigin.status, 403);
-  assert.equal(crossOrigin.data.error, "Cross-origin request rejected.");
+  assert.equal(crossOrigin.data.code, "ORIGIN_REQUIRED");
   const signedOut = await harness({ session: null }).post({
     password: "correct horse battery",
     confirmation: "DELETE",

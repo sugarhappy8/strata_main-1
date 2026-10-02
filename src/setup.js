@@ -10,9 +10,6 @@ const { expectedPlanRevision, planStats, sanitizePlan, sanitizePreferences } = r
  */
 function createSetupService({
   store,
-  auth,
-  requireAccess,
-  trustedOrigin,
   getPlanSnapshot,
   getPreferencesSnapshot,
   getUserPayload,
@@ -21,17 +18,12 @@ function createSetupService({
 }) {
   if (
     !store ||
-    !auth ||
-    typeof requireAccess !== "function" ||
-    typeof trustedOrigin !== "function" ||
     typeof getPlanSnapshot !== "function" ||
     typeof getPreferencesSnapshot !== "function" ||
     typeof getUserPayload !== "function" ||
     !http
   ) {
-    throw new TypeError(
-      "Setup service requires storage, account guards, snapshots, and HTTP helpers.",
-    );
+    throw new TypeError("Setup service requires storage, snapshots, and HTTP helpers.");
   }
   const { json, bodyJson } = http;
 
@@ -58,24 +50,6 @@ function createSetupService({
    * @param {import("./domain-types").SessionRow} session
    */
   async function saveSetup(req, res, session) {
-    if (!trustedOrigin(req)) {
-      json(res, 403, {
-        error: "Setup security check failed. Refresh and try again.",
-        code: "SETUP_ORIGIN_REQUIRED",
-      });
-      return;
-    }
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
-    if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers["content-type"] || ""))) {
-      json(res, 415, { error: "Setup requests must use JSON.", code: "JSON_REQUIRED" });
-      return;
-    }
     const input = /** @type {import("./domain-types").TrainingSetupInput} */ (await bodyJson(req));
     const expectedPlanUpdatedAt = expectedPlanRevision(input.expectedPlanUpdatedAt);
     const rawPreferencesRevision = input.expectedPreferencesUpdatedAt;
@@ -169,22 +143,24 @@ function createSetupService({
     });
   }
 
-  /**
-   * @param {import("./domain-types").HttpRequest} req
-   * @param {import("./domain-types").HttpResponse} res
-   * @param {URL} url
-   */
-  async function handleApi(req, res, url) {
-    if (url.pathname !== "/api/setup") return false;
-    const session = await requireAccess(req, res);
-    if (!session) return true;
-    if (req.method === "GET") json(res, 200, await currentSetup(session));
-    else if (req.method === "PUT") await saveSetup(req, res, session);
-    else json(res, 405, { error: "Method not allowed." }, { Allow: "GET, PUT" });
-    return true;
-  }
+  // Session, feature, origin, CSRF, and JSON checks happen once, in src/router.js.
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    {
+      method: "GET",
+      path: "/api/setup",
+      feature: "plus.studio",
+      handler: async ({ res, session }) => json(res, 200, await currentSetup(session)),
+    },
+    {
+      method: "PUT",
+      path: "/api/setup",
+      feature: "plus.studio",
+      handler: ({ req, res, session }) => saveSetup(req, res, session),
+    },
+  ];
 
-  return { handleApi };
+  return { routes };
 }
 
 module.exports = { createSetupService };

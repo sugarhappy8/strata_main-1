@@ -32,9 +32,6 @@ function deletedMessage(appleBilling) {
 function createAccountDeletion({
   store,
   http,
-  requireSession,
-  validCsrf,
-  trustedAuthOrigin,
   rateAllowed,
   passwordMatches,
   accountEmailHash,
@@ -122,26 +119,12 @@ function createAccountDeletion({
     }
   }
 
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url */
-  async function handleApi(req, res, url) {
-    if (url.pathname !== ROUTE) return false;
-    if (req.method !== "POST") {
-      json(res, 405, { error: "Method not allowed." }, { Allow: "POST" });
-      return true;
-    }
-    if (!trustedAuthOrigin(req)) {
-      json(res, 403, { error: "Cross-origin request rejected." });
-      return true;
-    }
-    const session = await requireSession(req, res);
-    if (!session) return true;
-    if (!validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return true;
-    }
+  /**
+   * The in-app "Delete account" with the password. src/router.js has checked the session, origin, CSRF, and JSON.
+   * @param {{req:import("./domain-types").HttpRequest,res:import("./domain-types").HttpResponse,
+   *   session:import("./domain-types").SessionRow}} context
+   */
+  async function deleteNow({ req, res, session }) {
     // Password guesses are limited per account (every session of it, from any network) and per network.
     if (
       !(await rateAllowed(req, "account-delete-now", MAX_ATTEMPTS)) ||
@@ -156,7 +139,7 @@ function createAccountDeletion({
         },
         { "Retry-After": "900" },
       );
-      return true;
+      return;
     }
     const input = await bodyJson(req);
     try {
@@ -178,10 +161,12 @@ function createAccountDeletion({
         code: failure.code || "ACCOUNT_DELETE_FAILED",
       });
     }
-    return true;
   }
 
-  return Object.freeze({ handleApi, deleteProtectedAccount, deleteSignedInAccount });
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [{ method: "POST", path: ROUTE, handler: deleteNow }];
+
+  return Object.freeze({ routes, deleteProtectedAccount, deleteSignedInAccount });
 }
 
 module.exports = { ROUTE, createAccountDeletion, deletedMessage };

@@ -171,6 +171,7 @@ test("keeps root, private server, and public browser files separated", () => {
     "product-signals-schema.js",
     "product-signals.js",
     "progression.js",
+    "router.js",
     "schema.js",
     "server-state-schema.js",
     "server-state-store.js",

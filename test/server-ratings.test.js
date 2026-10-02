@@ -186,7 +186,7 @@ test("Strata+ ratings are private, CSRF-protected, and globally aggregated acros
   const rating = { comfort: 5, pump: 4, enjoyment: 3, stability: 2, setup: 1, overall: 5 };
   const missingOrigin = await putRating(first, rating, { origin: null });
   assert.equal(missingOrigin.response.status, 403);
-  assert.equal(missingOrigin.data.code, "RATING_ORIGIN_REQUIRED");
+  assert.equal(missingOrigin.data.code, "ORIGIN_REQUIRED");
   const missingCsrf = await putRating(first, rating, { csrf: null });
   assert.equal(missingCsrf.response.status, 403);
   assert.equal(missingCsrf.data.code, "INVALID_CSRF");

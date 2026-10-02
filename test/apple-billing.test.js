@@ -24,6 +24,7 @@ const { createBillingService } = require("../src/billing");
 const { getPaymentConfig } = require("../src/payments");
 const { capabilitiesFor, entitlementSettings } = require("../src/entitlements");
 const { createAppleTestChain } = require("./support/apple-test-chain");
+const { routeHarness } = require("./support/route-harness");
 
 const ROOT = join(__dirname, "..");
 const RUNTIME = join(ROOT, "test-runtime");
@@ -205,20 +206,29 @@ function service(store, overrides = {}) {
     },
   };
   const guards = { origin: true, rate: true };
-  const apple = createAppleBillingService({
+  const service = createAppleBillingService({
     store,
     settings,
-    getAuth: () => auth,
     getUserPayload: async (session) => ({
       id: session.id,
-      discovery: { apple: await apple.subscriptionForUser(session.id) },
+      discovery: { apple: await service.subscriptionForUser(session.id) },
     }),
-    trustedOrigin: () => guards.origin,
     rateAllowed: () => guards.rate,
     http,
     logger,
     ...overrides,
   });
+  const routed = routeHarness(service.routes, {
+    json: http.json,
+    requireSession: (req, res) => auth.requireSession(req, res),
+    validCsrf: () => auth.validCsrf(),
+    trustedOrigin: () => guards.origin,
+  });
+  const apple = {
+    ...service,
+    handleApi: routed.handleApi,
+    handleNotification: (req, res) => routed.handleApi(req, res, NOTIFICATIONS),
+  };
   return { apple, auth, guards, responses, logs };
 }
 
@@ -227,6 +237,7 @@ function request(body, { method = "POST" } = {}) {
   return Object.assign(req, { method, headers: { "content-type": "application/json" } });
 }
 const TRANSACTIONS = new URL("https://stratafitness.online/api/billing/apple/transactions");
+const NOTIFICATIONS = new URL("https://stratafitness.online/api/billing/apple/notifications");
 
 test("settings default to the STRATA app and only honor a test root under NODE_ENV=test", () => {
   const defaults = appleBillingSettings({});
@@ -841,9 +852,7 @@ for (const kind of ["local", "turso"]) {
       const productionApple = createAppleBillingService({
         store,
         settings: production,
-        getAuth: () => ({}),
         getUserPayload: async () => ({}),
-        trustedOrigin: () => true,
         rateAllowed: () => true,
         http: { json() {} },
         logger: { debug() {}, info() {}, warn() {}, error() {} },
@@ -1217,7 +1226,7 @@ test("signed transactions from the app grant access only to the account that bou
     assert.equal((await post({ signedTransactions: [sign()] })).status, 401);
     auth.session = { id: userId };
     guards.origin = false;
-    assert.equal((await post({ signedTransactions: [sign()] })).data.code, "APPLE_ORIGIN_REQUIRED");
+    assert.equal((await post({ signedTransactions: [sign()] })).data.code, "ORIGIN_REQUIRED");
     guards.origin = true;
     auth.csrf = false;
     assert.equal((await post({ signedTransactions: [sign()] })).data.code, "INVALID_CSRF");

@@ -9,6 +9,7 @@ const { scryptSync, createHash } = require("node:crypto");
 const { createStore } = require("../src/database");
 const { createAuthService } = require("../src/auth");
 const { createAdminService } = require("../src/admin");
+const { routeHarness } = require("./support/route-harness");
 
 const ROOT = join(__dirname, "..");
 const EMAIL = "owner@auth-race.test";
@@ -90,11 +91,12 @@ function services(store) {
     reconcileCheckoutCreationBeforeDeletion: async () => 0,
     reconcileUnsettledPurchases: async () => 0,
   });
+  const routed = routeHarness(auth.routes, { json: http.json });
   return {
     auth,
     async login(password = OLD_PASSWORD) {
       input = { email: EMAIL, password };
-      await auth.handleApi(
+      await routed.handleApi(
         { method: "POST", headers: {} },
         {},
         new URL("http://auth-race.test/api/login"),

@@ -62,7 +62,8 @@ function publicConnection(row) {
 }
 
 /**
- * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,
+ * Session, feature, origin, CSRF, and JSON checks happen once, in src/router.js.
+ * @param {{store:any,
  *   rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
  *   http:{json:Function,bodyJson:Function,redirect:Function},
  *   settings:ReturnType<typeof devicesSettings>,hasAccess:(userId:string)=>Promise<boolean>,
@@ -72,9 +73,6 @@ function publicConnection(row) {
  */
 function createDevicesService({
   store,
-  auth,
-  requireAccess,
-  trustedOrigin,
   rateAllowed,
   http,
   settings,
@@ -89,9 +87,6 @@ function createDevicesService({
 }) {
   if (
     !store ||
-    !auth ||
-    typeof requireAccess !== "function" ||
-    typeof trustedOrigin !== "function" ||
     typeof rateAllowed !== "function" ||
     !http ||
     !settings ||
@@ -119,22 +114,8 @@ function createDevicesService({
     isUniqueViolation ||
     ((/** @type {any} */ error) => /UNIQUE constraint failed/i.test(String(error?.message || "")));
 
-  /** @param {any} req @param {any} session */
-  function validMutation(req, session) {
-    if (!trustedOrigin(req))
-      throw deviceError(
-        "DEVICES_ORIGIN_REQUIRED",
-        "Security check failed. Refresh and try again.",
-        403,
-      );
-    if (!auth.validCsrf(req, session))
-      throw deviceError("INVALID_CSRF", "Security check failed. Refresh and try again.", 403);
-    if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers["content-type"] || "")))
-      throw deviceError("JSON_REQUIRED", "Connected-device requests must use JSON.", 415);
-  }
   /** @param {any} req @param {any} session @param {string[]} allowed */
   async function readInput(req, session, allowed) {
-    validMutation(req, session);
     const input = await bodyJson(req),
       extra = Object.keys(input).filter((key) => ![...allowed, "expectedUserId"].includes(key));
     if (extra.length)
@@ -540,86 +521,38 @@ function createDevicesService({
     json(res, 200, { ...base, trends: { ...trends, training } });
   }
 
-  /** Strata+ members, or anyone who still has a Polar connection (read-only after Strata+ ends). @param {any} req @param {any} res */
-  async function readOnlySession(req, res) {
-    const session = await auth.requireSession(req, res);
-    if (!session) return null;
+  /**
+   * Strata+ members, or anyone who still has a Polar connection (read-only after Strata+ ends).
+   * @param {any} res @param {any} session
+   */
+  async function readOnlyAllowed(res, session) {
     if (
       (await hasAccess(String(session.id))) ||
       (await store.deviceConnection(String(session.id), PROVIDER))
     )
-      return session;
+      return true;
     json(res, 402, {
       error: "Strata+ purchase required.",
       code: "DISCOVERY_ACCESS_REQUIRED",
       feature: "plus.recovery",
     });
-    return null;
+    return false;
   }
 
-  /** @param {any} req @param {any} res @param {URL} url */
-  async function handleApi(req, res, url) {
-    const path = url.pathname,
-      method = String(req.method);
-    const routes = new Map([
-      ["/api/devices", "GET"],
-      ["/api/devices/polar/connect", "POST"],
-      ["/api/devices/polar/callback", "GET"],
-      ["/api/devices/polar/complete", "POST"],
-      ["/api/devices/polar/sync", "POST"],
-      ["/api/devices/settings", "PUT"],
-      ["/api/devices/polar", "DELETE"],
-      ["/api/wellness/today", "GET"],
-      ["/api/wellness/trends", "GET"],
-      ["/api/wellness/workouts", "GET"],
-    ]);
-    const allowed = routes.get(path);
-    if (!allowed) return false;
+  /**
+   * Every devices route answers its own failures, and reads share one rate limit.
+   * @param {(context:any)=>Promise<void>} run
+   */
+  const deviceRoute = (run) => async (/** @type {any} */ context) => {
+    const { req, res, session } = context;
     try {
-      if (method !== allowed && !(allowed === "GET" && method === "HEAD")) {
-        json(res, 405, { error: "Method not allowed." }, { Allow: allowed });
-        return true;
-      }
-      if (path === "/api/devices/polar/callback") {
-        await callback(req, res, url);
-        return true;
-      }
-      // Status and disconnect work for every signed-in member, so a lapsed member can still see and remove a connection.
-      if (path === "/api/devices" || path === "/api/devices/polar") {
-        const session = await auth.requireSession(req, res);
-        if (!session) return true;
-        if (path === "/api/devices/polar") {
-          await readInput(req, session, []);
-          json(res, 200, {
-            disconnected: await releaseConnection(String(session.id)),
-            csrfToken: session.csrf_token,
-          });
-          return true;
-        }
-        if (!(await rateAllowed(req, `identity:devices:read:${session.id}`, 240, 60 * 1000)))
-          throw deviceError("DEVICES_RATE_LIMIT", "Too many checks. Wait a moment.", 429);
-        json(res, 200, {
-          configured: settings.configured,
-          plus: await hasAccess(String(session.id)),
-          connection: publicConnection(await store.deviceConnection(String(session.id), PROVIDER)),
-          csrfToken: session.csrf_token,
-        });
-        return true;
-      }
-      // After Strata+ ends, syncing pauses but a member who still has a connection keeps read-only access to what was imported.
-      const lapsedRead = method !== "POST" && method !== "PUT" && path.startsWith("/api/wellness/");
-      const session = lapsedRead ? await readOnlySession(req, res) : await requireAccess(req, res);
-      if (!session) return true;
       if (
-        method === "GET" &&
+        ["GET", "HEAD"].includes(req.method) &&
+        session &&
         !(await rateAllowed(req, `identity:devices:read:${session.id}`, 240, 60 * 1000))
       )
         throw deviceError("DEVICES_RATE_LIMIT", "Too many checks. Wait a moment.", 429);
-      if (path === "/api/devices/polar/connect") await connect(req, res, session);
-      else if (path === "/api/devices/polar/complete") await complete(req, res, session);
-      else if (path === "/api/devices/polar/sync") await syncNow(req, res, session);
-      else if (path === "/api/devices/settings") await saveSettings(req, res, session);
-      else await wellness(res, session, url);
+      await run(context);
     } catch (error) {
       const failure = /** @type {any} */ (error);
       if (!failure?.status) throw error;
@@ -629,11 +562,75 @@ function createDevicesService({
         ...(failure.retryAt ? { retryAt: failure.retryAt } : {}),
       });
     }
-    return true;
+  };
+  /** @param {{res:any,session:any}} context */
+  async function status({ res, session }) {
+    json(res, 200, {
+      configured: settings.configured,
+      plus: await hasAccess(String(session.id)),
+      connection: publicConnection(await store.deviceConnection(String(session.id), PROVIDER)),
+      csrfToken: session.csrf_token,
+    });
   }
+  /** @param {{req:any,res:any,session:any}} context */
+  async function disconnect({ req, res, session }) {
+    await readInput(req, session, []);
+    json(res, 200, {
+      disconnected: await releaseConnection(String(session.id)),
+      csrfToken: session.csrf_token,
+    });
+  }
+  /**
+   * After Strata+ ends, a member who still has a connection keeps read-only access to what was imported.
+   * @param {{res:any,url:URL,session:any}} context
+   */
+  async function wellnessRead({ res, url, session }) {
+    if (await readOnlyAllowed(res, session)) await wellness(res, session, url);
+  }
+  // Session, feature, origin, CSRF, and JSON checks happen once, in src/router.js. Status and disconnect work for
+  // every signed-in member, so a lapsed member can still see and remove a connection. Polar sends the browser back
+  // to the callback, which proves itself with the one-time state it was sent away with.
+  const plus = "plus.recovery";
+  const routes = [
+    { method: "GET", path: "/api/devices", handler: deviceRoute(status) },
+    { method: "DELETE", path: "/api/devices/polar", handler: deviceRoute(disconnect) },
+    {
+      method: "GET",
+      path: "/api/devices/polar/callback",
+      public: true,
+      handler: deviceRoute(({ req, res, url }) => callback(req, res, url)),
+    },
+    {
+      method: "POST",
+      path: "/api/devices/polar/connect",
+      feature: plus,
+      handler: deviceRoute(({ req, res, session }) => connect(req, res, session)),
+    },
+    {
+      method: "POST",
+      path: "/api/devices/polar/complete",
+      feature: plus,
+      handler: deviceRoute(({ req, res, session }) => complete(req, res, session)),
+    },
+    {
+      method: "POST",
+      path: "/api/devices/polar/sync",
+      feature: plus,
+      handler: deviceRoute(({ req, res, session }) => syncNow(req, res, session)),
+    },
+    {
+      method: "PUT",
+      path: "/api/devices/settings",
+      feature: plus,
+      handler: deviceRoute(({ req, res, session }) => saveSettings(req, res, session)),
+    },
+    { method: "GET", path: "/api/wellness/today", handler: deviceRoute(wellnessRead) },
+    { method: "GET", path: "/api/wellness/trends", handler: deviceRoute(wellnessRead) },
+    { method: "GET", path: "/api/wellness/workouts", handler: deviceRoute(wellnessRead) },
+  ];
 
   return {
-    handleApi,
+    routes,
     start() {
       if (settings.configured) worker.start();
     },

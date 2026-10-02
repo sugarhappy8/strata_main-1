@@ -38,29 +38,6 @@ const ACCOUNT_ACTION_RETENTION_MS = 24 * 60 * 60 * 1000;
 const PASSWORD_RESET_RESPONSE =
   "If an account uses that email, a password-reset link has been sent. Check the inbox and spam folder.";
 
-const API_ROUTES = new Set([
-  "/api/signup",
-  "/api/login",
-  "/api/verification-status",
-  "/api/verify-email",
-  "/api/resend-verification",
-  "/api/password-reset/request",
-  "/api/account/password-reset/request",
-  "/api/password-reset/status",
-  "/api/password-reset/complete",
-  "/api/account/delete/request",
-  "/api/account/delete/cancel",
-  "/api/account/delete/status",
-  "/api/account/delete/complete",
-  "/api/account/delete/now",
-  "/api/account/sessions",
-  "/api/account/sessions/revoke",
-  "/api/account/sessions/revoke-others",
-  "/api/account/export",
-  "/api/me",
-  "/api/logout",
-]);
-
 function normalizeEmail(value) {
   return cleanText(value, 254).toLowerCase();
 }
@@ -296,17 +273,12 @@ function createAuthService({
   const accountSelfService = createAccountSelfService({
     store,
     http: { json, bodyJson, securityHeaders },
-    requireSession,
-    validCsrf,
     rateAllowed,
     logger,
   });
   const accountDeletion = createAccountDeletion({
     store,
     http: { json, bodyJson },
-    requireSession,
-    validCsrf,
-    trustedAuthOrigin,
     rateAllowed,
     passwordMatches,
     accountEmailHash,
@@ -1527,355 +1499,334 @@ function createAuthService({
     }
   }
 
-  async function handleApi(req, res, url) {
-    if (!API_ROUTES.has(url.pathname)) return false;
-    if (
-      (await accountSelfService.handleApi(req, res, url)) ||
-      (await accountDeletion.handleApi(req, res, url))
-    )
-      return true;
-    if (url.pathname === "/api/signup" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      try {
-        const input = await bodyJson(req);
-        if (!(await accountRateAllowed(req, input))) {
-          json(
-            res,
-            429,
-            { error: "Too many attempts. Try again later.", code: "AUTH_RATE_LIMIT" },
-            { "Retry-After": "900" },
-          );
-          return true;
-        }
-        const result = await beginAccountRegistration(input);
-        if (result.verification)
-          json(res, 202, result.verification, { "Set-Cookie": signupCookie(result.signupToken) });
-        else
-          json(
-            res,
-            201,
-            { user: await getUserPayload(result.user) },
-            { "Set-Cookie": sessionCookie(result.session.token) },
-          );
-      } catch (error) {
-        if (!error.status) throw error;
-        sendVerificationApiError(res, error);
-      }
-      return true;
-    }
-    if (url.pathname === "/api/login" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      try {
-        const input = await bodyJson(req);
-        if (!(await accountRateAllowed(req, input))) {
-          json(
-            res,
-            429,
-            { error: "Too many attempts. Try again later.", code: "AUTH_RATE_LIMIT" },
-            { "Retry-After": "900" },
-          );
-          return true;
-        }
-        const result = await authenticateAccount(input);
-        if (result.verification)
-          json(res, 202, result.verification, { "Set-Cookie": signupCookie(result.signupToken) });
-        else
-          json(
-            res,
-            200,
-            { user: await getUserPayload(result.user) },
-            { "Set-Cookie": sessionCookie(result.session.token) },
-          );
-      } catch (error) {
-        if (!error.status) throw error;
-        if (
-          error.signupToken ||
-          error.verification ||
-          /^(?:EMAIL_|VERIFICATION_)/.test(String(error.code || ""))
-        )
-          sendVerificationApiError(res, error);
-        else
-          json(res, error.status, {
-            error: error.message,
-            code: error.code || "AUTHENTICATION_FAILED",
-          });
-      }
-      return true;
-    }
-    if (url.pathname === "/api/verification-status" && req.method === "GET") {
-      const row = await verificationForRequest(req),
-        now = Date.now();
-      if (!usableVerification(row, now))
-        json(res, 200, {
-          active: false,
-          ...(row ? { purpose: row.purpose === "login" ? "login" : "signup" } : {}),
-        });
-      else json(res, 200, { active: true, ...verificationPublic(row, now) });
-      return true;
-    }
-    if (url.pathname === "/api/verify-email" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      if (!(await verificationRateAllowed(req, "verify-email"))) {
+  async function signup({ req, res }) {
+    try {
+      const input = await bodyJson(req);
+      if (!(await accountRateAllowed(req, input))) {
         json(
           res,
           429,
-          { error: "Too many attempts. Try again later.", code: "VERIFICATION_RATE_LIMIT" },
+          { error: "Too many attempts. Try again later.", code: "AUTH_RATE_LIMIT" },
           { "Retry-After": "900" },
         );
-        return true;
+        return;
       }
-      try {
-        const result = await verifyAccountEmail(req, await bodyJson(req));
+      const result = await beginAccountRegistration(input);
+      if (result.verification)
+        json(res, 202, result.verification, { "Set-Cookie": signupCookie(result.signupToken) });
+      else
         json(
           res,
-          result.purpose === "login" ? 200 : 201,
+          201,
           { user: await getUserPayload(result.user) },
-          { "Set-Cookie": [sessionCookie(result.session.token), signupCookie("", 0)] },
+          { "Set-Cookie": sessionCookie(result.session.token) },
         );
-      } catch (error) {
-        if (!error.status) throw error;
-        sendVerificationApiError(res, error);
-      }
-      return true;
+    } catch (error) {
+      if (!error.status) throw error;
+      sendVerificationApiError(res, error);
     }
-    if (url.pathname === "/api/resend-verification" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      if (!(await verificationRateAllowed(req, "resend-verification"))) {
+  }
+
+  async function login({ req, res }) {
+    try {
+      const input = await bodyJson(req);
+      if (!(await accountRateAllowed(req, input))) {
         json(
           res,
           429,
-          { error: "Too many attempts. Try again later.", code: "VERIFICATION_RATE_LIMIT" },
+          { error: "Too many attempts. Try again later.", code: "AUTH_RATE_LIMIT" },
           { "Retry-After": "900" },
         );
-        return true;
+        return;
       }
-      try {
-        json(res, 202, await resendAccountVerification(req));
-      } catch (error) {
-        if (!error.status) throw error;
+      const result = await authenticateAccount(input);
+      if (result.verification)
+        json(res, 202, result.verification, { "Set-Cookie": signupCookie(result.signupToken) });
+      else
+        json(
+          res,
+          200,
+          { user: await getUserPayload(result.user) },
+          { "Set-Cookie": sessionCookie(result.session.token) },
+        );
+    } catch (error) {
+      if (!error.status) throw error;
+      if (
+        error.signupToken ||
+        error.verification ||
+        /^(?:EMAIL_|VERIFICATION_)/.test(String(error.code || ""))
+      )
         sendVerificationApiError(res, error);
-      }
-      return true;
-    }
-    if (url.pathname === "/api/password-reset/request" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      if (!(await rateAllowed(req, "password-reset-request", 8))) {
-        json(res, 202, { ok: true, message: PASSWORD_RESET_RESPONSE });
-        return true;
-      }
-      try {
-        json(res, 202, await requestForgotPassword(await bodyJson(req)));
-      } catch (error) {
-        if (!error.status) throw error;
+      else
         json(res, error.status, {
           error: error.message,
-          code: error.code || "PASSWORD_RESET_REQUEST_FAILED",
+          code: error.code || "AUTHENTICATION_FAILED",
         });
-      }
-      return true;
     }
-    if (url.pathname === "/api/account/password-reset/request" && req.method === "POST") {
-      const session = await requireSession(req, res);
-      if (!session) return true;
-      if (!validCsrf(req, session)) {
-        json(res, 403, {
-          error: "Security check failed. Refresh and try again.",
-          code: "INVALID_CSRF",
-        });
-        return true;
-      }
-      await bodyJson(req);
-      if (!(await rateAllowed(req, `password-reset-account:${session.id}`, 5))) {
-        json(res, 429, {
-          error: "Too many account emails were requested. Please wait and try again.",
-          code: "ACCOUNT_EMAIL_LIMIT",
-        });
-        return true;
-      }
-      try {
-        json(res, 202, {
-          ok: true,
-          ...(await requestSignedInAccountAction(session, "password_reset")),
-        });
-      } catch (error) {
-        if (!error.status) throw error;
-        json(res, error.status, {
-          error: error.message,
-          code: error.code || "PASSWORD_RESET_REQUEST_FAILED",
-        });
-      }
-      return true;
-    }
-    if (url.pathname === "/api/password-reset/status" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      if (!(await rateAllowed(req, "password-reset-status", 30))) {
-        json(res, 429, { error: "Too many attempts. Try again later." });
-        return true;
-      }
-      json(res, 200, await inspectAccountAction(await bodyJson(req), "password_reset"));
-      return true;
-    }
-    if (url.pathname === "/api/password-reset/complete" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      if (!(await rateAllowed(req, "password-reset-complete", 10))) {
-        json(res, 429, {
-          error: "Too many attempts. Try again later.",
-          code: "PASSWORD_RESET_RATE_LIMIT",
-        });
-        return true;
-      }
-      try {
-        await resetPassword(await bodyJson(req));
-        json(
-          res,
-          200,
-          { ok: true, message: "Password reset complete. Sign in with your new password." },
-          { "Set-Cookie": sessionCookie("", 0) },
-        );
-      } catch (error) {
-        if (!error.status) throw error;
-        json(res, error.status, {
-          error: error.message,
-          code: error.code || "PASSWORD_RESET_FAILED",
-        });
-      }
-      return true;
-    }
-    if (url.pathname === "/api/account/delete/request" && req.method === "POST") {
-      const session = await requireSession(req, res);
-      if (!session) return true;
-      if (!validCsrf(req, session)) {
-        json(res, 403, {
-          error: "Security check failed. Refresh and try again.",
-          code: "INVALID_CSRF",
-        });
-        return true;
-      }
-      await bodyJson(req);
-      if (!(await rateAllowed(req, `account-delete-request:${session.id}`, 5))) {
-        json(res, 429, {
-          error: "Too many account emails were requested. Please wait and try again.",
-          code: "ACCOUNT_EMAIL_LIMIT",
-        });
-        return true;
-      }
-      try {
-        json(res, 202, {
-          ok: true,
-          ...(await requestSignedInAccountAction(session, "account_delete")),
-        });
-      } catch (error) {
-        if (!error.status) throw error;
-        json(res, error.status, {
-          error: error.message,
-          code: error.code || "ACCOUNT_DELETE_REQUEST_FAILED",
-        });
-      }
-      return true;
-    }
-    if (url.pathname === "/api/account/delete/cancel" && req.method === "POST") {
-      const session = await requireSession(req, res);
-      if (!session) return true;
-      if (!validCsrf(req, session)) {
-        json(res, 403, {
-          error: "Security check failed. Refresh and try again.",
-          code: "INVALID_CSRF",
-        });
-        return true;
-      }
-      await bodyJson(req);
-      await store.cancelAccountDeletion(session.id);
-      json(res, 200, { ok: true });
-      return true;
-    }
-    if (url.pathname === "/api/account/delete/status" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      if (!(await rateAllowed(req, "account-delete-status", 30))) {
-        json(res, 429, { error: "Too many attempts. Try again later." });
-        return true;
-      }
-      json(res, 200, await inspectAccountAction(await bodyJson(req), "account_delete"));
-      return true;
-    }
-    if (url.pathname === "/api/account/delete/complete" && req.method === "POST") {
-      if (!trustedAuthOrigin(req)) {
-        json(res, 403, { error: "Cross-origin request rejected." });
-        return true;
-      }
-      if (!(await rateAllowed(req, "account-delete-complete", 10))) {
-        json(res, 429, {
-          error: "Too many attempts. Try again later.",
-          code: "ACCOUNT_DELETE_RATE_LIMIT",
-        });
-        return true;
-      }
-      try {
-        const { appleBilling } = await deleteAccountWithToken(await bodyJson(req));
-        json(
-          res,
-          200,
-          {
-            ok: true,
-            message: deletedMessage(appleBilling),
-            ...(appleBilling ? { appleBilling } : {}),
-          },
-          { "Set-Cookie": [sessionCookie("", 0), signupCookie("", 0)] },
-        );
-      } catch (error) {
-        if (!error.status) throw error;
-        json(res, error.status, {
-          error: error.message,
-          code: error.code || "ACCOUNT_DELETE_FAILED",
-        });
-      }
-      return true;
-    }
-    if (url.pathname === "/api/me" && req.method === "GET") {
-      const session = await sessionFor(req, res);
-      if (!session) json(res, 401, { error: "Not signed in." });
-      else json(res, 200, { user: await getUserPayload(session), csrfToken: session.csrf_token });
-      return true;
-    }
-    if (url.pathname === "/api/logout" && req.method === "POST") {
-      const token = cookieMap(req.headers.cookie)[SESSION_COOKIE];
-      if (token && token.length <= 200) {
-        try {
-          await store.deleteSession(hashToken(token));
-        } catch (error) {
-          logger.error("Session cleanup during logout failed:", error);
-          json(res, 503, { error: "Could not sign out safely. Please try again." });
-          return true;
-        }
-      }
-      json(res, 200, { ok: true }, { "Set-Cookie": sessionCookie("", 0) });
-      return true;
-    }
-    return false;
   }
+
+  async function verificationStatus({ req, res }) {
+    const row = await verificationForRequest(req),
+      now = Date.now();
+    if (!usableVerification(row, now))
+      json(res, 200, {
+        active: false,
+        ...(row ? { purpose: row.purpose === "login" ? "login" : "signup" } : {}),
+      });
+    else json(res, 200, { active: true, ...verificationPublic(row, now) });
+  }
+
+  async function verifyEmail({ req, res }) {
+    if (!(await verificationRateAllowed(req, "verify-email"))) {
+      json(
+        res,
+        429,
+        { error: "Too many attempts. Try again later.", code: "VERIFICATION_RATE_LIMIT" },
+        { "Retry-After": "900" },
+      );
+      return;
+    }
+    try {
+      const result = await verifyAccountEmail(req, await bodyJson(req));
+      json(
+        res,
+        result.purpose === "login" ? 200 : 201,
+        { user: await getUserPayload(result.user) },
+        { "Set-Cookie": [sessionCookie(result.session.token), signupCookie("", 0)] },
+      );
+    } catch (error) {
+      if (!error.status) throw error;
+      sendVerificationApiError(res, error);
+    }
+  }
+
+  async function resendVerification({ req, res }) {
+    if (!(await verificationRateAllowed(req, "resend-verification"))) {
+      json(
+        res,
+        429,
+        { error: "Too many attempts. Try again later.", code: "VERIFICATION_RATE_LIMIT" },
+        { "Retry-After": "900" },
+      );
+      return;
+    }
+    try {
+      json(res, 202, await resendAccountVerification(req));
+    } catch (error) {
+      if (!error.status) throw error;
+      sendVerificationApiError(res, error);
+    }
+  }
+
+  async function requestPasswordReset({ req, res }) {
+    if (!(await rateAllowed(req, "password-reset-request", 8))) {
+      json(res, 202, { ok: true, message: PASSWORD_RESET_RESPONSE });
+      return;
+    }
+    try {
+      json(res, 202, await requestForgotPassword(await bodyJson(req)));
+    } catch (error) {
+      if (!error.status) throw error;
+      json(res, error.status, {
+        error: error.message,
+        code: error.code || "PASSWORD_RESET_REQUEST_FAILED",
+      });
+    }
+  }
+
+  async function requestAccountPasswordReset({ req, res, session }) {
+    await bodyJson(req);
+    if (!(await rateAllowed(req, `password-reset-account:${session.id}`, 5))) {
+      json(res, 429, {
+        error: "Too many account emails were requested. Please wait and try again.",
+        code: "ACCOUNT_EMAIL_LIMIT",
+      });
+      return;
+    }
+    try {
+      json(res, 202, {
+        ok: true,
+        ...(await requestSignedInAccountAction(session, "password_reset")),
+      });
+    } catch (error) {
+      if (!error.status) throw error;
+      json(res, error.status, {
+        error: error.message,
+        code: error.code || "PASSWORD_RESET_REQUEST_FAILED",
+      });
+    }
+  }
+
+  async function passwordResetStatus({ req, res }) {
+    if (!(await rateAllowed(req, "password-reset-status", 30))) {
+      json(res, 429, { error: "Too many attempts. Try again later." });
+      return;
+    }
+    json(res, 200, await inspectAccountAction(await bodyJson(req), "password_reset"));
+  }
+
+  async function completePasswordReset({ req, res }) {
+    if (!(await rateAllowed(req, "password-reset-complete", 10))) {
+      json(res, 429, {
+        error: "Too many attempts. Try again later.",
+        code: "PASSWORD_RESET_RATE_LIMIT",
+      });
+      return;
+    }
+    try {
+      await resetPassword(await bodyJson(req));
+      json(
+        res,
+        200,
+        { ok: true, message: "Password reset complete. Sign in with your new password." },
+        { "Set-Cookie": sessionCookie("", 0) },
+      );
+    } catch (error) {
+      if (!error.status) throw error;
+      json(res, error.status, {
+        error: error.message,
+        code: error.code || "PASSWORD_RESET_FAILED",
+      });
+    }
+  }
+
+  async function requestAccountDeletion({ req, res, session }) {
+    await bodyJson(req);
+    if (!(await rateAllowed(req, `account-delete-request:${session.id}`, 5))) {
+      json(res, 429, {
+        error: "Too many account emails were requested. Please wait and try again.",
+        code: "ACCOUNT_EMAIL_LIMIT",
+      });
+      return;
+    }
+    try {
+      json(res, 202, {
+        ok: true,
+        ...(await requestSignedInAccountAction(session, "account_delete")),
+      });
+    } catch (error) {
+      if (!error.status) throw error;
+      json(res, error.status, {
+        error: error.message,
+        code: error.code || "ACCOUNT_DELETE_REQUEST_FAILED",
+      });
+    }
+  }
+
+  async function cancelAccountDeletion({ req, res, session }) {
+    await bodyJson(req);
+    await store.cancelAccountDeletion(session.id);
+    json(res, 200, { ok: true });
+  }
+
+  async function accountDeletionStatus({ req, res }) {
+    if (!(await rateAllowed(req, "account-delete-status", 30))) {
+      json(res, 429, { error: "Too many attempts. Try again later." });
+      return;
+    }
+    json(res, 200, await inspectAccountAction(await bodyJson(req), "account_delete"));
+  }
+
+  async function completeAccountDeletion({ req, res }) {
+    if (!(await rateAllowed(req, "account-delete-complete", 10))) {
+      json(res, 429, {
+        error: "Too many attempts. Try again later.",
+        code: "ACCOUNT_DELETE_RATE_LIMIT",
+      });
+      return;
+    }
+    try {
+      const { appleBilling } = await deleteAccountWithToken(await bodyJson(req));
+      json(
+        res,
+        200,
+        {
+          ok: true,
+          message: deletedMessage(appleBilling),
+          ...(appleBilling ? { appleBilling } : {}),
+        },
+        { "Set-Cookie": [sessionCookie("", 0), signupCookie("", 0)] },
+      );
+    } catch (error) {
+      if (!error.status) throw error;
+      json(res, error.status, {
+        error: error.message,
+        code: error.code || "ACCOUNT_DELETE_FAILED",
+      });
+    }
+  }
+
+  async function me({ req, res }) {
+    const session = await sessionFor(req, res);
+    if (!session) json(res, 401, { error: "Not signed in." });
+    else json(res, 200, { user: await getUserPayload(session), csrfToken: session.csrf_token });
+  }
+
+  async function logout({ req, res }) {
+    const token = cookieMap(req.headers.cookie)[SESSION_COOKIE];
+    if (token && token.length <= 200) {
+      try {
+        await store.deleteSession(hashToken(token));
+      } catch (error) {
+        logger.error("Session cleanup during logout failed:", error);
+        json(res, 503, { error: "Could not sign out safely. Please try again." });
+        return;
+      }
+    }
+    json(res, 200, { ok: true }, { "Set-Cookie": sessionCookie("", 0) });
+  }
+
+  // Sign-up, sign-in, verification, and the emailed reset and deletion links run before there is a session, so
+  // their routes are public; src/router.js still requires a STRATA origin and JSON for each of their writes.
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    { method: "POST", path: "/api/signup", public: true, handler: signup },
+    { method: "POST", path: "/api/login", public: true, handler: login },
+    { method: "GET", path: "/api/verification-status", public: true, handler: verificationStatus },
+    { method: "POST", path: "/api/verify-email", public: true, handler: verifyEmail },
+    { method: "POST", path: "/api/resend-verification", public: true, handler: resendVerification },
+    {
+      method: "POST",
+      path: "/api/password-reset/request",
+      public: true,
+      handler: requestPasswordReset,
+    },
+    {
+      method: "POST",
+      path: "/api/account/password-reset/request",
+      handler: requestAccountPasswordReset,
+    },
+    {
+      method: "POST",
+      path: "/api/password-reset/status",
+      public: true,
+      handler: passwordResetStatus,
+    },
+    {
+      method: "POST",
+      path: "/api/password-reset/complete",
+      public: true,
+      handler: completePasswordReset,
+    },
+    { method: "POST", path: "/api/account/delete/request", handler: requestAccountDeletion },
+    { method: "POST", path: "/api/account/delete/cancel", handler: cancelAccountDeletion },
+    {
+      method: "POST",
+      path: "/api/account/delete/status",
+      public: true,
+      handler: accountDeletionStatus,
+    },
+    {
+      method: "POST",
+      path: "/api/account/delete/complete",
+      public: true,
+      handler: completeAccountDeletion,
+    },
+    { method: "GET", path: "/api/me", public: true, handler: me },
+    { method: "POST", path: "/api/logout", public: true, handler: logout },
+    ...accountSelfService.routes,
+    ...accountDeletion.routes,
+  ];
 
   async function cleanup(now = Date.now()) {
     await store.deleteOldVerificationData(now, now - VERIFICATION_RETENTION_MS);
@@ -1883,7 +1834,7 @@ function createAuthService({
   }
 
   return Object.freeze({
-    handleApi,
+    routes,
     handleForm,
     renderAccountFallbacks,
     renderVerificationFallbacks,

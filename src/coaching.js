@@ -104,40 +104,15 @@ function logPayload(row, target = null) {
  */
 function createCoachingService({
   store,
-  auth,
-  requireAccess,
-  trustedOrigin,
   rateAllowed,
   http,
   now = Date.now,
   events = null,
   getPlan = async () => null,
 }) {
-  if (
-    !store ||
-    !auth ||
-    typeof requireAccess !== "function" ||
-    typeof trustedOrigin !== "function" ||
-    typeof rateAllowed !== "function" ||
-    !http
-  )
-    throw new TypeError(
-      "Coaching service requires storage, access guards, rate limiting, and HTTP helpers.",
-    );
+  if (!store || typeof rateAllowed !== "function" || !http)
+    throw new TypeError("Coaching service requires storage, rate limiting, and HTTP helpers.");
   const { json, bodyJson } = http;
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").SessionRow} session */
-  function validMutation(req, session) {
-    if (!trustedOrigin(req))
-      throw coachingError(
-        "Coaching security check failed. Refresh and try again.",
-        403,
-        "COACHING_ORIGIN_REQUIRED",
-      );
-    if (!auth.validCsrf(req, session))
-      throw coachingError("Security check failed. Refresh and try again.", 403, "INVALID_CSRF");
-    if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers["content-type"] || "")))
-      throw coachingError("Coaching updates must use JSON.", 415, "JSON_REQUIRED");
-  }
   /** @param {string} userId */
   async function readProfile(userId) {
     const row = await store.coachingProfile(userId),
@@ -230,29 +205,18 @@ function createCoachingService({
       logs: diary.rows.map((row) => logPayload(row, targets.get(row.log_date))),
     };
   }
-  /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res @param {URL} url */
-  async function handleApi(req, res, url) {
+  /**
+   * One handler serves every coaching route; src/router.js has already checked the session, the Strata+
+   * nutrition feature, and, for writes, origin, CSRF, and JSON.
+   * @param {{req:import("./domain-types").HttpRequest,res:import("./domain-types").HttpResponse,url:URL,
+   *   params:Record<string,string>,session:import("./domain-types").SessionRow}} context
+   */
+  async function serve({ req, res, url, params, session }) {
     const logMatch = url.pathname.match(/^\/api\/coaching\/logs\/(\d{4}-\d{2}-\d{2})$/),
-      foodMatch = url.pathname.match(/^\/api\/coaching\/food-options\/(\d{4}-\d{2}-\d{2})$/),
-      recognized = Boolean(
-        logMatch ||
-        foodMatch ||
-        url.pathname === "/api/coaching/profile" ||
-        url.pathname === "/api/coaching/week",
-      );
-    if (!recognized) return false;
-    const session = await requireAccess(req, res);
-    if (!session) return true;
+      foodMatch = url.pathname.match(/^\/api\/coaching\/food-options\/(\d{4}-\d{2}-\d{2})$/);
     try {
-      const allowed = logMatch
-        ? ["GET", "PUT"]
-        : url.pathname === "/api/coaching/profile"
-          ? ["GET", "PUT"]
-          : ["GET"];
-      if (!allowed.includes(String(req.method))) {
-        json(res, 405, { error: "Method not allowed." }, { Allow: allowed.join(", ") });
-        return true;
-      }
+      if (params.date !== undefined && !logMatch && !foodMatch)
+        throw coachingError("Coaching route not found.", 404, "COACHING_ROUTE_NOT_FOUND");
       const write = req.method !== "GET";
       if (
         !(await rateAllowed(
@@ -267,11 +231,10 @@ function createCoachingService({
           429,
           "COACHING_RATE_LIMIT",
         );
-      if (write) validMutation(req, session);
       if (url.pathname === "/api/coaching/profile") {
         if (req.method === "GET") {
           json(res, 200, { profile: await readProfile(session.id), csrfToken: session.csrf_token });
-          return true;
+          return;
         }
         const input = object(await bodyJson(req), "Request");
         exactKeys(input, ["profile", "expectedRevision", "expectedUserId"], "Request");
@@ -313,7 +276,7 @@ function createCoachingService({
             code: "COACHING_PROFILE_CHANGED",
             profile: await readProfile(session.id),
           });
-          return true;
+          return;
         }
         const output = profilePayload(saved);
         if (!output)
@@ -330,7 +293,7 @@ function createCoachingService({
           ...(await diaryResponse(session.id, output, week, timestamp)),
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       const profile = await readProfile(session.id);
       if (!profile)
@@ -346,7 +309,7 @@ function createCoachingService({
           ...(await diaryResponse(session.id, profile, week, timestamp)),
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       if (!logMatch && !foodMatch)
         throw coachingError("Coaching route not found.", 404, "COACHING_ROUTE_NOT_FOUND");
@@ -424,14 +387,14 @@ function createCoachingService({
           ...options,
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       if (req.method === "GET") {
         json(res, 200, {
           log: logPayload(await store.coachingDailyLog(session.id, logDate), target),
           csrfToken: session.csrf_token,
         });
-        return true;
+        return;
       }
       const input = object(await bodyJson(req), "Request");
       exactKeys(input, ["log", "expectedRevision", "expectedUserId"], "Request");
@@ -477,7 +440,7 @@ function createCoachingService({
           code: "COACHING_LOG_CHANGED",
           log: logPayload(await store.coachingDailyLog(session.id, logDate), target),
         });
-        return true;
+        return;
       }
       await events?.emit("coaching.log_saved", { userId: session.id, date: logDate });
       json(res, 200, { ok: true, log: logPayload(saved, target), csrfToken: session.csrf_token });
@@ -489,9 +452,18 @@ function createCoachingService({
         code: failure.code || "INVALID_COACHING_REQUEST",
       });
     }
-    return true;
   }
-  return { handleApi };
+  const nutrition = "plus.nutrition";
+  /** @type {import("./domain-types").ApiRoute[]} */
+  const routes = [
+    { method: "GET", path: "/api/coaching/profile", feature: nutrition, handler: serve },
+    { method: "PUT", path: "/api/coaching/profile", feature: nutrition, handler: serve },
+    { method: "GET", path: "/api/coaching/week", feature: nutrition, handler: serve },
+    { method: "GET", path: "/api/coaching/logs/:date", feature: nutrition, handler: serve },
+    { method: "PUT", path: "/api/coaching/logs/:date", feature: nutrition, handler: serve },
+    { method: "GET", path: "/api/coaching/food-options/:date", feature: nutrition, handler: serve },
+  ];
+  return { routes };
 }
 
 module.exports = { createCoachingService, logPayload, profilePayload, weekPayload };

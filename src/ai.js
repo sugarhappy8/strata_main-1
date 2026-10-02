@@ -61,7 +61,8 @@ function weekdayName(time, zone) {
 }
 
 /**
- * @param {{store:any,auth:any,requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
+ * Session, feature, origin, CSRF, and JSON checks happen once, in src/router.js.
+ * @param {{store:any,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
  *   http:{json:Function,bodyJson:Function},
  *   provider:{configured:boolean,model:string,complete:Function,health:Function},
  *   getPlanSnapshot:(userId:string)=>Promise<{plan:any,updatedAt:number}>,
@@ -72,9 +73,6 @@ function weekdayName(time, zone) {
  */
 function createAiService({
   store,
-  auth,
-  requireAccess,
-  trustedOrigin,
   rateAllowed,
   http,
   provider,
@@ -88,9 +86,6 @@ function createAiService({
 }) {
   if (
     !store ||
-    !auth ||
-    typeof requireAccess !== "function" ||
-    typeof trustedOrigin !== "function" ||
     typeof rateAllowed !== "function" ||
     !http ||
     !provider ||
@@ -98,7 +93,7 @@ function createAiService({
     !quota
   )
     throw new TypeError(
-      "Strata AI requires storage, access guards, rate limiting, HTTP helpers, a provider, and plan reads.",
+      "Strata AI requires storage, rate limiting, HTTP helpers, a provider, and plan reads.",
     );
   const { json, bodyJson } = http;
   const maxConcurrent = Math.max(1, Math.floor(config.maxConcurrent ?? 3)),
@@ -570,89 +565,83 @@ function createAiService({
     return { online: health.online, code: health.code };
   }
 
-  /** @param {any} req @param {any} session */
-  function validMutation(req, session) {
-    if (!trustedOrigin(req))
-      throw aiError("AI_ORIGIN_REQUIRED", "Security check failed. Refresh and try again.", 403);
-    if (!auth.validCsrf(req, session))
-      throw aiError("INVALID_CSRF", "Security check failed. Refresh and try again.", 403);
-    if (!/^application\/json(?:\s*;|$)/i.test(String(req.headers["content-type"] || "")))
-      throw aiError("JSON_REQUIRED", "Strata AI requests must use JSON.", 415);
-  }
-
-  /** @param {any} req @param {any} res @param {URL} url */
-  async function handleApi(req, res, url) {
-    const jobMatch = url.pathname.match(/^\/api\/ai\/requests\/([a-f0-9-]{36})$/);
-    if (url.pathname !== "/api/ai/status" && url.pathname !== "/api/ai/requests" && !jobMatch)
-      return false;
-    const session = await requireAccess(req, res);
-    if (!session) return true;
+  const REQUEST_ID = /^[a-f0-9-]{36}$/;
+  /**
+   * Every Strata AI route first expires stale requests, limits reads, and answers its own failures.
+   * @param {(context:any)=>Promise<void>} run
+   */
+  const aiRoute = (run) => async (/** @type {any} */ context) => {
+    const { req, res, session } = context;
     try {
       await sweep();
-      const method = String(req.method),
-        allowed = url.pathname === "/api/ai/requests" ? "POST" : "GET";
-      if (method !== allowed) {
-        json(res, 405, { error: "Method not allowed." }, { Allow: allowed });
-        return true;
-      }
       if (
-        method === "GET" &&
+        req.method === "GET" &&
         !(await rateAllowed(req, `identity:ai:read:${session.id}`, 240, 60000))
       )
         throw aiError("AI_RATE_LIMIT", "Too many Strata AI checks. Wait a moment.", 429);
-      if (url.pathname === "/api/ai/status") {
-        const [state, member, settings] = await Promise.all([
-            checkHealth(),
-            quota.memberStatus(String(session.id)),
-            store.aiSettings(String(session.id)),
-          ]),
-          choice = settingsPayload(settings);
-        json(res, 200, {
-          configured: provider.configured,
-          online: state.online,
-          code: state.code,
-          ...member,
-          consent: choice.consent,
-          dailyBrief: choice.dailyBrief,
-          hasProfile: Boolean(profilePayload(await store.coachingProfile(session.id))),
-          csrfToken: session.csrf_token,
-        });
-        return true;
-      }
-      if (jobMatch) {
-        const row = await store.aiJob(jobMatch[1] ?? "", String(session.id));
-        if (!row)
-          throw aiError(
-            "AI_REQUEST_NOT_FOUND",
-            "That Strata AI request has expired. Ask again.",
-            404,
-          );
-        if (row.status === "queued") void pump();
-        json(res, 200, { request: await publicJob(row), csrfToken: session.csrf_token });
-        return true;
-      }
-      validMutation(req, session);
-      if (!(await rateAllowed(req, `identity:ai:write:${session.id}`, 12, 60000)))
-        throw aiError(
-          "AI_RATE_LIMIT",
-          "You are asking faster than Strata AI can answer. Wait a moment.",
-          429,
-        );
-      const userId = String(session.id);
-      if (inFlight.has(userId)) throw inProgress();
-      inFlight.add(userId);
-      try {
-        await submit(req, res, session);
-      } finally {
-        inFlight.delete(userId);
-      }
+      await run(context);
     } catch (error) {
       const failure = /** @type {any} */ (error);
       if (!failure?.status) throw error;
       json(res, failure.status, { error: failure.message, code: failure.code || "AI_FAILED" });
     }
-    return true;
+  };
+  /** @param {{res:any,session:any}} context */
+  async function status({ res, session }) {
+    const [state, member, settings] = await Promise.all([
+        checkHealth(),
+        quota.memberStatus(String(session.id)),
+        store.aiSettings(String(session.id)),
+      ]),
+      choice = settingsPayload(settings);
+    json(res, 200, {
+      configured: provider.configured,
+      online: state.online,
+      code: state.code,
+      ...member,
+      consent: choice.consent,
+      dailyBrief: choice.dailyBrief,
+      hasProfile: Boolean(profilePayload(await store.coachingProfile(session.id))),
+      csrfToken: session.csrf_token,
+    });
   }
+  /** @param {{res:any,params:{id:string},session:any}} context */
+  async function readJob({ res, params, session }) {
+    const row = REQUEST_ID.test(params.id)
+      ? await store.aiJob(params.id, String(session.id))
+      : null;
+    if (!row)
+      throw aiError("AI_REQUEST_NOT_FOUND", "That Strata AI request has expired. Ask again.", 404);
+    if (row.status === "queued") void pump();
+    json(res, 200, { request: await publicJob(row), csrfToken: session.csrf_token });
+  }
+  /** @param {{req:any,res:any,session:any}} context */
+  async function ask({ req, res, session }) {
+    if (!(await rateAllowed(req, `identity:ai:write:${session.id}`, 12, 60000)))
+      throw aiError(
+        "AI_RATE_LIMIT",
+        "You are asking faster than Strata AI can answer. Wait a moment.",
+        429,
+      );
+    const userId = String(session.id);
+    if (inFlight.has(userId)) throw inProgress();
+    inFlight.add(userId);
+    try {
+      await submit(req, res, session);
+    } finally {
+      inFlight.delete(userId);
+    }
+  }
+  const routes = [
+    { method: "GET", path: "/api/ai/status", feature: "plus.ai", handler: aiRoute(status) },
+    { method: "POST", path: "/api/ai/requests", feature: "plus.ai", handler: aiRoute(ask) },
+    {
+      method: "GET",
+      path: "/api/ai/requests/:id",
+      feature: "plus.ai",
+      handler: aiRoute(readJob),
+    },
+  ];
 
   const inProgress = () =>
     aiError("AI_REQUEST_IN_PROGRESS", "Strata AI is still working on your last request.", 409);
@@ -771,7 +760,7 @@ function createAiService({
   }
 
   return {
-    handleApi,
+    routes,
     start,
     cleanup: () => {
       lastSweep = 0;

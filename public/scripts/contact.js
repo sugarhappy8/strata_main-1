@@ -74,7 +74,7 @@ if (supportForm) {
     if (code === "INVALID_SUPPORT_REQUEST" || error?.status === 400)
       return "Check the required details and try again. The message must contain at least 10 characters.";
     if (
-      code === "SUPPORT_ORIGIN_REQUIRED" ||
+      code === "ORIGIN_REQUIRED" ||
       code === "JSON_REQUIRED" ||
       error?.status === 403 ||
       error?.status === 415

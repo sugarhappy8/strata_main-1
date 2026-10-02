@@ -41,7 +41,8 @@
         "src/session-renewal.js",
         "src/social-auth.js",
         "src/social-auth-config.js",
-        "src/single-instance.js"
+        "src/single-instance.js",
+        "src/router.js"
       ]
     },
     "src/service-composition.js": {
@@ -625,6 +626,11 @@
         "src/social-auth-config.js",
         "src/social-auth-messages.js"
       ]
+    },
+    "src/router.js": {
+      "role": "API route table and the one dispatcher that applies session, origin, CSRF, JSON, and feature checks",
+      "maxLines": 220,
+      "allowedDependencies": []
     }
   }
 }

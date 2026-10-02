@@ -88,7 +88,7 @@ test("the production route accepts consented same-origin counts without creating
     body: JSON.stringify({ event: "preview_generated" }),
   });
   assert.equal(missingOrigin.response.status, 403);
-  assert.equal(missingOrigin.data.code, "PRODUCT_SIGNAL_ORIGIN_REQUIRED");
+  assert.equal(missingOrigin.data.code, "ORIGIN_REQUIRED");
 
   const extraDetail = await request("/api/product-signals", {
     method: "POST",

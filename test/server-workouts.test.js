@@ -119,7 +119,7 @@ test("workout API requires authentication, a STRATA origin, CSRF, valid bounded 
       403,
     );
   const unsigned = await request("/api/workouts", member, "POST", { workout }, { Origin: null });
-  assert.deepEqual([unsigned.status, unsigned.data.code], [403, "WORKOUT_ORIGIN_REQUIRED"]);
+  assert.deepEqual([unsigned.status, unsigned.data.code], [403, "ORIGIN_REQUIRED"]);
   assert.equal(
     (
       await request(
@@ -130,7 +130,7 @@ test("workout API requires authentication, a STRATA origin, CSRF, valid bounded 
         { Origin: null },
       )
     ).data.code,
-    "WORKOUT_ORIGIN_REQUIRED",
+    "ORIGIN_REQUIRED",
   );
   assert.equal(
     (
@@ -142,7 +142,7 @@ test("workout API requires authentication, a STRATA origin, CSRF, valid bounded 
         { Origin: null },
       )
     ).data.code,
-    "WORKOUT_ORIGIN_REQUIRED",
+    "ORIGIN_REQUIRED",
   );
   assert.equal(
     (await request("/api/workouts", member, "GET", undefined, { Origin: null })).status,

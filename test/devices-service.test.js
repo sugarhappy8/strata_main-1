@@ -7,6 +7,7 @@ const { devicesSettings, keyId, tokenKey } = require("../src/devices-config");
 const { open, sha256 } = require("../src/devices-crypto");
 const { POLAR_SCOPES, parsePolarCredentials } = require("../src/polar-client");
 const { CONSENT_VERSION, createDevicesService, publicConnection } = require("../src/devices");
+const { routeHarness } = require("./support/route-harness");
 
 const KEY = randomBytes(32).toString("base64"),
   NOW = Date.parse("2026-09-28T09:00:00Z");
@@ -129,31 +130,20 @@ function harness({
     ...sync,
   };
   const logs = [];
-  const service = createDevicesService({
+  const requireSession = async (req, res) => {
+    if (!req.session) {
+      http.json(res, 401, { error: "Sign in required." });
+      return null;
+    }
+    return req.session;
+  };
+  const devices = createDevicesService({
     store: fakeStore,
     settings,
     http,
     polar: fakePolar,
     sync: fakeSync,
     now: () => NOW,
-    auth: {
-      requireSession: async (req, res) => {
-        if (!req.session) {
-          http.json(res, 401, { error: "Sign in required." });
-          return null;
-        }
-        return req.session;
-      },
-      validCsrf: (req) => req.headers["x-csrf-token"] !== "wrong",
-    },
-    requireAccess: async (req, res) => {
-      if (!plus) {
-        http.json(res, 402, { code: "DISCOVERY_ACCESS_REQUIRED" });
-        return null;
-      }
-      return req.session;
-    },
-    trustedOrigin: (req) => req.headers.origin !== "https://evil.test",
     rateAllowed: (req, key, max, windowMs) => rate(key, max, windowMs),
     hasAccess: async () => plus,
     logger: {
@@ -163,6 +153,23 @@ function harness({
     },
     ...(unique ? { isUniqueViolation: unique } : {}),
   });
+  const service = {
+    ...devices,
+    ...routeHarness(devices.routes, {
+      json: http.json,
+      requireSession,
+      requireFeature: () => async (req, res) => {
+        if (!(await requireSession(req, res))) return null;
+        if (!plus) {
+          http.json(res, 402, { code: "DISCOVERY_ACCESS_REQUIRED" });
+          return null;
+        }
+        return req.session;
+      },
+      validCsrf: (req) => req.headers["x-csrf-token"] !== "wrong",
+      trustedOrigin: (req) => req.headers.origin !== "https://evil.test",
+    }),
+  };
   return { service, calls, logs, sync: fakeSync, grant };
 }
 async function call(service, method, path, overrides = {}) {
@@ -480,7 +487,7 @@ test("disconnect deletes local V4 credentials and data without an unsupported pr
     body: {},
     headers: { origin: "https://evil.test" },
   });
-  assert.equal(origin.body.code, "DEVICES_ORIGIN_REQUIRED");
+  assert.equal(origin.body.code, "ORIGIN_REQUIRED");
 });
 
 test("settings and wellness reads validate their input", async () => {

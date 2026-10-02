@@ -33,6 +33,7 @@ const { createBillingService } = require("./billing");
 const { appleBillingSettings, createAppleBillingService } = require("./apple-billing");
 const { withAppendedCookies } = require("./session-renewal");
 const { createSingleInstanceGuard } = require("./single-instance");
+const { createRouter } = require("./router");
 const { composeServices } = require("./service-composition");
 const { getPaymentConfig } = require("./payments");
 const { createLogger, observeRequest } = require("./observability");
@@ -315,6 +316,7 @@ let ai, aiSettingsService, briefJob;
 let setup;
 let productSignals;
 let billing, appleBilling, social;
+let router;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(
@@ -470,7 +472,6 @@ function requireFeature(feature) {
     return session;
   };
 }
-const requireDiscoveryAccess = requireFeature("plus.studio");
 
 function sameOrigin(req) {
   const fetchSite = String(req.headers["sec-fetch-site"] || "").toLowerCase();
@@ -550,259 +551,198 @@ function handleLiveness(req, res) {
   json(res, 200, { ok: true });
 }
 
-async function handleApi(req, res, url) {
-  if (url.pathname === "/api/paddle/webhook") {
-    await billing.handleWebhook(req, res);
-    return;
-  }
-  if (url.pathname === "/api/billing/apple/notifications") {
-    await appleBilling.handleNotification(req, res);
-    return;
-  }
-  if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method) && !sameOrigin(req)) {
-    json(res, 403, { error: "Cross-origin request rejected." });
-    return;
-  }
-  if (await productSignals.handleApi(req, res, url)) return;
-  if (await support.handleApi(req, res, url)) return;
-  if (await auth.handleApi(req, res, url)) return;
-  if (await admin.handleApi(req, res, url)) return;
-  if (await aiSettingsService.handleApi(req, res, url)) return;
-  if (await ai.handleApi(req, res, url)) return;
-  if (await dataService.handleApi(req, res, url)) return;
-  if (await training.handleApi(req, res, url)) return;
-  if (await coaching.handleApi(req, res, url)) return;
-  if (await devices.handleApi(req, res, url)) return;
-  if (await workouts.handleApi(req, res, url)) return;
-  if (await setup.handleApi(req, res, url)) return;
-  if (await billing.handleApi(req, res, url)) return;
-  if (await appleBilling.handleApi(req, res, url)) return;
-  if (url.pathname === "/api/status" && req.method === "GET") {
-    // Public: only that the app is up and which build it runs. Setup flags are on the admin Overview.
-    json(res, 200, { ok: true, version: BUILD_NUMBER });
-    return;
-  }
-  if (url.pathname === "/api/plan" && req.method === "GET") {
-    const session = await auth.requireSession(req, res);
-    if (!session) return;
-    const [snapshot, user] = await Promise.all([planSnapshotFor(session.id), userPayload(session)]);
-    json(res, 200, {
-      plan: snapshot.plan,
-      planUpdatedAt: snapshot.updatedAt,
-      user,
-      csrfToken: session.csrf_token,
+async function getStatus({ res }) {
+  // Public: only that the app is up and which build it runs. Setup flags are on the admin Overview.
+  json(res, 200, { ok: true, version: BUILD_NUMBER });
+}
+
+async function getPlan({ res, session }) {
+  const [snapshot, user] = await Promise.all([planSnapshotFor(session.id), userPayload(session)]);
+  json(res, 200, {
+    plan: snapshot.plan,
+    planUpdatedAt: snapshot.updatedAt,
+    user,
+    csrfToken: session.csrf_token,
+  });
+}
+
+async function putPlan({ req, res, session }) {
+  const input = await bodyJson(req),
+    expectedPlanUpdatedAt = expectedPlanRevision(input.expectedPlanUpdatedAt),
+    plan = sanitizePlan(input.plan);
+  if (input.expectedUserId !== undefined && String(input.expectedUserId) !== String(session.id)) {
+    json(res, 409, {
+      error: "The signed-in account changed. Reload before saving.",
+      code: "ACCOUNT_CHANGED",
     });
     return;
   }
-  if (url.pathname === "/api/plan" && req.method === "PUT") {
-    const session = await auth.requireSession(req, res);
-    if (!session) return;
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
-    const input = await bodyJson(req),
-      expectedPlanUpdatedAt = expectedPlanRevision(input.expectedPlanUpdatedAt),
-      plan = sanitizePlan(input.plan);
-    if (input.expectedUserId !== undefined && String(input.expectedUserId) !== String(session.id)) {
-      json(res, 409, {
-        error: "The signed-in account changed. Reload before saving.",
-        code: "ACCOUNT_CHANGED",
-      });
-      return;
-    }
-    const saved = await store.upsertPlan(
-      session.id,
-      JSON.stringify(plan),
-      Date.now(),
-      expectedPlanUpdatedAt,
-    );
-    if (saved)
-      await events.emit("plan.updated", {
-        userId: session.id,
-        plan,
-        updatedAt: Number(saved.updated_at),
-        source: input.source === "ai" ? "ai" : "manual",
-        detail: input.source === "ai" ? "ai-proposal" : "plan-edit",
-      });
-    if (!saved) {
-      const current = await planSnapshotFor(session.id);
-      // A retry after a committed response was lost is not a conflict. The
-      // canonical plan is already stored, so return its authoritative revision
-      // and let the browser resume from it without asking for an overwrite.
-      if (JSON.stringify(current.plan) === JSON.stringify(plan)) {
-        json(res, 200, {
-          ok: true,
-          plan: current.plan,
-          planUpdatedAt: current.updatedAt,
-          stats: planStats(current.plan),
-          reused: true,
-        });
-        return;
-      }
-      json(res, 409, {
-        error:
-          "Your weekly plan changed in another tab or device. Review the latest copy before saving again.",
-        code: "PLAN_CHANGED",
+  const saved = await store.upsertPlan(
+    session.id,
+    JSON.stringify(plan),
+    Date.now(),
+    expectedPlanUpdatedAt,
+  );
+  if (saved)
+    await events.emit("plan.updated", {
+      userId: session.id,
+      plan,
+      updatedAt: Number(saved.updated_at),
+      source: input.source === "ai" ? "ai" : "manual",
+      detail: input.source === "ai" ? "ai-proposal" : "plan-edit",
+    });
+  if (!saved) {
+    const current = await planSnapshotFor(session.id);
+    // A retry after a committed response was lost is not a conflict. The
+    // canonical plan is already stored, so return its authoritative revision
+    // and let the browser resume from it without asking for an overwrite.
+    if (JSON.stringify(current.plan) === JSON.stringify(plan)) {
+      json(res, 200, {
+        ok: true,
         plan: current.plan,
         planUpdatedAt: current.updatedAt,
         stats: planStats(current.plan),
+        reused: true,
       });
       return;
     }
-    json(res, 200, {
-      ok: true,
-      plan,
-      planUpdatedAt: Number(saved.updated_at),
-      stats: planStats(plan),
+    json(res, 409, {
+      error:
+        "Your weekly plan changed in another tab or device. Review the latest copy before saving again.",
+      code: "PLAN_CHANGED",
+      plan: current.plan,
+      planUpdatedAt: current.updatedAt,
+      stats: planStats(current.plan),
     });
     return;
   }
-  if (url.pathname === "/api/monthly-plan" && req.method === "GET") {
-    const session = await requireDiscoveryAccess(req, res);
-    if (!session) return;
-    const [monthlyPlan, weeklyPlan] = await Promise.all([
-      monthlyPlanSnapshotFor(session.id),
-      planFor(session.id),
-    ]);
-    json(res, 200, {
-      monthlyPlan: monthlyPlan.plan,
-      monthlyPlanUpdatedAt: monthlyPlan.updatedAt,
-      weeklyPlan,
-      csrfToken: session.csrf_token,
+  json(res, 200, {
+    ok: true,
+    plan,
+    planUpdatedAt: Number(saved.updated_at),
+    stats: planStats(plan),
+  });
+}
+
+async function getMonthlyPlan({ res, session }) {
+  const [monthlyPlan, weeklyPlan] = await Promise.all([
+    monthlyPlanSnapshotFor(session.id),
+    planFor(session.id),
+  ]);
+  json(res, 200, {
+    monthlyPlan: monthlyPlan.plan,
+    monthlyPlanUpdatedAt: monthlyPlan.updatedAt,
+    weeklyPlan,
+    csrfToken: session.csrf_token,
+  });
+}
+
+async function putMonthlyPlan({ req, res, session }) {
+  const input = await bodyJson(req),
+    expected = expectedPlanRevision(input.expectedUpdatedAt);
+  const now = Math.max(Date.now(), expected + 1),
+    monthlyPlan = sanitizeMonthlyPlan(input.monthlyPlan, { generatedAt: now });
+  const saved = await store.upsertMonthlyPlan(
+    session.id,
+    JSON.stringify(monthlyPlan),
+    now,
+    expected,
+  );
+  if (!saved) {
+    json(res, 409, {
+      error:
+        "A newer monthly plan was saved on another tab. Your setup is unchanged. Reload to review the saved plan before generating again.",
+      code: "MONTHLY_PLAN_CONFLICT",
     });
     return;
   }
-  if (url.pathname === "/api/monthly-plan" && req.method === "PUT") {
-    const session = await requireDiscoveryAccess(req, res);
-    if (!session) return;
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
-    const input = await bodyJson(req),
-      expected = expectedPlanRevision(input.expectedUpdatedAt);
-    const now = Math.max(Date.now(), expected + 1),
-      monthlyPlan = sanitizeMonthlyPlan(input.monthlyPlan, { generatedAt: now });
-    const saved = await store.upsertMonthlyPlan(
-      session.id,
-      JSON.stringify(monthlyPlan),
-      now,
-      expected,
-    );
-    if (!saved) {
-      json(res, 409, {
-        error:
-          "A newer monthly plan was saved on another tab. Your setup is unchanged. Reload to review the saved plan before generating again.",
-        code: "MONTHLY_PLAN_CONFLICT",
-      });
-      return;
-    }
-    json(res, 200, {
-      ok: true,
-      monthlyPlan: { ...monthlyPlan, updatedAt: Number(saved.updated_at) },
-    });
+  json(res, 200, {
+    ok: true,
+    monthlyPlan: { ...monthlyPlan, updatedAt: Number(saved.updated_at) },
+  });
+}
+
+async function getDiscovery({ res, session }) {
+  const [preferences, aggregates, userRatings, monthlyPlan, weeklyPlan, user] = await Promise.all([
+    preferencesFor(session.id),
+    store.ratingAggregates(),
+    store.ratingsForUser(session.id),
+    monthlyPlanSnapshotFor(session.id),
+    planSnapshotFor(session.id),
+    userPayload(session),
+  ]);
+  json(res, 200, {
+    user,
+    csrfToken: session.csrf_token,
+    exercises: EXERCISES,
+    methodology: DISCOVERY_DATA.methodology,
+    sources: DISCOVERY_DATA.sources,
+    limitedConfidenceExercises: DISCOVERY_DATA.limitedConfidenceExercises,
+    preferences,
+    ratings: { aggregates, user: userRatings },
+    monthlyPlan: monthlyPlan.plan,
+    monthlyPlanUpdatedAt: monthlyPlan.updatedAt,
+    weeklyPlan: weeklyPlan.plan,
+    weeklyPlanUpdatedAt: weeklyPlan.updatedAt,
+  });
+}
+
+async function getRatingAggregates({ res }) {
+  const aggregates = await store.ratingAggregates();
+  // This deliberately contains community aggregates only. Never include a
+  // user row, email address, per-account rating, or session credential here.
+  json(res, 200, { aggregates, updatedAt: Date.now() });
+}
+
+async function putPreferences({ req, res, session }) {
+  const input = await bodyJson(req),
+    preferences = sanitizePreferences(input.preferences);
+  await store.upsertPreferences(session.id, JSON.stringify(preferences), Date.now());
+  await events.emit("preferences.saved", { userId: session.id, preferences });
+  json(res, 200, { ok: true, preferences });
+}
+
+async function putRating({ req, res, params, session }) {
+  const exerciseId = params.exerciseId;
+  if (!EXERCISE_IDS.has(exerciseId)) {
+    json(res, 404, { error: "Exercise not found." });
     return;
   }
-  if (url.pathname === "/api/discovery" && req.method === "GET") {
-    const session = await requireDiscoveryAccess(req, res);
-    if (!session) return;
-    const [preferences, aggregates, userRatings, monthlyPlan, weeklyPlan, user] = await Promise.all(
-      [
-        preferencesFor(session.id),
-        store.ratingAggregates(),
-        store.ratingsForUser(session.id),
-        monthlyPlanSnapshotFor(session.id),
-        planSnapshotFor(session.id),
-        userPayload(session),
-      ],
-    );
-    json(res, 200, {
-      user,
-      csrfToken: session.csrf_token,
-      exercises: EXERCISES,
-      methodology: DISCOVERY_DATA.methodology,
-      sources: DISCOVERY_DATA.sources,
-      limitedConfidenceExercises: DISCOVERY_DATA.limitedConfidenceExercises,
-      preferences,
-      ratings: { aggregates, user: userRatings },
-      monthlyPlan: monthlyPlan.plan,
-      monthlyPlanUpdatedAt: monthlyPlan.updatedAt,
-      weeklyPlan: weeklyPlan.plan,
-      weeklyPlanUpdatedAt: weeklyPlan.updatedAt,
-    });
+  if (!(await rateAllowed(req, `rating:${session.id}`, 60))) {
+    json(res, 429, { error: "Too many rating updates. Try again later." });
     return;
   }
-  if (url.pathname === "/api/ratings/aggregates" && req.method === "GET") {
-    const session = await requireDiscoveryAccess(req, res);
-    if (!session) return;
-    const aggregates = await store.ratingAggregates();
-    // This deliberately contains community aggregates only. Never include a
-    // user row, email address, per-account rating, or session credential here.
-    json(res, 200, { aggregates, updatedAt: Date.now() });
-    return;
-  }
-  if (url.pathname === "/api/preferences" && req.method === "PUT") {
-    const session = await requireDiscoveryAccess(req, res);
-    if (!session) return;
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
-    const input = await bodyJson(req),
-      preferences = sanitizePreferences(input.preferences);
-    await store.upsertPreferences(session.id, JSON.stringify(preferences), Date.now());
-    await events.emit("preferences.saved", { userId: session.id, preferences });
-    json(res, 200, { ok: true, preferences });
-    return;
-  }
-  const ratingMatch = url.pathname.match(/^\/api\/ratings\/([a-z0-9-]{2,80})$/);
-  if (ratingMatch && req.method === "PUT") {
-    const session = await requireDiscoveryAccess(req, res);
-    if (!session) return;
-    if (!trustedAuthOrigin(req)) {
-      json(res, 403, {
-        error: "Rating security check failed. Refresh and try again.",
-        code: "RATING_ORIGIN_REQUIRED",
-      });
-      return;
-    }
-    if (!auth.validCsrf(req, session)) {
-      json(res, 403, {
-        error: "Security check failed. Refresh and try again.",
-        code: "INVALID_CSRF",
-      });
-      return;
-    }
-    const exerciseId = ratingMatch[1];
-    if (!EXERCISE_IDS.has(exerciseId)) {
-      json(res, 404, { error: "Exercise not found." });
-      return;
-    }
-    if (!(await rateAllowed(req, `rating:${session.id}`, 60))) {
-      json(res, 429, { error: "Too many rating updates. Try again later." });
-      return;
-    }
-    const input = await bodyJson(req),
-      rating = sanitizeRating(input.rating),
-      now = Date.now();
-    await store.upsertRating(session.id, exerciseId, rating, now, now);
-    json(res, 200, {
-      ok: true,
-      rating: { exercise_id: exerciseId, ...rating, updated_at: now },
-      aggregate: await store.ratingAggregate(exerciseId),
-    });
-    return;
-  }
+  const input = await bodyJson(req),
+    rating = sanitizeRating(input.rating),
+    now = Date.now();
+  await store.upsertRating(session.id, exerciseId, rating, now, now);
+  json(res, 200, {
+    ok: true,
+    rating: { exercise_id: exerciseId, ...rating, updated_at: now },
+    aggregate: await store.ratingAggregate(exerciseId),
+  });
+}
+
+/** The routes this file answers itself; each service module exports its own table. */
+const CORE_ROUTES = [
+  { method: "GET", path: "/api/status", public: true, handler: getStatus },
+  { method: "GET", path: "/api/plan", handler: getPlan },
+  { method: "PUT", path: "/api/plan", handler: putPlan },
+  { method: "GET", path: "/api/monthly-plan", feature: "plus.studio", handler: getMonthlyPlan },
+  { method: "PUT", path: "/api/monthly-plan", feature: "plus.studio", handler: putMonthlyPlan },
+  { method: "GET", path: "/api/discovery", feature: "plus.studio", handler: getDiscovery },
+  {
+    method: "GET",
+    path: "/api/ratings/aggregates",
+    feature: "plus.studio",
+    handler: getRatingAggregates,
+  },
+  { method: "PUT", path: "/api/preferences", feature: "plus.studio", handler: putPreferences },
+  { method: "PUT", path: "/api/ratings/:exerciseId", feature: "plus.studio", handler: putRating },
+];
+
+async function handleApi(req, res, url) {
+  if (await router.dispatch(req, res, url)) return;
   json(res, 404, { error: "API route not found." });
 }
 
@@ -1026,9 +966,7 @@ async function start() {
   appleBilling = createAppleBillingService({
     store,
     settings: APPLE_SETTINGS,
-    getAuth: () => auth,
     getUserPayload: userPayload,
-    trustedOrigin: trustedAuthOrigin,
     rateAllowed,
     http: { json },
     logger: LOGGER,
@@ -1073,43 +1011,29 @@ async function start() {
     events,
     getPlan: planFor,
     coachingProfile: async (userId) => coachingProfilePayload(await store.coachingProfile(userId)),
-    requireSession: (req, res) => auth.requireSession(req, res),
-    requireFeature,
     http: { json },
     logger: LOGGER,
   });
   productSignals = createProductSignalsService({
     store,
-    admin,
-    auth,
-    trustedOrigin: trustedAuthOrigin,
     requestAddress,
     rateKeyAllowed,
     http: { json, bodyJson },
   });
   workouts = createWorkoutService({
     store,
-    auth,
-    requireAccess: requireFeature("plus.train"),
-    trustedOrigin: trustedAuthOrigin,
     rateAllowed,
     http: { json, bodyJson },
     events,
   });
   training = createTrainingService({
     store,
-    auth,
-    requireAccess: requireFeature("plus.train"),
-    trustedOrigin: trustedAuthOrigin,
     rateAllowed,
     http: { json, bodyJson },
     events,
   });
   coaching = createCoachingService({
     store,
-    auth,
-    requireAccess: requireFeature("plus.nutrition"),
-    trustedOrigin: trustedAuthOrigin,
     rateAllowed,
     http: { json, bodyJson },
     events,
@@ -1117,9 +1041,6 @@ async function start() {
   });
   devices = createDevicesService({
     store,
-    auth,
-    requireAccess: requireFeature("plus.recovery"),
-    trustedOrigin: trustedAuthOrigin,
     rateAllowed,
     http: { json, bodyJson, bodyBuffer, redirect },
     settings: devicesSettings(process.env),
@@ -1134,9 +1055,6 @@ async function start() {
     aiQuota = createAiQuota({ store, limits: AI_SETTINGS.limits });
   ai = createAiService({
     store,
-    auth,
-    requireAccess: requireFeature("plus.ai"),
-    trustedOrigin: trustedAuthOrigin,
     rateAllowed,
     http: { json, bodyJson },
     provider: aiProvider,
@@ -1150,12 +1068,9 @@ async function start() {
   void ai.start().catch((error) => LOGGER.error("ai.queue_start_failed", { error }));
   aiSettingsService = createAiSettingsService({
     store,
-    auth,
-    trustedOrigin: trustedAuthOrigin,
     rateAllowed,
     http: { json, bodyJson },
     quota: aiQuota,
-    admin,
   });
   // The Daily Brief runs through the night's queue; tests turn it on explicitly.
   briefJob = createDailyBriefJob({
@@ -1186,15 +1101,38 @@ async function start() {
       .catch((error) => LOGGER.warn("ai.models_unchecked", { code: error?.code || "AI_FAILED" }));
   setup = createSetupService({
     store,
-    auth,
-    requireAccess: requireDiscoveryAccess,
-    trustedOrigin: trustedAuthOrigin,
     getPlanSnapshot: planSnapshotFor,
     getPreferencesSnapshot: preferencesSnapshotFor,
     getUserPayload: userPayload,
     http: { json, bodyJson },
     events,
   });
+  router = createRouter({
+    json,
+    trustedOrigin: trustedAuthOrigin,
+    sessionFor: (req, res) => auth.sessionFor(req, res),
+    requireSession: (req, res) => auth.requireSession(req, res),
+    requireFeature,
+    requireAdmin: (req, res, options) => admin.requireAdmin(req, res, options),
+    validCsrf: (req, session) => auth.validCsrf(req, session),
+  });
+  router.add(
+    CORE_ROUTES,
+    workouts.routes,
+    setup.routes,
+    productSignals.routes,
+    support.routes,
+    aiSettingsService.routes,
+    ai.routes,
+    dataService.routes,
+    devices.routes,
+    coaching.routes,
+    training.routes,
+    appleBilling.routes,
+    billing.routes,
+    admin.routes,
+    auth.routes,
+  );
   await admin.bootstrap();
   await store.deleteExpired(Date.now());
   await auth.cleanup();
