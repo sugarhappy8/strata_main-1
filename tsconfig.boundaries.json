@@ -23,6 +23,12 @@
   "include": [
     "src/domain-types.d.ts",
     "src/account-deletion.js",
+    "src/social-auth.js",
+    "src/social-auth-client.js",
+    "src/social-auth-config.js",
+    "src/social-auth-messages.js",
+    "src/social-auth-schema.js",
+    "src/social-auth-store.js",
     "src/account-self-service.js",
     "src/account-self-service-schema.js",
     "src/account-self-service-store.js",

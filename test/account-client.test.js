@@ -714,6 +714,28 @@ test("in the app, Delete account deletes the account in a dialog with the passwo
   assert.ok(!page.requests.some(({path})=>path==="/api/account/delete/request"),"no email is sent");
 });
 
+test("in the app, an account made with Apple, Google, or Samsung deletes with DELETE alone and says when to sign in again",async()=>{
+  const attempts=[],user=memberFixture({signIn:{hasPassword:false,providers:["apple"]}}),base=accountRoutes(user);
+  let fresh=false;
+  const page=createPage({app:{plugin:{}},route:async(path,options)=>{
+    if(path!=="/api/account/delete/now")return base(path);
+    attempts.push(JSON.parse(options.body));
+    return fresh?jsonResponse(200,{ok:true,message:"Your STRATA account was permanently deleted."}):jsonResponse(401,{error:"Sign in again.",code:"RECENT_SIGN_IN_REQUIRED"});
+  }});
+  await settle();
+  const el=(id)=>page.elements.get(id);
+  assert.equal(el("accountSignInMethods").textContent,"Signs in with Apple.");assert.equal(el("accountSignInMethods").hidden,false);
+  await el("accountDeleteRequest").emit("click",{currentTarget:el("accountDeleteRequest")});await settle();
+  assert.equal(el("accountDeletePassword").hidden,true,"there is no STRATA password to ask for");assert.equal(el("accountDeleteRecentNote").hidden,false);
+  el("accountDeleteConfirmation").value="DELETE";await el("accountDeleteConfirmation").emit("input");
+  assert.equal(el("accountDeleteSubmit").disabled,false,"DELETE alone enables the button");
+  await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
+  assert.deepEqual(attempts[0],{confirmation:"DELETE"});
+  assert.match(el("accountDeleteError").textContent,/sign out and sign in again with Apple, Google, or Samsung/);
+  fresh=true;await el("accountDeleteForm").emit("submit",{preventDefault(){}});await settle();
+  assert.equal(el("accountDeleteDone").hidden,false);
+});
+
 test("the deletion dialog closes with Escape or Cancel without deleting, holds while deleting, and browsers keep the emailed link",async()=>{
   const user=memberFixture(),pending=deferred();
   const page=createPage({app:{plugin:{}},route:async(path)=>path==="/api/account/delete/now"?pending.promise:accountRoutes(user)(path)});

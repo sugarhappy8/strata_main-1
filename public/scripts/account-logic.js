@@ -17,8 +17,14 @@
     "This account is temporarily paused. Contact STRATA support for help.",
     "Admin ownership is secured. Sign in again to continue.","Administrator access required.",
     "Unable to complete the account request.","Account storage is temporarily unavailable. Please try again.",
-    "Email verification is temporarily unavailable. Please try again later."
+    "Email verification is temporarily unavailable. Please try again later.",
+    // Google, Apple, or Samsung sign-in (src/social-auth-messages.js).
+    "Sign-in was canceled. Choose an option to try again.","That sign-in expired or was started in another browser. Please try again.",
+    "That sign-in option is not available right now. Use your email and password or try again later.","The sign-in could not be completed. Please try again.",
+    "Your Google, Apple, or Samsung account did not share a verified email address. Create an account with your email instead.",
+    "An account with that email already exists. Sign in with your password to continue.","This STRATA account is already linked to a different account from that provider."
   ]);
+  const SIGN_IN_PROVIDERS={apple:"Apple",google:"Google",samsung:"Samsung"};
 
   function safeNext(raw,exerciseId){
     const addIsSafe=Boolean(exerciseId&&/^[a-z0-9-]{2,80}$/.test(exerciseId));
@@ -173,11 +179,20 @@
     const discovery=user?.discovery||{},apple=appleSubscriptionFor(user);
     return discovery.accessType==="apple"||apple?.active===true||apple?.autoRenew===true;
   }
+  /** How this account signs in, e.g. "Signs in with a password and Google", or "" when it is password-only. */
+  function signInMethodsText(user){
+    const names=(Array.isArray(user?.signIn?.providers)?user.signIn.providers:[]).map((id)=>SIGN_IN_PROVIDERS[id]).filter(Boolean);
+    if(!names.length)return "";
+    return `Signs in with ${user.signIn.hasPassword===false?"":"a password and "}${names.join(" and ")}.`;
+  }
+  function hasPassword(user){return user?.signIn?.hasPassword!==false;}
+
   function deleteNowError(error){
     const code=String(error?.code||"");
     if(code==="network")return "Could not reach STRATA. Check your connection and try again. Nothing was deleted.";
     if(code==="PASSWORD_INCORRECT")return "That password is incorrect.";
     if(code==="DELETE_CONFIRMATION_REQUIRED")return "Type DELETE exactly to confirm.";
+    if(code==="RECENT_SIGN_IN_REQUIRED")return "For your security, sign out and sign in again with Apple, Google, or Samsung, then delete your account within 15 minutes. Nothing was deleted.";
     if(error?.status===429)return "Too many deletion attempts. Wait 15 minutes and try again.";
     if(error?.status===409)return error.message||"Your account could not be deleted right now. Nothing was deleted.";
     if(error?.status===401)return "Your session expired. Sign in again before deleting your account.";
@@ -212,6 +227,6 @@
 
   return{hasPlus,
     WEEKDAYS,KNOWN_AUTH_ERRORS,safeNext,verificationLocation,safeQueryError,friendlyAuthError,escapeHtml,localDateKey,localNoon,
-    subscriptionFor,appleSubscriptionFor,APPLE_MANAGE_URL,safeAppleManageUrl,appleDeletionNotice,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,appleMayBill,deleteNowError,selfServiceError,safePortalUrl,billingError
+    subscriptionFor,appleSubscriptionFor,APPLE_MANAGE_URL,safeAppleManageUrl,appleDeletionNotice,grandfatheredAccess,billingDate,accountAccessSummary,accountBoundaryChanged,sessionDate,securityError,appleMayBill,deleteNowError,signInMethodsText,hasPassword,selfServiceError,safePortalUrl,billingError
   };
 });

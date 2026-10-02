@@ -103,6 +103,8 @@
       const discoveryAction=el("accountDiscoveryAction"),managedInactive=Boolean(subscription)&&!discoveryActive&&subscription?.status!=="canceled";
       discoveryAction.href=discoveryActive?"/discover.html":managedInactive?"#accountBilling":"/pricing";discoveryAction.textContent=discoveryActive?"Open Strata+ studio →":managedInactive?"Manage Strata+ billing →":subscription?.status==="canceled"?"Restart Strata+ →":discoveryPending?"Check Strata+ subscription →":"Unlock Strata+ →";
       el("accountDiscoveryStatus").textContent=access.message;el("accountAccessState").textContent=access.state;el("accountAccessDetail").textContent=access.detail;renderAccountBilling(user);
+      const methods=logic.signInMethodsText(user);el("accountSignInMethods").textContent=methods;el("accountSignInMethods").hidden=!methods;
+      const reset=el("accountPasswordReset").querySelector(".button-idle");if(reset)reset.textContent=logic.hasPassword(user)?"Email password-reset link":"Email a link to set a password";
       const deletionPending=user?.accountDeletion?.pending===true;el("accountDeleteCancel").hidden=!deletionPending;showSecurityStatus(deletionPending?"An account-deletion confirmation is pending. You can use the emailed link or cancel the request here.":"");el("accountPage").setAttribute("aria-busy","false");
     }
 

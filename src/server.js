@@ -13,6 +13,8 @@ const { createWorkoutService } = require("./workouts");
 const { createTrainingService } = require("./training");
 const { createCoachingService } = require("./coaching");
 const { createDevicesService,devicesSettings } = require("./devices");
+const {createSocialAuthService}=require("./social-auth");
+const {socialAuthSettings}=require("./social-auth-config");
 const { createAiService } = require("./ai");
 const { aiSettings,createAiProvider } = require("./ai-provider");
 const {createAiQuota}=require("./ai-quota");
@@ -67,6 +69,7 @@ const ENFORCE_PADDLE_IPS=String(process.env.PADDLE_ENFORCE_IP_ALLOWLIST||"").toL
 const AI_SETTINGS=aiSettings(process.env);
 const APPLE_SETTINGS=appleBillingSettings(process.env);
 const ENTITLEMENTS=entitlementSettings(process.env);
+const SOCIAL_SETTINGS=socialAuthSettings(process.env);
 const LOGGER=createLogger();
 // Browser URLs deliberately remain stable even though files are grouped by
 // purpose on disk. Only entries in this map can ever be served publicly.
@@ -275,7 +278,7 @@ let devices;
 let ai,aiSettingsService,briefJob;
 let setup;
 let productSignals;
-let billing,appleBilling;
+let billing,appleBilling,social;
 
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g,(char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char])); }
 
@@ -314,14 +317,15 @@ async function hasCurrentDiscoveryAccess(userId,now=Date.now()) {
 
 async function userPayload(session) {
   const now=Date.now();
-  const [plan,paidDiscovery,subscription,apple,deletion,adminState,controls]=await Promise.all([
+  const [plan,paidDiscovery,subscription,apple,deletion,adminState,controls,signIn]=await Promise.all([
     planFor(session.id),
     billing.accessSummaryForUser(session.id),
     billing.subscriptionForUser(session.id),
     appleBilling.subscriptionForUser(session.id),
     store.activeAccountDeletion(session.id,now),
     admin.adminIdentity(session),
-    store.adminControls(session.id)
+    store.adminControls(session.id),
+    store.accountSignInMethods(session.id)
   ]);
   const adminGrant=adminGrantState(controls,now);
   const discovery={
@@ -343,7 +347,8 @@ async function userPayload(session) {
     discovery,
     capabilities:capabilitiesFor({plusActive:discovery.active},ENTITLEMENTS),
     isAdmin:adminState.active,
-    accountDeletion:{pending:Boolean(deletion),expiresAt:deletion?Number(deletion.expires_at):null}
+    accountDeletion:{pending:Boolean(deletion),expiresAt:deletion?Number(deletion.expires_at):null},
+    signIn:{hasPassword:signIn?.hasPassword!==false,providers:signIn?.providers||[]}
   };
 }
 
@@ -457,7 +462,7 @@ async function handleApi(req,res,url) {
   if (await billing.handleApi(req,res,url)) return;
   if (await appleBilling.handleApi(req,res,url)) return;
   if (url.pathname === "/api/status" && req.method === "GET") {
-    json(res,200,{ok:true,build:BUILD_NUMBER,storage:store.kind,persistent:store.kind==="turso"||process.env.NODE_ENV!=="production",paymentsConfigured:PAYMENT_CONFIG.configured,checkoutEnabled:PAYMENT_CONFIG.enabled,appStoreConfigured:APPLE_SETTINGS.configured,webhookIpAllowlist:ENFORCE_PADDLE_IPS,emailVerificationEnabled:EMAIL_CONFIG.enabled,emailVerificationConfigured:EMAIL_CONFIG.configured,passwordResetEnabled:EMAIL_CONFIG.enabled,accountDeletionEnabled:EMAIL_CONFIG.enabled,adminConfigured:Boolean(ADMIN_EMAIL)}); return;
+    json(res,200,{ok:true,build:BUILD_NUMBER,storage:store.kind,persistent:store.kind==="turso"||process.env.NODE_ENV!=="production",paymentsConfigured:PAYMENT_CONFIG.configured,checkoutEnabled:PAYMENT_CONFIG.enabled,appStoreConfigured:APPLE_SETTINGS.configured,webhookIpAllowlist:ENFORCE_PADDLE_IPS,emailVerificationEnabled:EMAIL_CONFIG.enabled,signInProviders:social.enabledProviders(),emailVerificationConfigured:EMAIL_CONFIG.configured,passwordResetEnabled:EMAIL_CONFIG.enabled,accountDeletionEnabled:EMAIL_CONFIG.enabled,adminConfigured:Boolean(ADMIN_EMAIL)}); return;
   }
   if (url.pathname === "/api/plan" && req.method === "GET") {
     const session=await auth.requireSession(req,res); if (!session) return;
@@ -599,7 +604,7 @@ async function serveStatic(req,res,url) {
   const cached=publicAssets.get(requested);
   if (!cached&&!existsSync(filePath)) { json(res,404,{error:"Page not found."}); return; }
   let body=cached?cached.body:readFileSync(filePath);
-  if (requested==="account.html") body=Buffer.from(auth.renderAccountFallbacks(body.toString("utf8"),url));
+  if (requested==="account.html") body=Buffer.from(social.renderAccountPage(auth.renderAccountFallbacks(body.toString("utf8"),url)));
   if (requested==="verify-email.html") body=Buffer.from(auth.renderVerificationFallbacks(body.toString("utf8"),url));
   if (requested==="index.html") {
     const user=activeSession?await userPayload(activeSession):null;
@@ -634,7 +639,7 @@ const server=http.createServer({requestTimeout:30_000,headersTimeout:15_000,keep
     if (url.pathname==="/livez") handleLiveness(req,res);
     else if (url.pathname==="/readyz"||url.pathname==="/healthz") await handleReadiness(req,res);
     else if (url.pathname.startsWith("/api/")) await handleApi(req,res,url);
-    else if (url.pathname.startsWith("/auth/")) await auth.handleForm(req,res,url);
+    else if (url.pathname.startsWith("/auth/")) { if (!await social.handle(req,res,url)) await auth.handleForm(req,res,url); }
     else if (["GET","HEAD"].includes(req.method)) await serveStatic(req,res,url);
     else json(res,405,{error:"Method not allowed."},{Allow:"GET, HEAD"});
   } catch(error) {
@@ -672,6 +677,7 @@ async function start() {
     reconcileUnsettledPurchases:billing.reconcileUnsettledPurchases,isUniqueViolation,appleDeletionNotice:appleBilling.deletionNotice,
     createAuthService,createAdminService,createSupportService
   }));
+  social=createSocialAuthService({store,settings:SOCIAL_SETTINGS,getAuth:()=>auth,claimAdminForLogin:(user)=>admin.maybeClaimAdminForLogin(user),trustedAuthOrigin,rateAllowed,http:{bodyForm,redirect,securityHeaders},isUniqueViolation,logger:LOGGER});
   dataService=createDataService({store,events,getPlan:planFor,coachingProfile:async(userId)=>coachingProfilePayload(await store.coachingProfile(userId)),requireSession:(req,res)=>auth.requireSession(req,res),requireFeature,http:{json},logger:LOGGER});
   productSignals=createProductSignalsService({store,admin,trustedOrigin:trustedAuthOrigin,requestAddress,rateKeyAllowed,http:{json,bodyJson}});
   workouts=createWorkoutService({store,auth,requireAccess:requireFeature("plus.train"),rateAllowed,http:{json,bodyJson},events});
@@ -698,6 +704,7 @@ async function start() {
   await productSignals.cleanup();
   await dataService.cleanup();
   await appleBilling.cleanup();
+  void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
   if (ENFORCE_PADDLE_IPS) void billing.warmProviderTrust().catch((error)=>LOGGER.error("billing.webhook_allowlist_warm_failed",{error}));
   cleanup=setInterval(() => {
     void store.deleteExpired(Date.now()).catch((error)=>LOGGER.error("cleanup.store_failed",{error}));
@@ -707,6 +714,7 @@ async function start() {
     void dataService.cleanup().catch((error)=>LOGGER.error("cleanup.data_layer_failed",{error}));
     void aiQuota.cleanup(90).catch((error)=>LOGGER.error("cleanup.ai_usage_failed",{error}));
     void appleBilling.cleanup().catch((error)=>LOGGER.error("cleanup.apple_notifications_failed",{error}));
+    void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
     for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
   },60*60*1000);
   cleanup.unref();

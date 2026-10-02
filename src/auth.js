@@ -16,6 +16,7 @@ const {cleanText}=require("./plans");
 const {createAccountSelfService}=require("./account-self-service");
 const {createAccountDeletion,deletedMessage}=require("./account-deletion");
 const {queueResponseCookie,renewedSessionExpiry}=require("./session-renewal");
+const {SOCIAL_PAGE_MESSAGES}=require("./social-auth-messages");
 
 const scryptAsync=promisify(scrypt);
 const SESSION_SECONDS=60*60*24*7;
@@ -581,7 +582,7 @@ function createAuthService({
     return html.replace(pattern,(_match,before,after)=>`${before}${escapeHtml(message)}${after}`);
   }
   function safeAccountPageError(value){
-    const messages=new Set(["Cross-origin request rejected.","Too many attempts. Try again later.","Use a valid name, email, and password of 10–128 characters.","An account with that email already exists.","Email or password is incorrect.","This account is temporarily paused. Contact STRATA support for help.","Admin ownership is secured. Sign in again to continue.","Administrator access required.","Unable to complete the account request.","Account storage is temporarily unavailable. Please try again.","Email verification is temporarily unavailable. Please try again later."]);
+    const messages=new Set(["Cross-origin request rejected.","Too many attempts. Try again later.","Use a valid name, email, and password of 10–128 characters.","An account with that email already exists.","Email or password is incorrect.","This account is temporarily paused. Contact STRATA support for help.","Admin ownership is secured. Sign in again to continue.","Administrator access required.","Unable to complete the account request.","Account storage is temporarily unavailable. Please try again.","Email verification is temporarily unavailable. Please try again later.",...SOCIAL_PAGE_MESSAGES]);
     const message=cleanText(value,240);
     return message?(messages.has(message)?message:"Unable to complete the account request. Please try again."):"";
   }
@@ -605,7 +606,7 @@ function createAuthService({
   function renderAccountFallbacks(html,url){
     const next=requestedPageNext(url);
     let output=replaceInputValue(html,"signupNext",next);
-    output=replaceInputValue(output,"loginNext",next);
+    for(const id of ["loginNext","socialSignupNext","socialLoginNext"])output=replaceInputValue(output,id,next);
     const message=safeAccountPageError(url.searchParams.get("error"));
     if(message)output=revealPageMessage(output,url.searchParams.get("mode")==="login"?"loginMessage":"signupMessage",message);
     return output;
@@ -822,7 +823,7 @@ function createAuthService({
   return Object.freeze({
     handleApi,handleForm,renderAccountFallbacks,renderVerificationFallbacks,cleanup,
     sessionFor,requireSession,sessionCookie,signupCookie,prepareSession,passwordMatches,validCsrf,
-    requestSignedInAccountAction,accountActionError,accountEmailHash,normalizeEmail,hashToken
+    requestSignedInAccountAction,accountActionError,accountEmailHash,normalizeEmail,hashToken,safeAccountNext,accountErrorLocation
   });
 }
 
