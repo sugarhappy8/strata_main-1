@@ -7,7 +7,7 @@ const STORE_METHODS = Object.freeze([
   "trainingLinks","upsertTrainingLink","deleteTrainingLink","deleteTrainingLinksForProvider",
   "dailySnapshots","upsertDailySnapshot","saveDailyBrief","deleteDailyBriefs","deleteOldDailySnapshots","deleteUserDailySnapshots",
   "insertPlanChange","planChanges",
-  "aiSettings","upsertAiSettings","briefCandidates","aiUsage","addAiUsage","refundAiUsage","aiUsageTotals","aiUsageTop","deleteOldAiUsage",
+  "aiSettings","upsertAiSettings","briefCandidates","aiUsage","addAiUsage","refundAiUsage","claimMemberAiRequest","claimGlobalAiRequest","aiUsageTotals","aiUsageTop","deleteOldAiUsage",
   "appleSubscription","appleSubscriptionsForUser","upsertAppleSubscription","hasActiveAppleSubscription","appleNotification","recordAppleNotification","deleteOldAppleNotifications",
   "coachingProfile",
   "upsertCoachingProfile",

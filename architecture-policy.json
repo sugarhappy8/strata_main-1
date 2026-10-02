@@ -422,7 +422,7 @@
     },
     "src/ai.js": {
       "role": "Strata AI request queue and review-only proposal API",
-      "maxLines": 215,
+      "maxLines": 235,
       "allowedDependencies": [
         "src/ai-catalog.js",
         "src/ai-core.js",

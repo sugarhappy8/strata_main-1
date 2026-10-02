@@ -54,3 +54,24 @@ test("SQLite and Turso keep Strata AI consent, usage, export, and deletion ident
     assert.equal(local.deleted,"deleted");assert.deepEqual(local.after,{settings:null,usage:0,global:2},"the member's rows go; the organization's totals stay");
   }finally{await pair.close();}
 });
+
+test("SQLite and Turso claim AI requests with one conditional write that stops at each limit",{concurrency:false},async()=>{
+  const pair=await stores();
+  try{
+    for(const store of [pair.local,pair.turso]){
+      const day="2030-04-01",claims=[];
+      // A member allowance of 2: the third claim returns nothing and leaves the count at the limit.
+      for(let index=0;index<3;index+=1)claims.push(await store.claimMemberAiRequest(day,"member-a","chat",2));
+      assert.deepEqual(claims,[true,true,false]);
+      assert.deepEqual((await store.aiUsage(day,"member-a")).map((row)=>Number(row.requests)),[2]);
+      assert.equal(await store.claimMemberAiRequest(day,"member-z","chat",0),false,"a zero allowance never inserts a row");
+      // The shared budget: 3 per day, of which chat may use 2.
+      assert.deepEqual([await store.claimGlobalAiRequest(day,"chat",3,2),await store.claimGlobalAiRequest(day,"chat",3,2),await store.claimGlobalAiRequest(day,"chat",3,2)],[true,true,false],"chat stops at its share");
+      assert.deepEqual([await store.claimGlobalAiRequest(day,"brief",3,3),await store.claimGlobalAiRequest(day,"brief",3,3)],[true,false],"nothing passes the daily total");
+      assert.deepEqual((await store.aiUsage(day,"global")).map((row)=>[row.kind,Number(row.requests)]).sort(),[["brief",1],["chat",2]]);
+      await store.refundAiUsage(day,"global","chat");
+      assert.equal(await store.claimGlobalAiRequest(day,"chat",3,2),true,"a refund frees its place again");
+      assert.equal(await store.claimGlobalAiRequest(day,"chat",3,2),false);
+    }
+  }finally{await pair.close();}
+});

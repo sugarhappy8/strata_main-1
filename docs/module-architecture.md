@@ -118,12 +118,12 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/ai-plan-edits.js` | Strata AI structured draft and plan-edit contracts | 135 | 125 | 14.8 KiB | 140 | `src/ai-catalog.js`, `src/plans.js` |
 | `src/ai-plan-fallback.js` | Deterministic verified plan-edit fallback proposals | 41 | 37 | 3.3 KiB | 80 | `src/plans.js` |
 | `src/ai-provider.js` | Provider-neutral Strata AI client: Groq by default, structured outputs, and model fallback | 126 | 116 | 10.2 KiB | 130 | `src/ai-response-schema.js` |
-| `src/ai-quota.js` | Organization-wide AI budget: brief reserve, per-minute cap, and per-member limits | 70 | 65 | 4.4 KiB | 90 | — |
+| `src/ai-quota.js` | Organization-wide AI budget: brief reserve, per-minute cap, and per-member limits | 76 | 71 | 4.8 KiB | 90 | — |
 | `src/ai-response-schema.js` | Bounded grammar schema for Strata AI responses | 35 | 32 | 3.0 KiB | 80 | — |
-| `src/ai-schema.js` | Strata AI consent and daily usage storage schema | 38 | 35 | 2.9 KiB | 50 | — |
+| `src/ai-schema.js` | Strata AI consent and daily usage storage schema | 41 | 38 | 3.7 KiB | 50 | — |
 | `src/ai-settings.js` | Strata AI consent, Daily Brief choice, note deletion, and the owner's usage view | 56 | 51 | 4.1 KiB | 70 | — |
-| `src/ai-store.js` | SQLite and Turso Strata AI storage parity | 51 | 45 | 3.2 KiB | 70 | `src/ai-schema.js` |
-| `src/ai.js` | Strata AI request queue and review-only proposal API | 211 | 199 | 19.7 KiB | 215 | `src/ai-catalog.js`, `src/ai-context.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/ai-settings.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
+| `src/ai-store.js` | SQLite and Turso Strata AI storage parity | 60 | 53 | 4.2 KiB | 70 | `src/ai-schema.js` |
+| `src/ai.js` | Strata AI request queue and review-only proposal API | 221 | 208 | 20.1 KiB | 235 | `src/ai-catalog.js`, `src/ai-context.js`, `src/ai-core.js`, `src/ai-plan-edits.js`, `src/ai-plan-fallback.js`, `src/ai-response-schema.js`, `src/ai-settings.js`, `src/coaching-core.js`, `src/coaching-evidence.js`, `src/coaching.js`, `src/workouts.js` |
 | `src/apple-billing-schema.js` | Apple subscription and notification-ledger schema | 61 | 56 | 5.2 KiB | 70 | — |
 | `src/apple-billing-store.js` | SQLite and Turso Apple subscription storage parity | 62 | 55 | 4.3 KiB | 70 | `src/apple-billing-schema.js` |
 | `src/apple-billing.js` | Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state | 369 | 343 | 24.7 KiB | 380 | `src/apple-jws.js`, `src/http.js` |
@@ -173,7 +173,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/polar-client.js` | Polar AccessLink V4 OAuth, credential refresh, date ranges, and rate limits | 140 | 132 | 11.1 KiB | 160 | — |
 | `src/polar-mapping.js` | Range-checked Polar V4 and legacy V3 payloads as wellness rows | 194 | 181 | 12.0 KiB | 210 | — |
 | `src/product-signals-schema.js` | Aggregate product-activity schema, daily keys, and statements | 53 | 48 | 3.1 KiB | 60 | — |
-| `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 157 | 144 | 7.5 KiB | 170 | — |
+| `src/product-signals.js` | Consent-gated aggregate product-activity boundary | 157 | 144 | 7.6 KiB | 170 | — |
 | `src/progression.js` | Pure per-set performance progression and comparison rules | 177 | 175 | 13.2 KiB | 300 | `src/plans.js` |
 | `src/schema.js` | Shared storage schema and statements | 350 | 344 | 40.0 KiB | 390 | `src/access-controls-schema.js`, `src/account-self-service-schema.js`, `src/ai-schema.js`, `src/apple-billing-schema.js`, `src/billing-schema.js`, `src/coaching-schema.js`, `src/data-layer-schema.js`, `src/devices-schema.js`, `src/product-signals-schema.js`, `src/social-auth-schema.js`, `src/training-loop-schema.js` |
 | `src/server.js` | HTTP composition root | 754 | 730 | 41.6 KiB | 830 | `src/access-controls.js`, `src/admin.js`, `src/ai-daily-brief.js`, `src/ai-provider.js`, `src/ai-quota.js`, `src/ai-settings.js`, `src/ai.js`, `src/apple-billing.js`, `src/auth.js`, `src/billing.js`, `src/coaching.js`, `src/data-service.js`, `src/database.js`, `src/devices.js`, `src/email.js`, `src/entitlements.js`, `src/events.js`, `src/http.js`, `src/observability.js`, `src/payments.js`, `src/plans.js`, `src/product-signals.js`, `src/service-composition.js`, `src/session-renewal.js`, `src/setup.js`, `src/social-auth-config.js`, `src/social-auth.js`, `src/static-assets.js`, `src/support.js`, `src/training.js`, `src/workouts.js` |

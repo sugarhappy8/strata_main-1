@@ -28,6 +28,9 @@ const AI_SQL=Object.freeze({
   aiUsage:"SELECT kind,requests,tokens FROM ai_usage_days WHERE usage_date=? AND scope=?",
   addAiUsage:"INSERT INTO ai_usage_days(usage_date,scope,kind,requests,tokens) VALUES(?,?,?,?,?) ON CONFLICT(usage_date,scope,kind) DO UPDATE SET requests=ai_usage_days.requests+excluded.requests,tokens=ai_usage_days.tokens+excluded.tokens",
   refundAiUsage:"UPDATE ai_usage_days SET requests=MAX(0,requests-1) WHERE usage_date=? AND scope=? AND kind=?",
+  // Claims are one conditional statement each, so concurrent requests can never pass a limit: no row back means spent.
+  claimMemberAiRequest:"INSERT INTO ai_usage_days(usage_date,scope,kind,requests,tokens) SELECT ?,?,?,1,0 WHERE ?>0 ON CONFLICT(usage_date,scope,kind) DO UPDATE SET requests=ai_usage_days.requests+1 WHERE ai_usage_days.requests<? RETURNING requests",
+  claimGlobalAiRequest:"INSERT INTO ai_usage_days(usage_date,scope,kind,requests,tokens) SELECT ?,'global',?,1,0 WHERE (SELECT COALESCE(SUM(requests),0) FROM ai_usage_days WHERE usage_date=? AND scope='global')<? AND (SELECT COALESCE(SUM(requests),0) FROM ai_usage_days WHERE usage_date=? AND scope='global' AND kind=?)<? ON CONFLICT(usage_date,scope,kind) DO UPDATE SET requests=ai_usage_days.requests+1 RETURNING requests",
   aiUsageTotals:"SELECT kind,SUM(requests) AS requests,SUM(tokens) AS tokens FROM ai_usage_days WHERE usage_date=? AND scope='global' GROUP BY kind ORDER BY kind",
   aiUsageTop:"SELECT a.scope AS user_id,u.email,SUM(a.requests) AS requests,SUM(a.tokens) AS tokens FROM ai_usage_days a LEFT JOIN users u ON u.id=a.scope WHERE a.usage_date=? AND a.scope<>'global' GROUP BY a.scope,u.email ORDER BY tokens DESC,requests DESC,a.scope LIMIT ?",
   deleteOldAiUsage:"DELETE FROM ai_usage_days WHERE usage_date<?",

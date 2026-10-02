@@ -38,6 +38,9 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
   const jobs=new Map();
   /** @type {any[]} */
   const queue=[];
+  // Members whose new request is between its checks and joining the queue; marked before the first await.
+  /** @type {Set<string>} */
+  const inFlight=new Set();
   let running=0;
   /** @type {{checkedAt:number,online:boolean,code:string|null}} */
   let health={checkedAt:0,online:false,code:null};
@@ -177,32 +180,39 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       }
       validMutation(req,session);
       if(!rateAllowed(req,`identity:ai:write:${session.id}`,12,60000))throw aiError("AI_RATE_LIMIT","You are asking faster than Strata AI can answer. Wait a moment.",429);
-      const input=await bodyJson(req),extra=Object.keys(input).filter((key)=>!["kind","message","history","draftPlan","draftPlanUpdatedAt","expectedUserId"].includes(key));
-      if(extra.length)throw aiError("AI_INVALID_REQUEST",`Request contains unsupported fields: ${extra.join(", ")}.`,400);
-      if(input.expectedUserId!==undefined&&String(input.expectedUserId)!==String(session.id))throw aiError("AI_ACCOUNT_CHANGED","Your account changed. Reload before asking again.",409);
-      const kind=input.kind==="suggestions"?"suggestions":input.kind==="chat"?"chat":null;
-      if(!kind)throw aiError("AI_INVALID_REQUEST","Choose a chat message or suggestions.",400);
-      if(kind!=="chat"&&(input.draftPlan!==undefined||input.draftPlanUpdatedAt!==undefined))throw aiError("AI_INVALID_REQUEST","Draft plans are only valid for chat requests.",400);
-      const message=typeof input.message==="string"?input.message.trim():"";
-      if(kind==="chat"&&(!message||message.length>LIMITS.messageChars))throw aiError("AI_INVALID_REQUEST",`Write a message of 1 to ${LIMITS.messageChars} characters.`,400);
-      const history=sanitizeHistory(input.history),draftPlan=kind==="chat"?sanitizeDraftPlan(input.draftPlan):null,draftPlanUpdatedAt=draftPlan?Number(input.draftPlanUpdatedAt):null;
-      if(draftPlan&&(typeof draftPlanUpdatedAt!=="number"||!Number.isSafeInteger(draftPlanUpdatedAt)||draftPlanUpdatedAt<0))throw aiError("AI_INVALID_REQUEST","A draft plan needs the saved-plan revision it was based on.",400);
-      if(!draftPlan&&input.draftPlanUpdatedAt!==undefined)throw aiError("AI_INVALID_REQUEST","A draft-plan revision needs a draft plan.",400);
-      if(!provider.configured)throw aiError("AI_NOT_CONFIGURED","Strata AI is not set up on this server yet.",503);
-      if([...jobs.values()].some((job)=>job.userId===String(session.id)&&(job.status==="queued"||job.status==="running")))throw aiError("AI_REQUEST_IN_PROGRESS","Strata AI is still working on your last request.",409);
-      if(queue.length>=maxQueue)throw aiError("AI_BUSY","Strata AI is busy with other members. Try again in a minute.",503);
-      // Nothing reaches the provider without the member's consent; the shared daily budget is claimed last.
-      if(!settingsPayload(await store.aiSettings(String(session.id))).consent)throw aiError("AI_CONSENT_REQUIRED","Allow Strata AI to share your training summary with Groq first.",409);
-      const claim=await quota.reserve("chat",String(session.id));
-      if(!claim.ok)throw claim.code==="AI_DAILY_LIMIT"?aiError("AI_DAILY_LIMIT",`You have used today's ${quota.limits.userDaily} Strata AI requests. They reset at midnight UTC.`,429):claim.code==="AI_RESTING"?aiError("AI_RESTING","Strata AI is resting for today and will be back tomorrow. Your Daily Brief is still on the Overview.",503):aiError("AI_BUSY","Strata AI is busy right now. Try again in a minute.",503);
-      const job={id:randomUUID(),userId:String(session.id),kind,message,history,draftPlan,draftPlanUpdatedAt,usageDate:String(claim.date),tokens:0,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
-      jobs.set(job.id,job);queue.push(job);pump();
-      json(res,202,{request:publicJob(job),csrfToken:session.csrf_token});
+      const userId=String(session.id);
+      if(inFlight.has(userId)||[...jobs.values()].some((job)=>job.userId===userId&&(job.status==="queued"||job.status==="running")))throw aiError("AI_REQUEST_IN_PROGRESS","Strata AI is still working on your last request.",409);
+      inFlight.add(userId);
+      try{await submit(req,res,session);}finally{inFlight.delete(userId);}
     }catch(error){
       const failure=/** @type {any} */(error);if(!failure?.status)throw error;
       json(res,failure.status,{error:failure.message,code:failure.code||"AI_FAILED"});
     }
     return true;
+  }
+
+  /** Reads, checks, and queues one new request while the member is marked in flight. @param {any} req @param {any} res @param {any} session */
+  async function submit(req,res,session){
+    const input=await bodyJson(req),extra=Object.keys(input).filter((key)=>!["kind","message","history","draftPlan","draftPlanUpdatedAt","expectedUserId"].includes(key));
+    if(extra.length)throw aiError("AI_INVALID_REQUEST",`Request contains unsupported fields: ${extra.join(", ")}.`,400);
+    if(input.expectedUserId!==undefined&&String(input.expectedUserId)!==String(session.id))throw aiError("AI_ACCOUNT_CHANGED","Your account changed. Reload before asking again.",409);
+    const kind=input.kind==="suggestions"?"suggestions":input.kind==="chat"?"chat":null;
+    if(!kind)throw aiError("AI_INVALID_REQUEST","Choose a chat message or suggestions.",400);
+    if(kind!=="chat"&&(input.draftPlan!==undefined||input.draftPlanUpdatedAt!==undefined))throw aiError("AI_INVALID_REQUEST","Draft plans are only valid for chat requests.",400);
+    const message=typeof input.message==="string"?input.message.trim():"";
+    if(kind==="chat"&&(!message||message.length>LIMITS.messageChars))throw aiError("AI_INVALID_REQUEST",`Write a message of 1 to ${LIMITS.messageChars} characters.`,400);
+    const history=sanitizeHistory(input.history),draftPlan=kind==="chat"?sanitizeDraftPlan(input.draftPlan):null,draftPlanUpdatedAt=draftPlan?Number(input.draftPlanUpdatedAt):null;
+    if(draftPlan&&(typeof draftPlanUpdatedAt!=="number"||!Number.isSafeInteger(draftPlanUpdatedAt)||draftPlanUpdatedAt<0))throw aiError("AI_INVALID_REQUEST","A draft plan needs the saved-plan revision it was based on.",400);
+    if(!draftPlan&&input.draftPlanUpdatedAt!==undefined)throw aiError("AI_INVALID_REQUEST","A draft-plan revision needs a draft plan.",400);
+    if(!provider.configured)throw aiError("AI_NOT_CONFIGURED","Strata AI is not set up on this server yet.",503);
+    if(queue.length>=maxQueue)throw aiError("AI_BUSY","Strata AI is busy with other members. Try again in a minute.",503);
+    // Nothing reaches the provider without the member's consent; the shared daily budget is claimed last.
+    if(!settingsPayload(await store.aiSettings(String(session.id))).consent)throw aiError("AI_CONSENT_REQUIRED","Allow Strata AI to share your training summary with Groq first.",409);
+    const claim=await quota.reserve("chat",String(session.id));
+    if(!claim.ok)throw claim.code==="AI_DAILY_LIMIT"?aiError("AI_DAILY_LIMIT",`You have used today's ${quota.limits.userDaily} Strata AI requests. They reset at midnight UTC.`,429):claim.code==="AI_RESTING"?aiError("AI_RESTING","Strata AI is resting for today and will be back tomorrow. Your Daily Brief is still on the Overview.",503):aiError("AI_BUSY","Strata AI is busy right now. Try again in a minute.",503);
+    const job={id:randomUUID(),userId:String(session.id),kind,message,history,draftPlan,draftPlanUpdatedAt,usageDate:String(claim.date),tokens:0,status:"queued",createdAt:now(),finishedAt:0,result:null,error:null};
+    jobs.set(job.id,job);queue.push(job);pump();
+    json(res,202,{request:publicJob(job),csrfToken:session.csrf_token});
   }
 
   return {handleApi,stats:()=>({queued:queue.length,running,jobs:jobs.size})};

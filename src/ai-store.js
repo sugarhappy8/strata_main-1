@@ -3,6 +3,11 @@
 
 const {AI_SQL}=require("./ai-schema");
 
+/** @param {string} date @param {string} userId @param {string} kind @param {number} limit */
+const memberClaimArgs=(date,userId,kind,limit)=>[date,userId,kind,limit,limit];
+/** @param {string} date @param {string} kind @param {number} dailyLimit @param {number} kindLimit */
+const globalClaimArgs=(date,kind,dailyLimit,kindLimit)=>[date,kind,date,dailyLimit,date,kind,kindLimit];
+
 /** @param {{statements:Record<string,import("./domain-types").PreparedStatementLike>,plainRow:(row:any)=>any}} dependencies @returns {import("./domain-types").AiStore} */
 function createLocalAiMethods({statements,plainRow}){
   /** @param {string} name */
@@ -14,6 +19,8 @@ function createLocalAiMethods({statements,plainRow}){
     async aiUsage(date,scope){return statement("aiUsage").all(date,scope).map((row)=>plainRow(row));},
     async addAiUsage(date,scope,kind,requests,tokens){statement("addAiUsage").run(date,scope,kind,requests,tokens);},
     async refundAiUsage(date,scope,kind){statement("refundAiUsage").run(date,scope,kind);},
+    async claimMemberAiRequest(date,userId,kind,limit){return Boolean(plainRow(statement("claimMemberAiRequest").get(...memberClaimArgs(date,userId,kind,limit))));},
+    async claimGlobalAiRequest(date,kind,dailyLimit,kindLimit){return Boolean(plainRow(statement("claimGlobalAiRequest").get(...globalClaimArgs(date,kind,dailyLimit,kindLimit))));},
     async aiUsageTotals(date){return statement("aiUsageTotals").all(date).map((row)=>plainRow(row));},
     async aiUsageTop(date,limit){return statement("aiUsageTop").all(date,limit).map((row)=>plainRow(row));},
     async deleteOldAiUsage(beforeDate){statement("deleteOldAiUsage").run(beforeDate);}
@@ -29,6 +36,8 @@ function createTursoAiMethods({first,all,run}){
     aiUsage:(date,scope)=>all(AI_SQL.aiUsage,[date,scope]),
     async addAiUsage(date,scope,kind,requests,tokens){await run(AI_SQL.addAiUsage,[date,scope,kind,requests,tokens]);},
     async refundAiUsage(date,scope,kind){await run(AI_SQL.refundAiUsage,[date,scope,kind]);},
+    async claimMemberAiRequest(date,userId,kind,limit){return Boolean(await first(AI_SQL.claimMemberAiRequest,memberClaimArgs(date,userId,kind,limit)));},
+    async claimGlobalAiRequest(date,kind,dailyLimit,kindLimit){return Boolean(await first(AI_SQL.claimGlobalAiRequest,globalClaimArgs(date,kind,dailyLimit,kindLimit)));},
     aiUsageTotals:(date)=>all(AI_SQL.aiUsageTotals,[date]),
     aiUsageTop:(date,limit)=>all(AI_SQL.aiUsageTop,[date,limit]),
     async deleteOldAiUsage(beforeDate){await run(AI_SQL.deleteOldAiUsage,[beforeDate]);}

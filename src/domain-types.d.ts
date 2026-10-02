@@ -842,6 +842,10 @@ export interface AiStore {
   briefCandidates(limit:number,offset:number):Promise<JsonObject[]>;
   aiUsage(date:string,scope:string):Promise<JsonObject[]>;
   addAiUsage(date:string,scope:string,kind:"chat"|"brief",requests:number,tokens:number):Promise<void>;
+  /** Adds one request for the member unless it would pass the limit; false means the allowance is spent. */
+  claimMemberAiRequest(date:string,userId:string,kind:"chat"|"brief",limit:number):Promise<boolean>;
+  /** Adds one shared request unless today's total or this kind's share is spent. */
+  claimGlobalAiRequest(date:string,kind:"chat"|"brief",dailyLimit:number,kindLimit:number):Promise<boolean>;
   refundAiUsage(date:string,scope:string,kind:"chat"|"brief"):Promise<void>;
   aiUsageTotals(date:string):Promise<JsonObject[]>;
   aiUsageTop(date:string,limit:number):Promise<JsonObject[]>;
