@@ -507,7 +507,7 @@ function createBillingService({
     if(await store.activeAccountDeletion(session.id,now())){
       json(res,409,{error:"Cancel the pending account-deletion request before starting checkout.",code:"ACCOUNT_DELETION_PENDING"});return;
     }
-    if(!rateAllowed(req,`checkout:${session.id}`,8)){
+    if(!await rateAllowed(req,`checkout:${session.id}`,8)){
       json(res,429,{error:"Too many checkout attempts. Try again later."});return;
     }
     if(await hasCurrentAccess(session.id)){
@@ -648,7 +648,7 @@ function createBillingService({
       }
       json(res,404,{error:"No Strata+ monthly subscription was found for this account.",code:"SUBSCRIPTION_NOT_FOUND"});return;
     }
-    if(!rateAllowed(req,`billing-portal:${session.id}`,10,15*60*1000)){
+    if(!await rateAllowed(req,`billing-portal:${session.id}`,10,15*60*1000)){
       json(res,429,{error:"Too many subscription-management requests. Try again later."});return;
     }
     const links=await createCustomerPortalSession(paymentConfig,{

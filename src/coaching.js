@@ -87,7 +87,7 @@ function createCoachingService({store,auth,requireAccess,trustedOrigin,rateAllow
       const allowed=logMatch?["GET","PUT"]:url.pathname==="/api/coaching/profile"?["GET","PUT"]:["GET"];
       if(!allowed.includes(String(req.method))){json(res,405,{error:"Method not allowed."},{Allow:allowed.join(", ")});return true;}
       const write=req.method!=="GET";
-      if(!rateAllowed(req,`identity:coaching:${write?"write":"read"}:${session.id}`,write?60:180,60000))throw coachingError("Too many coaching requests. Wait a moment and retry.",429,"COACHING_RATE_LIMIT");
+      if(!await rateAllowed(req,`identity:coaching:${write?"write":"read"}:${session.id}`,write?60:180,60000))throw coachingError("Too many coaching requests. Wait a moment and retry.",429,"COACHING_RATE_LIMIT");
       if(write)validMutation(req,session);
       if(url.pathname==="/api/coaching/profile"){
         if(req.method==="GET"){json(res,200,{profile:await readProfile(session.id),csrfToken:session.csrf_token});return true;}

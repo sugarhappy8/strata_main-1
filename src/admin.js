@@ -184,7 +184,7 @@ function createAdminService({
     if(actionMatch&&req.method==="POST"){
       const session=await requireAdmin(req,res);if(!session)return true;
       if(!requireAdminMutation(req,res,session))return true;
-      if(!rateAllowed(req,`admin-user-action:${session.id}`,30,15*60*1000)){json(res,429,{error:"Too many admin actions. Wait and try again.",code:"ADMIN_RATE_LIMIT"});return true;}
+      if(!await rateAllowed(req,`admin-user-action:${session.id}`,30,15*60*1000)){json(res,429,{error:"Too many admin actions. Wait and try again.",code:"ADMIN_RATE_LIMIT"});return true;}
       const targetId=cleanAdminTarget(actionMatch[1]);
       if(!targetId){json(res,404,{error:"Account not found.",code:"ADMIN_TARGET_NOT_FOUND"});return true;}
       try{json(res,200,await performAdminUserAction(session,targetId,await bodyJson(req)));}

@@ -4,6 +4,7 @@ const http = require("node:http");
 const { readFileSync, existsSync } = require("node:fs");
 const { extname, join, normalize } = require("node:path");
 const { isIP } = require("node:net");
+const { createHash } = require("node:crypto");
 const { createStore,isUniqueViolation } = require("./database");
 const { loadPublicAssets,cachedResponseBody } = require("./static-assets");
 const { getEmailVerificationConfig } = require("./email");
@@ -402,7 +403,6 @@ function trustedAuthOrigin(req) {
   return sameOrigin(req);
 }
 
-const rateBuckets = new Map();
 function requestAddress(req) {
   const direct=req.socket.remoteAddress||"unknown";
   if (process.env.TRUST_PROXY!=="true") return direct;
@@ -410,16 +410,15 @@ function requestAddress(req) {
   return forwarded.at(-1)||direct;
 }
 
-function rateKeyAllowed(key,max=10,windowMs=15*60*1000) {
-  const now=Date.now();
-  const bucket=(rateBuckets.get(key)||[]).filter((time) => now-time<windowMs);
-  if (bucket.length >= max) return false;
-  bucket.push(now); rateBuckets.set(key,bucket); return true;
+// Rate limits live in the rate_buckets table, so they hold across restarts and instances. One conditional write per
+// request takes a slot or refuses; keys are stored hashed, never as addresses, emails, or account IDs.
+async function rateKeyAllowed(key,max=10,windowMs=15*60*1000) {
+  return store.takeRateSlot(createHash("sha256").update(String(key)).digest("hex"),max,windowMs,Date.now());
 }
 
-function rateAllowed(req,kind,max=10,windowMs=15*60*1000) {
+async function rateAllowed(req,kind,max=10,windowMs=15*60*1000) {
   // Identity buckets apply across addresses; network buckets allow shared Wi-Fi.
-  return rateKeyAllowed(kind.startsWith("identity:")?kind:`${kind}:${requestAddress(req)}`,max,windowMs);
+  return await rateKeyAllowed(kind.startsWith("identity:")?kind:`${kind}:${requestAddress(req)}`,max,windowMs);
 }
 
 function healthMethodAllowed(req,res) {
@@ -540,7 +539,7 @@ async function handleApi(req,res,url) {
     if (!auth.validCsrf(req,session)) { json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"}); return; }
     const exerciseId=ratingMatch[1];
     if (!EXERCISE_IDS.has(exerciseId)) { json(res,404,{error:"Exercise not found."}); return; }
-    if (!rateAllowed(req,`rating:${session.id}`,60)) { json(res,429,{error:"Too many rating updates. Try again later."}); return; }
+    if (!await rateAllowed(req,`rating:${session.id}`,60)) { json(res,429,{error:"Too many rating updates. Try again later."}); return; }
     const input=await bodyJson(req), rating=sanitizeRating(input.rating), now=Date.now();
     await store.upsertRating(session.id,exerciseId,rating,now,now);
     json(res,200,{ok:true,rating:{exercise_id:exerciseId,...rating,updated_at:now},aggregate:await store.ratingAggregate(exerciseId)}); return;
@@ -719,7 +718,7 @@ async function start() {
     void appleBilling.cleanup().catch((error)=>LOGGER.error("cleanup.apple_notifications_failed",{error}));
     void social.cleanup().catch((error)=>LOGGER.error("cleanup.social_sign_in_failed",{error}));
     void events.cleanup().catch((error)=>LOGGER.error("cleanup.event_outbox_failed",{error}));
-    for (const [key,times] of rateBuckets) if (!times.some((time) => Date.now()-time<15*60*1000)) rateBuckets.delete(key);
+    void store.deleteOldRateBuckets(Date.now()-24*60*60*1000).catch((error)=>LOGGER.error("cleanup.rate_buckets_failed",{error}));
   },60*60*1000);
   cleanup.unref();
   server.listen(PORT,HOST,() => {

@@ -114,7 +114,7 @@ function createSupportService({
     if(supportMatch&&req.method==="POST"){
       const session=await admin.requireAdmin(req,res);if(!session)return true;
       if(!admin.requireAdminMutation(req,res,session))return true;
-      if(!rateAllowed(req,`admin-support:${session.id}`,30,15*60*1000)){json(res,429,{error:"Too many support updates. Wait and try again.",code:"ADMIN_RATE_LIMIT"});return true;}
+      if(!await rateAllowed(req,`admin-support:${session.id}`,30,15*60*1000)){json(res,429,{error:"Too many support updates. Wait and try again.",code:"ADMIN_RATE_LIMIT"});return true;}
       const ticketId=admin.cleanAdminTarget(supportMatch[1]),ticket=ticketId?await store.supportTicketById(ticketId):null;
       if(!ticket){json(res,404,{error:"Support request not found.",code:"SUPPORT_NOT_FOUND"});return true;}
       const input=await bodyJson(req),candidateStatus=cleanText(input?.status,20),status=SUPPORT_STATUSES.has(candidateStatus)?candidateStatus:ticket.status;

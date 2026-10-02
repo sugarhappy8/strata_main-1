@@ -81,15 +81,15 @@ function createAuthService({
   }
   const {json,bodyJson,bodyForm,redirect,securityHeaders}=http;
 
-  function accountRateAllowed(req,input) {
-    return rateAllowed(req,"auth-network",400)&&
-      rateAllowed(req,`identity:auth:${hashToken(normalizeEmail(input.email))}`,10);
+  async function accountRateAllowed(req,input) {
+    return await rateAllowed(req,"auth-network",400)&&
+      await rateAllowed(req,`identity:auth:${hashToken(normalizeEmail(input.email))}`,10);
   }
-  function verificationRateAllowed(req,kind) {
+  async function verificationRateAllowed(req,kind) {
     const token=cookieMap(req.headers.cookie||"")[SIGNUP_COOKIE]||"missing";
     const maximum=kind==="verify-email"?12:6;
-    return rateAllowed(req,`${kind}-network`,kind==="verify-email"?600:300)&&
-      rateAllowed(req,`identity:${kind}:${hashToken(token)}`,maximum);
+    return await rateAllowed(req,`${kind}-network`,kind==="verify-email"?600:300)&&
+      await rateAllowed(req,`identity:${kind}:${hashToken(token)}`,maximum);
   }
 
   async function passwordHash(password,salt){
@@ -645,12 +645,12 @@ function createAuthService({
         redirect(res,location);return;
       }
       try{
-        if(url.pathname==="/auth/password-reset/request"){if(rateAllowed(req,"password-reset-request",8))await requestForgotPassword(input);redirect(res,"/forgot-password?sent=1");return;}
+        if(url.pathname==="/auth/password-reset/request"){if(await rateAllowed(req,"password-reset-request",8))await requestForgotPassword(input);redirect(res,"/forgot-password?sent=1");return;}
         if(url.pathname==="/auth/password-reset/complete"){
-          if(!rateAllowed(req,"password-reset-complete",10))throw accountActionError("Too many attempts. Try again later.",429,"PASSWORD_RESET_RATE_LIMIT");
+          if(!await rateAllowed(req,"password-reset-complete",10))throw accountActionError("Too many attempts. Try again later.",429,"PASSWORD_RESET_RATE_LIMIT");
           await resetPassword(input);redirect(res,"/account.html?mode=login&reset=1",{"Set-Cookie":sessionCookie("",0)});return;
         }
-        if(!rateAllowed(req,"account-delete-complete",10))throw accountActionError("Too many attempts. Try again later.",429,"ACCOUNT_DELETE_RATE_LIMIT");
+        if(!await rateAllowed(req,"account-delete-complete",10))throw accountActionError("Too many attempts. Try again later.",429,"ACCOUNT_DELETE_RATE_LIMIT");
         await deleteAccountWithToken(input);redirect(res,"/delete-account?deleted=1",{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});return;
       }catch(error){
         if(!error.status)logger.error(error);
@@ -665,7 +665,7 @@ function createAuthService({
     const rejectedLocation=(message)=>verificationAction?verificationLocation(input.next,{error:message,purpose:input.purpose}):accountErrorLocation(url.pathname==="/auth/login"?"login":"signup",message,input.next);
     if(!trustedAuthOrigin(req)){redirect(res,rejectedLocation("Cross-origin request rejected."));return;}
     const rateKind=url.pathname==="/auth/verify-email"?"verify-email":url.pathname==="/auth/resend-verification"?"resend-verification":"auth";
-    if(!(rateKind==="auth"?accountRateAllowed(req,input):verificationRateAllowed(req,rateKind))){redirect(res,rejectedLocation("Too many attempts. Try again later."));return;}
+    if(!(rateKind==="auth"?await accountRateAllowed(req,input):await verificationRateAllowed(req,rateKind))){redirect(res,rejectedLocation("Too many attempts. Try again later."));return;}
     try{
       if(url.pathname==="/auth/signup"||url.pathname==="/auth/login"){
         const result=url.pathname==="/auth/signup"?await beginAccountRegistration(input):await authenticateAccount(input);
@@ -699,7 +699,7 @@ function createAuthService({
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
       try{
         const input=await bodyJson(req);
-        if(!accountRateAllowed(req,input)){json(res,429,{error:"Too many attempts. Try again later.",code:"AUTH_RATE_LIMIT"},{"Retry-After":"900"});return true;}
+        if(!await accountRateAllowed(req,input)){json(res,429,{error:"Too many attempts. Try again later.",code:"AUTH_RATE_LIMIT"},{"Retry-After":"900"});return true;}
         const result=await beginAccountRegistration(input);
         if(result.verification)json(res,202,result.verification,{"Set-Cookie":signupCookie(result.signupToken)});
         else json(res,201,{user:await getUserPayload(result.user)},{"Set-Cookie":sessionCookie(result.session.token)});
@@ -710,7 +710,7 @@ function createAuthService({
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
       try{
         const input=await bodyJson(req);
-        if(!accountRateAllowed(req,input)){json(res,429,{error:"Too many attempts. Try again later.",code:"AUTH_RATE_LIMIT"},{"Retry-After":"900"});return true;}
+        if(!await accountRateAllowed(req,input)){json(res,429,{error:"Too many attempts. Try again later.",code:"AUTH_RATE_LIMIT"},{"Retry-After":"900"});return true;}
         const result=await authenticateAccount(input);
         if(result.verification)json(res,202,result.verification,{"Set-Cookie":signupCookie(result.signupToken)});
         else json(res,200,{user:await getUserPayload(result.user)},{"Set-Cookie":sessionCookie(result.session.token)});
@@ -729,7 +729,7 @@ function createAuthService({
     }
     if(url.pathname==="/api/verify-email"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
-      if(!verificationRateAllowed(req,"verify-email")){json(res,429,{error:"Too many attempts. Try again later.",code:"VERIFICATION_RATE_LIMIT"},{"Retry-After":"900"});return true;}
+      if(!await verificationRateAllowed(req,"verify-email")){json(res,429,{error:"Too many attempts. Try again later.",code:"VERIFICATION_RATE_LIMIT"},{"Retry-After":"900"});return true;}
       try{
         const result=await verifyAccountEmail(req,await bodyJson(req));
         json(res,result.purpose==="login"?200:201,{user:await getUserPayload(result.user)},{"Set-Cookie":[sessionCookie(result.session.token),signupCookie("",0)]});
@@ -738,14 +738,14 @@ function createAuthService({
     }
     if(url.pathname==="/api/resend-verification"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
-      if(!verificationRateAllowed(req,"resend-verification")){json(res,429,{error:"Too many attempts. Try again later.",code:"VERIFICATION_RATE_LIMIT"},{"Retry-After":"900"});return true;}
+      if(!await verificationRateAllowed(req,"resend-verification")){json(res,429,{error:"Too many attempts. Try again later.",code:"VERIFICATION_RATE_LIMIT"},{"Retry-After":"900"});return true;}
       try{json(res,202,await resendAccountVerification(req));}
       catch(error){if(!error.status)throw error;sendVerificationApiError(res,error);}
       return true;
     }
     if(url.pathname==="/api/password-reset/request"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
-      if(!rateAllowed(req,"password-reset-request",8)){json(res,202,{ok:true,message:PASSWORD_RESET_RESPONSE});return true;}
+      if(!await rateAllowed(req,"password-reset-request",8)){json(res,202,{ok:true,message:PASSWORD_RESET_RESPONSE});return true;}
       try{json(res,202,await requestForgotPassword(await bodyJson(req)));}
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"PASSWORD_RESET_REQUEST_FAILED"});}
       return true;
@@ -754,19 +754,19 @@ function createAuthService({
       const session=await requireSession(req,res);if(!session)return true;
       if(!validCsrf(req,session)){json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});return true;}
       await bodyJson(req);
-      if(!rateAllowed(req,`password-reset-account:${session.id}`,5)){json(res,429,{error:"Too many account emails were requested. Please wait and try again.",code:"ACCOUNT_EMAIL_LIMIT"});return true;}
+      if(!await rateAllowed(req,`password-reset-account:${session.id}`,5)){json(res,429,{error:"Too many account emails were requested. Please wait and try again.",code:"ACCOUNT_EMAIL_LIMIT"});return true;}
       try{json(res,202,{ok:true,...await requestSignedInAccountAction(session,"password_reset")});}
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"PASSWORD_RESET_REQUEST_FAILED"});}
       return true;
     }
     if(url.pathname==="/api/password-reset/status"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
-      if(!rateAllowed(req,"password-reset-status",30)){json(res,429,{error:"Too many attempts. Try again later."});return true;}
+      if(!await rateAllowed(req,"password-reset-status",30)){json(res,429,{error:"Too many attempts. Try again later."});return true;}
       json(res,200,await inspectAccountAction(await bodyJson(req),"password_reset"));return true;
     }
     if(url.pathname==="/api/password-reset/complete"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
-      if(!rateAllowed(req,"password-reset-complete",10)){json(res,429,{error:"Too many attempts. Try again later.",code:"PASSWORD_RESET_RATE_LIMIT"});return true;}
+      if(!await rateAllowed(req,"password-reset-complete",10)){json(res,429,{error:"Too many attempts. Try again later.",code:"PASSWORD_RESET_RATE_LIMIT"});return true;}
       try{await resetPassword(await bodyJson(req));json(res,200,{ok:true,message:"Password reset complete. Sign in with your new password."},{"Set-Cookie":sessionCookie("",0)});}
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"PASSWORD_RESET_FAILED"});}
       return true;
@@ -775,7 +775,7 @@ function createAuthService({
       const session=await requireSession(req,res);if(!session)return true;
       if(!validCsrf(req,session)){json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});return true;}
       await bodyJson(req);
-      if(!rateAllowed(req,`account-delete-request:${session.id}`,5)){json(res,429,{error:"Too many account emails were requested. Please wait and try again.",code:"ACCOUNT_EMAIL_LIMIT"});return true;}
+      if(!await rateAllowed(req,`account-delete-request:${session.id}`,5)){json(res,429,{error:"Too many account emails were requested. Please wait and try again.",code:"ACCOUNT_EMAIL_LIMIT"});return true;}
       try{json(res,202,{ok:true,...await requestSignedInAccountAction(session,"account_delete")});}
       catch(error){if(!error.status)throw error;json(res,error.status,{error:error.message,code:error.code||"ACCOUNT_DELETE_REQUEST_FAILED"});}
       return true;
@@ -787,12 +787,12 @@ function createAuthService({
     }
     if(url.pathname==="/api/account/delete/status"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
-      if(!rateAllowed(req,"account-delete-status",30)){json(res,429,{error:"Too many attempts. Try again later."});return true;}
+      if(!await rateAllowed(req,"account-delete-status",30)){json(res,429,{error:"Too many attempts. Try again later."});return true;}
       json(res,200,await inspectAccountAction(await bodyJson(req),"account_delete"));return true;
     }
     if(url.pathname==="/api/account/delete/complete"&&req.method==="POST"){
       if(!trustedAuthOrigin(req)){json(res,403,{error:"Cross-origin request rejected."});return true;}
-      if(!rateAllowed(req,"account-delete-complete",10)){json(res,429,{error:"Too many attempts. Try again later.",code:"ACCOUNT_DELETE_RATE_LIMIT"});return true;}
+      if(!await rateAllowed(req,"account-delete-complete",10)){json(res,429,{error:"Too many attempts. Try again later.",code:"ACCOUNT_DELETE_RATE_LIMIT"});return true;}
       try{
         const {appleBilling}=await deleteAccountWithToken(await bodyJson(req));
         json(res,200,{ok:true,message:deletedMessage(appleBilling),...(appleBilling?{appleBilling}:{})},{"Set-Cookie":[sessionCookie("",0),signupCookie("",0)]});

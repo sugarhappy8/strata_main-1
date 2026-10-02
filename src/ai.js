@@ -25,7 +25,7 @@ const SHORTER="Your previous answer was cut off. Keep the reply under 40 words a
 function weekdayName(time,zone){try{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:String(zone||"UTC")}).format(time);}catch{return new Intl.DateTimeFormat("en-US",{weekday:"long",timeZone:"UTC"}).format(time);}}
 
 /**
- * @param {{store:any,auth:any,requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean,
+ * @param {{store:any,auth:any,requireAccess:(req:any,res:any)=>Promise<any>,trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
  *   http:{json:Function,bodyJson:Function},provider:{configured:boolean,model:string,complete:Function,health:Function},getPlanSnapshot:(userId:string)=>Promise<{plan:any,updatedAt:number}>,
  *   quota:ReturnType<typeof import("./ai-quota").createAiQuota>,dataService?:any,logger?:{info:Function,warn:Function}|null,now?:()=>number,config?:{maxConcurrent?:number,maxQueue?:number,resultTtlMs?:number,healthTtlMs?:number}}} dependencies
  */
@@ -168,7 +168,7 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
       sweep();
       const method=String(req.method),allowed=url.pathname==="/api/ai/requests"?"POST":"GET";
       if(method!==allowed){json(res,405,{error:"Method not allowed."},{Allow:allowed});return true;}
-      if(method==="GET"&&!rateAllowed(req,`identity:ai:read:${session.id}`,240,60000))throw aiError("AI_RATE_LIMIT","Too many Strata AI checks. Wait a moment.",429);
+      if(method==="GET"&&!await rateAllowed(req,`identity:ai:read:${session.id}`,240,60000))throw aiError("AI_RATE_LIMIT","Too many Strata AI checks. Wait a moment.",429);
       if(url.pathname==="/api/ai/status"){
         const [state,member,settings]=await Promise.all([checkHealth(),quota.memberStatus(String(session.id)),store.aiSettings(String(session.id))]),choice=settingsPayload(settings);
         json(res,200,{configured:provider.configured,online:state.online,code:state.code,...member,consent:choice.consent,dailyBrief:choice.dailyBrief,hasProfile:Boolean(profilePayload(await store.coachingProfile(session.id))),csrfToken:session.csrf_token});return true;
@@ -179,7 +179,7 @@ function createAiService({store,auth,requireAccess,trustedOrigin,rateAllowed,htt
         json(res,200,{request:publicJob(job),csrfToken:session.csrf_token});return true;
       }
       validMutation(req,session);
-      if(!rateAllowed(req,`identity:ai:write:${session.id}`,12,60000))throw aiError("AI_RATE_LIMIT","You are asking faster than Strata AI can answer. Wait a moment.",429);
+      if(!await rateAllowed(req,`identity:ai:write:${session.id}`,12,60000))throw aiError("AI_RATE_LIMIT","You are asking faster than Strata AI can answer. Wait a moment.",429);
       const userId=String(session.id);
       if(inFlight.has(userId)||[...jobs.values()].some((job)=>job.userId===userId&&(job.status==="queued"||job.status==="running")))throw aiError("AI_REQUEST_IN_PROGRESS","Strata AI is still working on your last request.",409);
       inFlight.add(userId);

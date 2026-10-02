@@ -5,6 +5,8 @@ const {SERVER_STATE_SQL}=require("./server-state-schema");
 
 /** @param {import("./domain-types").OutboxEventRecord} record */
 const outboxArgs=(record)=>[record.id,record.eventName,record.handlerKey,record.userId,record.payloadJson,record.attempts,record.attemptedAt,record.nextAttemptAt,record.lastError,record.createdAt];
+/** @param {string} key @param {number} max @param {number} windowMs @param {number} now */
+const rateArgs=(key,max,windowMs,now)=>{const expired=now-windowMs;return [key,now,expired,expired,expired,max];};
 /** @param {string} id @param {import("./domain-types").OutboxFailure} failure */
 const failureArgs=(id,failure)=>[failure.attempts,failure.attemptedAt,failure.nextAttemptAt,failure.lastError,failure.gaveUpAt,id];
 
@@ -19,7 +21,11 @@ function createLocalServerStateMethods({statements,plainRow}){
     async claimOutboxEvent(id,now,leaseUntil){return Boolean(plainRow(statement("claimOutboxEvent").get(leaseUntil,id,now)));},
     async completeOutboxEvent(id){statement("completeOutboxEvent").run(id);},
     async failOutboxEvent(id,failure){statement("failOutboxEvent").run(...failureArgs(id,failure));},
-    async deleteOldOutboxEvents(before){statement("deleteOldOutboxEvents").run(before);}
+    async deleteOldOutboxEvents(before){statement("deleteOldOutboxEvents").run(before);},
+    async takeRateSlot(key,max,windowMs,now){return Boolean(plainRow(statement("takeRateSlot").get(...rateArgs(key,max,windowMs,now))));},
+    async deleteOldRateBuckets(before){statement("deleteOldRateBuckets").run(before);},
+    async acquireLock(name,holder,expiresAt,now){return Boolean(plainRow(statement("acquireLock").get(name,holder,expiresAt,now)));},
+    async releaseLock(name,holder){statement("releaseLock").run(name,holder);}
   };
 }
 
@@ -32,7 +38,11 @@ function createTursoServerStateMethods({first,all,run}){
     async claimOutboxEvent(id,now,leaseUntil){return Boolean(await first(SERVER_STATE_SQL.claimOutboxEvent,[leaseUntil,id,now]));},
     async completeOutboxEvent(id){await run(SERVER_STATE_SQL.completeOutboxEvent,[id]);},
     async failOutboxEvent(id,failure){await run(SERVER_STATE_SQL.failOutboxEvent,failureArgs(id,failure));},
-    async deleteOldOutboxEvents(before){await run(SERVER_STATE_SQL.deleteOldOutboxEvents,[before]);}
+    async deleteOldOutboxEvents(before){await run(SERVER_STATE_SQL.deleteOldOutboxEvents,[before]);},
+    async takeRateSlot(key,max,windowMs,now){return Boolean(await first(SERVER_STATE_SQL.takeRateSlot,rateArgs(key,max,windowMs,now)));},
+    async deleteOldRateBuckets(before){await run(SERVER_STATE_SQL.deleteOldRateBuckets,[before]);},
+    async acquireLock(name,holder,expiresAt,now){return Boolean(await first(SERVER_STATE_SQL.acquireLock,[name,holder,expiresAt,now]));},
+    async releaseLock(name,holder){await run(SERVER_STATE_SQL.releaseLock,[name,holder]);}
   };
 }
 

@@ -12,7 +12,7 @@ function settingsPayload(row){
 }
 
 /**
- * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean,
+ * @param {{store:any,auth:{requireSession:Function,validCsrf:Function},trustedOrigin:(req:any)=>boolean,rateAllowed:(req:any,key:string,max:number,windowMs:number)=>boolean|Promise<boolean>,
  *   http:{json:Function,bodyJson:Function},quota:{adminSummary:(limit?:number)=>Promise<any>},admin:{requireAdmin:Function},now?:()=>number}} dependencies
  */
 function createAiSettingsService({store,auth,trustedOrigin,rateAllowed,http,quota,admin,now=Date.now}){
@@ -36,7 +36,7 @@ function createAiSettingsService({store,auth,trustedOrigin,rateAllowed,http,quot
     try{
       if(method==="GET"){json(res,200,{settings:settingsPayload(await store.aiSettings(String(session.id))),csrfToken:session.csrf_token},noStore);return true;}
       validMutation(req,session);
-      if(!rateAllowed(req,`identity:ai:settings:${session.id}`,30,60000))throw failure("AI_RATE_LIMIT","Too many changes. Wait a moment.",429);
+      if(!await rateAllowed(req,`identity:ai:settings:${session.id}`,30,60000))throw failure("AI_RATE_LIMIT","Too many changes. Wait a moment.",429);
       if(method==="DELETE"){await store.deleteDailyBriefs(String(session.id),now());json(res,200,{deleted:true,csrfToken:session.csrf_token},noStore);return true;}
       const input=await bodyJson(req),extra=Object.keys(input&&typeof input==="object"?input:{}).filter((key)=>!["consent","dailyBrief"].includes(key));
       if(extra.length||typeof input?.consent!=="boolean"||(input.dailyBrief!==undefined&&typeof input.dailyBrief!=="boolean"))throw failure("AI_INVALID_REQUEST","Choose whether Strata AI may use your training data.",400);

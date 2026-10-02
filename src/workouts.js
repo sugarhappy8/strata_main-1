@@ -187,7 +187,7 @@ function createWorkoutService({store,auth,requireAccess,trustedOrigin,rateAllowe
       if (!match) throw workoutError("Workout not found.",404,"WORKOUT_NOT_FOUND");
       const id=match[1],allowed=id?["GET","PUT","DELETE"]:["GET","POST"];
       if (!allowed.includes(req.method)) { json(res,405,{error:"Method not allowed."},{Allow:allowed.join(", ")});return true; }
-      if (!rateAllowed(req,`identity:workout:${req.method==="GET"?"read":"write"}:${session.id}`,req.method==="GET"?300:180,60000)) throw workoutError("Too many workout requests. Wait a moment and retry.",429,"WORKOUT_RATE_LIMIT");
+      if (!await rateAllowed(req,`identity:workout:${req.method==="GET"?"read":"write"}:${session.id}`,req.method==="GET"?300:180,60000)) throw workoutError("Too many workout requests. Wait a moment and retry.",429,"WORKOUT_RATE_LIMIT");
       if (req.method==="GET") {
         if (id) {
           const workout=workoutPayload(await store.workout(session.id,id));

@@ -299,7 +299,7 @@ function createTrainingService({store,auth,requireAccess,trustedOrigin,rateAllow
       const allowed=checkInMatch?["GET","POST"]:progressionMatch?["GET"]:adaptationMatch?["POST"]:url.pathname==="/api/training-block"?["GET","PUT"]:["GET"];
       if (!allowed.includes(String(req.method))) { json(res,405,{error:"Method not allowed."},{Allow:allowed.join(", ")});return true; }
       const write=req.method!=="GET";
-      if (!rateAllowed(req,`identity:training:${write?"write":"read"}:${session.id}`,write?120:240,60000)) throw trainingError("Too many training requests. Wait a moment and retry.",429,"TRAINING_RATE_LIMIT");
+      if (!await rateAllowed(req,`identity:training:${write?"write":"read"}:${session.id}`,write?120:240,60000)) throw trainingError("Too many training requests. Wait a moment and retry.",429,"TRAINING_RATE_LIMIT");
       if (write) validMutation(req,session);
       if (checkInMatch) {
         const workout=await completedWorkout(session.id,String(checkInMatch[1]));

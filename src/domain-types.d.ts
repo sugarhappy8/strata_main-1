@@ -382,7 +382,7 @@ export interface BillingServiceDependencies {
   paymentConfig:PaymentConfig;
   enforcePaddleIps:boolean;
   requestAddress:(request:HttpRequest)=>string;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   isUniqueViolation:(error:unknown)=>boolean;
   getAuth:()=>AuthService|undefined;
   getUserPayload:(account:SessionRow)=>Promise<JsonObject>;
@@ -703,6 +703,12 @@ export interface ServerStateStore {
   completeOutboxEvent(id:string):Promise<void>;
   failOutboxEvent(id:string,failure:OutboxFailure):Promise<void>;
   deleteOldOutboxEvents(before:number):Promise<void>;
+  /** Takes one request slot in the key's fixed window; false when the window is full. */
+  takeRateSlot(key:string,max:number,windowMs:number,now:number):Promise<boolean>;
+  deleteOldRateBuckets(before:number):Promise<void>;
+  /** Takes or renews a named lock until expiresAt; false while another holder has it. */
+  acquireLock(name:string,holder:string,expiresAt:number,now:number):Promise<boolean>;
+  releaseLock(name:string,holder:string):Promise<void>;
 }
 
 export interface SetupServiceDependencies {
@@ -838,7 +844,7 @@ export interface TrainingServiceDependencies {
   auth:Pick<AuthService,"validCsrf">;
   requireAccess:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   trustedOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   events?:EventBus|null;
 }
@@ -993,7 +999,7 @@ export interface CoachingServiceDependencies {
   auth:Pick<AuthService,"validCsrf">;
   requireAccess:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   trustedOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   now?:()=>number;
   events?:EventBus|null;
@@ -1025,7 +1031,7 @@ export interface AuthServiceDependencies {
   exerciseIds?:Set<string>;
   isUniqueViolation?:(error:unknown)=>boolean;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:HttpHelpers;
   getUserPayload:(account:AccountIdentityRow)=>Promise<unknown>;
   claimAdminForLogin?:(user:UserRow)=>Promise<UserRow>;
@@ -1040,7 +1046,7 @@ export interface AccountSelfServiceDependencies {
   http:Pick<HttpHelpers,"json"|"bodyJson"|"securityHeaders">;
   requireSession:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   validCsrf:(request:HttpRequest,session:SessionRow)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   logger?:Pick<Console,"error">;
   now?:()=>number;
 }
@@ -1067,7 +1073,7 @@ export interface AccountDeletionDependencies {
   requireSession:(request:HttpRequest,response:HttpResponse)=>Promise<SessionRow|null>;
   validCsrf:(request:HttpRequest,session:SessionRow)=>boolean;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   passwordMatches:(password:string,user:CredentialUserRow)=>Promise<boolean>;
   accountEmailHash:(email:string)=>string;
   accountActionError:(message:string,status:number,code:string)=>Error&{status:number;code:string};
@@ -1113,7 +1119,7 @@ export interface SocialAuthServiceDependencies {
   getAuth:()=>AuthService|undefined;
   claimAdminForLogin?:(user:any)=>Promise<any>;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:Pick<HttpHelpers,"bodyForm"|"redirect"|"securityHeaders">;
   isUniqueViolation?:(error:unknown)=>boolean;
   client?:ReturnType<typeof import("./social-auth-client").createSocialAuthClient>|null;
@@ -1136,7 +1142,7 @@ export interface AdminServiceDependencies {
   emailConfig:Pick<EmailConfig,"enabled">&Partial<Pick<EmailConfig,"configured">>;
   paymentConfig:Pick<PaymentConfig,"enabled">&Partial<Pick<PaymentConfig,"configured">>;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:JsonHttpHelpers;
   environment?:NodeJS.ProcessEnv;
   enforcePaddleIps?:boolean;
@@ -1168,7 +1174,7 @@ export interface SupportServiceDependencies {
   admin:AdminService;
   requestAddress:(request:HttpRequest)=>string;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   isUniqueViolation?:(error:unknown)=>boolean;
   http:Pick<HttpHelpers,"json"|"bodyJson"|"bodyForm"|"redirect">;
   logger?:Pick<Console,"error">;
@@ -1199,7 +1205,7 @@ export interface ServiceCompositionDependencies {
   enforcePaddleIps:boolean;
   exerciseIds:Set<string>;
   trustedAuthOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   requestAddress:(request:HttpRequest)=>string;
   http:HttpHelpers;
   getUserPayload:(account:AccountIdentityRow)=>Promise<unknown>;
@@ -1264,7 +1270,7 @@ export interface AppleBillingServiceDependencies {
   getAuth:()=>Pick<AuthService,"requireSession"|"validCsrf">|undefined;
   getUserPayload:(account:SessionRow)=>Promise<JsonObject>;
   trustedOrigin:(request:HttpRequest)=>boolean;
-  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean;
+  rateAllowed:(request:HttpRequest,key:string,limit:number,windowMs?:number)=>boolean|Promise<boolean>;
   http:Pick<HttpHelpers,"json">;
   logger:OperationalLogger;
   now?:()=>number;

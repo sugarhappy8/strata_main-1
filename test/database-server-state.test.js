@@ -86,3 +86,38 @@ test("a failed snapshot rebuild waits in the outbox and is healed by the member'
     assert.equal((await local.dueOutboxEvents(1e15,10)).length,0,"and it left the outbox");
   }finally{await pair.close();}
 });
+
+test("SQLite and Turso take rate slots with one conditional write per fixed window",{concurrency:false},async()=>{
+  const pair=await stores();
+  try{
+    for(const store of pair.list){
+      const key="a".repeat(64),other="b".repeat(64),taken=[];
+      for(let index=0;index<4;index+=1)taken.push(await store.takeRateSlot(key,3,60_000,1_000+index));
+      assert.deepEqual(taken,[true,true,true,false],"the fourth request in the window is refused");
+      assert.equal(await store.takeRateSlot(other,3,60_000,1_010),true,"keys are counted apart");
+      assert.equal(await store.takeRateSlot(key,3,60_000,60_999),false,"still the same window");
+      assert.equal(await store.takeRateSlot(key,3,60_000,61_000),true,"an expired window starts again at one");
+      assert.deepEqual([await store.takeRateSlot(key,3,60_000,61_001),await store.takeRateSlot(key,3,60_000,61_002),await store.takeRateSlot(key,3,60_000,61_003)],[true,true,false]);
+      await store.deleteOldRateBuckets(61_000);
+      assert.equal(await store.takeRateSlot(other,3,60_000,61_004),true,"the old bucket was removed and starts over");
+      await assert.rejects(store.takeRateSlot("raw-email@example.test",3,60_000,1),/CHECK constraint/i,"only hashed keys are stored");
+    }
+  }finally{await pair.close();}
+});
+
+test("SQLite and Turso give a lock to one holder until it expires or is released",{concurrency:false},async()=>{
+  const pair=await stores();
+  try{
+    for(const store of pair.list){
+      assert.equal(await store.acquireLock("polar-sync","server-a",10_000,1_000),true);
+      assert.equal(await store.acquireLock("polar-sync","server-b",11_000,2_000),false,"held by another server");
+      assert.equal(await store.acquireLock("polar-sync","server-a",12_000,3_000),true,"the holder renews it");
+      assert.equal(await store.acquireLock("polar-sync","server-b",13_000,11_999),false);
+      assert.equal(await store.acquireLock("polar-sync","server-b",20_000,12_000),true,"an expired lock can be taken over");
+      await store.releaseLock("polar-sync","server-a");
+      assert.equal(await store.acquireLock("polar-sync","server-a",21_000,13_000),false,"only the holder can release it");
+      await store.releaseLock("polar-sync","server-b");
+      assert.equal(await store.acquireLock("polar-sync","server-a",21_000,13_000),true);
+    }
+  }finally{await pair.close();}
+});

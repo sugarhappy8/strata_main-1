@@ -249,7 +249,7 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
     const session=await auth.requireSession(req,res);if(!session)return;
     if(!trustedOrigin(req)){json(res,403,{error:"Purchase security check failed. Refresh and try again.",code:"APPLE_ORIGIN_REQUIRED"});return;}
     if(!auth.validCsrf(req,session)){json(res,403,{error:"Security check failed. Refresh and try again.",code:"INVALID_CSRF"});return;}
-    if(!rateAllowed(req,`identity:apple-transactions:${session.id}`,TRANSACTION_REQUESTS_PER_WINDOW)){
+    if(!await rateAllowed(req,`identity:apple-transactions:${session.id}`,TRANSACTION_REQUESTS_PER_WINDOW)){
       json(res,429,{error:"Too many purchase updates. Try again in a few minutes.",code:"APPLE_RATE_LIMIT"});return;
     }
     const tokens=(await readJson(req)).signedTransactions;
@@ -327,7 +327,7 @@ function createAppleBillingService({store,settings,getAuth,getUserPayload,truste
   /** @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res */
   async function handleNotification(req,res){
     if(req.method!=="POST"){json(res,405,{error:"Method not allowed."},{Allow:"POST"});return;}
-    if(!rateAllowed(req,"apple-notifications",NOTIFICATIONS_PER_WINDOW)){json(res,429,{error:"Too many notifications. Retry later."});return;}
+    if(!await rateAllowed(req,"apple-notifications",NOTIFICATIONS_PER_WINDOW)){json(res,429,{error:"Too many notifications. Retry later."});return;}
     const signedPayload=(await readJson(req)).signedPayload;
     if(typeof signedPayload!=="string")throw appleError("The notification has no signedPayload.",400,"APPLE_SIGNATURE_INVALID");
     const outcome=await processNotification(verifySigned(signedPayload));

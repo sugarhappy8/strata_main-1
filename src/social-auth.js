@@ -86,7 +86,7 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
     if(!trustedAuthOrigin(req)){fail(SOCIAL_MESSAGES.origin);return;}
     const id=SOCIAL_PROVIDER_IDS.find((candidate)=>candidate===input.provider);
     if(!id||!settings.providers[id].configured){fail(SOCIAL_MESSAGES.unavailable);return;}
-    if(!rateAllowed(req,"social-sign-in-start",30)){fail(SOCIAL_MESSAGES.rate);return;}
+    if(!await rateAllowed(req,"social-sign-in-start",30)){fail(SOCIAL_MESSAGES.rate);return;}
     const state=randomId(32),browser=randomId(32),nonce=randomId(32),codeVerifier=randomId(48),time=now(),redirectUri=redirectUriFor(req,id);
     await store.insertSocialSignInState({stateHash:sha256(state),provider:id,browserHash:sha256(browser),nonce,codeVerifier,intent,nextPath:auth().safeAccountNext(input.next),redirectUri,createdAt:time,expiresAt:time+STATE_TTL_MS});
     redirect(res,provider.authorizeUrl(id,{state,nonce,codeVerifier,redirectUri}),{"Set-Cookie":browserCookie(browser,STATE_TTL_MS/1000)});
@@ -97,7 +97,7 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
     if(req.method!=="GET"){notAllowed(res,"GET");return;}
     const input=Object.fromEntries(url.searchParams);
     const state=text(input.state),code=text(input.code),problem=text(input.error),issuer=text(input.iss);
-    if(!TOKEN.test(state)||!rateAllowed(req,"social-sign-in-callback",60)){backToAccount(res,"login",SOCIAL_MESSAGES.expired,"");return;}
+    if(!TOKEN.test(state)||!await rateAllowed(req,"social-sign-in-callback",60)){backToAccount(res,"login",SOCIAL_MESSAGES.expired,"");return;}
     const usable=!problem&&code&&code.length<=2048&&/^[\x21-\x7e]+$/.test(code)&&(!issuer||settings.providers[id].issuers.includes(issuer));
     if(!usable){
       const discarded=await store.discardSocialSignInState(sha256(state));
@@ -152,7 +152,7 @@ function createSocialAuthService({store,settings,getAuth,claimAdminForLogin=asyn
   async function finish(req,res,url){
     if(req.method!=="GET"){notAllowed(res,"GET");return;}
     const clear=browserCookie("",0),state=text(url.searchParams.get("state")),browser=browserToken(req);
-    if(!TOKEN.test(state)||!TOKEN.test(browser)||!rateAllowed(req,"social-sign-in-finish",30)){backToAccount(res,"login",SOCIAL_MESSAGES.expired,"",{"Set-Cookie":clear});return;}
+    if(!TOKEN.test(state)||!TOKEN.test(browser)||!await rateAllowed(req,"social-sign-in-finish",30)){backToAccount(res,"login",SOCIAL_MESSAGES.expired,"",{"Set-Cookie":clear});return;}
     const pending=await store.consumeSocialSignInState(sha256(state),sha256(browser),now());
     if(!pending){backToAccount(res,"login",SOCIAL_MESSAGES.expired,"",{"Set-Cookie":clear});return;}
     const id=/** @type {import("./domain-types").SocialProviderId} */(text(pending.provider)),intent=text(pending.intent),next=auth().safeAccountNext(pending.next_path);
