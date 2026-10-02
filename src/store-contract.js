@@ -4,11 +4,45 @@
 // Both database adapters must expose this complete application-facing API.
 const STORE_METHODS = Object.freeze([
   "ping",
-  "trainingLinks","upsertTrainingLink","deleteTrainingLink","deleteTrainingLinksForProvider",
-  "dailySnapshots","upsertDailySnapshot","saveDailyBrief","deleteDailyBriefs","deleteOldDailySnapshots","deleteUserDailySnapshots",
-  "insertPlanChange","planChanges",
-  "aiSettings","upsertAiSettings","briefCandidates","aiUsage","addAiUsage","refundAiUsage","claimMemberAiRequest","claimGlobalAiRequest","insertAiJob","aiJob","activeAiJob","queuedAiJobs","aiJobPosition","claimAiJob","finishAiJob","requeueStaleAiJobs","deleteFinishedAiJobs","aiUsageTotals","aiUsageTop","deleteOldAiUsage",
-  "appleSubscription","appleSubscriptionsForUser","upsertAppleSubscription","hasActiveAppleSubscription","appleNotification","recordAppleNotification","deleteOldAppleNotifications",
+  "trainingLinks",
+  "upsertTrainingLink",
+  "deleteTrainingLink",
+  "deleteTrainingLinksForProvider",
+  "dailySnapshots",
+  "upsertDailySnapshot",
+  "saveDailyBrief",
+  "deleteDailyBriefs",
+  "deleteOldDailySnapshots",
+  "deleteUserDailySnapshots",
+  "insertPlanChange",
+  "planChanges",
+  "aiSettings",
+  "upsertAiSettings",
+  "briefCandidates",
+  "aiUsage",
+  "addAiUsage",
+  "refundAiUsage",
+  "claimMemberAiRequest",
+  "claimGlobalAiRequest",
+  "insertAiJob",
+  "aiJob",
+  "activeAiJob",
+  "queuedAiJobs",
+  "aiJobPosition",
+  "claimAiJob",
+  "finishAiJob",
+  "requeueStaleAiJobs",
+  "deleteFinishedAiJobs",
+  "aiUsageTotals",
+  "aiUsageTop",
+  "deleteOldAiUsage",
+  "appleSubscription",
+  "appleSubscriptionsForUser",
+  "upsertAppleSubscription",
+  "hasActiveAppleSubscription",
+  "appleNotification",
+  "recordAppleNotification",
+  "deleteOldAppleNotifications",
   "coachingProfile",
   "upsertCoachingProfile",
   "coachingWeek",
@@ -107,19 +141,22 @@ const STORE_METHODS = Object.freeze([
   "completePurchase",
   "updatePurchaseStatus",
   "createPaddleSubscription",
-  "updatePaddleSubscription","updatePaddleSubscriptionCatalog",
+  "updatePaddleSubscription",
+  "updatePaddleSubscriptionCatalog",
   "subscriptionById",
   "subscriptionForUser",
   "upsertAdjustment",
   "adjustmentById",
   "revokePurchase",
   "hasPaidDiscoveryAccess",
-  "hasCurrentPaidDiscoveryAccess","hasEntitledPaidDiscoveryAccess",
+  "hasCurrentPaidDiscoveryAccess",
+  "hasEntitledPaidDiscoveryAccess",
   "hasDiscoveryAccess",
   "adminControls",
   "writeAdminControls",
   "discoveryAccessSummary",
-  "currentDiscoveryAccessSummary","entitledDiscoveryAccessSummary",
+  "currentDiscoveryAccessSummary",
+  "entitledDiscoveryAccessSummary",
   "webhookEvent",
   "recordWebhookEvent",
   "adminPrincipal",
@@ -140,9 +177,48 @@ const STORE_METHODS = Object.freeze([
   "markSupportResponseSent",
   "claimSupportRequestEvent",
   "deleteOldSupportRequestEvents",
-  "deviceConnection","deviceConnectionByProviderUser","insertDeviceConnectState","readDeviceConnectState","consumeDeviceConnectState","discardDeviceConnectState","upsertDeviceConnection","updateDeviceToken","recordDeviceSync","markDeviceConnectionDue","dueDeviceConnections","updateDeviceSettings","deleteDeviceData","upsertWellnessNight","upsertWellnessDay","upsertWellnessWorkout","wellnessNights","wellnessDays","wellnessWorkouts","deleteExpiredDeviceData",
-  "insertSocialSignInState","recordSocialSignInReturn","discardSocialSignInState","consumeSocialSignInState","accountIdentity","accountIdentities","accountSignInMethods","linkAccountIdentity","touchAccountIdentity","createSocialAccount","deleteExpiredSocialSignInData",
-  "addOutboxEvent","dueOutboxEvents","userOutboxEvents","claimOutboxEvent","completeOutboxEvent","failOutboxEvent","deleteOldOutboxEvents","takeRateSlot","deleteOldRateBuckets","acquireLock","releaseLock",
+  "deviceConnection",
+  "deviceConnectionByProviderUser",
+  "insertDeviceConnectState",
+  "readDeviceConnectState",
+  "consumeDeviceConnectState",
+  "discardDeviceConnectState",
+  "upsertDeviceConnection",
+  "updateDeviceToken",
+  "recordDeviceSync",
+  "markDeviceConnectionDue",
+  "dueDeviceConnections",
+  "updateDeviceSettings",
+  "deleteDeviceData",
+  "upsertWellnessNight",
+  "upsertWellnessDay",
+  "upsertWellnessWorkout",
+  "wellnessNights",
+  "wellnessDays",
+  "wellnessWorkouts",
+  "deleteExpiredDeviceData",
+  "insertSocialSignInState",
+  "recordSocialSignInReturn",
+  "discardSocialSignInState",
+  "consumeSocialSignInState",
+  "accountIdentity",
+  "accountIdentities",
+  "accountSignInMethods",
+  "linkAccountIdentity",
+  "touchAccountIdentity",
+  "createSocialAccount",
+  "deleteExpiredSocialSignInData",
+  "addOutboxEvent",
+  "dueOutboxEvents",
+  "userOutboxEvents",
+  "claimOutboxEvent",
+  "completeOutboxEvent",
+  "failOutboxEvent",
+  "deleteOldOutboxEvents",
+  "takeRateSlot",
+  "deleteOldRateBuckets",
+  "acquireLock",
+  "releaseLock",
   "close",
 ]);
 const STORE_METHOD_SET = new Set(STORE_METHODS);
@@ -155,17 +231,19 @@ const STORE_METHOD_SET = new Set(STORE_METHODS);
  * @param {T} methods
  * @returns {{kind:string}&T}
  */
-function defineStore(kind,methods) {
-  const missing=STORE_METHODS.filter((name) => typeof methods[name] !== "function");
-  const unexpected=Object.keys(methods).filter((name) => !STORE_METHOD_SET.has(name));
-  if (missing.length||unexpected.length) {
-    const details=[
-      missing.length?`missing or invalid: ${missing.join(", ")}`:"",
-      unexpected.length?`unexpected: ${unexpected.join(", ")}`:""
-    ].filter(Boolean).join("; ");
+function defineStore(kind, methods) {
+  const missing = STORE_METHODS.filter((name) => typeof methods[name] !== "function");
+  const unexpected = Object.keys(methods).filter((name) => !STORE_METHOD_SET.has(name));
+  if (missing.length || unexpected.length) {
+    const details = [
+      missing.length ? `missing or invalid: ${missing.join(", ")}` : "",
+      unexpected.length ? `unexpected: ${unexpected.join(", ")}` : "",
+    ]
+      .filter(Boolean)
+      .join("; ");
     throw new TypeError(`${kind} store contract mismatch (${details}).`);
   }
-  return {kind,...methods};
+  return { kind, ...methods };
 }
 
-module.exports = { STORE_METHODS,defineStore };
+module.exports = { STORE_METHODS, defineStore };

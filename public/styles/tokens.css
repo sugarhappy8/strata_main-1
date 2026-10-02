@@ -4,49 +4,61 @@
    the Strata+ studio, Train, onboarding, and the offline workout render at night. */
 :root {
   /* Brand */
-  --strata-ink:#10110f;
-  --strata-accent:#d4f578;
-  --strata-green-text:#4a6a10;
-  --strata-danger:#b3261e;
-  --strata-focus:#6f8e27;
+  --strata-ink: #10110f;
+  --strata-accent: #d4f578;
+  --strata-green-text: #4a6a10;
+  --strata-danger: #b3261e;
+  --strata-focus: #6f8e27;
 
   /* Paper: light pages */
-  --strata-paper:#f3f4ef;
-  --strata-surface:#ffffff;
-  --strata-muted:#62675e;
-  --strata-line:#d2d6cc;
+  --strata-paper: #f3f4ef;
+  --strata-surface: #ffffff;
+  --strata-muted: #62675e;
+  --strata-line: #d2d6cc;
 
   /* Night: dark pages */
-  --strata-night:#10110f;
-  --strata-night-panel:#191b17;
-  --strata-night-text:#f2f3eb;
+  --strata-night: #10110f;
+  --strata-night-panel: #191b17;
+  --strata-night-text: #f2f3eb;
 
   /* Type */
-  --strata-font:"Manrope",Arial,sans-serif;
-  --strata-mono:"DM Mono",ui-monospace,monospace;
+  --strata-font: "Manrope", Arial, sans-serif;
+  --strata-mono: "DM Mono", ui-monospace, monospace;
 
   /* Radius */
-  --strata-radius-control:8px;
-  --strata-radius-surface:14px;
-  --strata-radius-site:16px;
-  --strata-radius-card:22px;
-  --strata-radius-pill:999px;
+  --strata-radius-control: 8px;
+  --strata-radius-surface: 14px;
+  --strata-radius-site: 16px;
+  --strata-radius-card: 22px;
+  --strata-radius-pill: 999px;
 
   /* Spacing */
-  --strata-space-1:4px;
-  --strata-space-2:8px;
-  --strata-space-3:12px;
-  --strata-space-4:16px;
-  --strata-space-5:24px;
-  --strata-space-6:32px;
-  --strata-space-7:48px;
-  --strata-space-8:64px;
+  --strata-space-1: 4px;
+  --strata-space-2: 8px;
+  --strata-space-3: 12px;
+  --strata-space-4: 16px;
+  --strata-space-5: 24px;
+  --strata-space-6: 32px;
+  --strata-space-7: 48px;
+  --strata-space-8: 64px;
 
   /* Motion */
-  --strata-ease-out:cubic-bezier(.22,1,.36,1);
+  --strata-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Inside the STRATA iOS app (app-shell.js sets data-app before first paint) the site is already installed. */
-:root[data-app="ios"] a[href^="/install"] { display:none !important; }
+:root[data-app="ios"] a[href^="/install"] {
+  display: none !important;
+}
 /* The app's status bar always shows light icons; keep the strip under them dark on every page, light pages included. */
-:root[data-app="ios"] body::before { content:""; position:fixed; z-index:2147483647; top:0; right:0; left:0; height:env(safe-area-inset-top); background:var(--strata-ink); pointer-events:none; }
+:root[data-app="ios"] body::before {
+  content: "";
+  position: fixed;
+  z-index: 2147483647;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: env(safe-area-inset-top);
+  background: var(--strata-ink);
+  pointer-events: none;
+}

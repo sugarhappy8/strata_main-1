@@ -1,17 +1,28 @@
 /* global module */
-(function(root,factory){
-  const api=factory();
-  if(typeof module==="object"&&module.exports)module.exports=api;
-  root.StrataPricingState=api;
-})(typeof globalThis!=="undefined"?globalThis:this,function(){
+(function (root, factory) {
+  const api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  root.StrataPricingState = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
-  function createState(){
-    return{
-      user:null,csrfToken:"",accountStatus:"loading",config:null,configError:"",paddleReady:false,busy:true,
-      awaitingAccess:false,checkoutOpen:false,checkoutPrepared:false,actionError:"",currentTransactionId:"",currentCheckoutUserId:""
+  function createState() {
+    return {
+      user: null,
+      csrfToken: "",
+      accountStatus: "loading",
+      config: null,
+      configError: "",
+      paddleReady: false,
+      busy: true,
+      awaitingAccess: false,
+      checkoutOpen: false,
+      checkoutPrepared: false,
+      actionError: "",
+      currentTransactionId: "",
+      currentCheckoutUserId: "",
     };
   }
 
-  return{createState};
+  return { createState };
 });

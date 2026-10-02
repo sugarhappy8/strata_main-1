@@ -6,7 +6,7 @@
 // buckets count requests per hashed key in a fixed window. A lock lets one holder run a job (such as the Polar sync
 // loop) until it expires.
 
-const SERVER_STATE_SCHEMA=Object.freeze([
+const SERVER_STATE_SCHEMA = Object.freeze([
   `CREATE TABLE IF NOT EXISTS event_outbox (
     id TEXT PRIMARY KEY,
     event_name TEXT NOT NULL,
@@ -39,28 +39,42 @@ const SERVER_STATE_SCHEMA=Object.freeze([
     name TEXT PRIMARY KEY,
     holder TEXT NOT NULL,
     expires_at INTEGER NOT NULL
-  )`
+  )`,
 ]);
 
-const OUTBOX="id,event_name,handler_key,user_id,payload_json,attempts";
+const OUTBOX = "id,event_name,handler_key,user_id,payload_json,attempts";
 
-const SERVER_STATE_SQL=Object.freeze({
-  addOutboxEvent:"INSERT INTO event_outbox(id,event_name,handler_key,user_id,payload_json,attempts,attempted_at,next_attempt_at,last_error,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)",
-  dueOutboxEvents:`SELECT ${OUTBOX} FROM event_outbox WHERE gave_up_at IS NULL AND next_attempt_at<=? AND lease_until<=? ORDER BY next_attempt_at LIMIT ?`,
+const SERVER_STATE_SQL = Object.freeze({
+  addOutboxEvent: `INSERT INTO event_outbox(id,event_name,handler_key,user_id,payload_json,attempts,attempted_at,next_attempt_at,last_error,created_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?)`,
+  dueOutboxEvents: `SELECT ${OUTBOX} FROM event_outbox WHERE gave_up_at IS NULL AND next_attempt_at<=? AND lease_until<=? ORDER BY next_attempt_at LIMIT ?`,
   // On a read, a member's queued reactions are retried early, but no more than once per spacing interval.
-  userOutboxEvents:`SELECT ${OUTBOX} FROM event_outbox WHERE user_id=? AND gave_up_at IS NULL AND lease_until<=? AND attempted_at<=? ORDER BY created_at LIMIT ?`,
+  userOutboxEvents: `SELECT ${OUTBOX} FROM event_outbox WHERE user_id=? AND gave_up_at IS NULL AND lease_until<=? AND attempted_at<=? ORDER BY created_at LIMIT ?`,
   // A lease makes one retry own the row, so the timer and a read never run the same reaction at once.
-  claimOutboxEvent:"UPDATE event_outbox SET lease_until=? WHERE id=? AND gave_up_at IS NULL AND lease_until<=? RETURNING id",
-  completeOutboxEvent:"DELETE FROM event_outbox WHERE id=?",
-  failOutboxEvent:"UPDATE event_outbox SET attempts=?,attempted_at=?,next_attempt_at=?,lease_until=0,last_error=?,gave_up_at=? WHERE id=?",
-  deleteOldOutboxEvents:"DELETE FROM event_outbox WHERE gave_up_at IS NOT NULL AND gave_up_at<?",
+  claimOutboxEvent:
+    "UPDATE event_outbox SET lease_until=? WHERE id=? AND gave_up_at IS NULL AND lease_until<=? RETURNING id",
+  completeOutboxEvent: "DELETE FROM event_outbox WHERE id=?",
+  failOutboxEvent:
+    "UPDATE event_outbox SET attempts=?,attempted_at=?,next_attempt_at=?,lease_until=0,last_error=?,gave_up_at=? WHERE id=?",
+  deleteOldOutboxEvents: "DELETE FROM event_outbox WHERE gave_up_at IS NOT NULL AND gave_up_at<?",
   // One conditional write takes a slot: a new or expired window starts at 1, an open one counts up to the limit, and a
   // full one is left untouched so no row comes back.
-  takeRateSlot:"INSERT INTO rate_buckets(bucket_key,window_start,count) VALUES(?,?,1) ON CONFLICT(bucket_key) DO UPDATE SET count=CASE WHEN rate_buckets.window_start<=? THEN 1 ELSE rate_buckets.count+1 END,window_start=CASE WHEN rate_buckets.window_start<=? THEN excluded.window_start ELSE rate_buckets.window_start END WHERE rate_buckets.window_start<=? OR rate_buckets.count<? RETURNING count",
-  deleteOldRateBuckets:"DELETE FROM rate_buckets WHERE window_start<?",
+  takeRateSlot: `INSERT INTO rate_buckets(bucket_key,window_start,count)
+    VALUES(?,?,1)
+    ON CONFLICT(bucket_key) DO UPDATE
+    SET count=CASE WHEN rate_buckets.window_start<=? THEN 1 ELSE rate_buckets.count+1 END,
+      window_start=CASE WHEN rate_buckets.window_start<=? THEN excluded.window_start ELSE rate_buckets.window_start END
+    WHERE rate_buckets.window_start<=? OR rate_buckets.count<?
+    RETURNING count`,
+  deleteOldRateBuckets: "DELETE FROM rate_buckets WHERE window_start<?",
   // A lock is taken when free, expired, or already held by the same holder (which renews it).
-  acquireLock:"INSERT INTO locks(name,holder,expires_at) VALUES(?,?,?) ON CONFLICT(name) DO UPDATE SET holder=excluded.holder,expires_at=excluded.expires_at WHERE locks.holder=excluded.holder OR locks.expires_at<=? RETURNING holder",
-  releaseLock:"DELETE FROM locks WHERE name=? AND holder=?"
+  acquireLock: `INSERT INTO locks(name,holder,expires_at)
+    VALUES(?,?,?)
+    ON CONFLICT(name) DO UPDATE
+    SET holder=excluded.holder,expires_at=excluded.expires_at
+    WHERE locks.holder=excluded.holder OR locks.expires_at<=?
+    RETURNING holder`,
+  releaseLock: "DELETE FROM locks WHERE name=? AND holder=?",
 });
 
-module.exports={SERVER_STATE_SCHEMA,SERVER_STATE_SQL};
+module.exports = { SERVER_STATE_SCHEMA, SERVER_STATE_SQL };

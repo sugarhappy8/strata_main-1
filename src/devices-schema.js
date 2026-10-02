@@ -5,7 +5,7 @@
 // every wellness write is joined to the member's current connection, so a slow sync can never write data for a
 // Polar account that was disconnected or replaced in the meantime.
 
-const DEVICE_SCHEMA=Object.freeze([
+const DEVICE_SCHEMA = Object.freeze([
   `CREATE TABLE IF NOT EXISTS device_connections (
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     provider TEXT NOT NULL CHECK(provider IN ('polar')),
@@ -100,46 +100,105 @@ const DEVICE_SCHEMA=Object.freeze([
       DELETE FROM wellness_nights WHERE user_id=OLD.id;
       DELETE FROM wellness_days WHERE user_id=OLD.id;
       DELETE FROM wellness_workouts WHERE user_id=OLD.id;
-    END`
+    END`,
 ]);
 
-const CONNECTION="user_id,provider,provider_user_id,member_ref,token_sealed,token_expires_at,status,settings_json,consent_version,connected_at,synced_through,last_sync_at,last_error,next_sync_at,failures,revision,updated_at";
-const NIGHT_COLUMNS="night_date,recovery_status,ans_charge,ans_charge_v4,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at";
-const NIGHT="night_date,recovery_status,COALESCE(ans_charge_v4,ans_charge) AS ans_charge,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at";
-const DAY="day_date,resting_hr,min_hr,avg_hr,max_hr,samples,buckets_json,updated_at";
-const WORKOUT="external_id,started_at,local_date,duration_seconds,sport,calories,hr_avg,hr_max,cardio_load,updated_at";
-const OWNED="FROM device_connections c WHERE c.user_id=? AND c.provider=? AND c.provider_user_id=?";
+const CONNECTION =
+  "user_id,provider,provider_user_id,member_ref,token_sealed,token_expires_at,status,settings_json,consent_version,connected_at,synced_through,last_sync_at,last_error,next_sync_at,failures,revision,updated_at";
+const NIGHT_COLUMNS =
+  "night_date,recovery_status,ans_charge,ans_charge_v4,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at";
+const NIGHT =
+  "night_date,recovery_status,COALESCE(ans_charge_v4,ans_charge) AS ans_charge,ans_charge_status,sleep_charge,heart_rate_avg,hrv_avg,breathing_rate_avg,sleep_score,sleep_start,sleep_end,asleep_seconds,light_seconds,deep_seconds,rem_seconds,interruption_seconds,updated_at";
+const DAY = "day_date,resting_hr,min_hr,avg_hr,max_hr,samples,buckets_json,updated_at";
+const WORKOUT =
+  "external_id,started_at,local_date,duration_seconds,sport,calories,hr_avg,hr_max,cardio_load,updated_at";
+const OWNED =
+  "FROM device_connections c WHERE c.user_id=? AND c.provider=? AND c.provider_user_id=?";
 /** @param {string} columns */
-const keep=(columns)=>columns.split(",").map((column)=>`${column}=COALESCE(excluded.${column},${column})`).join(",");
+const keep = (columns) =>
+  columns
+    .split(",")
+    .map((column) => `${column}=COALESCE(excluded.${column},${column})`)
+    .join(",");
 
-const DEVICE_SQL=Object.freeze({
-  deviceConnection:`SELECT ${CONNECTION} FROM device_connections WHERE user_id=? AND provider=?`,
-  deviceConnectionByProviderUser:`SELECT ${CONNECTION} FROM device_connections WHERE provider=? AND provider_user_id=?`,
-  insertDeviceConnectState:"INSERT INTO device_connect_states(state_hash,user_id,provider,session_hash,redirect_uri,created_at,expires_at,used_at) SELECT ?,u.id,?,?,?,?,?,NULL FROM users u WHERE u.id=? AND u.suspended_at IS NULL RETURNING state_hash",
-  readDeviceConnectState:"SELECT provider,expires_at,used_at FROM device_connect_states WHERE state_hash=?",
-  consumeDeviceConnectState:"UPDATE device_connect_states SET used_at=? WHERE state_hash=? AND user_id=? AND session_hash=? AND used_at IS NULL AND expires_at>? RETURNING provider,redirect_uri",
-  discardDeviceConnectState:"UPDATE device_connect_states SET used_at=? WHERE state_hash=? AND used_at IS NULL",
-  upsertDeviceConnection:`INSERT INTO device_connections(${CONNECTION}) SELECT u.id,?,?,?,?,?,'active',?,?,?,NULL,NULL,NULL,?,0,1,? FROM users u WHERE u.id=? AND u.suspended_at IS NULL ON CONFLICT(user_id,provider) DO UPDATE SET provider_user_id=excluded.provider_user_id,member_ref=excluded.member_ref,token_sealed=excluded.token_sealed,token_expires_at=excluded.token_expires_at,status='active',consent_version=excluded.consent_version,connected_at=excluded.connected_at,synced_through=CASE WHEN device_connections.provider_user_id=excluded.provider_user_id THEN device_connections.synced_through ELSE NULL END,last_error=NULL,next_sync_at=excluded.next_sync_at,failures=0,revision=device_connections.revision+1,updated_at=excluded.updated_at RETURNING ${CONNECTION}`,
-  updateDeviceToken:"UPDATE device_connections SET token_sealed=?,token_expires_at=?,updated_at=? WHERE user_id=? AND provider=? AND provider_user_id=? AND status='active' RETURNING user_id",
-  recordDeviceSync:"UPDATE device_connections SET status=?,synced_through=COALESCE(?,synced_through),last_sync_at=COALESCE(?,last_sync_at),last_error=?,next_sync_at=?,failures=?,updated_at=? WHERE user_id=? AND provider=? AND provider_user_id=? RETURNING user_id",
-  markDeviceConnectionDue:"UPDATE device_connections SET next_sync_at=MIN(next_sync_at,?),updated_at=? WHERE provider=? AND provider_user_id=? AND status='active' RETURNING user_id",
-  dueDeviceConnections:`SELECT ${CONNECTION} FROM device_connections WHERE status='active' AND next_sync_at<=? ORDER BY next_sync_at,user_id LIMIT ?`,
-  updateDeviceSettings:`UPDATE device_connections SET settings_json=?,revision=revision+1,updated_at=? WHERE user_id=? AND provider=? AND revision=? RETURNING ${CONNECTION}`,
-  deleteDeviceConnection:"DELETE FROM device_connections WHERE user_id=? AND provider=? RETURNING provider_user_id,token_sealed",
-  deleteWellnessNights:"DELETE FROM wellness_nights WHERE user_id=? AND provider=?",
-  deleteWellnessDays:"DELETE FROM wellness_days WHERE user_id=? AND provider=?",
-  deleteWellnessWorkouts:"DELETE FROM wellness_workouts WHERE user_id=? AND provider=?",
-  upsertWellnessNight:`INSERT INTO wellness_nights(user_id,provider,${NIGHT_COLUMNS}) SELECT c.user_id,c.provider,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? ${OWNED} ON CONFLICT(user_id,provider,night_date) DO UPDATE SET ${keep(NIGHT_COLUMNS.replace("night_date,","").replace(",updated_at",""))},updated_at=excluded.updated_at`,
-  upsertWellnessDay:`INSERT INTO wellness_days(user_id,provider,${DAY}) SELECT c.user_id,c.provider,?,?,?,?,?,?,?,? ${OWNED} ON CONFLICT(user_id,provider,day_date) DO UPDATE SET resting_hr=excluded.resting_hr,min_hr=excluded.min_hr,avg_hr=excluded.avg_hr,max_hr=excluded.max_hr,samples=excluded.samples,buckets_json=excluded.buckets_json,updated_at=excluded.updated_at`,
-  upsertWellnessWorkout:`INSERT INTO wellness_workouts(user_id,provider,${WORKOUT}) SELECT c.user_id,c.provider,?,?,?,?,?,?,?,?,?,? ${OWNED} ON CONFLICT(user_id,provider,external_id) DO UPDATE SET started_at=excluded.started_at,local_date=excluded.local_date,duration_seconds=excluded.duration_seconds,sport=excluded.sport,calories=excluded.calories,hr_avg=excluded.hr_avg,hr_max=excluded.hr_max,cardio_load=excluded.cardio_load,updated_at=excluded.updated_at`,
-  wellnessNights:`SELECT ${NIGHT} FROM wellness_nights WHERE user_id=? AND provider=? AND night_date>=? AND night_date<=? ORDER BY night_date`,
-  wellnessDays:`SELECT ${DAY} FROM wellness_days WHERE user_id=? AND provider=? AND day_date>=? AND day_date<=? ORDER BY day_date`,
-  wellnessWorkouts:`SELECT ${WORKOUT} FROM wellness_workouts WHERE user_id=? AND provider=? AND started_at>=? AND started_at<=? ORDER BY started_at`,
-  deleteExpiredDeviceStates:"DELETE FROM device_connect_states WHERE expires_at<?",
-  deleteOldWellnessNights:"DELETE FROM wellness_nights WHERE night_date<?",
-  deleteOldWellnessDays:"DELETE FROM wellness_days WHERE day_date<?",
-  deleteOldWellnessWorkouts:"DELETE FROM wellness_workouts WHERE started_at<?",
-  trimWellnessDayBuckets:"UPDATE wellness_days SET buckets_json=NULL WHERE buckets_json IS NOT NULL AND day_date<?"
+const DEVICE_SQL = Object.freeze({
+  deviceConnection: `SELECT ${CONNECTION} FROM device_connections WHERE user_id=? AND provider=?`,
+  deviceConnectionByProviderUser: `SELECT ${CONNECTION} FROM device_connections WHERE provider=? AND provider_user_id=?`,
+  insertDeviceConnectState: `INSERT INTO device_connect_states(state_hash,user_id,provider,session_hash,redirect_uri,created_at,expires_at,used_at)
+    SELECT ?,u.id,?,?,?,?,?,NULL
+    FROM users u
+    WHERE u.id=? AND u.suspended_at IS NULL
+    RETURNING state_hash`,
+  readDeviceConnectState:
+    "SELECT provider,expires_at,used_at FROM device_connect_states WHERE state_hash=?",
+  consumeDeviceConnectState: `UPDATE device_connect_states
+    SET used_at=?
+    WHERE state_hash=? AND user_id=? AND session_hash=? AND used_at IS NULL AND expires_at>?
+    RETURNING provider,redirect_uri`,
+  discardDeviceConnectState:
+    "UPDATE device_connect_states SET used_at=? WHERE state_hash=? AND used_at IS NULL",
+  upsertDeviceConnection: `INSERT INTO device_connections(${CONNECTION})
+  SELECT u.id,?,?,?,?,?,'active',?,?,?,NULL,NULL,NULL,?,0,1,?
+  FROM users u
+  WHERE u.id=? AND u.suspended_at IS NULL
+  ON CONFLICT(user_id,provider) DO UPDATE
+  SET provider_user_id=excluded.provider_user_id,member_ref=excluded.member_ref,
+    token_sealed=excluded.token_sealed,token_expires_at=excluded.token_expires_at,status='active',
+    consent_version=excluded.consent_version,connected_at=excluded.connected_at,
+    synced_through=CASE WHEN device_connections.provider_user_id=excluded.provider_user_id THEN device_connections.synced_through ELSE NULL END,
+    last_error=NULL,next_sync_at=excluded.next_sync_at,failures=0,
+    revision=device_connections.revision+1,updated_at=excluded.updated_at
+  RETURNING ${CONNECTION}`,
+  updateDeviceToken: `UPDATE device_connections
+    SET token_sealed=?,token_expires_at=?,updated_at=?
+    WHERE user_id=? AND provider=? AND provider_user_id=? AND status='active'
+    RETURNING user_id`,
+  recordDeviceSync: `UPDATE device_connections
+    SET status=?,synced_through=COALESCE(?,synced_through),last_sync_at=COALESCE(?,last_sync_at),
+      last_error=?,next_sync_at=?,failures=?,updated_at=?
+    WHERE user_id=? AND provider=? AND provider_user_id=?
+    RETURNING user_id`,
+  markDeviceConnectionDue: `UPDATE device_connections
+    SET next_sync_at=MIN(next_sync_at,?),updated_at=?
+    WHERE provider=? AND provider_user_id=? AND status='active'
+    RETURNING user_id`,
+  dueDeviceConnections: `SELECT ${CONNECTION} FROM device_connections WHERE status='active' AND next_sync_at<=? ORDER BY next_sync_at,user_id LIMIT ?`,
+  updateDeviceSettings: `UPDATE device_connections
+  SET settings_json=?,revision=revision+1,updated_at=?
+  WHERE user_id=? AND provider=? AND revision=?
+  RETURNING ${CONNECTION}`,
+  deleteDeviceConnection:
+    "DELETE FROM device_connections WHERE user_id=? AND provider=? RETURNING provider_user_id,token_sealed",
+  deleteWellnessNights: "DELETE FROM wellness_nights WHERE user_id=? AND provider=?",
+  deleteWellnessDays: "DELETE FROM wellness_days WHERE user_id=? AND provider=?",
+  deleteWellnessWorkouts: "DELETE FROM wellness_workouts WHERE user_id=? AND provider=?",
+  upsertWellnessNight: `INSERT INTO wellness_nights(user_id,provider,${NIGHT_COLUMNS})
+  SELECT c.user_id,c.provider,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? ${OWNED}
+  ON CONFLICT(user_id,provider,night_date) DO UPDATE
+  SET ${keep(NIGHT_COLUMNS.replace("night_date,", "").replace(",updated_at", ""))},
+    updated_at=excluded.updated_at`,
+  upsertWellnessDay: `INSERT INTO wellness_days(user_id,provider,${DAY})
+  SELECT c.user_id,c.provider,?,?,?,?,?,?,?,? ${OWNED}
+  ON CONFLICT(user_id,provider,day_date) DO UPDATE
+  SET resting_hr=excluded.resting_hr,min_hr=excluded.min_hr,avg_hr=excluded.avg_hr,
+    max_hr=excluded.max_hr,samples=excluded.samples,buckets_json=excluded.buckets_json,
+    updated_at=excluded.updated_at`,
+  upsertWellnessWorkout: `INSERT INTO wellness_workouts(user_id,provider,${WORKOUT})
+  SELECT c.user_id,c.provider,?,?,?,?,?,?,?,?,?,? ${OWNED}
+  ON CONFLICT(user_id,provider,external_id) DO UPDATE
+  SET started_at=excluded.started_at,local_date=excluded.local_date,
+    duration_seconds=excluded.duration_seconds,sport=excluded.sport,calories=excluded.calories,
+    hr_avg=excluded.hr_avg,hr_max=excluded.hr_max,cardio_load=excluded.cardio_load,
+    updated_at=excluded.updated_at`,
+  wellnessNights: `SELECT ${NIGHT} FROM wellness_nights WHERE user_id=? AND provider=? AND night_date>=? AND night_date<=? ORDER BY night_date`,
+  wellnessDays: `SELECT ${DAY} FROM wellness_days WHERE user_id=? AND provider=? AND day_date>=? AND day_date<=? ORDER BY day_date`,
+  wellnessWorkouts: `SELECT ${WORKOUT} FROM wellness_workouts WHERE user_id=? AND provider=? AND started_at>=? AND started_at<=? ORDER BY started_at`,
+  deleteExpiredDeviceStates: "DELETE FROM device_connect_states WHERE expires_at<?",
+  deleteOldWellnessNights: "DELETE FROM wellness_nights WHERE night_date<?",
+  deleteOldWellnessDays: "DELETE FROM wellness_days WHERE day_date<?",
+  deleteOldWellnessWorkouts: "DELETE FROM wellness_workouts WHERE started_at<?",
+  trimWellnessDayBuckets:
+    "UPDATE wellness_days SET buckets_json=NULL WHERE buckets_json IS NOT NULL AND day_date<?",
 });
 
-module.exports={DEVICE_SCHEMA,DEVICE_SQL};
+module.exports = { DEVICE_SCHEMA, DEVICE_SQL };

@@ -1,8 +1,10 @@
 # STRATA — Exercise Rankings and Workout Planning
 
-STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 9.4.0 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, Polar connections and Strata AI on Groq for Strata+ members, and a private owner dashboard.
+STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 9.5.0 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, Polar connections and Strata AI on Groq for Strata+ members, and a private owner dashboard.
 
-**Build 9.4.0 is the hardening release.** It adds no features: Apple Sandbox purchases unlock Strata+ in production only for listed review accounts, workout saves check the origin, product activity counts resist forgery and count once a day, the Strata AI quota is claimed atomically, `/api/status` shows only `ok` and `version`, failed event reactions are retried from an outbox, and rate limits, the AI queue, and the Polar loop's lock live in the database for a single server. See the [9.4.0 release guide](docs/release-9.4.0.md).
+**Build 9.5.0 is the structure and maintainability release.** It adds no features: every API route is declared in one table and one dispatcher applies the session, origin, CSRF, JSON, and feature checks, so a write is protected unless its route opts out by name; browser code has one HTML escaper and writes markup only through `public/scripts/html.js`; the code is formatted with Prettier and lines are capped; and Strata+ loads through one module entry instead of 38 script tags. See the [9.5.0 release guide](docs/release-9.5.0.md).
+
+The [9.4.0 release](docs/release-9.4.0.md) was the hardening release: Apple Sandbox purchases unlock Strata+ in production only for listed review accounts, workout saves check the origin, product counts resist forgery, the Strata AI quota is claimed atomically, `/api/status` shows only `ok` and `version`, failed event reactions are retried from an outbox, and shared state lives in the database for a single server.
 
 The [9.3.0 release](docs/release-9.3.0.md) added Sign in with Google. Members can create an account or sign in with Google next to email and password; a Google account links to an existing account only when both sides have verified the email, and the button stays off until it is configured. The iOS app keeps email sign-in.
 
@@ -36,7 +38,7 @@ The [7.8.7 release](docs/release-7.8.7.md) expanded the library to 320 movements
 
 **Build 7.8.3 restored STRATA's established visual identity and clarified Strata+.** The weekly plan is again the clear center of Plan, secondary tools are progressively disclosed, Today now distinguishes no-plan, next-scheduled, and active-session states, Train handles an empty selected day explicitly, and Progress never presents blank statistics as results. The 7.8.2 performance-based weight progression remains intact. See the [7.8.3 release guide](docs/release-7.8.3.md) for behavior and validation.
 
-The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 9.4.0 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
+The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 9.5.0 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
 
 STRATA also includes a login-free local weekly planner, account-synced plans, week templates with import and export, a deterministic 31-day workspace, community ratings, printable exports, and a private administrator help desk. Strata+ is a **$2.99 USD per month recurring subscription**; subscribing always requires explicit checkout. There is no free trial: Build 8.9.0 retired it. Paddle is the merchant of record, and the server grants paid access only after a matching transaction is provider-verified and linked to validated signed subscription state. Prior lifetime buyers remain grandfathered with no recurring charge.
 
@@ -62,7 +64,7 @@ Copy `.env.example` to `.env` and fill in the required values when testing email
 
 ## Project structure
 
-Build 9.4.0 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
+Build 9.5.0 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
 
 ```text
 server.js          Stable npm/Render bootstrap
@@ -131,7 +133,7 @@ Account APIs, authentication routes, and health checks bypass the service worker
 
 ## Public pricing, support, and policies
 
-Build 9.4.0 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
+Build 9.5.0 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
 
 Paddle receives payment information; STRATA does not receive or store full payment-card or bank-account details. Do not change the displayed amount or monthly renewal interval independently of the live Paddle catalog. Members open short-lived Paddle portal links from Account to manage payment or cancellation. Before accepting payments, make sure the public operator details match the identity required by Paddle and applicable law rather than inventing missing legal information.
 

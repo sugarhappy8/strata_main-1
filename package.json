@@ -1,6 +1,6 @@
 {
   "name": "strata-workout-index",
-  "version": "9.4.0",
+  "version": "9.5.0",
   "private": true,
   "description": "Evidence-informed exercise rankings with Strata+ personalization, session building, community weekly plans, ratings, and 31-day planning.",
   "scripts": {
@@ -13,6 +13,8 @@
     "test:e2e": "node scripts/run-test-layer.js e2e",
     "test:visual": "node --test qa/e2e/responsive-content.js qa/e2e/navigation-layout.js",
     "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.boundaries.json",
     "architecture:check": "node scripts/architecture-report.js && node scripts/frontend-architecture-report.js",
     "coverage": "node scripts/coverage-check.js",
@@ -20,7 +22,7 @@
     "benchmark:calibration": "node qa/calibration-benchmark.js",
     "preflight:production": "node --env-file-if-exists=.env scripts/config-preflight.js --require-all",
     "smoke:deploy": "node scripts/deploy-smoke.js",
-    "check": "npm run release:check && npm run architecture:check && npm run typecheck && npm run lint && npm run coverage && npm run qa:runtime && npm run performance && npm run test:e2e",
+    "check": "npm run format:check && npm run release:check && npm run architecture:check && npm run typecheck && npm run lint && npm run coverage && npm run qa:runtime && npm run performance && npm run test:e2e",
     "qa": "npm run check",
     "qa:runtime": "node qa/account-runtime-smoke.js && node qa/discover-runtime-smoke.js && node qa/planner-runtime-smoke.js && node qa/workout-runtime-smoke.js && node qa/pwa-runtime-smoke.js",
     "qa:ui": "node qa/ui-audit.js",
@@ -40,6 +42,7 @@
     "espree": "11.2.0",
     "globals": "17.12.0",
     "playwright": "1.62.1",
+    "prettier": "3.9.9",
     "typescript": "7.0.2"
   },
   "engines": {
