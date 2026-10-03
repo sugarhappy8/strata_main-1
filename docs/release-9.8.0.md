@@ -18,8 +18,8 @@ matched the product. It also moves Strata+ from $2.99 a month to **$4.99 USD a m
   `PADDLE_PRICE_ID` at 499 minor units billed monthly and `PADDLE_YEARLY_PRICE_ID` at 2999 billed yearly, on
   `PADDLE_PRODUCT_ID`; a price on the wrong cycle, or a subscription whose item cycle differs from its own, grants
   nothing.
-- Switching plans before paying switches off the unpaid checkout on the other plan; a checkout Paddle is already
-  billing is left to finish, so a payment in flight is never cancelled.
+- Switching plans before paying switches off the unpaid checkout on the other plan. (Corrected in 9.8.1: an unpaid
+  checkout open in another tab is switched off too; one that has been paid stops the new checkout instead.)
 - Account and Pricing name the member's plan ("Your yearly subscription…"). The subscription summary has `plan`.
 - Admin → Metrics counts a yearly subscription as $29.99 ÷ 12 of MRR (and after fees, Paddle's $0.50 is charged once a
   year), and adds Yearly subscriptions to Revenue now and the CSV.

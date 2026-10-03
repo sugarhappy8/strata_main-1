@@ -64,9 +64,13 @@ const DATA_LAYER_SQL = Object.freeze({
   SET source=excluded.source,detail=excluded.detail,created_at=excluded.created_at`,
   planChanges:
     "SELECT plan_updated_at,source,detail,created_at FROM plan_changes WHERE user_id=? ORDER BY plan_updated_at DESC LIMIT ?",
+  // Keeps the latest changes, plus the latest one of each recent UTC day, so the owner's weekly active and retention
+  // figures still see a member who saved their plan on a day, however many saves came after it.
   prunePlanChanges: `DELETE FROM plan_changes
     WHERE user_id=?
-      AND plan_updated_at NOT IN (SELECT plan_updated_at FROM plan_changes WHERE user_id=? ORDER BY plan_updated_at DESC LIMIT ?)`,
+      AND plan_updated_at NOT IN (SELECT plan_updated_at FROM plan_changes WHERE user_id=? ORDER BY plan_updated_at DESC LIMIT ?)
+      AND plan_updated_at NOT IN (SELECT MAX(plan_updated_at) FROM plan_changes WHERE user_id=? AND created_at>=?
+        GROUP BY created_at/86400000)`,
   deletePlanChangesForDeletedUser:
     "DELETE FROM plan_changes WHERE user_id=? AND NOT EXISTS(SELECT 1 FROM users WHERE id=?)",
   deleteTrainingLinksForDeletedUser:

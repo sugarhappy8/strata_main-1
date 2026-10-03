@@ -105,7 +105,7 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages", async () => {
-  assert.equal(BUILD, "9.8.0");
+  assert.equal(BUILD, "9.8.1");
   const home = await request("/");
   assert.equal(home.response.status, 200);
   assert.equal(home.response.headers.get("cache-control"), "private, no-store");
@@ -234,6 +234,20 @@ test("serves recovery pages at friendly private routes", async () => {
       assert.match(page.data, marker, path);
       assert.doesNotMatch(page.data, BUILD_LABEL, path);
     }
+  }
+});
+
+test("account and workout have friendly addresses; the workout stays behind sign-in", async () => {
+  for (const path of ["/account", "/account/", "/account.html"]) {
+    const page = await request(path);
+    assert.equal(page.response.status, 200, path);
+    assert.equal(page.response.headers.get("cache-control"), "private, no-store", path);
+    assert.match(page.data, /id="loginForm"/, path);
+  }
+  for (const path of ["/workout", "/workout/", "/workout.html"]) {
+    const page = await request(path, { redirect: "manual" });
+    assert.equal(page.response.status, 302, path);
+    assert.match(page.response.headers.get("location"), /^\/account\.html\?/, path);
   }
 });
 

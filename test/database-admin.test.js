@@ -969,6 +969,11 @@ test(
         paid_users: 3,
         renewed_subscriptions: 1,
       });
+      assert.equal(
+        (await store.adminOverview(now + 10, PRICE_ID)).renewed_subscriptions,
+        0,
+        "on the yearly price, a period 64 days long is the first year, not a renewal",
+      );
 
       assert.equal(firstTicket.status, "new");
       assert.deepEqual(

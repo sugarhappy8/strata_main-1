@@ -89,7 +89,28 @@ test("a saved week is full once it has as many training days as the member chose
     await events.handlers[0].handler(payload);
   assert.deepEqual(store.recorded, [], "a payload without a member or revision records nothing");
   assert.equal(trainingDays(null), 0);
-  assert.equal(trainingDays({ days: { Monday: [1], Tuesday: "x" } }), 1);
+  assert.equal(trainingDays(plan(2)), 2, "counted as the planner counts workout days");
+  assert.equal(
+    trainingDays({ days: { Monday: [1], Tuesday: "x" } }),
+    0,
+    "an unsaved shape is empty",
+  );
+  // Once an account's first full week is recorded, later saves skip the profile read and the write.
+  const once = fakeStore({ preferences: { preferences_json: JSON.stringify({ days: 2 }) } }),
+    onceEvents = bus();
+  let reads = 0;
+  const read = once.preferences;
+  once.preferences = async (...args) => {
+    reads += 1;
+    return read(...args);
+  };
+  createAdminMetricsService({ store: once, http: captureJson().http }).subscribe(onceEvents);
+  await onceEvents.handlers[0].handler({ userId: "u1", updatedAt: 10, plan: plan(0) });
+  assert.equal(reads, 0, "a week with no training days needs no profile");
+  await onceEvents.handlers[0].handler({ userId: "u1", updatedAt: 20, plan: plan(2) });
+  await onceEvents.handlers[0].handler({ userId: "u1", updatedAt: 30, plan: plan(3) });
+  assert.equal(reads, 1);
+  assert.deepEqual(once.recorded, [["u1", 20]]);
 });
 
 test("the owner, App Store review, and listed internal accounts are left out of every figure", async () => {

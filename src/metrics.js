@@ -11,6 +11,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const WEEKS = 12;
 const MONTHS = 6;
 const AI_MONTHS = 3;
+// Strata AI usage is kept this many days (src/ai-quota.js cleanup), so a month is shown only while all of it is kept.
+const AI_USAGE_DAYS = 90;
 const ACTIVATION_DAYS = 7;
 const RETENTION_WEEKS = Object.freeze([4, 8]);
 /**
@@ -60,9 +62,9 @@ const cents = (value) => Math.round(value * 100) / 100;
  * @param {number} now
  */
 function metricsSince(now) {
-  const date = new Date(now),
-    oldestMonth = Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - (AI_MONTHS - 1), 1);
-  return Math.min(weekStartDay(weekOf(dayOf(now)) - (WEEKS - 1)) * DAY_MS, oldestMonth);
+  const oldestWeek = weekStartDay(weekOf(dayOf(now)) - (WEEKS - 1)) * DAY_MS,
+    [oldestMonth] = aiMonths(now);
+  return Math.min(oldestWeek, oldestMonth ? oldestMonth.start : oldestWeek);
 }
 
 /** Calendar months, oldest first, ending with the current one. @param {number} now @param {number} count */
@@ -75,6 +77,17 @@ function recentMonths(now, count) {
       next = Date.UTC(year, month - (count - 2 - index), 1);
     return { key: monthKey(start), start, end: Math.min(next, now), complete: next <= now };
   });
+}
+
+/**
+ * Up to three calendar months of Strata AI use, oldest first: only months whose every day is still kept, so the oldest
+ * month is dropped near a month's end rather than shown with its first days missing.
+ * @param {number} now
+ */
+function aiMonths(now) {
+  const kept = (dayOf(now) - AI_USAGE_DAYS) * DAY_MS;
+  // The current month always qualifies: it began less than 90 days ago.
+  return recentMonths(now, AI_MONTHS).filter((month) => month.start >= kept);
 }
 
 /** @param {MetricsActiveDay[]} activeDays */
@@ -115,7 +128,8 @@ function weeklyRows(source, currentWeek) {
 
 /**
  * Activation: a full week saved within seven days of sign-up, counted once the seven days have passed and only for
- * accounts created after STRATA began recording it. Week N retention: any activity on days 7N to 7N+6 after sign-up.
+ * accounts created after STRATA began recording it. Week N retention: any activity on days 7N to 7N+6 after sign-up,
+ * counted once that window has ended.
  * @param {MetricsSource} source @param {number} now @param {number} currentWeek
  */
 function cohortRows(source, now, currentWeek) {
@@ -138,7 +152,7 @@ function cohortRows(source, now, currentWeek) {
       ).length;
     const retention = RETENTION_WEEKS.map((number) => {
       const eligible = cohort.filter(
-        (account) => today >= dayOf(account.createdAt) + 7 * number + 6,
+        (account) => today > dayOf(account.createdAt) + 7 * number + 6,
       );
       const retained = eligible.filter((account) => {
         const first = dayOf(account.createdAt) + 7 * number,
@@ -227,7 +241,7 @@ function monthlyRows(intervals, now) {
 
 /** @param {MetricsSource} source @param {number} now @param {number|null} usdPerMillionTokens */
 function aiRows(source, now, usdPerMillionTokens) {
-  return recentMonths(now, AI_MONTHS).map((month) => {
+  return aiMonths(now).map((month) => {
     const usage = source.aiUsage.filter((row) => row.month === month.key),
       tokens = usage.reduce((sum, row) => sum + row.tokens, 0),
       members = new Set(
@@ -407,6 +421,7 @@ function metricsCsv(metrics) {
 }
 
 module.exports = {
+  AI_USAGE_DAYS,
   ACTIVATION_DAYS,
   DAY_MS,
   WEEKS,

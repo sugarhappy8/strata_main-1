@@ -32,7 +32,9 @@ const WORKOUT_ACTIVE_INDEX =
   "CREATE UNIQUE INDEX IF NOT EXISTS workouts_one_active_per_user ON workouts(user_id) WHERE CASE WHEN json_valid(workout_json) THEN json_extract(workout_json,'$.status') END='active'";
 const COMPLETED_WORKOUT_FILTER =
   "CASE WHEN json_valid(summary_json) THEN json_extract(summary_json,'$.status') END='completed'";
+// A subscription has renewed once its paid period runs past its first one (a month, or a year for the yearly price).
 const SUBSCRIPTION_RENEWAL_WINDOW_MS = 32 * 24 * 60 * 60 * 1000;
+const YEARLY_RENEWAL_WINDOW_MS = 367 * 24 * 60 * 60 * 1000;
 const {
   ADMIN_CONTROLS_TABLE,
   ACCESS_CONTROLS_SQL,
@@ -580,7 +582,9 @@ const SQL = {
       (SELECT COUNT(DISTINCT user_id) FROM paddle_purchases WHERE completed_at IS NOT NULL) AS paid_users,
       (SELECT COUNT(*)
         FROM paddle_subscriptions
-        WHERE current_period_ends_at>created_at+${SUBSCRIPTION_RENEWAL_WINDOW_MS}) AS renewed_subscriptions`,
+        WHERE current_period_ends_at>created_at+
+          CASE WHEN price_id=? THEN ${YEARLY_RENEWAL_WINDOW_MS} ELSE ${SUBSCRIPTION_RENEWAL_WINDOW_MS} END)
+        AS renewed_subscriptions`,
   ),
   adminUserById: withEntitlementClock(
     `SELECT ${CONTROL_COLUMNS},u.id,u.name,u.email,u.created_at,u.email_verified_at,u.auth_version,

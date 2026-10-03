@@ -252,6 +252,8 @@ const STATIC_FILES = new Map([
   ["fonts/dm-mono-500-latin.woff2", "fonts/dm-mono-500-latin.woff2"],
 ]);
 const PAGE_ALIASES = new Map([
+  ["/account", "account.html"],
+  ["/workout", "workout.html"],
   ["/install", "install.html"],
   ["/planner", "planner.html"],
   ["/pricing", "pricing.html"],

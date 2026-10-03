@@ -2121,7 +2121,7 @@ test("the deletion dialog closes with Escape or Cancel without deleting, holds w
   pending.resolve(
     jsonResponse(409, {
       error:
-        "Your Strata+ monthly subscription has not ended. Cancel it from subscription management first. Nothing was deleted.",
+        "Your Strata+ subscription has not ended. Cancel it from subscription management first. Nothing was deleted.",
       code: "SUBSCRIPTION_ACTIVE",
     }),
   );
@@ -2130,7 +2130,7 @@ test("the deletion dialog closes with Escape or Cancel without deleting, holds w
   assert.equal(el("accountDeleteDialog").open, true, "the outcome is shown again");
   assert.equal(
     el("accountDeleteError").textContent,
-    "Your Strata+ monthly subscription has not ended. Cancel it from subscription management first. Nothing was deleted.",
+    "Your Strata+ subscription has not ended. Cancel it from subscription management first. Nothing was deleted.",
   );
   assert.equal(
     el("accountDeletePassword").value,

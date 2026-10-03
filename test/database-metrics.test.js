@@ -125,6 +125,39 @@ async function scenario(store) {
     detail: "plan-edit",
     createdAt: since + 3 * DAY + 60_000,
   });
+  // A save on day 20 survives 55 later saves on day 30: plan history keeps each recent day's latest change.
+  await store.insertPlanChange("google-member", {
+    planUpdatedAt: since + 20 * DAY,
+    source: "manual",
+    detail: "plan-edit",
+    createdAt: since + 20 * DAY,
+  });
+  for (let index = 0; index < 55; index += 1)
+    await store.insertPlanChange("google-member", {
+      planUpdatedAt: since + 30 * DAY + index * 60_000,
+      source: "manual",
+      detail: "plan-edit",
+      createdAt: since + 30 * DAY + index * 60_000,
+    });
+  // A nutrition log counts on the day it is for and the day of its last edit, never on a later day it is for.
+  const log = (logDay, updatedDay, revision) =>
+    store.upsertCoachingDailyLog(
+      {
+        userId: "member",
+        logDate: new Date(since + logDay * DAY).toISOString().slice(0, 10),
+        calories: 2200,
+        proteinG: null,
+        carbsG: null,
+        fatG: null,
+        morningWeightKg: null,
+        complete: true,
+        updatedAt: since + updatedDay * DAY + 3600_000,
+      },
+      revision,
+    );
+  await log(12, 12, 0);
+  await log(12, 14, 1);
+  await log(40, 35, 0);
   await store.addAiUsage("2026-09-01", "member", "chat", 3, 1200);
   await store.addAiUsage("2026-09-02", "member", "brief", 1, 800);
   await store.addAiUsage("2026-09-01", "global", "chat", 3, 1200);
@@ -215,6 +248,11 @@ test(
         { user_id: "google-member", day: sinceDay + 3, plus: 0 },
         { user_id: "member", day: sinceDay + 10, plus: 1 },
         { user_id: "member", day: sinceDay + 11, plus: 1 },
+        { user_id: "member", day: sinceDay + 12, plus: 1 },
+        { user_id: "member", day: sinceDay + 14, plus: 1 },
+        { user_id: "google-member", day: sinceDay + 20, plus: 0 },
+        { user_id: "google-member", day: sinceDay + 30, plus: 0 },
+        { user_id: "member", day: sinceDay + 35, plus: 1 },
         { user_id: "member", day: Date.parse("2026-09-01") / DAY, plus: 1 },
       ]);
       assert.deepEqual(

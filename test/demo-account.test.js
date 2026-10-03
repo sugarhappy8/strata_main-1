@@ -14,6 +14,7 @@ const {
   demoNights,
   demoPlan,
   demoWorkouts,
+  main,
   parseArgs,
 } = require("../scripts/demo-account");
 
@@ -155,4 +156,23 @@ test("the demo script reads only its own options", () => {
   assert.throws(() => parseArgs(["--email"]), /needs a value/);
   assert.throws(() => parseArgs(["--email", "--yes"]), /needs a value/);
   assert.throws(() => parseArgs(["--force"]), /Unknown option/);
+});
+
+test("without --yes the demo script refuses Turso before connecting, so no migration runs", async () => {
+  mkdirSync(RUNTIME, { recursive: true });
+  const directory = mkdtempSync(join(RUNTIME, "demo-guard-")),
+    previous = process.env.STRATA_DATA_DIR;
+  // Were the guard to come after the connection, this empty directory would gain a database.
+  process.env.STRATA_DATA_DIR = directory;
+  try {
+    await assert.rejects(
+      main(["--email", DEMO], { TURSO_DATABASE_URL: "libsql://demo-guard.invalid" }),
+      /Run again with --yes/,
+    );
+    assert.deepEqual(require("node:fs").readdirSync(directory), []);
+  } finally {
+    if (previous === undefined) delete process.env.STRATA_DATA_DIR;
+    else process.env.STRATA_DATA_DIR = previous;
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

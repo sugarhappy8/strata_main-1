@@ -350,11 +350,18 @@ async function cancelPaddleTransaction(config, transactionId, fetchImpl = global
   return { transactionId: transaction.transactionId, status: transaction.status };
 }
 
-/** @param {import("./domain-types").PaddleTransactionData|null|undefined} data @param {import("./domain-types").PaymentConfig} config @param {import("./domain-types").CheckoutIdentity} identity */
+/**
+ * Validate an unfinished checkout STRATA created. With a price ID (the one STRATA recorded for the checkout), the
+ * transaction must be for that price; without one, for any current plan. There is no silent monthly default, so a
+ * yearly checkout is never judged against the monthly price.
+ * @param {import("./domain-types").PaddleTransactionData|null|undefined} data
+ * @param {import("./domain-types").PaymentConfig} config
+ * @param {import("./domain-types").CheckoutIdentity} identity
+ */
 function validateCheckoutTransaction(
   data,
   config,
-  { userId, checkoutId, priceId = config?.priceId, productId = config?.productId } = {},
+  { userId, checkoutId, priceId, productId = config?.productId } = {},
 ) {
   if (!data || !validTransactionId(data.id) || !TRANSACTION_STATUSES.has(clean(data.status)))
     return { ok: false, reason: "transaction" };
@@ -370,10 +377,10 @@ function validateCheckoutTransaction(
   const item = /** @type {import("./domain-types").PaddleItemData} */ (data.items[0] || {}),
     price = item.price || {};
   if (Number(item.quantity) !== 1) return { ok: false, reason: "quantity" };
-  if (price.id !== priceId) return { ok: false, reason: "price" };
+  const plan = planForPrice(config, price.id);
+  if (clean(priceId) ? price.id !== clean(priceId) : !plan) return { ok: false, reason: "price" };
   if (price.product_id !== productId) return { ok: false, reason: "product" };
   // A current plan must bill at its own cadence; an earlier price only has to be monthly or yearly to be checked.
-  const plan = planForPrice(config, priceId);
   return (plan ? cycleMatches(price.billing_cycle, plan) : knownCycle(price.billing_cycle))
     ? { ok: true }
     : { ok: false, reason: "billing_cycle" };
@@ -383,7 +390,7 @@ function validateCheckoutTransaction(
 function validateCheckoutRecoveryTransaction(data, config, identity = {}) {
   if (data?.status !== "completed") return validateCheckoutTransaction(data, config, identity);
   const completed = validateCompletedTransaction(data, config, {
-    priceId: String(identity.priceId || config?.priceId || ""),
+    priceId: clean(identity.priceId) || undefined,
     productId: String(identity.productId || config?.productId || ""),
   });
   if (!completed.ok) return completed;
@@ -413,7 +420,7 @@ async function findPaddleCheckoutTransaction(
     userId,
     checkoutId,
     createdAt,
-    priceId = config?.priceId,
+    priceId,
     productId = config?.productId,
     retirement = false,
   } = {},
@@ -504,7 +511,7 @@ async function findPaddleCheckoutTransaction(
             })
           : standard;
       const currentUnfinished =
-        Boolean(planForPrice(config, priceId)) &&
+        Boolean(planForPrice(config, priceId || transaction?.items?.[0]?.price?.id)) &&
         productId === config.productId &&
         ["draft", "ready"].includes(clean(transaction?.status));
       return (

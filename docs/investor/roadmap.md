@@ -22,7 +22,8 @@ STRATA adds no features until V1. Each release since Build 9 has been fixes and 
 - **Provider confirmations** that the build environment could not make: Groq Zero Data Retention switched on for the
   account, Paddle's actual rate for the $4.99 and $29.99 prices, and a Turso restore drill into a separate database
   ([runbook](runbook.md)).
-- **The live site on a phone** with a clean console after the 9.8.0 deploy.
+- **The live site on a phone** with a clean console: checked after the 9.8.0 deploy, in the browser and as the app;
+  9.8.1 fixed the two Pricing console errors it found.
 
 ## After V1
 

@@ -2341,3 +2341,67 @@ test("a yearly checkout bills $29.99 a year, and changing plan switches off the 
   const me = await request("/api/me", { headers: { Cookie: account.cookie } });
   assert.equal(me.data.user.discovery.active, true, "the yearly plan unlocks Strata+");
 });
+
+test("an interrupted yearly checkout is recovered as yearly, and choosing the other plan switches it off", async () => {
+  const chooser = (account) => (plan) =>
+    request("/api/billing/checkout", {
+      method: "POST",
+      headers: {
+        Cookie: account.cookie,
+        Origin: BASE,
+        "X-CSRF-Token": account.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ plan }),
+    });
+  const providerCheckout = (checkoutId) =>
+    [...paddleTransactions.values()].find(
+      (transaction) => transaction.custom_data?.strata_checkout_id === checkoutId,
+    );
+  const lastCreate = () =>
+    paddleRequests
+      .filter((entry) => entry.method === "POST" && entry.url === "/transactions")
+      .at(-1);
+
+  // Paddle creates the yearly transaction but its response is lost: the retry recovers it as the yearly checkout.
+  const yearlyMember = await signup({
+    name: "Interrupted Yearly Tester",
+    email: "interrupted-yearly@example.test",
+    password: "interrupted-yearly-password-123",
+  });
+  const chooseYearly = chooser(yearlyMember);
+  malformedCreateResponses = 1;
+  const interrupted = await chooseYearly("yearly");
+  assert.equal(interrupted.response.status, 502);
+  assert.equal(interrupted.data.code, "PADDLE_INVALID_RESPONSE");
+  assert.deepEqual(lastCreate().body.items, [{ price_id: YEARLY_PRICE_ID, quantity: 1 }]);
+  const yearlyTransaction = providerCheckout(lastCreate().body.custom_data.strata_checkout_id);
+  assert.ok(yearlyTransaction, "the fake provider keeps the yearly transaction");
+  const recovered = await chooseYearly("yearly");
+  assert.equal(recovered.response.status, 200, "a yearly checkout is never judged as monthly");
+  assert.equal(recovered.data.recovered, true);
+  assert.equal(recovered.data.transactionId, yearlyTransaction.id);
+
+  // A monthly checkout is interrupted, then the member picks yearly: the monthly one is switched off, not reopened.
+  const switcher = await signup({
+    name: "Interrupted Switch Tester",
+    email: "interrupted-switch@example.test",
+    password: "interrupted-switch-password-123",
+  });
+  const choose = chooser(switcher);
+  malformedCreateResponses = 1;
+  assert.equal((await choose("monthly")).response.status, 502);
+  const monthlyTransaction = providerCheckout(lastCreate().body.custom_data.strata_checkout_id);
+  assert.ok(monthlyTransaction);
+  const yearly = await choose("yearly");
+  assert.equal(yearly.response.status, 201);
+  assert.notEqual(yearly.data.transactionId, monthlyTransaction.id);
+  assert.equal(yearly.data.recovered, undefined);
+  assert.deepEqual(lastCreate().body.items, [{ price_id: YEARLY_PRICE_ID, quantity: 1 }]);
+  assert.equal(
+    paddleTransactions.get(monthlyTransaction.id).status,
+    "canceled",
+    "the interrupted monthly checkout is switched off at Paddle",
+  );
+  await checkoutClaimReleased(switcher.user.id);
+});

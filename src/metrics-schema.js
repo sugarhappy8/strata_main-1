@@ -30,13 +30,17 @@ const METRICS_SQL = Object.freeze({
       CASE WHEN lower(u.email) IN (SELECT value FROM json_each(?)) THEN 1 ELSE 0 END AS internal
     FROM users u
     LEFT JOIN account_milestones m ON m.user_id=u.id`,
-  // One row per account and UTC day with anything saved or logged. plus=1 marks a Strata+ feature.
+  // One row per account and UTC day with anything saved or logged. plus=1 marks a Strata+ feature. An edit overwrites a
+  // nutrition log's updated_at, so a log also counts on the day it is for (never a day after its last edit).
   metricsActiveDays: `SELECT user_id,day,MAX(plus) AS plus FROM (
       SELECT user_id,CAST(started_at/${DAY} AS INTEGER) AS day,1 AS plus FROM workouts WHERE started_at>=?
       UNION ALL
       SELECT user_id,CAST(created_at/${DAY} AS INTEGER),0 FROM plan_changes WHERE created_at>=?
       UNION ALL
       SELECT user_id,CAST(updated_at/${DAY} AS INTEGER),1 FROM coaching_daily_logs WHERE updated_at>=?
+      UNION ALL
+      SELECT user_id,CAST(julianday(log_date)-2440587.5 AS INTEGER),1 FROM coaching_daily_logs
+      WHERE log_date>=? AND CAST(julianday(log_date)-2440587.5 AS INTEGER)<=updated_at/${DAY}
       UNION ALL
       SELECT user_id,CAST(created_at/${DAY} AS INTEGER),1 FROM workout_check_ins WHERE created_at>=?
       UNION ALL

@@ -278,7 +278,11 @@ function createAdminService({
   }
 
   async function overview({ res }) {
-    json(res, 200, { overview: adminOverviewPayload(await store.adminOverview(Date.now())) });
+    json(res, 200, {
+      overview: adminOverviewPayload(
+        await store.adminOverview(Date.now(), paymentConfig.yearlyPriceId || ""),
+      ),
+    });
   }
 
   async function listUsers({ res, url }) {
