@@ -280,7 +280,6 @@ dialog::backdrop {
       background-color 0.2s;
   }
   :where(.button, .dark-button, .outline-button):hover {
-    transform: translateY(-2px);
     box-shadow: 0 7px 18px #10110f20;
   }
   .exercise-row:hover {
@@ -288,6 +287,13 @@ dialog::backdrop {
     box-shadow:
       0 5px 22px #10110f0b,
       inset 3px 0 #7b971a;
+  }
+}
+/* The hover lift moves the button, so it is motion: with reduced motion it would also jump under a resting pointer
+   at the button's lower edge, again and again. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  :where(.button, .dark-button, .outline-button):hover {
+    transform: translateY(-2px);
   }
 }
 @media (prefers-reduced-motion: no-preference) {

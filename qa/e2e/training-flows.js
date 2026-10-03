@@ -123,10 +123,17 @@ async function capture(page, name) {
   mkdirSync(CAPTURE_DIR, { recursive: true });
   await page.screenshot({ path: join(CAPTURE_DIR, name), fullPage: true });
 }
+// The planner is ready when it has loaded and nothing is saving or wrong. It says nothing until there is a change
+// (a change sets "Saving…" at once), so after a change this waits for "Saved", and after a load for the quiet bar.
 async function plannerReady(page) {
-  await page.waitForFunction(
-    () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-  );
+  await page.waitForFunction(() => {
+    const doc = globalThis.document;
+    return (
+      doc.querySelector("#plannerShell")?.getAttribute("aria-busy") === "false" &&
+      !doc.querySelector(".planner-header .header-center.error") &&
+      ["", "Saved"].includes(doc.querySelector("#saveStatus")?.textContent)
+    );
+  });
 }
 async function guestPlan(page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem("strata_guest_plan_v1")));
