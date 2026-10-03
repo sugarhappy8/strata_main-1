@@ -142,19 +142,27 @@ test("plan-saving surfaces use consistent announced states and actionable errors
   assert.match(discover, /latest plan is loaded; review the selected day/i);
 });
 
-test("planner, workout, and the studio share the five-section navigation at mobile widths", () => {
+test("planner, workout, and the studio share the one navigation at mobile widths", () => {
   const plannerHtml = read("public/pages/planner.html"),
     workoutHtml = read("public/pages/workout.html"),
     discoverHtml = read("public/pages/discover.html");
   const plannerCss = read("public/styles/planner.css"),
     workoutCss = read("public/styles/workout.css");
   const destinations =
-    /Rankings<\/a><a[^>]*>Dashboard<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Profile<\/a>/;
+    /Rankings<\/a><a[^>]*>Plan<\/a><a[^>]*>Dashboard<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Strata\+<\/a><a[^>]*>Profile<\/a><a[^>]*>Sign in<\/a>/;
   assert.match(plannerHtml, destinations);
   assert.match(workoutHtml, destinations);
-  assert.match(discoverHtml, destinations);
-  assert.match(plannerHtml, /href="\/dashboard" aria-current="page">Dashboard<\/a>/);
-  assert.match(workoutHtml, /href="\/workout\.html" aria-current="page">Train<\/a>/);
+  assert.match(
+    discoverHtml,
+    /Rankings<\/a><a[^>]*>Dashboard<\/a><a[^>]*>Train<\/a><a[^>]*>Recovery<\/a><a[^>]*>Profile<\/a>/,
+    "the Strata+ studio shows the Strata+ tabs",
+  );
+  assert.match(plannerHtml, /href="\/planner\.html"[^>]*aria-current="page">Plan<\/a>/);
+  assert.match(plannerHtml, /href="\/dashboard"[^>]*aria-current="page">Dashboard<\/a>/);
+  assert.match(workoutHtml, /href="\/workout\.html"[^>]*aria-current="page">Train<\/a>/);
+  // The visible tabs share the bar, however many an audience sees.
+  for (const css of [plannerCss, workoutCss])
+    assert.match(css, /grid-auto-flow:\s*column;\s*grid-auto-columns:\s*minmax\(0,\s*1fr\)/);
   for (const [name, html, desktop, user, mobile] of [
     [
       "Planner",
@@ -201,7 +209,7 @@ test("planner, workout, and the studio share the five-section navigation at mobi
   );
   assert.match(
     plannerCss,
-    /\.planner-primary-nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/,
+    /\.planner-primary-nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-auto-flow\s*:\s*column\s*;\s*grid-auto-columns\s*:\s*minmax\s*\(\s*0\s*,\s*1fr\s*\)/,
   );
   assert.match(plannerCss, /\.planner-primary-nav\s*a\s*\{\s*[^}]*font-size\s*:\s*11px/);
   assert.match(
@@ -218,7 +226,7 @@ test("planner, workout, and the studio share the five-section navigation at mobi
   );
   assert.match(
     workoutCss,
-    /\.site-header\s*nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-template-columns\s*:\s*repeat\s*\(\s*5\s*,\s*minmax\s*\(\s*0\s*,\s*1fr\s*,?\s*\)\s*,?\s*\)/,
+    /\.site-header\s*nav\s*\{\s*position\s*:\s*fixed\s*;\s*[^}]*grid-auto-flow\s*:\s*column\s*;\s*grid-auto-columns\s*:\s*minmax\s*\(\s*0\s*,\s*1fr\s*\)/,
   );
   assert.match(
     workoutCss,

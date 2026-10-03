@@ -175,7 +175,7 @@ test("keeps an unpaid Discovery denial small, uncompressed, and private", async 
   assert.equal(signedInHome.headers["cache-control"], "private, no-store");
   const publicHome = await request("/", { headers: { "Accept-Encoding": "gzip" } });
   assert.doesNotMatch(gunzipSync(publicHome.body).toString(), /Compression\s*profile/);
-  assert.match(gunzipSync(publicHome.body).toString(), /id="accountButton"[^>]*>Log in/);
+  assert.match(gunzipSync(publicHome.body).toString(), /id="accountButton"[^>]*>Sign in/);
 
   const discovery = await request("/api/discovery", {
     headers: { Cookie: cookie, "Accept-Encoding": "gzip" },

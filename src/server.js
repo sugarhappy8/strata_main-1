@@ -863,7 +863,7 @@ async function serveStatic(req, res, url) {
     const user = activeSession ? await userPayload(activeSession) : null;
     const actions = user
       ? `<a class="account-button discover-button" id="discoverButton" href="${user.discovery.active ? "/discover.html" : "/pricing"}">${user.discovery.active ? "Strata+" : "Unlock Strata+"}</a>\n        <a class="account-button account-create" id="signupButton" href="/account.html?mode=signup" hidden>Sign up</a>\n        <a class="account-button account-link signed-in" id="accountButton" href="/account.html">${escapeHtml(user.name.split(/\s+/)[0])} profile</a>\n        <a class="session-button" id="planButton" href="/planner.html">Plan <span id="planCount">${user.planCount}</span></a>`
-      : `<a class="account-button discover-button" id="discoverButton" href="/discover.html" hidden>Strata+</a>\n        <a class="account-button account-create" id="signupButton" href="/account.html?mode=signup">Sign up</a>\n        <a class="account-button account-link" id="accountButton" href="/account.html?mode=login">Log in</a>\n        <a class="session-button" id="planButton" href="/planner.html">Plan <span id="planCount">0</span></a>`;
+      : `<a class="account-button discover-button" id="discoverButton" href="/discover.html" hidden>Strata+</a>\n        <a class="account-button account-create" id="signupButton" href="/account.html?mode=signup">Sign up</a>\n        <a class="account-button account-link" id="accountButton" href="/account.html?mode=login">Sign in</a>\n        <a class="session-button" id="planButton" href="/planner.html">Plan <span id="planCount">0</span></a>`;
     body = Buffer.from(
       body
         .toString("utf8")

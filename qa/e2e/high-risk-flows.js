@@ -21,6 +21,17 @@ const EMAIL_SECRET = "e2e-email-secret-123456789012345678901234567890";
 const OLD_PASSWORD = "old-e2e-password-123";
 const NEW_PASSWORD = "new-e2e-password-456";
 const WAIT_MS = 10_000;
+// The planner is ready once its shell stops being busy without a problem. It says nothing about saving until
+// there is a change, so "Saved" means a change was saved, not that the page loaded.
+function plannerReady(page) {
+  return page.waitForFunction(() => {
+    const doc = globalThis.document;
+    return (
+      doc.querySelector("#plannerShell")?.getAttribute("aria-busy") === "false" &&
+      !doc.querySelector(".planner-header .header-center.error")
+    );
+  });
+}
 
 let app;
 let appBaseUrl = "";
@@ -363,10 +374,7 @@ async function completeVerification(page, email, afterIndex, subjectPattern) {
     page.waitForURL((url) => url.pathname === "/planner.html", { timeout: WAIT_MS }),
     page.click("#verificationSubmit"),
   ]);
-  await page.locator("#saveStatus").waitFor({ state: "visible" });
-  await page.waitForFunction(
-    () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-  );
+  await plannerReady(page);
 }
 
 async function createVerifiedAccount({ name, email, password = OLD_PASSWORD, errors }) {
@@ -406,9 +414,7 @@ async function loginAccount({ email, password, errors }) {
     page.click("#loginSubmit"),
   ]);
   assert.equal((await loginResponse).status(), 200);
-  await page.waitForFunction(
-    () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-  );
+  await plannerReady(page);
   return { context, page };
 }
 
@@ -577,9 +583,7 @@ test("security-sensitive browser journeys", { timeout: 120_000 }, async (t) => {
         reloginPage.click("#loginSubmit"),
       ]);
       assert.equal((await acceptedLogin).status(), 200);
-      await reloginPage.waitForFunction(
-        () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-      );
+      await plannerReady(reloginPage);
       assert.equal(
         await responseStatus(reloginPage, "/api/me"),
         200,
@@ -604,14 +608,7 @@ test("security-sensitive browser journeys", { timeout: 120_000 }, async (t) => {
         goto(primary.page, "/planner.html"),
         goto(secondary.page, "/planner.html"),
       ]);
-      await Promise.all([
-        primary.page.waitForFunction(
-          () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-        ),
-        secondary.page.waitForFunction(
-          () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-        ),
-      ]);
+      await Promise.all([plannerReady(primary.page), plannerReady(secondary.page)]);
 
       const primaryButton = primary.page.locator("[data-quick-add]").nth(0);
       const secondaryButton = secondary.page.locator("[data-quick-add]").nth(1);
@@ -723,9 +720,7 @@ test("security-sensitive browser journeys", { timeout: 120_000 }, async (t) => {
       );
       assert.equal(lockedBeforeCheckout.searchParams.get("reason"), "discovery-required");
       await goto(account.page, "/planner.html");
-      await account.page.waitForFunction(
-        () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-      );
+      await plannerReady(account.page);
 
       const checkout = await account.page.evaluate(async () => {
         const me = await (await fetch("/api/me", { credentials: "same-origin" })).json();
@@ -765,9 +760,7 @@ test("security-sensitive browser journeys", { timeout: 120_000 }, async (t) => {
       );
       assert.equal(lockedAfterCheckout.searchParams.get("reason"), "discovery-required");
       await goto(account.page, "/planner.html");
-      await account.page.waitForFunction(
-        () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-      );
+      await plannerReady(account.page);
 
       const webhook = signedWebhook(completedEvent(transaction, checkout.userId));
       const recorded = await sendBrowserWebhook(account.page, webhook);

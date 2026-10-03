@@ -7,6 +7,12 @@
    first paint and the script runs before the body exists, on every page including ones this file is the only hook in. */
 (() => {
   "use strict";
+  // The navigation shows the tabs for who is here (site-experience.css). The server keeps the strata_nav cookie
+  // at "member" or "plus" while a session is open and clears it when there is none, so a visitor's page never
+  // flashes member tabs.
+  const audience = /(?:^|;\s*)strata_nav=(member|plus)(?:;|$)/.exec(document.cookie || "");
+  document.documentElement.dataset.audience = audience ? audience[1] : "visitor";
+
   const match = /\bStrataApp\/(\d+)\b/.exec(navigator.userAgent || "");
   if (!match) return;
   document.documentElement.dataset.app = "ios";

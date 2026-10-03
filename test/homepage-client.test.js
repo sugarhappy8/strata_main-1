@@ -270,7 +270,7 @@ test("homepage treats a confirmed 401 as signed out and counts the saved guest p
   await settle();
 
   assert.equal(vm.runInContext("state.accountStatus", context), "anonymous");
-  assert.equal(elements.get("accountButton").textContent, "Log in");
+  assert.equal(elements.get("accountButton").textContent, "Sign in");
   assert.equal(elements.get("accountButton").href, "/account.html?mode=login");
   assert.equal(elements.get("signupButton").hidden, false);
   assert.equal(elements.get("discoverButton").hidden, true);
@@ -302,7 +302,7 @@ test("homepage clears stale account chrome on foreground before confirming a swi
   r.emitVisibility("visible");
   r.emitWindow("focus");
   assert.equal(responses.length, 0, "paired visibility and focus events share one account request");
-  assert.equal(r.elements.get("accountButton").textContent, "Log in");
+  assert.equal(r.elements.get("accountButton").textContent, "Sign in");
   assert.equal(r.elements.get("planCount").textContent, 2);
   assert.equal(r.elements.get("quickPreviewSummary").textContent, "My private device preview");
   assert.match(r.elements.get("quickPreviewContinue").innerHTML, /Keep this exact week/);
@@ -324,7 +324,7 @@ test("homepage window focus clears and restores the same account without touchin
   await settle();
   r.elements.get("quickPreviewSummary").textContent = "Keep this preview";
   r.emitWindow("focus");
-  assert.equal(r.elements.get("accountButton").textContent, "Log in");
+  assert.equal(r.elements.get("accountButton").textContent, "Sign in");
   assert.equal(r.elements.get("quickPreviewSummary").textContent, "Keep this preview");
   same.resolve(jsonResponse(200, { user: member }));
   await settle();
@@ -345,7 +345,7 @@ test("homepage foreground logout settles on guest-safe chrome without clearing i
   r.emitVisibility("visible");
   await settle();
   assert.equal(vm.runInContext("state.accountStatus", r.context), "anonymous");
-  assert.equal(r.elements.get("accountButton").textContent, "Log in");
+  assert.equal(r.elements.get("accountButton").textContent, "Sign in");
   assert.equal(r.elements.get("signupButton").hidden, false);
   assert.equal(r.elements.get("planCount").textContent, 0);
   assert.equal(r.elements.get("quickPreviewResults").innerHTML, "<li>Preserved preview</li>");
@@ -373,7 +373,7 @@ test("homepage persisted pageshow rechecks logout while ordinary pageshow stays 
   r.emitWindow("pageshow", { persisted: true });
   await settle();
   assert.equal(requests, 2);
-  assert.equal(r.elements.get("accountButton").textContent, "Log in");
+  assert.equal(r.elements.get("accountButton").textContent, "Sign in");
 });
 
 test("homepage ignores a stale initial identity response after a newer focus recheck", async () => {

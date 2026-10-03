@@ -32,52 +32,67 @@ test(
           name: "account",
           header: headerFrom("public/pages/account.html"),
           css: `${read("public/styles/account.css")}\n${sharedCss}`,
-          current: "Profile",
+          current: { visitor: "Sign in", member: "Profile" },
         },
         {
           name: "setup",
           header: headerFrom("public/pages/onboarding.html"),
           css: `${read("public/styles/onboarding.css")}\n${sharedCss}`,
-          current: null,
+          current: { visitor: null, member: null },
         },
       ];
+      // A visitor sees only what they can use; a member sees the five sections.
+      const tabs = {
+        visitor: ["Rankings", "Plan", "Strata+", "Sign in"],
+        member: ["Rankings", "Plan", "Train", "Recovery", "Profile"],
+      };
       for (const width of [320, 390])
-        for (const fixture of fixtures) {
-          const page = await browser.newPage({ viewport: { width, height: 700 } });
-          await page.setContent(
-            `<style>${fixture.css}\n${read("public/styles/site-experience.css")}</style>${fixture.header}`,
-          );
-          const result = await page.evaluate(() => ({
-            overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-            links: [...document.querySelectorAll(".product-nav a")].map((link) => ({
-              text: link.textContent.trim(),
-              width: link.getBoundingClientRect().width,
-              height: link.getBoundingClientRect().height,
-              fontSize: parseFloat(getComputedStyle(link).fontSize),
-            })),
-            current:
-              document.querySelector('.product-nav [aria-current="page"]')?.textContent.trim() ||
-              null,
-          }));
-          assert.ok(
-            result.overflow <= 1,
-            `${fixture.name} navigation overflows ${width}px by ${result.overflow}px`,
-          );
-          assert.deepEqual(
-            result.links.map((link) => link.text),
-            ["Rankings", "Dashboard", "Train", "Recovery", "Profile"],
-          );
-          assert.ok(
-            result.links.every((link) => link.width >= 44 && link.height >= 44),
-            `${fixture.name} navigation must keep 44×44px targets at ${width}px`,
-          );
-          assert.ok(
-            result.links.every((link) => link.fontSize >= 11),
-            `${fixture.name} navigation text must remain readable at ${width}px`,
-          );
-          assert.equal(result.current, fixture.current);
-          await page.close();
-        }
+        for (const fixture of fixtures)
+          for (const audience of ["visitor", "member"]) {
+            const page = await browser.newPage({ viewport: { width, height: 700 } });
+            await page.setContent(
+              `<style>${fixture.css}\n${read("public/styles/site-experience.css")}</style>${fixture.header}`,
+            );
+            const result = await page.evaluate((audience) => {
+              document.documentElement.dataset.audience = audience;
+              const visible = (link) => getComputedStyle(link).display !== "none";
+              return {
+                overflow:
+                  document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                links: [...document.querySelectorAll(".product-nav a")]
+                  .filter(visible)
+                  .map((link) => ({
+                    text: link.textContent.trim(),
+                    width: link.getBoundingClientRect().width,
+                    height: link.getBoundingClientRect().height,
+                    fontSize: parseFloat(getComputedStyle(link).fontSize),
+                  })),
+                current:
+                  [...document.querySelectorAll('.product-nav [aria-current="page"]')]
+                    .find(visible)
+                    ?.textContent.trim() || null,
+              };
+            }, audience);
+            assert.ok(
+              result.overflow <= 1,
+              `${fixture.name} navigation overflows ${width}px by ${result.overflow}px`,
+            );
+            assert.deepEqual(
+              result.links.map((link) => link.text),
+              tabs[audience],
+              `${fixture.name} navigation for a ${audience} at ${width}px`,
+            );
+            assert.ok(
+              result.links.every((link) => link.width >= 44 && link.height >= 44),
+              `${fixture.name} navigation must keep 44×44px targets at ${width}px`,
+            );
+            assert.ok(
+              result.links.every((link) => link.fontSize >= 11),
+              `${fixture.name} navigation text must remain readable at ${width}px`,
+            );
+            assert.equal(result.current, fixture.current[audience]);
+            await page.close();
+          }
     } finally {
       await browser.close();
     }
@@ -123,29 +138,23 @@ test(
           header: headerFrom("public/pages/planner.html"),
           css: read("public/styles/planner.css"),
           signedIn: true,
-          desktop: [
-            "STRATA home",
-            "Rankings",
-            "Dashboard",
-            "Train",
-            "Recovery",
-            "Profile",
-            "Sign out",
-          ],
-          mobile: [
-            "STRATA home",
-            "Sign out",
-            "Rankings",
-            "Dashboard",
-            "Train",
-            "Recovery",
-            "Profile",
-          ],
+          audience: "member",
+          desktop: ["STRATA home", "Rankings", "Plan", "Train", "Recovery", "Profile", "Sign out"],
+          mobile: ["STRATA home", "Sign out", "Rankings", "Plan", "Train", "Recovery", "Profile"],
+        },
+        {
+          name: "Plan for a visitor",
+          header: headerFrom("public/pages/planner.html"),
+          css: read("public/styles/planner.css"),
+          audience: "visitor",
+          desktop: ["STRATA home", "Rankings", "Plan", "Strata+", "Sign in"],
+          mobile: ["STRATA home", "Rankings", "Plan", "Strata+", "Sign in"],
         },
         {
           name: "Train",
           header: headerFrom("public/pages/workout.html"),
           css: read("public/styles/workout.css"),
+          audience: "plus",
           desktop: ["STRATA home", "Rankings", "Dashboard", "Train", "Recovery", "Profile"],
           mobile: ["STRATA home", "Rankings", "Dashboard", "Train", "Recovery", "Profile"],
         },
@@ -168,6 +177,10 @@ test(
             await page.evaluate(() => {
               document.getElementById("logoutButton").hidden = false;
             });
+          if (fixture.audience)
+            await page.evaluate((audience) => {
+              document.documentElement.dataset.audience = audience;
+            }, fixture.audience);
           const result = await page.evaluate(() => {
             const controls = [...document.querySelectorAll("header a,header button")].filter(
               (control) => {

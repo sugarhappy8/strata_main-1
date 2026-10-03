@@ -266,6 +266,12 @@ test("planner rendering names the destination and safely escapes catalog content
   );
   assert.equal((navigation.match(/aria-pressed="true"/g) || []).length, 1);
   assert.match(navigation, /Sunday, recovery day/);
+  assert.match(
+    navigation,
+    /data-day-chip="Sunday"[^>]*disabled[^>]*>Sun<small>Rest day<\/small><\/button>/,
+    "a rest day is labelled in the picker, not only greyed out",
+  );
+  assert.doesNotMatch(navigation, /data-day-chip="Monday"[^>]*>Mon<small>/);
 });
 
 const HOSTILE = 'Press <b> & "x"',
@@ -381,7 +387,7 @@ test("planner views escape member and catalog text exactly once", () => {
 
   assert.match(
     String(PlannerRender.modeNoticeMarkup({ guest: true, oversized: true })),
-    /href="\/account\.html\?mode=login&amp;next=planner">Use a synced plan<\/a>\.<p><strong>Large saved draft preserved\.<\/strong>/,
+    /href="\/account\.html\?mode=login&amp;next=planner">Use a synced plan<\/a><p><strong>Large saved draft preserved\.<\/strong>/,
   );
 });
 

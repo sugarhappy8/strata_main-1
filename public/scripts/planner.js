@@ -966,10 +966,13 @@ function queueSave() {
   }, 500);
 }
 
+// The save bar shows only once there is something to say: a change saving or saved, a problem, or a review.
+// Opening the planner says nothing, so a phone's first screen starts with the exercise library.
 function setSaveStatus(message, error = false) {
   const status = el("saveStatus"),
     retry = el("retryPlanSave");
   status.textContent = message;
+  document.documentElement.classList.toggle("planner-status-active", Boolean(message));
   status.parentElement.classList.toggle("error", error);
   retry.removeAttribute("title");
   if (state.conflictDraft) {
@@ -1306,7 +1309,7 @@ async function init({ guestOnly = false } = {}) {
   state.copyPreview = null;
   state.copyTrigger = null;
   hideActivationPanel();
-  setSaveStatus("Loading plan…");
+  setSaveStatus("");
   StrataHtml.setHtml(el("libraryList"), html`<div class="loading">Loading movements…</div>`);
   el("weekSummary").textContent = "";
   StrataHtml.setHtml(
@@ -1359,7 +1362,7 @@ async function init({ guestOnly = false } = {}) {
     renderFilters();
     renderLibrary();
     renderWeek();
-    setSaveStatus("Saved");
+    setSaveStatus("");
     scheduleEntitlementRefresh();
     if (!state.guest) {
       const renderedPlan = state.plan;

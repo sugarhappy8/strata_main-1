@@ -25,6 +25,15 @@ body {
 :where(.desktop-nav, .studio-nav) a[aria-current] {
   color: #d4f578;
 }
+/* One navigation on every page. Each tab names the audiences it serves (data-audience): visitor (signed out),
+   member, or plus (Strata+). app-shell.js marks the page's audience on <html> before the first paint; with no
+   mark, the page is a visitor's. */
+:root:not([data-audience="member"]):not([data-audience="plus"])
+  a[data-audience]:not([data-audience~="visitor"]),
+:root[data-audience="member"] a[data-audience]:not([data-audience~="member"]),
+:root[data-audience="plus"] a[data-audience]:not([data-audience~="plus"]) {
+  display: none !important;
+}
 :where(.button, .small-button, .account-button, .dark-button, .outline-button) {
   border-radius: 9px;
   min-height: 44px;
@@ -246,4 +255,61 @@ body {
     border-color: var(--accent);
     color: var(--accent);
   }
+}
+
+/* The second-visit install suggestion (pwa.js): a small note above the bottom navigation, never in it. */
+.install-hint {
+  position: fixed;
+  z-index: 60;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 4px 12px;
+  max-width: min(420px, calc(100vw - 32px));
+  padding: 8px 8px 8px 16px;
+  color: #f4f6ef;
+  background: #10110f;
+  border: 1px solid #ffffff2e;
+  border-radius: 12px;
+  box-shadow: 0 12px 32px #0000004d;
+  font: 500 13px/1.4 var(--body, "Manrope", Arial, sans-serif);
+}
+.install-hint p {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
+.install-hint a,
+.install-hint button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 9px;
+  font: 700 13px var(--body, "Manrope", Arial, sans-serif);
+  flex: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.install-hint a {
+  color: #10110f;
+  background: #d4f578;
+  text-decoration: none;
+}
+.install-hint button {
+  color: #f4f6efcc;
+  background: transparent;
+}
+@media (max-width: 800px) {
+  .install-hint {
+    left: max(16px, env(safe-area-inset-left));
+    bottom: calc(64px + env(safe-area-inset-bottom));
+    max-width: none;
+  }
+}
+:root[data-app] .install-hint {
+  display: none;
 }

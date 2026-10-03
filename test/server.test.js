@@ -112,7 +112,7 @@ test("serves rankings and gates private account pages", async () => {
   assert.match(home.response.headers.get("vary"), /Cookie/i);
   assert.match(home.data, /Your next<br \/>workout/);
   assert.match(home.data, /id="signupButton"[^>]*>Sign up/);
-  assert.match(home.data, /id="accountButton"[^>]*>Log in/);
+  assert.match(home.data, /id="accountButton"[^>]*>Sign in/);
   assert.doesNotMatch(
     home.data,
     BUILD_LABEL,

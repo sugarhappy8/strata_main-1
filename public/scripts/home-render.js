@@ -208,7 +208,7 @@
         signup = el("signupButton"),
         discoveryButton = el("discoverButton"),
         discoveryActive = logic.hasPlus(state.user);
-      button.textContent = state.user ? `${state.user.name.split(/\s+/)[0]} profile` : "Log in";
+      button.textContent = state.user ? `${state.user.name.split(/\s+/)[0]} profile` : "Sign in";
       button.href = state.user ? "/account.html" : "/account.html?mode=login";
       button.classList.toggle("signed-in", Boolean(state.user));
       signup.hidden = Boolean(state.user);

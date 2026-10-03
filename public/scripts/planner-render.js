@@ -26,7 +26,7 @@
         : selected
           ? `${day}, selected for new exercises`
           : `Add new exercises to ${day}`;
-      return html`<button class="planner-day-chip ${selected ? "active" : ""} ${rest ? "recovery" : ""}" data-select-day="${day}" data-day-chip="${day}" type="button" aria-label="${label}" aria-pressed="${selected}" ${rest ? "disabled" : ""}>${day.slice(0, 3)}</button>`;
+      return html`<button class="planner-day-chip ${selected ? "active" : ""} ${rest ? "recovery" : ""}" data-select-day="${day}" data-day-chip="${day}" type="button" aria-label="${label}" aria-pressed="${selected}" ${rest ? "disabled" : ""}>${day.slice(0, 3)}${rest ? html`<small>Rest day</small>` : ""}</button>`;
     });
   }
 
@@ -116,14 +116,14 @@
 
   function modeNoticeMarkup({ guest, status, confirmed, oversized }) {
     const base = guest
-      ? html`<strong>Free device plan.</strong> No account required. This week stays in this browser. <a href="/account.html?mode=login&amp;next=planner">Use a synced plan</a>.`
+      ? html`<strong>Free device plan.</strong> <span class="notice-detail">No account required. This week stays in this browser.</span> <a href="/account.html?mode=login&amp;next=planner">Use a synced plan</a>`
       : status === "checking"
-        ? html`<strong>Synced account plan.</strong> Checking Strata+ access. Plan editing and saves remain available.`
+        ? html`<strong>Synced account plan.</strong> <span class="notice-detail">Checking Strata+ access. Plan editing and saves remain available.</span>`
         : status === "unavailable"
-          ? html`<strong>Synced account plan.</strong> Strata+ access could not be confirmed. Plan editing and saves remain available; reconnect to refresh it.`
+          ? html`<strong>Synced account plan.</strong> <span class="notice-detail">Strata+ access could not be confirmed. Plan editing and saves remain available; reconnect to refresh it.</span>`
           : confirmed
-            ? html`<strong>Synced account plan.</strong> Changes save across your signed-in devices. <a href="/discover.html">Open Strata+</a>.`
-            : html`<strong>Free synced plan.</strong> Changes save across your signed-in devices. <a href="/pricing">See what Strata+ adds</a>.`;
+            ? html`<strong>Synced account plan.</strong> <span class="notice-detail">Changes save across your signed-in devices.</span> <a href="/discover.html">Open Strata+</a>`
+            : html`<strong>Free synced plan.</strong> <span class="notice-detail">Changes save across your signed-in devices.</span> <a href="/pricing">See what Strata+ adds</a>`;
     return html`${base}${oversized ? html`<p><strong>Large saved draft preserved.</strong> Export a copy, then reduce to 30 exercises per day and 140 per week before syncing or importing.</p>` : ""}`;
   }
 
