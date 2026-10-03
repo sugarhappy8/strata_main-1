@@ -278,6 +278,7 @@ test("a 9.3 database gains separate signed-in and anonymous counts, and the dail
       "010-product-signal-audiences",
       "011-drop-build9-archives",
       "012-close-build7-checkouts",
+      "013-account-milestones",
     ]);
     assert.deepEqual(
       {
@@ -430,8 +431,47 @@ test("migration 012 closes unfinished Build 7.4 checkouts and leaves lifetime pu
       productSignalTable: PRODUCT_SIGNAL_TABLE,
       now: () => 1234,
     });
-    assert.equal(result.applied.at(-1), "012-close-build7-checkouts");
+    assert.ok(result.applied.includes("012-close-build7-checkouts"));
     assertBuild7CheckoutsClosed(database, 1234);
+  } finally {
+    database.close();
+  }
+});
+
+test("migration 013 starts recording first full weeks and removes them with the account", () => {
+  const database = legacyDatabase();
+  try {
+    const result = migrateLocalSchema(database, {
+      activeWorkoutIndex: WORKOUT_ACTIVE_INDEX,
+      reconcileActiveWorkouts: RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,
+      productSignalTable: PRODUCT_SIGNAL_TABLE,
+      now: () => 5678,
+    });
+    assert.equal(result.applied.at(-1), "013-account-milestones");
+    assert.equal(
+      database
+        .prepare("SELECT applied_at FROM schema_migrations WHERE migration_id=?")
+        .get("013-account-milestones").applied_at,
+      5678,
+      "the ledger time is when activation recording began",
+    );
+    database
+      .prepare(
+        "INSERT INTO users(id,name,email,password_hash,password_salt,created_at) VALUES('m1','M','m@example.com','h','s',1)",
+      )
+      .run();
+    database
+      .prepare("INSERT INTO account_milestones(user_id,first_full_week_at) VALUES('m1',10)")
+      .run();
+    database.prepare("DELETE FROM users WHERE id='m1'").run();
+    assert.equal(database.prepare("SELECT COUNT(*) AS n FROM account_milestones").get().n, 0);
+    const again = migrateLocalSchema(database, {
+      activeWorkoutIndex: WORKOUT_ACTIVE_INDEX,
+      reconcileActiveWorkouts: RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,
+      productSignalTable: PRODUCT_SIGNAL_TABLE,
+      now: () => 9999,
+    });
+    assert.deepEqual(again.applied, []);
   } finally {
     database.close();
   }

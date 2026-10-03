@@ -19,6 +19,18 @@ const { appendSetCookie, renewedSessionExpiry } = require("./session-renewal");
 const { SOCIAL_PAGE_MESSAGES } = require("./social-auth-messages");
 
 const scryptAsync = promisify(scrypt);
+
+/** The stored password hash: scrypt over the base64 salt. scripts/demo-account.js uses it too. */
+async function hashPassword(password, salt) {
+  const key = await scryptAsync(password, Buffer.from(salt, "base64"), 64, {
+    N: 16384,
+    r: 8,
+    p: 1,
+    maxmem: 64 * 1024 * 1024,
+  });
+  return Buffer.from(key).toString("base64");
+}
+
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
 const SESSION_COOKIE = "strata_session";
 const SIGNUP_COOKIE = "strata_signup";
@@ -120,15 +132,7 @@ function createAuthService({
     );
   }
 
-  async function passwordHash(password, salt) {
-    const key = await scryptAsync(password, Buffer.from(salt, "base64"), 64, {
-      N: 16384,
-      r: 8,
-      p: 1,
-      maxmem: 64 * 1024 * 1024,
-    });
-    return Buffer.from(key).toString("base64");
-  }
+  const passwordHash = hashPassword;
 
   async function passwordMatches(password, user) {
     const actual = Buffer.from(await passwordHash(password, user.password_salt), "base64");
@@ -1891,4 +1895,4 @@ function createAuthService({
   });
 }
 
-module.exports = { createAuthService, configuredAdminEmail, normalizeEmail };
+module.exports = { createAuthService, configuredAdminEmail, hashPassword, normalizeEmail };

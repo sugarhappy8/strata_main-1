@@ -44,6 +44,7 @@ const {
   createTursoAiMethods,
   deleteLocalAiData,
 } = require("./ai-store");
+const { createLocalMetricsMethods, createTursoMetricsMethods } = require("./metrics-store");
 const {
   appleDeletionBatch,
   createLocalAppleBillingMethods,
@@ -332,6 +333,7 @@ function localStore(root) {
     ...deviceMethods,
     ...dataLayerMethods,
     ...aiMethods,
+    ...createLocalMetricsMethods({ statements, plainRow }),
     ...createLocalAppleBillingMethods({ statements, plainRow }),
     ...createLocalSocialAuthMethods({ db, statements, plainRow }),
     ...createLocalServerStateMethods({ statements, plainRow }),
@@ -1341,6 +1343,7 @@ async function tursoStore(url, authToken, tursoClientFactory) {
     ...deviceMethods,
     ...dataLayerMethods,
     ...aiMethods,
+    ...createTursoMetricsMethods({ first, all, run }),
     ...createTursoAppleBillingMethods({ first, all, run }),
     ...createTursoSocialAuthMethods({ client, first, all, run, plainRow }),
     ...createTursoServerStateMethods({ first, all, run }),

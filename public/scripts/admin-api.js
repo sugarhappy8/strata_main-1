@@ -45,6 +45,7 @@
       identity: () => request("/api/me"),
       adminSession: () => request("/api/admin/session"),
       overview: () => request("/api/admin/overview"),
+      metrics: () => request("/api/admin/metrics"),
       aiUsage: () => request("/api/ai/usage"),
       productSignals: (days) =>
         request(`/api/admin/product-signals?days=${encodeURIComponent(days)}`),

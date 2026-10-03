@@ -42,7 +42,8 @@
         "src/social-auth.js",
         "src/social-auth-config.js",
         "src/single-instance.js",
-        "src/router.js"
+        "src/router.js",
+        "src/admin-metrics.js"
       ]
     },
     "src/service-composition.js": {
@@ -171,7 +172,8 @@
         "src/ai-store.js",
         "src/apple-billing-store.js",
         "src/social-auth-store.js",
-        "src/server-state-store.js"
+        "src/server-state-store.js",
+        "src/metrics-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -182,7 +184,11 @@
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
       "maxLines": 600,
-      "allowedDependencies": ["src/billing-schema.js", "src/product-signals-schema.js"]
+      "allowedDependencies": [
+        "src/billing-schema.js",
+        "src/product-signals-schema.js",
+        "src/metrics-schema.js"
+      ]
     },
     "src/schema.js": {
       "role": "Shared storage schema and statements",
@@ -199,13 +205,34 @@
         "src/ai-schema.js",
         "src/apple-billing-schema.js",
         "src/social-auth-schema.js",
-        "src/server-state-schema.js"
+        "src/server-state-schema.js",
+        "src/metrics-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
       "role": "Aggregate product-activity schema, daily keys, and statements",
       "maxLines": 70,
       "allowedDependencies": []
+    },
+    "src/admin-metrics.js": {
+      "role": "Owner investor-metrics route and the first-full-week milestone",
+      "maxLines": 180,
+      "allowedDependencies": ["src/plans.js", "src/metrics.js"]
+    },
+    "src/metrics.js": {
+      "role": "Pure investor-metrics figures and CSV from account-scoped rows",
+      "maxLines": 440,
+      "allowedDependencies": ["src/paddle-catalog.js"]
+    },
+    "src/metrics-schema.js": {
+      "role": "Account-milestone schema and investor-metrics statements",
+      "maxLines": 90,
+      "allowedDependencies": []
+    },
+    "src/metrics-store.js": {
+      "role": "SQLite and Turso investor-metrics storage parity",
+      "maxLines": 100,
+      "allowedDependencies": ["src/metrics-schema.js"]
     },
     "src/product-signals.js": {
       "role": "Consent-gated aggregate product-activity boundary",

@@ -92,6 +92,12 @@ Permanent deletion retains one explicit destructive review dialog but no typed c
 
 `GET /api/account/sessions` lists only the signed-in member's active sessions and exposes opaque public identifiers plus creation, expiry, and current-session state. `POST /api/account/sessions/revoke` and `POST /api/account/sessions/revoke-others` are CSRF-protected, account-scoped mutations; the current session cannot be removed through the selective route. `POST /api/account/export` is also authenticated, CSRF-protected, account-scoped, rate-limited, and returned with private `no-store` attachment headers. Workout history uses stable keyset pages so the response is not buffered or silently capped; because the download does not hold a long database transaction, concurrent account changes can be reflected progressively. Exercise these controls after deployment, confirm another browser is actually signed out, and inspect an export for expected account data and the documented secret/provider/admin exclusions without placing the download in deployment logs or support tickets.
 
+## Investor metrics and the demo account
+
+Admin → Metrics (`GET /api/admin/metrics`, owner only) counts customer accounts: weekly active members, sign-ups, activation within seven days, week-4 and week-8 retention, paying members, MRR, monthly churn, and Strata AI cost per active Strata+ member. **Download CSV** saves the same figures. It leaves out the owner, `APPLE_SANDBOX_ACCOUNTS`, and `STRATA_INTERNAL_ACCOUNTS`, so list the demo account and every test account there. Activation is counted from the time migration `013-account-milestones` ran. Set `STRATA_AI_USD_PER_MILLION_TOKENS` from the Groq bill (the bill divided by the month's tokens in millions) to see AI cost per member; unset, Metrics shows tokens only. The definitions are in [docs/investor/metrics.md](investor/metrics.md).
+
+The investor demo account comes from `npm run demo:account -- --email demo@your-domain` (see [docs/investor/demo.md](investor/demo.md)). It refuses an email that already has an account (the App Review account included), the owner's email, or one missing from `STRATA_INTERNAL_ACCOUNTS`, and it needs `--yes` to write to Turso. It never grants Strata+; grant that from Admin → People.
+
 ## Strata AI
 
 Strata AI runs on **Groq**'s OpenAI-compatible API and is off until `GROQ_API_KEY` and `STRATA_AI_MODEL` are set. `STRATA_AI.md` describes the prompts, schemas, context, quota, and costs.

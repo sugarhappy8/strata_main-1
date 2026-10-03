@@ -83,6 +83,8 @@ const ACCOUNT_EXPORT_QUERIES = Object.freeze({
     "SELECT snapshot_date,snapshot_json,brief_json,brief_generated_at,updated_at FROM daily_snapshots WHERE user_id=? ORDER BY snapshot_date",
   planChanges:
     "SELECT plan_updated_at,source,detail,created_at FROM plan_changes WHERE user_id=? ORDER BY plan_updated_at",
+  // When the member first saved a full week (the owner's activation figure counts it, never its contents).
+  milestones: "SELECT first_full_week_at FROM account_milestones WHERE user_id=?",
   trainingLinks:
     "SELECT provider,external_id,workout_id,method,linked_at FROM training_links WHERE user_id=? ORDER BY linked_at,external_id",
   // Strata AI consent and the member's own daily request and token counts.
@@ -102,6 +104,7 @@ const ACCOUNT_EXPORT_SINGLE_ROWS = new Set([
   "trainingBlock",
   "coachingProfile",
   "aiSettings",
+  "milestones",
 ]);
 const ACCOUNT_EXPORT_WORKOUTS_QUERY = `SELECT id,workout_json,summary_json,started_at,revision,updated_at
   FROM workouts

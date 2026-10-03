@@ -10,14 +10,14 @@
     <title>Admin — STRATA</title>
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=9.7.0" />
-    <link rel="stylesheet" href="/tokens.css?v=9.7.0" />
-    <link rel="stylesheet" href="/admin.css?v=9.7.0" />
-    <link rel="stylesheet" href="/experience.css?v=9.7.0" />
-    <script src="/html.js?v=9.7.0"></script>
-    <script src="/app-shell.js?v=9.7.0"></script>
-    <script src="/motion.js?v=9.7.0"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=9.7.0" />
+    <link rel="stylesheet" href="/fonts.css?v=9.8.0" />
+    <link rel="stylesheet" href="/tokens.css?v=9.8.0" />
+    <link rel="stylesheet" href="/admin.css?v=9.8.0" />
+    <link rel="stylesheet" href="/experience.css?v=9.8.0" />
+    <script src="/html.js?v=9.8.0"></script>
+    <script src="/app-shell.js?v=9.8.0"></script>
+    <script src="/motion.js?v=9.8.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=9.8.0" />
   </head>
   <body>
     <a class="skip-link" href="#adminMain">Skip to administration</a>
@@ -60,6 +60,7 @@
       <div class="dashboard" id="dashboard" hidden>
         <nav class="section-nav" aria-label="Admin sections" role="tablist">
           <button id="overviewTab" type="button" role="tab" data-section="overview" aria-controls="overviewSection" aria-selected="true">Overview</button>
+          <button id="metricsTab" type="button" role="tab" data-section="metrics" aria-controls="metricsSection" aria-selected="false">Metrics</button>
           <button id="peopleTab" type="button" role="tab" data-section="people" aria-controls="peopleSection" aria-selected="false">People</button>
           <button id="supportTab" type="button" role="tab" data-section="support" aria-controls="supportSection" aria-selected="false">Help desk</button>
           <button id="activityTab" type="button" role="tab" data-section="activity" aria-controls="activitySection" aria-selected="false">Activity</button>
@@ -126,6 +127,42 @@
             <dl class="product-signal-grid" id="productSignalRows" aria-busy="false"></dl>
             <p class="section-status" id="productSignalStatus" role="status" aria-live="polite">Loading aggregate activity…</p>
           </div>
+        </section>
+
+        <section class="admin-section" id="metricsSection" data-panel="metrics" role="tabpanel" aria-labelledby="metricsTab" hidden>
+          <div class="section-heading">
+            <div><p class="panel-index">Metrics</p><h2 id="metricsTitle">Usage, retention, and revenue.</h2></div>
+            <div class="metrics-actions">
+              <button class="button button-light compact-button" id="refreshMetrics" type="button">Refresh <span aria-hidden="true">↻</span></button>
+              <button class="button button-dark compact-button" id="downloadMetrics" type="button" disabled>Download CSV <span aria-hidden="true">↓</span></button>
+            </div>
+          </div>
+          <p class="section-lede">Customer accounts only, from what they saved, logged, and paid for. Every figure is a count of accounts or subscriptions; no workout, plan, or diary contents are shown.</p>
+
+          <div class="stat-grid" aria-label="Metrics summary">
+            <article class="stat-card"><span>Weekly active members</span><strong id="metricsWeeklyActiveStat">—</strong><small>Last complete week</small></article>
+            <article class="stat-card"><span>Paying members</span><strong id="metricsPayingStat">—</strong><small>Paddle and App Store</small></article>
+            <article class="stat-card"><span>Monthly recurring revenue</span><strong id="metricsMrrStat">—</strong><small id="metricsMrrNote">After provider fees: —</small></article>
+            <article class="stat-card"><span>Free to paid</span><strong id="metricsConversionStat">—</strong><small>Accounts that ever paid</small></article>
+          </div>
+          <p class="signal-boundary" id="metricsScope"></p>
+          <div class="metrics-tables" id="metricsTables" aria-busy="false"></div>
+
+          <details class="panel metrics-definitions">
+            <summary>How each figure is counted</summary>
+            <dl>
+              <div><dt>Active member</dt><dd>A customer account that saved or logged something that week: a workout, a weekly plan, a nutrition entry, a workout check-in, or a Strata AI chat. Signing in alone does not count.</dd></div>
+              <div><dt>Sign-ups</dt><dd>Accounts created that week. Google means the account was created with Sign in with Google. STRATA does not record where people came from before they signed up.</dd></div>
+              <div><dt>Activation</dt><dd>Of the accounts created since STRATA began recording it (9.8.0) whose first seven days are over, the share that saved a full week in those seven days: as many days with exercises as the training days they chose (four by default).</dd></div>
+              <div><dt>Week 4 and week 8</dt><dd>Of the accounts old enough, the share active on days 28–34 (week 4) or 56–62 (week 8) after signing up.</dd></div>
+              <div><dt>Paying members</dt><dd>Accounts with a Paddle subscription that is active or past due, or an App Store subscription (not Sandbox) that has not expired or is in its grace period. Lifetime purchases and owner grants are not paying members.</dd></div>
+              <div><dt>Monthly recurring revenue</dt><dd>Paying subscriptions at the $2.99 list price, and what is left after Paddle’s 5% + $0.50 or Apple’s 15%, before tax.</dd></div>
+              <div><dt>Monthly churn</dt><dd>Subscriptions paying when the month began that ended during it, divided by those paying when it began. A paused or canceled Paddle subscription ends at its last change.</dd></div>
+              <div><dt>Strata AI cost</dt><dd>Tokens used by customer accounts that month, priced at <code>STRATA_AI_USD_PER_MILLION_TOKENS</code>, divided by the members who used a Strata+ feature that month.</dd></div>
+              <div><dt>Left out</dt><dd>The owner, the App Store review accounts in <code>APPLE_SANDBOX_ACCOUNTS</code>, and the demo or test accounts in <code>STRATA_INTERNAL_ACCOUNTS</code>.</dd></div>
+            </dl>
+          </details>
+          <p class="section-status" id="metricsStatus" role="status" aria-live="polite"></p>
         </section>
 
         <section class="admin-section" id="peopleSection" data-panel="people" role="tabpanel" aria-labelledby="peopleTab" hidden>
@@ -272,14 +309,15 @@
       </div>
     </dialog>
 
-    <footer class="admin-footer">STRATA · Build 9.7.0 · Private administration · <a href="/contact">Contact</a> · <a href="/policies">Policies</a></footer>
+    <footer class="admin-footer">STRATA · Build 9.8.0 · Private administration · <a href="/contact">Contact</a> · <a href="/policies">Policies</a></footer>
     <noscript><p class="noscript-message">JavaScript is required for private administration. Your public STRATA pages still work normally.</p></noscript>
-    <script src="/admin-state.js?v=9.7.0"></script>
-    <script src="/admin-logic.js?v=9.7.0"></script>
-    <script src="/admin-api.js?v=9.7.0"></script>
-    <script src="/admin-render.js?v=9.7.0"></script>
-    <script src="/admin-session.js?v=9.7.0"></script>
-    <script src="/admin-events.js?v=9.7.0"></script>
-    <script src="/admin.js?v=9.7.0"></script>
+    <script src="/admin-state.js?v=9.8.0"></script>
+    <script src="/admin-logic.js?v=9.8.0"></script>
+    <script src="/admin-api.js?v=9.8.0"></script>
+    <script src="/admin-render.js?v=9.8.0"></script>
+    <script src="/admin-metrics.js?v=9.8.0"></script>
+    <script src="/admin-session.js?v=9.8.0"></script>
+    <script src="/admin-events.js?v=9.8.0"></script>
+    <script src="/admin.js?v=9.8.0"></script>
   </body>
 </html>

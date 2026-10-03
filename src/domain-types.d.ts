@@ -603,6 +603,7 @@ export type ApplicationStore = { readonly kind: string } & AuthStore &
   SupportStore &
   SetupStore &
   ProductSignalsStore &
+  MetricsStore &
   TrainingStore &
   BillingStore &
   CoachingStore &
@@ -680,6 +681,7 @@ export interface AccountExportStoreRows {
   planChanges: JsonObject[];
   trainingLinks: JsonObject[];
   aiSettings: JsonObject | null;
+  milestones?: JsonObject | null;
   aiUsage: JsonObject[];
   appleSubscriptions?: JsonObject[];
   signIns?: JsonObject[];
@@ -1589,6 +1591,40 @@ export interface ProductSignalsServiceDependencies {
 export interface ProductSignalsService {
   routes: ApiRoute[];
   cleanup(timestamp?: number): Promise<unknown>;
+}
+
+/** Rows behind the owner's investor metrics (src/metrics-schema.js); src/metrics.js turns them into figures. */
+export interface InvestorMetricsRows {
+  accounts: Array<{
+    id: string;
+    created_at: number;
+    first_full_week_at: number | null;
+    method: string;
+    internal: number;
+  }>;
+  activeDays: Array<{ user_id: string; day: number; plus: number }>;
+  paddle: Array<{ user_id: string; status: string; created_at: number; changed_at: number }>;
+  apple: Array<{ user_id: string; started_at: number; ends_at: number; revoked_at: number | null }>;
+  lifetime: Array<{ user_id: string }>;
+  aiUsage: Array<{ user_id: string; month: string; requests: number; tokens: number }>;
+  activationSince: number | null;
+}
+export interface MetricsStore {
+  /** Keeps the earliest time an account saved a full week. */
+  recordFullWeek(userId: string, at: number): Promise<void>;
+  accountMilestone(userId: string): Promise<{ first_full_week_at: number } | null>;
+  investorMetricsRows(since: number, internalEmails: string[]): Promise<InvestorMetricsRows>;
+}
+export interface AdminMetricsServiceDependencies {
+  store: MetricsStore & { preferences(userId: string): Promise<unknown> };
+  http: Pick<HttpHelpers, "json">;
+  adminEmail?: string;
+  environment?: NodeJS.ProcessEnv;
+  now?: () => number;
+}
+export interface AdminMetricsService {
+  routes: ApiRoute[];
+  subscribe(events: EventBus): void;
 }
 
 export interface AuthServiceDependencies {

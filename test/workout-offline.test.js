@@ -7,7 +7,7 @@ const { join } = require("node:path");
 const vm = require("node:vm");
 const W = require("../public/scripts/workout-core");
 
-const BUILD = "9.7.0";
+const BUILD = "9.8.0";
 const ROOT = join(__dirname, ".."),
   read = (path) => readFileSync(join(ROOT, path), "utf8");
 

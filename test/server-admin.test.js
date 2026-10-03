@@ -432,6 +432,7 @@ test("an unverified exact email, aliases, forged role fields, and anonymous call
   for (const path of [
     "/api/admin/session",
     "/api/admin/overview",
+    "/api/admin/metrics",
     "/api/admin/product-signals",
     "/api/admin/users",
     "/api/admin/audit",
@@ -517,6 +518,7 @@ test("the verified exact address binds ownership, forces a fresh login, and open
 
   for (const path of [
     "/api/admin/overview",
+    "/api/admin/metrics",
     "/api/admin/product-signals",
     "/api/admin/users",
     "/api/admin/audit",
@@ -652,6 +654,58 @@ test("admin reads require the bound owner session and return bounded, explicitly
   assert.ok(overview.data.overview.discovery.activeUsers >= 1);
   assertPrivateJson(overview.response);
   assertAdminResponseRedacted(overview.data, secrets);
+
+  // Saving a full week records the member's activation; the owner's investor metrics leave the owner out.
+  const current = await request("/api/plan", { headers: { Cookie: nonAdmin.cookie } });
+  const fullWeek = Object.fromEntries(
+    ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(
+      (day, index) => [
+        day,
+        index < 4
+          ? [
+              {
+                instanceId: `full-${index}`,
+                exerciseId: "flat-dumbbell-press",
+                sets: 3,
+                reps: "8-12",
+              },
+            ]
+          : [],
+      ],
+    ),
+  );
+  const saved = await jsonRequest(
+    "/api/plan",
+    {
+      plan: { version: 1, restDay: "Sunday", restDays: ["Sunday"], days: fullWeek },
+      expectedPlanUpdatedAt: current.data.planUpdatedAt,
+    },
+    { cookie: nonAdmin.cookie, csrf: nonAdmin.csrf, method: "PUT" },
+  );
+  assert.equal(saved.response.status, 200);
+  const milestoneDb = openDatabase();
+  try {
+    const milestone = milestoneDb
+      .prepare("SELECT first_full_week_at FROM account_milestones WHERE user_id=?")
+      .get(nonAdmin.user.id);
+    assert.equal(Number(milestone?.first_full_week_at), Number(saved.data.planUpdatedAt));
+  } finally {
+    milestoneDb.close();
+  }
+  const metrics = await request("/api/admin/metrics", { headers: { Cookie: admin.cookie } });
+  assert.equal(metrics.response.status, 200);
+  assertPrivateJson(metrics.response);
+  assertAdminResponseRedacted(metrics.data, secrets);
+  assert.ok(metrics.data.metrics.internalAccountsExcluded >= 1, "the owner is not a customer");
+  assert.ok(metrics.data.metrics.revenue.accounts >= 2);
+  assert.ok(metrics.data.metrics.activationRecordedSince);
+  assert.equal(metrics.data.metrics.weekly.length, 12);
+  assert.ok(
+    metrics.data.metrics.weekly.at(-1).activeMembers >= 1,
+    "the plan save counts as activity",
+  );
+  assert.match(metrics.data.csv.filename, /^strata-metrics-\d{4}-\d{2}-\d{2}\.csv$/);
+  assert.match(metrics.data.csv.text, /^STRATA investor metrics\r\n/);
 
   const signal = await request("/api/product-signals", {
     method: "POST",

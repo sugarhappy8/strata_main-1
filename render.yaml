@@ -61,6 +61,10 @@ services:
         value: online.stratafitness.app.plus.monthly
       - key: APPLE_SANDBOX_ACCOUNTS
         sync: false
+      - key: STRATA_INTERNAL_ACCOUNTS
+        sync: false
+      - key: STRATA_AI_USD_PER_MILLION_TOKENS
+        sync: false
       - key: GROQ_API_KEY
         sync: false
       - key: STRATA_AI_MODEL

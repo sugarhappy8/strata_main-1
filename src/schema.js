@@ -25,6 +25,7 @@ const {
 } = require("./apple-billing-schema");
 const { SOCIAL_AUTH_SCHEMA, SOCIAL_AUTH_SQL } = require("./social-auth-schema");
 const { SERVER_STATE_SCHEMA, SERVER_STATE_SQL } = require("./server-state-schema");
+const { METRICS_SQL } = require("./metrics-schema");
 
 // Central catalog shared by the local SQLite and Turso adapters.
 const WORKOUT_ACTIVE_INDEX =
@@ -240,6 +241,7 @@ const SQL = {
   ...ACCESS_CONTROLS_SQL,
   ...ACCOUNT_SELF_SERVICE_SQL,
   ...BILLING_SQL,
+  ...METRICS_SQL,
   ping: "SELECT 1 AS ok",
   userByEmail: "SELECT * FROM users WHERE email = ?",
   userById:

@@ -13,6 +13,7 @@ const ADMIN_MODULES = [
   "admin-logic.js",
   "admin-api.js",
   "admin-render.js",
+  "admin-metrics.js",
   "admin-session.js",
   "admin-events.js",
   "admin.js",
@@ -69,6 +70,12 @@ class RuntimeElement {
   addEventListener() {}
   append(...children) {
     this.children.push(...children);
+  }
+  click() {
+    this.clicked = true;
+  }
+  remove() {
+    this.removed = true;
   }
   close() {
     this.open = false;
@@ -132,6 +139,10 @@ function createAdminRuntime(initialRoutes = {}) {
     support: async () => ({ tickets: [], total: 0 }),
     updateSupport: async () => ({ message: "Support updated" }),
     audit: async () => ({ events: [] }),
+    metrics: async () => ({
+      metrics: { summary: { weeklyActiveMembers: 3 }, weekly: [], internalAccountsExcluded: 1 },
+      csv: { filename: "strata-metrics-2026-10-03.csv", text: "STRATA investor metrics\r\n" },
+    }),
   };
   const client = {};
   for (const name of Object.keys(defaults))
@@ -226,10 +237,24 @@ function createAdminRuntime(initialRoutes = {}) {
     requestAnimationFrame: (callback) => callback(),
     setTimeout: () => 1,
     clearTimeout() {},
+    Blob: class {
+      constructor(parts, options) {
+        this.parts = parts;
+        this.type = options?.type;
+      }
+    },
+    URL: {
+      created: [],
+      createObjectURL(blob) {
+        this.created.push(blob);
+        return "blob:metrics";
+      },
+      revokeObjectURL() {},
+    },
   };
   context.globalThis = context;
   vm.createContext(context);
-  for (const file of ["admin-state.js", "admin-logic.js", "admin-session.js"])
+  for (const file of ["admin-state.js", "admin-logic.js", "admin-metrics.js", "admin-session.js"])
     vm.runInContext(sourceFor(file), context, { filename: file });
   context.StrataAdminApi = { createClient: () => client };
   context.StrataAdminRender = {
@@ -489,6 +514,7 @@ test("Admin invalidation prevents late reads and mutations from repainting a loc
     "support",
     "updateSupport",
     "audit",
+    "metrics",
   ]) {
     assert.match(
       controller,
@@ -687,6 +713,47 @@ test("Admin product-signal ranges render only the latest response", async () => 
     page.trace.filter((entry) => entry.name === "signals").map((entry) => entry.data.marker),
     ["LATEST RANGE"],
   );
+});
+
+test("Admin metrics load on their tab, download the server's CSV, and purge when the view locks", async () => {
+  const page = createAdminRuntime();
+  await settle();
+  assert.equal(
+    page.calls.filter((call) => call.name === "metrics").length,
+    0,
+    "not on the overview",
+  );
+  assert.equal(page.elements.get("downloadMetrics").disabled, false, "the markup starts disabled");
+  page.handlers.activateSection("metrics");
+  await settle();
+  assert.equal(page.calls.filter((call) => call.name === "metrics").length, 1);
+  assert.equal(page.elements.get("metricsWeeklyActiveStat").textContent, "3");
+  assert.equal(page.elements.get("metricsTables").children.length, 5);
+  assert.equal(page.elements.get("downloadMetrics").disabled, false);
+  assert.equal(page.elements.get("metricsStatus").textContent, "Metrics are current.");
+  page.handlers.downloadMetrics();
+  const link = page.document.body.children.at(-1);
+  assert.equal(link.download, "strata-metrics-2026-10-03.csv");
+  assert.equal(link.href, "blob:metrics");
+  assert.equal(link.clicked, true);
+  assert.equal(link.removed, true);
+  const late = deferred();
+  page.routes.metrics = () => late.promise;
+  const reload = page.handlers.loadMetrics();
+  page.state.invalidatePrivateOperations();
+  late.resolve({ metrics: { summary: { weeklyActiveMembers: 99 } }, csv: { text: "late" } });
+  await reload;
+  assert.equal(
+    page.elements.get("metricsWeeklyActiveStat").textContent,
+    "3",
+    "a stale read never repaints",
+  );
+  page.handlers.handleVisibilityChange();
+  await settle();
+  assert.equal(page.elements.get("metricsWeeklyActiveStat").textContent, "—");
+  assert.equal(page.elements.get("metricsTables").children.length, 0);
+  assert.equal(page.elements.get("downloadMetrics").disabled, true);
+  assert.equal(page.state.metricsCsv, null, "locking the view drops the CSV");
 });
 
 test("account actions stay locked until authoritative detail loads", () => {

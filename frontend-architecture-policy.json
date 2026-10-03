@@ -686,6 +686,12 @@
           "maxLines": 720
         },
         {
+          "file": "public/scripts/admin-metrics.js",
+          "role": "render",
+          "global": "StrataAdminMetrics",
+          "maxLines": 220
+        },
+        {
           "file": "public/scripts/admin-session.js",
           "role": "events",
           "global": "StrataAdminSession",

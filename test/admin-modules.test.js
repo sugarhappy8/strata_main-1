@@ -15,6 +15,7 @@ test("admin modules expose the same focused interfaces in a browser context", ()
     "admin-logic.js",
     "admin-api.js",
     "admin-render.js",
+    "admin-metrics.js",
     "admin-session.js",
     "admin-events.js",
   ]) {
@@ -24,6 +25,7 @@ test("admin modules expose the same focused interfaces in a browser context", ()
   assert.equal(typeof context.StrataAdminLogic.expectedConfirmation, "undefined");
   assert.equal(typeof context.StrataAdminApi.createClient, "function");
   assert.equal(typeof context.StrataAdminRender.createRenderer, "function");
+  assert.equal(typeof context.StrataAdminMetrics.createMetricsView, "function");
   assert.equal(typeof context.StrataAdminSession.createSessionCoordinator, "function");
   assert.equal(typeof context.StrataAdminEvents.bindEvents, "function");
 });
@@ -413,4 +415,143 @@ test("admin shows a member's App Store subscription beside the Paddle facts", ()
     labels.indexOf("Latest purchase activity") < labels.indexOf("App Store subscription"),
     "App Store facts follow the Paddle purchase facts",
   );
+});
+
+test("admin metrics render every figure as text and say what is missing", () => {
+  const metrics = require("../public/scripts/admin-metrics");
+  assert.equal(metrics.count(1234), "1,234");
+  assert.equal(metrics.count(null), "—");
+  assert.equal(metrics.percent(0.4567), "45.7%");
+  assert.equal(metrics.percent(null), "—");
+  assert.equal(metrics.usd(5.98), "$5.98");
+  assert.equal(metrics.usd(0.12345, 4), "$0.1235");
+  assert.equal(metrics.share(1, 4, 0.25), "1 of 4 · 25.0%");
+  assert.equal(metrics.share(0, 0, null), "—", "no eligible accounts is not 0%");
+  assert.equal(metrics.period("2026-10", false), "2026-10 (so far)");
+  assert.equal(metrics.period("2026-09", true), "2026-09");
+  assert.equal(
+    metrics.scopeText({
+      internalAccountsExcluded: 3,
+      activationRecordedSince: "2026-10-04T09:00:00.000Z",
+      generatedAt: "2026-10-05T10:30:00.000Z",
+    }),
+    "3 internal accounts are left out. Activation is recorded from 2026-10-04. Generated 2026-10-05 10:30 UTC.",
+  );
+  assert.match(
+    metrics.scopeText({ internalAccountsExcluded: 0 }),
+    /Activation is not recorded yet\./,
+  );
+
+  const nodes = new Map();
+  function node(tag = "") {
+    return {
+      tag,
+      textContent: "",
+      attributes: {},
+      children: [],
+      append(...children) {
+        this.children.push(...children);
+      },
+      replaceChildren(...children) {
+        this.children = children;
+      },
+      setAttribute(name, value) {
+        this.attributes[name] = String(value);
+      },
+    };
+  }
+  const document = {
+    getElementById(id) {
+      if (!nodes.has(id)) nodes.set(id, node(id));
+      return nodes.get(id);
+    },
+    createElement: (tag) => node(tag),
+  };
+  const view = metrics.createMetricsView({ document });
+  view.render({
+    internalAccountsExcluded: 1,
+    activationRecordedSince: null,
+    generatedAt: "2026-10-03T12:00:00.000Z",
+    summary: {
+      weeklyActiveMembers: 2,
+      payingMembers: 1,
+      mrr: { list: 2.99, afterFees: 2.34 },
+      conversionRate: 0.5,
+    },
+    revenue: {
+      accounts: 2,
+      everPaid: 1,
+      conversionRate: 0.5,
+      payingMembers: 1,
+      mrr: { list: 2.99, afterFees: 2.34 },
+    },
+    weekly: [
+      {
+        weekStart: "2026-09-28",
+        complete: false,
+        activeMembers: 2,
+        signups: 1,
+        emailSignups: 1,
+        googleSignups: 0,
+      },
+    ],
+    cohorts: [
+      {
+        weekStart: "2026-09-28",
+        signups: 1,
+        activation: { eligible: 0, activated: 0, rate: null },
+        retention: [
+          { week: 4, eligible: 0, retained: 0, rate: null },
+          { week: 8, eligible: 0, retained: 0, rate: null },
+        ],
+      },
+    ],
+    monthly: [
+      {
+        month: "2026-10",
+        complete: false,
+        payingAtStart: 1,
+        started: 0,
+        ended: 0,
+        churnRate: 0,
+        payingAtEnd: 1,
+        mrrAtEnd: 2.99,
+      },
+    ],
+    ai: {
+      usdPerMillionTokens: null,
+      months: [
+        {
+          month: "2026-10",
+          complete: false,
+          activePlusMembers: 1,
+          requests: 2,
+          tokens: 300,
+          tokensPerMember: 300,
+          estimatedCost: null,
+          costPerMember: null,
+        },
+      ],
+    },
+  });
+  assert.equal(nodes.get("metricsMrrStat").textContent, "$2.99");
+  assert.equal(nodes.get("metricsMrrNote").textContent, "After provider fees: $2.34");
+  assert.equal(nodes.get("metricsConversionStat").textContent, "50.0%");
+  const tables = nodes.get("metricsTables").children;
+  assert.equal(tables.length, 5);
+  assert.ok(tables.every((wrap) => wrap.attributes.role === "region" && wrap.tabIndex === 0));
+  const caption = (wrap) => wrap.children[0].children[0].textContent;
+  assert.equal(
+    caption(tables[4]),
+    "Strata AI cost per active Strata+ member (set STRATA_AI_USD_PER_MILLION_TOKENS to price it)",
+  );
+  const firstRow = (wrap) =>
+    wrap.children[0].children[2].children[0].children.map((cell) => cell.textContent);
+  assert.deepEqual(firstRow(tables[1]), ["2026-09-28 (so far)", "2", "1", "1", "0"]);
+  assert.deepEqual(firstRow(tables[2]), ["2026-09-28", "1", "—", "—", "—"]);
+  assert.deepEqual(firstRow(tables[4]), ["2026-10 (so far)", "1", "2", "300", "300", "—", "—"]);
+  view.clear();
+  assert.equal(nodes.get("metricsMrrStat").textContent, "—");
+  assert.equal(nodes.get("metricsTables").children.length, 0);
+  assert.throws(() => metrics.createMetricsView({}), /requires a document/);
 });
