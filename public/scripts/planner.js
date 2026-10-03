@@ -472,32 +472,14 @@ function renderLibrary() {
   renderMobileHandoff();
 }
 
-let exerciseGuideTrigger = null,
-  guidanceRequest = null;
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("The exercise guide could not load."));
-    document.head.append(script);
-  });
-}
-// Plan starts from the library, which leaves out setup notes and cues. The first guide fetches them with the full
-// catalog, and the guide builder (discovery-core.js) with them; offline, both come from the service worker cache.
-function loadGuidance() {
-  guidanceRequest ||= Promise.all([
-    api("/exercises.json?v=9.6.0"),
-    globalThis.StrataDiscovery?.exerciseGuidance ? null : loadScript("/discovery-core.js?v=9.6.0"),
-  ]).then(
-    ([catalog]) => catalog,
-    (error) => {
-      guidanceRequest = null;
-      throw error;
-    },
-  );
-  return guidanceRequest;
-}
+let exerciseGuideTrigger = null;
+const loadGuidance = API.createGuidanceLoader({
+  request: (path) => api(path),
+  documentImpl: document,
+  hasBuilder: () => Boolean(globalThis.StrataDiscovery?.exerciseGuidance),
+  catalogPath: "/exercises.json?v=9.6.0",
+  builderPath: "/discovery-core.js?v=9.6.0",
+});
 async function openExerciseGuide(id, trigger = null) {
   const listed = exerciseById(id);
   if (listed && !LOGIC.hasGuidance(listed))
