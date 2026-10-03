@@ -48,7 +48,8 @@ or in the STRATA iOS app through Apple In-App Purchase. There is no free trial; 
 ## Where it is
 
 - Live at stratafitness.online as an installable web app; the iOS app is in TestFlight.
-- Build 9.8.1. Build 10 is V1: the iOS app in the App Store and Polar tested end to end with a real account
+- Build 10.0.0 is V1's code: the website and the iOS app sell the same two plans and share one navigation and one
+  look. V1 launches once the iOS app passes App Review and Polar is tested end to end with a real account
   ([roadmap](roadmap.md)).
 - Usage, retention, and revenue: Admin → Metrics ([how each number is counted](metrics.md)).
 - Built and run by one founder, a full-time student, with a release process, test suite, and runbook designed so

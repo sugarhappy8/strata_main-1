@@ -1,7 +1,8 @@
 /* global module, require */
 /* Strata+ in the iOS app is sold through the App Store, never Paddle. On /pricing inside the app, app-mode.js loads
-   this file and pricing.js stands down. The paywall shows what Strata+ includes (the page's own copy), the price and
-   period StoreKit reports for this storefront, and the auto-renewal terms. A purchase carries the signed-in STRATA
+   this file and pricing.js stands down. The paywall shows what Strata+ includes (the page's own copy), the website's
+   two plans (monthly and yearly) at the prices and periods StoreKit reports for this storefront, and the auto-renewal
+   terms. A purchase carries the signed-in STRATA
    user id as its appAccountToken; the signed transaction goes to STRATA, and the app finishes it only after STRATA
    accepted it, so a rejected or unreachable confirmation is retried by StoreKit instead of being lost. */
 (function (root, factory) {
@@ -14,7 +15,12 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (root, StrataHtml) {
   "use strict";
 
-  const PRODUCT_ID = "online.stratafitness.app.plus.monthly";
+  // The website's two plans, sold through the App Store. The paywall offers whichever of them StoreKit returns.
+  const PRODUCT_IDS = Object.freeze({
+    monthly: "online.stratafitness.app.plus.monthly",
+    yearly: "online.stratafitness.app.plus.yearly",
+  });
+  const PRODUCT_ID = PRODUCT_IDS.monthly;
   const MANAGE_PATH = "Settings › Apple Account › Subscriptions";
   const UNITS = Object.freeze({
     day: ["day", "days"],
@@ -51,6 +57,27 @@
     if (discovery.accessType === "paid") return "paddle";
     if (discovery.accessType === "grant" || discovery.adminGrant?.active === true) return "grant";
     return "plus";
+  }
+
+  // The yearly plan's saving against twelve monthly payments, from this storefront's own prices (0 when unknown).
+  function yearlySavings(products) {
+    const monthly = (products || []).find((product) => product?.plan === "monthly"),
+      yearly = (products || []).find((product) => product?.plan === "yearly"),
+      perMonth = Number(monthly?.price),
+      perYear = Number(yearly?.price);
+    if (!(perMonth > 0 && perYear > 0) || monthly.currencyCode !== yearly.currencyCode) return 0;
+    const saving = Math.round((1 - perYear / (perMonth * 12)) * 100);
+    return saving >= 5 ? saving : 0;
+  }
+
+  // What stops a new App Store purchase on this account, as the website's checkout does.
+  function purchaseBlocked(user) {
+    const discovery = user?.discovery || {};
+    if (discovery.checkoutBlocked === true)
+      return "New Strata+ purchases are turned off for this account. Contact STRATA from Profile for help.";
+    if (discovery.subscription?.status === "paused")
+      return "Your Strata+ subscription is paused. Resume it where you bought it rather than subscribing again.";
+    return "";
   }
 
   function disclosure(product) {
@@ -99,6 +126,8 @@
     const model = {
       phase: "loading",
       user: null,
+      products: [],
+      plan: "monthly",
       product: null,
       busy: false,
       status: "",
@@ -116,7 +145,15 @@
         ...model,
         owned: ownership(model.user),
         apple: model.user?.discovery?.apple || null,
+        blocked: purchaseBlocked(model.user),
+        savings: yearlySavings(model.products),
       });
+    // The chosen plan's product, or the first one StoreKit returned if that plan is not for sale.
+    const select = (plan) => {
+      model.product =
+        model.products.find((product) => product.plan === plan) || model.products[0] || null;
+      model.plan = model.product?.plan || "monthly";
+    };
     const say = (status, tone = "") => {
       model.status = status;
       model.tone = tone;
@@ -143,14 +180,16 @@
       const [account, products] = await Promise.allSettled([
         billing.account({ fresh: true }),
         native?.getProducts
-          ? native.getProducts({ productIds: [PRODUCT_ID] })
+          ? native.getProducts({ productIds: Object.values(PRODUCT_IDS) })
           : Promise.resolve(null),
       ]);
       if (account.status === "fulfilled") model.user = account.value.user;
-      model.product =
-        products.status === "fulfilled"
-          ? (products.value?.products || []).find((product) => product?.id === PRODUCT_ID) || null
-          : null;
+      const found = products.status === "fulfilled" ? products.value?.products || [] : [];
+      model.products = Object.entries(PRODUCT_IDS).flatMap(([plan, id]) => {
+        const product = found.find((item) => item?.id === id);
+        return product ? [{ ...product, plan }] : [];
+      });
+      select(model.plan);
       model.phase = "ready";
       if (account.status === "rejected")
         say(
@@ -216,8 +255,19 @@
       }
     }
 
+    function choosePlan(plan) {
+      if (model.busy) return model.plan;
+      select(plan);
+      emit();
+      return model.plan;
+    }
+
     async function subscribe() {
       if (model.busy || !native || !model.product || ownership(model.user)) return "ignored";
+      if (purchaseBlocked(model.user)) {
+        emit();
+        return "blocked";
+      }
       if (!model.user?.id) {
         say("Sign in to STRATA first, so Strata+ follows you to every device.", "warn");
         return "signed-out";
@@ -322,7 +372,19 @@
       emit();
     }
 
-    return { model, load, subscribe, restore, manage, refreshAccount, billingChanged };
+    return { model, load, choosePlan, subscribe, restore, manage, refreshAccount, billingChanged };
+  }
+
+  // Monthly or yearly, as on the website's pricing page; the chosen plan is the one Subscribe buys.
+  function planChoiceHtml(view) {
+    const { html } = StrataHtml,
+      busy = view.busy || view.phase !== "ready";
+    const option = (product) => {
+      const yearly = product.plan === "yearly",
+        label = yearly ? `Yearly${view.savings ? ` · save ${view.savings}%` : ""}` : "Monthly";
+      return html`<label class="app-plan-option"><input type="radio" name="appPlan" value="${product.plan}" data-paywall-plan="${product.plan}"${product.plan === view.plan ? " checked" : ""}${busy ? " disabled" : ""} /><span><strong>${label}</strong>${product.displayPrice} ${periodLabel(product.period)}</span></label>`;
+    };
+    return html`<fieldset class="app-plan-choice"><legend>Choose a plan</legend>${view.products.map(option)}</fieldset>`;
   }
 
   function bodyHtml(view) {
@@ -331,9 +393,12 @@
       apple = view.apple,
       signedIn = Boolean(view.user?.id);
     const { html } = StrataHtml;
-    const price = product
-      ? html`<p class="app-paywall-price"><strong>${product.displayPrice}</strong><span>${periodLabel(product.period)}</span></p>`
-      : "";
+    const price =
+      (view.products?.length || 0) > 1
+        ? planChoiceHtml(view)
+        : product
+          ? html`<p class="app-paywall-price"><strong>${product.displayPrice}</strong><span>${periodLabel(product.period)}</span></p>`
+          : "";
     const open =
       view.reason === "ai"
         ? html`<a class="app-button app-button-primary" href="/ai">Open Strata AI</a>`
@@ -362,6 +427,8 @@
       }
     } else if (!signedIn && view.phase === "ready") {
       actions = html`<a class="app-button app-button-primary" href="/account.html?mode=signup&amp;next=pricing">Create a free account</a><a class="app-button" href="/account.html?mode=login&amp;next=pricing">Sign in to subscribe</a>`;
+    } else if (view.blocked) {
+      detail = view.blocked;
     } else if (view.nativeAvailable) {
       actions = html`<button class="app-button app-button-primary" type="button" data-paywall-action="subscribe"${!product || view.busy || view.phase !== "ready" ? " disabled" : ""}>Subscribe</button>`;
     }
@@ -399,7 +466,8 @@
       terms = section.querySelector("[data-paywall-terms]"),
       included = section.querySelector("[data-paywall-benefits]");
     function render(view) {
-      const focused = documentImpl.activeElement?.dataset?.paywallAction;
+      const focused = documentImpl.activeElement?.dataset?.paywallAction,
+        focusedPlan = documentImpl.activeElement?.dataset?.paywallPlan;
       section.setAttribute("aria-busy", String(view.phase === "loading" || view.busy));
       StrataHtml.setHtml(body, bodyHtml(view));
       status.textContent = view.status;
@@ -408,6 +476,8 @@
       terms.textContent = view.owned || !view.nativeAvailable ? "" : disclosure(view.product);
       if (focused)
         body.querySelector(`[data-paywall-action="${focused}"]`)?.focus({ preventScroll: true });
+      else if (focusedPlan)
+        body.querySelector(`[data-paywall-plan="${view.plan}"]`)?.focus({ preventScroll: true });
     }
     const controller = createController({
       native: appMode.plugin(),
@@ -415,6 +485,10 @@
       reason: new URLSearchParams(locationImpl.search).get("reason") || "",
       haptic: appMode.haptic,
       onChange: render,
+    });
+    section.addEventListener("change", (event) => {
+      const plan = event.target?.dataset?.paywallPlan;
+      if (plan) controller.choosePlan(plan);
     });
     section.addEventListener("click", (event) => {
       const action = event.target.closest?.("[data-paywall-action]")?.dataset.paywallAction;
@@ -436,12 +510,16 @@
 
   return Object.freeze({
     PRODUCT_ID,
+    PRODUCT_IDS,
     periodLabel,
+    yearlySavings,
+    purchaseBlocked,
     disclosure,
     ownership,
     serverMessage,
     storeMessage,
     createController,
+    planChoiceHtml,
     bodyHtml,
     benefitsHtml,
     mount,

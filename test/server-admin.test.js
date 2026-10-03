@@ -806,6 +806,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
     subscription: {
       active: true,
       productId: "online.stratafitness.app.plus.monthly",
+      plan: "monthly",
       expiresAt: appleExpiresAt,
       autoRenew: true,
       inGracePeriod: false,

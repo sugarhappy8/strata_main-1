@@ -230,7 +230,9 @@
   bottom: 0;
   left: 0;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  /* Four tabs for a visitor, five for a member: each gets an equal share. */
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
   min-height: var(--app-bottom);
   padding: 0 max(4px, env(safe-area-inset-right)) env(safe-area-inset-bottom)
     max(4px, env(safe-area-inset-left));
@@ -335,35 +337,42 @@
     radial-gradient(120% 70% at 85% 8%, rgba(212, 245, 120, 0.16), transparent 60%),
     linear-gradient(180deg, #1a1d17, var(--strata-ink) 62%);
 }
+/* The website's wordmark and mark (three ascending bars, as in the app icon), in the accent the product pages use. */
 .app-welcome-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   margin-bottom: auto;
-  font: 800 15px/1 var(--strata-font);
-  letter-spacing: 0.2em;
+  font: 700 22px/1 var(--strata-font);
+  letter-spacing: 0.055em;
 }
 .app-welcome-mark {
-  display: grid;
-  gap: 3px;
+  display: inline-flex;
+  align-items: end;
+  gap: 2px;
   width: 22px;
+  height: 24px;
+  transform: skew(-8deg);
 }
 .app-welcome-mark i {
   display: block;
-  height: 4px;
-  border-radius: 2px;
+  width: 6px;
   background: var(--strata-accent);
 }
+.app-welcome-mark i:nth-child(1) {
+  height: 12px;
+}
 .app-welcome-mark i:nth-child(2) {
-  width: 78%;
+  height: 18px;
 }
 .app-welcome-mark i:nth-child(3) {
-  width: 56%;
+  height: 24px;
 }
 .app-welcome h1 {
   margin: 0;
-  font: 800 clamp(2.6rem, 12vw, 3.6rem)/1.02 var(--strata-font);
-  letter-spacing: -0.04em;
+  /* The website's display headings: weight 650, tight tracking (styles.css, site-info.css). */
+  font: 650 clamp(2.6rem, 12vw, 3.6rem)/1.02 var(--strata-font);
+  letter-spacing: -0.055em;
 }
 .app-welcome h1 em {
   color: var(--strata-accent);
@@ -388,7 +397,8 @@
   min-height: 52px;
   padding: 0 22px;
   border: 1px solid rgba(255, 255, 255, 0.22);
-  border-radius: 14px;
+  /* Pill-shaped, like every action on the website (site-experience.css). */
+  border-radius: 999px;
   color: var(--strata-night-text);
   background: rgba(255, 255, 255, 0.06);
   font: 700 1.0625rem/1 var(--strata-font);
@@ -592,7 +602,7 @@ body:has(.account-delete-dialog[open]) {
   box-sizing: border-box;
   min-height: 50px;
   padding: 0 18px;
-  border-radius: 14px;
+  border-radius: 999px;
   font: 700 1.0625rem/1.2 var(--strata-font);
   text-align: center;
   text-decoration: none;
@@ -667,8 +677,8 @@ body:has(.account-delete-dialog[open]) {
 .app-paywall h2 {
   margin: 2px 0 6px;
   color: #fff;
-  font: 800 1.875rem/1.1 var(--strata-font);
-  letter-spacing: -0.03em;
+  font: 650 1.875rem/1.1 var(--strata-font);
+  letter-spacing: -0.04em;
 }
 .app-paywall-note {
   margin: 0 0 14px;
@@ -697,6 +707,48 @@ body:has(.account-delete-dialog[open]) {
   font: 800 2.25rem/1 var(--strata-font);
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
+}
+/* Monthly or yearly, as on the website's pricing page (site-info.css .plan-choice), on the paywall's dark card. */
+.app-plan-choice {
+  display: grid;
+  gap: 10px;
+  margin: 12px 0 6px;
+  padding: 0;
+  border: 0;
+}
+.app-plan-choice legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font: 600 0.8125rem/1.4 var(--strata-font);
+}
+.app-plan-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 14px;
+  color: rgba(255, 255, 255, 0.78);
+  font: 600 0.9375rem/1.35 var(--strata-font);
+  font-variant-numeric: tabular-nums;
+}
+.app-plan-option:has(input:checked) {
+  border-color: var(--strata-accent);
+  box-shadow: inset 0 0 0 1px var(--strata-accent);
+}
+.app-plan-option input {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  accent-color: var(--strata-accent);
+}
+.app-plan-option strong {
+  display: block;
+  color: #fff;
+  font: 700 1.0625rem/1.25 var(--strata-font);
 }
 .app-paywall-price span,
 .app-paywall-detail {

@@ -183,6 +183,21 @@ test("each plan's monthly value: $4.99 a month, $29.99 a year spread over twelve
   close(yearly.list, 29.99 / 12);
   close(yearly.net, (29.99 - (29.99 * 0.05 + 0.5)) / 12);
   close(apple.net, 4.99 * 0.85);
+  close(monthlyValue("yearly", "apple").net, (29.99 * 0.85) / 12);
+});
+
+test("an App Store yearly subscription counts as the yearly plan", () => {
+  const appleYearly = source({
+    apple: [{ ...source().apple[0], plan: "yearly" }],
+  });
+  const monthly = buildInvestorMetrics(source(), { now: NOW }).revenue,
+    yearly = buildInvestorMetrics(appleYearly, { now: NOW }).revenue;
+  assert.equal(yearly.yearlySubscriptions, monthly.yearlySubscriptions + 1);
+  assert.equal(
+    Math.round((monthly.mrr.list - yearly.mrr.list) * 100) / 100,
+    Math.round((4.99 - 29.99 / 12) * 100) / 100,
+    "D's App Store subscription moves from $4.99 to $2.50 a month",
+  );
 });
 
 test("revenue counts paying members, lifetime access, list MRR, and MRR after provider fees", () => {

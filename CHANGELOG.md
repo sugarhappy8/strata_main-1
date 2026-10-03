@@ -1,5 +1,16 @@
 # Changelog
 
+## 10.0.0 — V1
+
+- The App Store sells the website's two plans: Strata+ Monthly at $4.99 a month and Strata+ Yearly at $29.99 a year (`online.stratafitness.app.plus.yearly`). The app's paywall asks "Choose a plan" and shows the yearly saving from the storefront's own prices; with one plan on sale, it shows that plan as before. A product ending in `.yearly` is the yearly plan: Account names it, the account summary carries `plan`, and Admin → Metrics counts it at $29.99 ÷ 12. `APPLE_IAP_PRODUCT_IDS` accepts both products by default.
+- The paywall refuses a purchase where the website refuses a checkout: when new payment sessions are turned off for the account, or its Strata+ subscription is paused.
+- The app's tabs follow who is signed in, as the website's navigation does: Rankings, Plan, Strata+, and Sign in for a visitor; Rankings, Plan, Train, Recovery, and Profile for a member; Dashboard in place of Plan for a Strata+ member. Every tab has an icon.
+- One look: the app's welcome screen and the offline workout page use the website's wordmark and ascending-bars mark, the app's buttons are pills, and headlines use the website's display weight. The terms say App Store plans renew each month or each year, and the policies and emails name Settings › Apple Account › Subscriptions.
+- A browser that follows an address STRATA does not have gets a "Page not found" page with the navigation (404, `noindex`, never cached); scripts and `/api/` routes still get JSON.
+- Advance every asset version and the offline cache to 10.0.0.
+
+See the [10.0.0 release guide](docs/release-10.0.0.md).
+
 ## 9.8.1 — Final checks
 
 - An interrupted yearly checkout is recovered as yearly; before, the retry checked it against the monthly price and refused it every time. Checkout validators without a recorded price accept any current plan instead of assuming monthly.

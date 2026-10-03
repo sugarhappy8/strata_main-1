@@ -34,15 +34,40 @@
     train: svg(html`<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>`),
     recovery: svg(html`<path d="M20 12.8A8 8 0 1 1 11.2 4a6.2 6.2 0 0 0 8.8 8.8Z"/>`),
     profile: svg(html`<circle cx="12" cy="8.5" r="3.8"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>`),
+    signin: svg(
+      html`<path d="M14 4h3.5A2.5 2.5 0 0 1 20 6.5v11a2.5 2.5 0 0 1-2.5 2.5H14"/><path d="m9.5 16 4-4-4-4M13.5 12H4"/>`,
+    ),
+    plan: svg(
+      html`<rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M8 3v4M16 3v4M3.5 10h17M8 14h3M8 17h6"/>`,
+    ),
+    plus: svg(html`<path d="M12 3.5 14 9l5.5 2-5.5 2-2 5.5-2-5.5-5.5-2L10 9Z"/>`),
     back: svg(html`<path d="m14.5 5-7 7 7 7"/>`),
   });
-  const TABS = Object.freeze([
-    { id: "rankings", label: "Rankings", href: "/rankings", section: "rankings" },
-    { id: "dashboard", label: "Dashboard", href: "/dashboard", section: "week" },
-    { id: "train", label: "Train", href: "/workout.html", section: "train" },
-    { id: "recovery", label: "Recovery", href: "/recovery", section: "recovery" },
-    { id: "profile", label: "Profile", href: "/account.html", section: "profile" },
-  ]);
+  // The tabs are the website's navigation for who is here (site-experience.css reads the same data-audience): a visitor
+  // sees what they can use, a signed-in member plans the week, and a Strata+ member has the Strata+ Dashboard.
+  const TAB = Object.freeze({
+    rankings: { id: "rankings", label: "Rankings", href: "/rankings", section: "rankings" },
+    plan: { id: "plan", label: "Plan", href: "/planner.html", section: "week" },
+    dashboard: { id: "dashboard", label: "Dashboard", href: "/dashboard", section: "week" },
+    plus: { id: "plus", label: "Strata+", href: "/pricing", section: "plus" },
+    train: { id: "train", label: "Train", href: "/workout.html", section: "train" },
+    recovery: { id: "recovery", label: "Recovery", href: "/recovery", section: "recovery" },
+    profile: { id: "profile", label: "Profile", href: "/account.html", section: "profile" },
+    signin: {
+      id: "signin",
+      label: "Sign in",
+      href: "/account.html?mode=login",
+      section: "profile",
+    },
+  });
+  const TAB_SETS = Object.freeze({
+    visitor: Object.freeze([TAB.rankings, TAB.plan, TAB.plus, TAB.signin]),
+    member: Object.freeze([TAB.rankings, TAB.plan, TAB.train, TAB.recovery, TAB.profile]),
+    plus: Object.freeze([TAB.rankings, TAB.dashboard, TAB.train, TAB.recovery, TAB.profile]),
+  });
+  const TABS = TAB_SETS.plus;
+  /** Who is here, as app-shell.js read it from the strata_nav cookie; anything unknown is a visitor. */
+  const audienceOf = (value) => (Object.hasOwn(TAB_SETS, value) ? value : "visitor");
   // Every page in the app: its title, the tab it belongs to, and for a child screen the screen Back returns to.
   // Pages with no chrome keep their own layout (offline pages cannot reach the tabs; admin is a desk tool).
   const SCREENS = Object.freeze([
@@ -131,14 +156,14 @@
       paths: ["/forgot-password", "/forgot-password.html"],
       id: "forgot-password",
       tab: "profile",
-      title: "Reset password",
+      title: "Forgot password",
       parent: "/account.html?mode=login",
     },
     {
       paths: ["/reset-password", "/reset-password.html"],
       id: "reset-password",
       tab: "profile",
-      title: "New password",
+      title: "Reset password",
       parent: "/account.html?mode=login",
     },
     {
@@ -160,8 +185,11 @@
     return path.length > 1 ? path.replace(/\/+$/, "") : path;
   };
 
-  // Pure: which screen a URL is. A homepage without a section is "start" until the page says who is signed in.
-  function resolveScreen({ pathname = "/", hash = "", search = "" } = {}) {
+  // Pure: which screen a URL is, and which of this audience's tabs it belongs to. A homepage without a section is
+  // "start" until the page says who is signed in.
+  function resolveScreen({ pathname = "/", hash = "", search = "" } = {}, audience = "visitor") {
+    const who = audienceOf(audience),
+      reason = new URLSearchParams(search).get("reason");
     const path = clean(pathname),
       found = SCREENS.find((screen) => screen.paths.includes(path));
     const screen = { id: "page", tab: "", title: "STRATA", parent: "", chrome: "tabs", ...found };
@@ -180,23 +208,33 @@
             : "dashboard";
       screen.title = STUDIO_TITLES[screen.tab] || "Strata+";
     }
-    // Non-members reach the Strata+ plan from the Recovery tab; there it is that tab's root, not a child of Profile.
-    if (screen.id === "pricing" && new URLSearchParams(search).get("reason") === "recovery") {
-      screen.tab = "recovery";
-      screen.parent = "";
-    }
-    if (screen.id === "pricing" && new URLSearchParams(search).get("reason") === "ai") {
-      screen.tab = "dashboard";
-      screen.parent = "/discover.html";
+    // The weekly plan is the Plan tab; for Strata+ members it is one of Dashboard's destinations.
+    if (screen.id === "planner") screen.tab = who === "plus" ? "dashboard" : "plan";
+    // A visitor's Profile is the Sign in tab.
+    if (screen.tab === "profile" && who === "visitor") screen.tab = "signin";
+    if (screen.id === "pricing") {
+      // Strata+ is a visitor's own tab; for a member it is the root of the tab that led to it (Recovery, or Train for
+      // a Strata+ feature), and otherwise one of Profile's pages.
+      const root = (tab) => {
+        screen.tab = tab;
+        screen.parent = "";
+      };
+      if (who === "visitor") root("plus");
+      else if (reason === "recovery") root("recovery");
+      else if (reason === "discovery-required" && who === "member") root("train");
+      else if (reason === "ai" && who === "plus") {
+        screen.tab = "dashboard";
+        screen.parent = "/discover.html";
+      }
     }
     return screen;
   }
 
   // On the Strata+ studio, Rankings and Recovery are panels of the same page, so their tabs switch panels in place
   // and carry data-section: the studio's own navigation then keeps aria-current on the right tab.
-  function tabBarHtml(screen) {
+  function tabBarHtml(screen, audience = "visitor") {
     const studio = screen.id === "studio";
-    const items = TABS.map((tab) => {
+    const items = TAB_SETS[audienceOf(audience)].map((tab) => {
       const href =
         studio && tab.id === "rankings"
           ? "#exerciseExplorer"
@@ -479,8 +517,9 @@
   function start() {
     const document = root.document,
       html = document.documentElement,
-      location = root.location;
-    let screen = resolveScreen(location);
+      location = root.location,
+      audience = audienceOf(html.dataset.audience);
+    let screen = resolveScreen(location, audience);
     html.dataset.appChrome = screen.chrome;
     html.dataset.appScreen = screen.id;
     if (screen.view) html.dataset.appHome = screen.view;
@@ -507,7 +546,10 @@
       if (title) title.textContent = text;
     }
     function mountChrome() {
-      StrataHtml.insertHtml(document.body, "afterbegin", [topBarHtml(screen), tabBarHtml(screen)]);
+      StrataHtml.insertHtml(document.body, "afterbegin", [
+        topBarHtml(screen),
+        tabBarHtml(screen, audience),
+      ]);
       tabBar = document.body.querySelector(".app-tabbar");
       title = document.body.querySelector("[data-app-title]");
       tabBar.addEventListener("click", (event) => {
@@ -581,7 +623,7 @@
         const main = document.querySelector("main");
         if (main) StrataHtml.insertHtml(main, "afterbegin", welcomeHtml());
         root.addEventListener("hashchange", () => {
-          screen = resolveScreen(location);
+          screen = resolveScreen(location, audience);
           if (screen.view === "start") {
             if (!openHome()) return;
           } else setHomeView(screen.view);
@@ -610,7 +652,7 @@
       }
       if (screen.id === "pricing") {
         const script = document.createElement("script");
-        script.src = "/app-paywall.js?v=9.8.1";
+        script.src = "/app-paywall.js?v=10.0.0";
         document.head.append(script);
       }
       const native = plugin();
@@ -633,6 +675,7 @@
 
   return Object.freeze({
     TABS,
+    TAB_SETS,
     SCREENS,
     ICONS,
     resolveScreen,

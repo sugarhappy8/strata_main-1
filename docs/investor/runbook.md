@@ -45,8 +45,11 @@ account somewhere they can reach. With that, the steps below need nothing else.
    `PADDLE_PRICE_ID` set back to that price, or its checkout stays closed. 9.7.0 does not recognise the $4.99 and
    $29.99 prices: once anyone has subscribed on them, a rollback suspends their Strata+ until 9.8.0 is back. Prefer
    fixing forward.
-5. Check: sign in with a test account, open its plan, open Admin, and run the smoke check above with the old build.
-6. Installed apps pick up the rolled-back files on their next visit, because each build has its own cache name.
+5. **10.0.0 added the yearly App Store plan.** 9.8.x accepts a yearly App Store subscription only while
+   `APPLE_IAP_PRODUCT_IDS` lists it (its default lists only monthly), and names it monthly in Account and Metrics.
+   With the setting in place, no member loses Strata+.
+6. Check: sign in with a test account, open its plan, open Admin, and run the smoke check above with the old build.
+7. Installed apps pick up the rolled-back files on their next visit, because each build has its own cache name.
 
 Never combine a code rollback with a database restore; they are separate decisions.
 

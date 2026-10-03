@@ -174,7 +174,9 @@
   }
   function appleAccessSummary(apple, app) {
     const date = billingDate(apple.expiresAt),
-      known = Number(apple.expiresAt) > 0;
+      known = Number(apple.expiresAt) > 0,
+      // An App Store summary from an older server has no plan; Strata+ Monthly was the only product then.
+      plan = apple.plan === "yearly" ? "Yearly" : "Monthly";
     if (apple.active !== true)
       return apple.revoked === true
         ? {
@@ -203,8 +205,8 @@
       };
     return {
       state: "Active",
-      detail: known ? `App Store · renews ${date}` : "App Store subscription",
-      message: `Your Strata+ subscription is billed to your Apple Account${known ? ` and renews on ${date}` : ""}. Manage or cancel it in ${APPLE_SETTINGS}${app ? "" : " on your iPhone"}.`,
+      detail: known ? `${plan} · App Store · renews ${date}` : `${plan} · App Store subscription`,
+      message: `Your ${plan.toLowerCase()} Strata+ subscription is billed to your Apple Account${known ? ` and renews on ${date}` : ""}. Manage or cancel it in ${APPLE_SETTINGS}${app ? "" : " on your iPhone"}.`,
     };
   }
 
@@ -312,7 +314,7 @@
       state: "Free",
       detail: "Rankings and Plan included",
       message: app
-        ? "The exercise index and weekly planner are free. Strata+ is available as a monthly subscription."
+        ? "The exercise index and weekly planner are free. Strata+ is available as a monthly or yearly subscription."
         : "The exercise index and weekly planner are free. Strata+ is $4.99 USD a month or $29.99 USD a year.",
     };
   }

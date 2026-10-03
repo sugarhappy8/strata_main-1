@@ -14,6 +14,7 @@ const {
   FAMILY_SHARED_MESSAGE,
   MANAGE_SUBSCRIPTIONS_URL,
   appleBillingSettings,
+  appleProductPlan,
   appleSubscriptionSummary,
   createAppleBillingService,
   nextAppleState,
@@ -242,7 +243,13 @@ const NOTIFICATIONS = new URL("https://stratafitness.online/api/billing/apple/no
 test("settings default to the STRATA app and only honor a test root under NODE_ENV=test", () => {
   const defaults = appleBillingSettings({});
   assert.equal(defaults.bundleId, BUNDLE);
-  assert.deepEqual(defaults.productIds, [PRODUCT]);
+  // The website's two plans: Strata+ Monthly and Strata+ Yearly.
+  assert.deepEqual(defaults.productIds, [PRODUCT, "online.stratafitness.app.plus.yearly"]);
+  assert.equal(appleProductPlan(PRODUCT), "monthly");
+  assert.equal(appleProductPlan("online.stratafitness.app.plus.yearly"), "yearly");
+  assert.equal(appleProductPlan("b.yearly"), "yearly");
+  assert.equal(appleProductPlan("online.stratafitness.app.plus.yearlyish"), "monthly");
+  assert.equal(appleProductPlan(null), "monthly");
   assert.equal(defaults.rootFingerprint, APPLE_ROOT_CA_G3_FINGERPRINT);
   assert.equal(defaults.rootOverrideIgnored, false);
   assert.equal(defaults.configured, true);
@@ -559,6 +566,7 @@ test("the discovery summary prefers the subscription that gives access", () => {
   assert.deepEqual(appleSubscriptionSummary([expired, grace], now), {
     active: true,
     productId: PRODUCT,
+    plan: "monthly",
     expiresAt: now - 1000,
     autoRenew: true,
     inGracePeriod: true,
@@ -570,6 +578,7 @@ test("the discovery summary prefers the subscription that gives access", () => {
     {
       active: false,
       productId: PRODUCT,
+      plan: "monthly",
       expiresAt: now - DAY,
       autoRenew: null,
       inGracePeriod: false,
@@ -666,6 +675,7 @@ for (const kind of ["local", "turso"]) {
       assert.deepEqual(await apple.subscriptionForUser(userId), {
         active: true,
         productId: PRODUCT,
+        plan: "monthly",
         expiresAt: tx().expiresDate,
         autoRenew: true,
         inGracePeriod: false,
@@ -919,6 +929,7 @@ for (const kind of ["local", "turso"]) {
       assert.deepEqual(blocked.summary, {
         active: false,
         productId: PRODUCT,
+        plan: "monthly",
         expiresAt: BASE + 29 * DAY,
         autoRenew: true,
         inGracePeriod: false,

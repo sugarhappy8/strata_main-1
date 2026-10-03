@@ -304,7 +304,7 @@ test("an Apple purchase unlocks Strata+ for the buying account only, and the App
   for (const [tokens, status, code] of [
     [[tampered.join(".")], 400, "APPLE_SIGNATURE_INVALID"],
     [
-      [chain.signJws(transaction(buyer, { productId: "online.stratafitness.app.plus.yearly" }))],
+      [chain.signJws(transaction(buyer, { productId: "online.stratafitness.app.plus.weekly" }))],
       400,
       "APPLE_TRANSACTION_INVALID",
     ],
@@ -333,6 +333,7 @@ test("an Apple purchase unlocks Strata+ for the buying account only, and the App
   assert.deepEqual(bought.data.discovery.apple, {
     active: true,
     productId: PRODUCT,
+    plan: "monthly",
     expiresAt: BASE + 29 * DAY,
     autoRenew: null,
     inGracePeriod: false,
@@ -524,7 +525,7 @@ test("an Apple purchase unlocks Strata+ for the buying account only, and the App
   const email = deliveries.findLast(
     (item) => item.subject === "Confirm deletion of your STRATA account",
   );
-  assert.match(email.text, /Settings > Apple ID > Subscriptions/);
+  assert.match(email.text, /Settings › Apple Account › Subscriptions/);
   const token = String(email.text).match(/#token=([A-Za-z0-9_-]{43})/)[1];
   const status = await request("/api/account/delete/status", { method: "POST", body: { token } });
   assert.equal(status.data.active, true);

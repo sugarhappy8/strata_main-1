@@ -3,6 +3,7 @@
 
 const { cleanText, defaultPreferences, planStats } = require("./plans");
 const { planForPrice } = require("./paddle-catalog");
+const { appleProductPlan } = require("./apple-billing");
 const { buildInvestorMetrics, metricsCsv, metricsSince } = require("./metrics");
 
 /** Comma-separated addresses, normalized as sign-in normalizes an email. @param {unknown} value */
@@ -120,6 +121,7 @@ function createAdminMetricsService({
         })),
         apple: rows.apple.filter(customer).map((row) => ({
           userId: String(row.user_id),
+          plan: appleProductPlan(row.product_id),
           startedAt: Number(row.started_at),
           endsAt: Number(row.ends_at),
           revokedAt: row.revoked_at === null ? null : Number(row.revoked_at),

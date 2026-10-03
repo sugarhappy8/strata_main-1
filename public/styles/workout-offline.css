@@ -60,33 +60,35 @@ textarea {
   background: rgba(16, 17, 15, 0.96);
   backdrop-filter: blur(14px);
 }
+/* The same wordmark and mark as every other STRATA page. */
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   color: var(--text);
   text-decoration: none;
-  font-size: 25px;
-  font-weight: 800;
-  letter-spacing: -0.05em;
+  font: 700 22px/1 var(--display);
+  letter-spacing: 0.055em;
 }
 .brand-mark {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 25px;
-  transform: skew(-14deg);
+  display: inline-flex;
+  align-items: end;
+  gap: 2px;
+  width: 22px;
+  height: 24px;
+  transform: skew(-8deg);
 }
 .brand-mark i {
-  width: 5px;
-  height: 15px;
+  display: block;
+  width: 6px;
+  height: 12px;
   background: var(--lime);
 }
 .brand-mark i:nth-child(2) {
-  height: 20px;
+  height: 18px;
 }
 .brand-mark i:nth-child(3) {
-  height: 25px;
+  height: 24px;
 }
 .offline-label {
   display: flex;

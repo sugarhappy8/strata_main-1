@@ -64,6 +64,7 @@ function realm({
   pathname = "/",
   hash = "",
   search = "",
+  audience = "plus",
   signedIn = false,
   plugin = null,
   readyState = "loading",
@@ -78,7 +79,7 @@ function realm({
     replaced = [],
     scrolled = [],
     calls = [];
-  const html = { dataset: {} },
+  const html = { dataset: { audience } },
     head = fakeNode("head"),
     main = fakeNode("main");
   const document = {
@@ -207,8 +208,8 @@ function realm({
 test("screens map every page to its tab, title, and Back target", () => {
   const { window } = realm();
   const { resolveScreen } = window.StrataAppMode;
-  const pick = (location) => {
-    const screen = resolveScreen(location);
+  const pick = (location, audience = "plus") => {
+    const screen = resolveScreen(location, audience);
     return [screen.id, screen.tab, screen.title, screen.parent, screen.chrome];
   };
   assert.deepEqual(pick({ pathname: "/dashboard" }), [
@@ -280,6 +281,53 @@ test("screens map every page to its tab, title, and Back target", () => {
     "",
     "tabs",
   ]);
+  // A visitor and a signed-in member land on their own tabs, as the website's navigation shows them.
+  assert.deepEqual(pick({ pathname: "/planner.html" }, "member"), [
+    "planner",
+    "plan",
+    "Weekly plan",
+    "",
+    "tabs",
+  ]);
+  assert.deepEqual(pick({ pathname: "/planner.html" }, "visitor")[1], "plan");
+  assert.deepEqual(
+    pick({ pathname: "/pricing", search: "?reason=discovery-required" }, "member"),
+    ["pricing", "train", "Strata+", "", "tabs"],
+    "a member who taps Train meets Strata+ as that tab's root",
+  );
+  assert.deepEqual(pick({ pathname: "/pricing" }, "visitor"), [
+    "pricing",
+    "plus",
+    "Strata+",
+    "",
+    "tabs",
+  ]);
+  assert.deepEqual(
+    pick({ pathname: "/pricing", search: "?reason=recovery" }, "visitor")[1],
+    "plus",
+  );
+  assert.deepEqual(pick({ pathname: "/account.html" }, "visitor"), [
+    "profile",
+    "signin",
+    "Profile",
+    "",
+    "tabs",
+  ]);
+  assert.deepEqual(pick({ pathname: "/terms" }, "visitor").slice(1, 4), [
+    "signin",
+    "Terms",
+    "/policies",
+  ]);
+  assert.deepEqual(pick({ pathname: "/forgot-password" }).slice(2, 4), [
+    "Forgot password",
+    "/account.html?mode=login",
+  ]);
+  assert.equal(pick({ pathname: "/reset-password" })[2], "Reset password");
+  assert.equal(
+    resolveScreen({ pathname: "/planner.html" }).tab,
+    "plan",
+    "an unknown audience is a visitor",
+  );
   assert.equal(resolveScreen({ pathname: "/", hash: "#rankings" }).view, "rankings");
   assert.equal(resolveScreen({ pathname: "/", hash: "#preview" }).view, "preview");
   assert.equal(resolveScreen({ pathname: "/", hash: "#top" }).view, "start");
@@ -290,7 +338,7 @@ test("screens map every page to its tab, title, and Back target", () => {
 test("the tab bar marks the current section, keeps studio panels in place, and has five labelled targets", () => {
   const { window } = realm();
   const { resolveScreen, tabBarHtml, topBarHtml } = window.StrataAppMode;
-  const train = String(tabBarHtml(resolveScreen({ pathname: "/workout.html" })));
+  const train = String(tabBarHtml(resolveScreen({ pathname: "/workout.html" }, "plus"), "plus"));
   assert.equal((train.match(/class="app-tab"/g) || []).length, 5);
   assert.deepEqual(
     [...train.matchAll(/data-app-tab="(\w+)"/g)].map((match) => match[1]),
@@ -307,7 +355,10 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
   assert.match(train, /<svg[^>]*aria-hidden="true"/);
   assert.doesNotMatch(train, /data-section/);
   const studio = String(
-    tabBarHtml(resolveScreen({ pathname: "/discover.html", hash: "#recoveryWorkspace" })),
+    tabBarHtml(
+      resolveScreen({ pathname: "/discover.html", hash: "#recoveryWorkspace" }, "plus"),
+      "plus",
+    ),
   );
   assert.match(studio, /href="#exerciseExplorer" data-app-tab="rankings" data-section="rankings"/);
   assert.match(
@@ -315,6 +366,35 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
     /href="#recoveryWorkspace" data-app-tab="recovery" data-section="recovery" aria-current="page"/,
   );
   assert.match(studio, /data-app-tab="dashboard" data-section="week"/);
+  // Visitors and members get the website's navigation: what they can use, and Plan instead of Dashboard.
+  const tabsFor = (audience, pathname) =>
+    [
+      ...String(tabBarHtml(resolveScreen({ pathname }, audience), audience)).matchAll(
+        /href="([^"]+)" data-app-tab="(\w+)"[^>]*?(aria-current="page")?>/g,
+      ),
+    ].map((match) => `${match[2]}:${match[1]}${match[3] ? ":current" : ""}`);
+  assert.deepEqual(tabsFor("visitor", "/planner.html"), [
+    "rankings:/rankings",
+    "plan:/planner.html:current",
+    "plus:/pricing",
+    "signin:/account.html?mode=login",
+  ]);
+  assert.deepEqual(tabsFor("member", "/planner.html"), [
+    "rankings:/rankings",
+    "plan:/planner.html:current",
+    "train:/workout.html",
+    "recovery:/recovery",
+    "profile:/account.html",
+  ]);
+  assert.match(String(tabBarHtml(resolveScreen({ pathname: "/" }), "visitor")), />Sign in</);
+  // Every tab, for every audience, draws its icon.
+  for (const audience of Object.keys(window.StrataAppMode.TAB_SETS)) {
+    const tabs = String(tabBarHtml(resolveScreen({ pathname: "/" }, audience), audience)).split(
+      '<a class="app-tab"',
+    );
+    for (const tab of tabs.slice(1))
+      assert.match(tab, /<span class="app-tab-icon"><svg [^>]+>/, `${audience}: ${tab}`);
+  }
   assert.match(
     String(topBarHtml(resolveScreen({ pathname: "/privacy" }))),
     /<a class="app-back" href="\/policies" data-app-back>[\s\S]*Back<\/span><\/a><p class="app-title" data-app-title>Privacy<\/p>/,
@@ -522,12 +602,12 @@ test("Profile keeps Strata+, support, and legal pages one tap away", () => {
   const accountPage = fakeNode("accountPage");
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
-    selector === "body > footer > span" ? { textContent: "About STRATA · Build 9.8.1" } : null;
+    selector === "body > footer > span" ? { textContent: "About STRATA · Build 10.0.0" } : null;
   page.ready();
   const more = accountPage.html[0].html;
   for (const href of ["/pricing", "/contact", "/policies", "/terms", "/privacy"])
     assert.match(more, new RegExp(`href="${href}"`));
-  assert.match(more, /About STRATA · Build 9\.8\.1/);
+  assert.match(more, /About STRATA · Build 10\.0\.0/);
 });
 
 test("on /pricing the app loads its App Store paywall, and the website never loads Paddle there", () => {
@@ -535,7 +615,7 @@ test("on /pricing the app loads its App Store paywall, and the website never loa
   page.insertBody();
   page.ready();
   assert.equal(page.document.head.children.length, 1);
-  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=9.8.1");
+  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=10.0.0");
   const pricing = read("public/scripts/pricing.js");
   assert.match(
     pricing,
@@ -784,17 +864,17 @@ test("Profile names the app build when the app can say", async () => {
   });
   page.insertBody();
   const accountPage = fakeNode("accountPage"),
-    line = { textContent: "About STRATA · Build 9.8.1" };
+    line = { textContent: "About STRATA · Build 10.0.0" };
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
     selector === "body > footer > span"
-      ? { textContent: "About STRATA · Build 9.8.1" }
+      ? { textContent: "About STRATA · Build 10.0.0" }
       : selector === ".app-more-build"
         ? line
         : null;
   page.ready();
   for (let index = 0; index < 5; index += 1) await new Promise(setImmediate);
-  assert.equal(line.textContent, "About STRATA · Build 9.8.1 · App 1.2 (34)");
+  assert.equal(line.textContent, "About STRATA · Build 10.0.0 · App 1.2 (34)");
 });
 
 test("downloads keep their file for a minute, so the app's share sheet can still read it, and the app says where it goes", () => {

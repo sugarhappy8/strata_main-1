@@ -169,10 +169,17 @@ test("account pure logic explains App Store subscriptions and keeps Paddle read-
     assert.equal(logic.appleDeletionNotice(result), null);
   assert.deepEqual(logic.accountAccessSummary(apple({ active: true })), {
     state: "Active",
-    detail: "App Store · renews Nov 1, 2026",
+    detail: "Monthly · App Store · renews Nov 1, 2026",
     message:
-      "Your Strata+ subscription is billed to your Apple Account and renews on Nov 1, 2026. Manage or cancel it in Settings › Apple Account › Subscriptions on your iPhone.",
+      "Your monthly Strata+ subscription is billed to your Apple Account and renews on Nov 1, 2026. Manage or cancel it in Settings › Apple Account › Subscriptions on your iPhone.",
   });
+  // The App Store's yearly product is named like the website's yearly plan.
+  const appleYearly = logic.accountAccessSummary(apple({ active: true, plan: "yearly" }));
+  assert.equal(appleYearly.detail, "Yearly · App Store · renews Nov 1, 2026");
+  assert.match(
+    appleYearly.message,
+    /^Your yearly Strata\+ subscription is billed to your Apple Account/,
+  );
   assert.doesNotMatch(
     logic.accountAccessSummary(apple({ active: true }), false, { app: true }).message,
     /on\s*your\s*iPhone/,
@@ -187,7 +194,7 @@ test("account pure logic explains App Store subscriptions and keeps Paddle read-
   );
   assert.equal(
     logic.accountAccessSummary(apple({ active: true, expiresAt: null })).detail,
-    "App Store subscription",
+    "Monthly · App Store subscription",
   );
   assert.equal(
     logic.accountAccessSummary(apple({ active: false, revoked: true })).detail,
@@ -235,7 +242,7 @@ test("account pure logic explains App Store subscriptions and keeps Paddle read-
     logic.accountAccessSummary(
       apple({ active: true }, { subscription: { id: "sub_1", status: "canceled", active: false } }),
     ).detail,
-    "App Store · renews Nov 1, 2026",
+    "Monthly · App Store · renews Nov 1, 2026",
   );
   const paddle = (subscription) => ({
     discovery: {

@@ -105,7 +105,7 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages", async () => {
-  assert.equal(BUILD, "9.8.1");
+  assert.equal(BUILD, "10.0.0");
   const home = await request("/");
   assert.equal(home.response.status, 200);
   assert.equal(home.response.headers.get("cache-control"), "private, no-store");
@@ -249,6 +249,25 @@ test("account and workout have friendly addresses; the workout stays behind sign
     assert.equal(page.response.status, 302, path);
     assert.match(page.response.headers.get("location"), /^\/account\.html\?/, path);
   }
+});
+
+test("a mistyped address shows STRATA's page with the navigation; tools still get JSON", async () => {
+  const page = await request("/plannner", {
+    headers: { Accept: "text/html,application/xhtml+xml" },
+  });
+  assert.equal(page.response.status, 404);
+  assert.match(page.response.headers.get("content-type"), /^text\/html/);
+  assert.match(page.response.headers.get("content-security-policy") || "", /default-src 'self'/);
+  assert.match(page.data, /<title>Page not found — STRATA<\/title>/);
+  assert.match(page.data, /aria-label="Primary navigation"/);
+  const tool = await request("/plannner");
+  assert.equal(tool.response.status, 404);
+  assert.deepEqual(tool.data, { error: "Page not found." });
+  const head = await request("/plannner", {
+    method: "HEAD",
+    headers: { Accept: "text/html" },
+  });
+  assert.equal(head.response.status, 404);
 });
 
 test("does not expose physical project paths or private server data", async () => {

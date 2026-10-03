@@ -249,7 +249,7 @@ test("core footers use the policy directory instead of repeating every legal pag
 });
 
 test("published Strata+ price and refund promise are exact and consistent", () => {
-  assert.equal(BUILD, "9.8.1");
+  assert.equal(BUILD, "10.0.0");
   const pricingHtml = read("pricing.html"),
     pricing = text("pricing.html"),
     refunds = text("refunds.html"),

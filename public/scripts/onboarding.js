@@ -244,7 +244,7 @@
     status("Loading your starting point…");
     try {
       if (!exercises.length) {
-        const response = await fetch("/exercises.json?v=9.8.1");
+        const response = await fetch("/exercises.json?v=10.0.0");
         if (!response.ok)
           throw new Error("The exercise library is unavailable. Reconnect and retry.");
         exercises = await response.json();

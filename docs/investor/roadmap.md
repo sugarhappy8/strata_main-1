@@ -9,13 +9,17 @@ STRATA adds no features until V1. Each release since Build 9 has been fixes and 
 | 9.4–9.6 | Hardening: App Store Sandbox limited to review accounts, one route table with uniform security checks, one HTML escaper, the old checkout code removed |
 | 9.7 | First-visit polish: one navigation, a quieter planner on a phone, the home page from 702 KB to 185 KB, a clean console |
 | 9.8 | Investor pack: Admin → Metrics with CSV, a demo account, these documents, policies checked |
-| **10 (V1)** | stratafitness.online and the iOS app in the App Store, with a real Polar account tested end to end |
+| **10 (V1)** | 10.0.0: one system, with the same two plans on the web and in the app, one navigation, and one look. V1 launches with the iOS app in the App Store and a real Polar account tested end to end |
 
 ## Build 10 — V1
 
-- **iOS app in the App Store.** Submit with the App Review account in `APPLE_SANDBOX_ACCOUNTS`, check the subscription
-  in Sandbox, then release. The App Store sells the monthly plan only; add a yearly App Store product to match the
-  website's $29.99 yearly plan.
+- **One system — done in 10.0.0.** The app sells the website's two plans through the App Store, its paywall offers
+  monthly or yearly, and it refuses a purchase wherever the website refuses a checkout. Its tabs follow who is signed
+  in, as the website's navigation does, and it uses the website's wordmark, buttons, and headline type
+  ([release guide](../release-10.0.0.md)).
+- **iOS app in the App Store.** Create Strata+ Yearly (`online.stratafitness.app.plus.yearly`, $29.99 a year) beside
+  the monthly plan in App Store Connect, and set `APPLE_IAP_PRODUCT_IDS` in Render to both products. Submit with the
+  App Review account in `APPLE_SANDBOX_ACCOUNTS`, check both plans in Sandbox, then release.
 - **Polar with a real account.** Polar sync has been tested only against recorded and made-up data. Connect a real
   Polar device, compare a week of nights and sessions with Polar Flow, and fix any field that does not match
   (`src/polar-mapping.js`, `POLAR_INTEGRATION.md`).
@@ -38,8 +42,8 @@ These are product decisions, so 9.8.0 prepares the facts and leaves the choice.
 
 - **Price — decided in 9.8.0.** Strata+ moved from $2.99 a month to $4.99 a month or $29.99 a year
   ([pricing maths](metrics.md#pricing-maths)). The server accepts exactly these two Paddle prices: checkout fails
-  closed on any other amount, and only the configured prices unlock Strata+. Next: watch how many members choose
-  yearly, and add the yearly App Store product.
+  closed on any other amount, and only the configured prices unlock Strata+. 10.0.0 sells the same two plans in the
+  app. Next: watch how many members choose yearly.
 - **Where sign-ups come from.** STRATA records no referrer or campaign for a sign-up today
   ([metrics](metrics.md#what-the-numbers-cannot-say)). Recording one is a new fact about each account and needs a
   privacy-policy change.

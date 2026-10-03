@@ -405,7 +405,7 @@ test("opening a deletion link only checks status and cannot delete the account",
 
 const APPLE_BILLING = {
   message:
-    "Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions.",
+    "Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions.",
   manageUrl: "https://apps.apple.com/account/subscriptions",
 };
 

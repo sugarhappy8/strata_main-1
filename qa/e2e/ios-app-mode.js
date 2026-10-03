@@ -86,6 +86,15 @@ function installNativeMock() {
               currencyCode: "USD",
               period: { unit: "month", value: 1 },
             },
+            {
+              id: "online.stratafitness.app.plus.yearly",
+              displayName: "Strata+ Yearly",
+              description: "Yearly",
+              displayPrice: "$29.99",
+              price: "29.99",
+              currencyCode: "USD",
+              period: { unit: "year", value: 1 },
+            },
           ],
         }),
         purchase: record("purchase", {
@@ -144,6 +153,13 @@ async function fixture(
   t.after(() => context.close());
   context.setDefaultTimeout(10_000);
   if (app) await context.addInitScript(installNativeMock);
+  // The server sets strata_nav with the session and /api/me keeps it current (src/auth.js); app-shell.js reads it
+  // before the page draws, so the tabs are this audience's from the first paint.
+  const audience = (user) => (user?.discovery?.active === true ? "plus" : "member");
+  if (signedIn)
+    await context.addCookies([
+      { name: "strata_nav", value: audience({ discovery }), url: ORIGIN, sameSite: "Lax" },
+    ]);
   const state = {
     requests: [],
     external: [],
@@ -172,11 +188,18 @@ async function fixture(
       await route.abort();
       return;
     }
-    const json = (value, status = 200) =>
-      route.fulfill({ status, contentType: "application/json", body: JSON.stringify(value) });
+    const json = (value, status = 200, headers = {}) =>
+      route.fulfill({
+        status,
+        headers,
+        contentType: "application/json",
+        body: JSON.stringify(value),
+      });
     if (url.pathname === "/api/me")
       return state.user
-        ? json({ user: state.user, csrfToken: "journey-csrf" })
+        ? json({ user: state.user, csrfToken: "journey-csrf" }, 200, {
+            "Set-Cookie": `strata_nav=${audience(state.user)}; Path=/; SameSite=Lax; Max-Age=3600`,
+          })
         : json({ user: null });
     if (url.pathname === "/api/billing/apple/transactions") {
       state.posts.push({
@@ -278,9 +301,10 @@ test(
     assert.equal(view.title, "Rankings");
     assert.equal(view.tabBar, true);
     assert.equal(view.back, false);
+    // A visitor's tabs are the website's visitor navigation: what they can use without an account.
     assert.deepEqual(
       view.tabs.map((tab) => tab.id),
-      ["rankings", "dashboard", "train", "recovery", "profile"],
+      ["rankings", "plan", "plus", "signin"],
     );
     assert.deepEqual(
       view.tabs.filter((tab) => tab.current === "page").map((tab) => tab.id),
@@ -306,7 +330,8 @@ test(
     assert.equal(view.back, true, "legal pages are child screens");
     assert.deepEqual(
       view.tabs.filter((tab) => tab.current === "page").map((tab) => tab.id),
-      ["profile"],
+      ["signin"],
+      "a visitor's Profile pages belong to Sign in",
     );
     assert.equal(view.websiteHeader, false);
     assert.equal(view.footer, false);
@@ -320,13 +345,20 @@ test(
   },
 );
 
-test("in the app a signed-in member opens on Dashboard", { timeout: 30_000 }, async (t) => {
-  const { page, state } = await fixture(t, { signedIn: true });
+test("in the app a signed-in Strata+ member opens on Dashboard", { timeout: 30_000 }, async (t) => {
+  const { page, state } = await fixture(t, {
+    signedIn: true,
+    discovery: { active: true, accessType: "apple", apple: APPLE },
+  });
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await page.waitForURL(`${ORIGIN}/dashboard`);
   await page.locator(".app-tabbar").waitFor({ state: "visible" });
   const view = await page.evaluate(layout);
   assert.equal(view.title, "Dashboard");
+  assert.deepEqual(
+    view.tabs.map((tab) => tab.id),
+    ["rankings", "dashboard", "train", "recovery", "profile"],
+  );
   assert.deepEqual(
     view.tabs.filter((tab) => tab.current === "page").map((tab) => tab.id),
     ["dashboard"],
@@ -351,7 +383,20 @@ test(
     await page.goto("/pricing", { waitUntil: "domcontentloaded" });
     const subscribe = page.getByRole("button", { name: "Subscribe", exact: true });
     await subscribe.waitFor({ state: "visible" });
-    assert.equal(await page.locator(".app-paywall-price").textContent(), "$4.99per month");
+    // The website's two plans at the App Store's prices; monthly is chosen until the member picks yearly.
+    const monthly = page.getByRole("radio", { name: /^Monthly/ }),
+      yearly = page.getByRole("radio", { name: /^Yearly · save 50%/ });
+    assert.equal(await monthly.isChecked(), true);
+    assert.match(
+      await page.locator(".app-plan-choice").textContent(),
+      /\$4\.99 per month[\s\S]*\$29\.99 per year/,
+    );
+    await yearly.check();
+    assert.equal(await yearly.isChecked(), true);
+    assert.match(
+      await page.locator(".app-paywall-terms").textContent(),
+      /auto-renewing yearly subscription at \$29\.99 per year/,
+    );
     for (const hidden of ["#purchasePanel", ".hero-facts", ".price-card", ".checkout-note"])
       assert.equal(await page.locator(hidden).first().isHidden(), true, hidden);
     assert.match(
@@ -388,7 +433,7 @@ test(
     );
     assert.deepEqual(
       await page.evaluate(() => window.__nativeCalls.find((call) => call[0] === "purchase")[1]),
-      { productId: "online.stratafitness.app.plus.monthly", appAccountToken: USER_ID },
+      { productId: "online.stratafitness.app.plus.yearly", appAccountToken: USER_ID },
     );
     assert.ok(calls.includes("addListener"), "StoreKit updates are listened for");
     assert.equal(

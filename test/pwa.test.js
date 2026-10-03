@@ -246,7 +246,7 @@ test("release version, cache keys, asset URLs, and catalog claims stay aligned",
     "refunds.html",
   ];
 
-  assert.equal(version, "9.8.1");
+  assert.equal(version, "10.0.0");
   assert.match(serviceWorker, new RegExp(`const BUILD\\s*=\\s*"${versionPattern}";`));
   assert.match(serviceWorker, /const\s*CACHE_PREFIX\s*=\s*"strata-static-"\s*;/);
   assert.match(
@@ -812,7 +812,9 @@ test("install guide is beginner-friendly, device-specific, and progressively enh
     /\.install-actions\s*\[\s*hidden\s*,?\s*\]\s*\s*\{\s*\s*display\s*:\s*none\s*;/,
     "A browser without an install prompt must not render the inactive install button",
   );
-  assert.match(html, /no App Store download/i);
+  // The installed web app needs no download; the page never says there is no STRATA app in the App Store.
+  assert.match(html, /directly to your Home Screen or apps list, with nothing to download/i);
+  assert.doesNotMatch(html, /no App Store download/i);
   assert.match(html, /No app-store account/);
   assert.match(html, /Updates automatically/);
   assert.match(html, /account still syncs across your devices/i);

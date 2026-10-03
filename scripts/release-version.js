@@ -34,6 +34,7 @@ const DEFAULT_MANIFEST = Object.freeze({
     "public/pages/forgot-password.html",
     "public/pages/index.html",
     "public/pages/install.html",
+    "public/pages/not-found.html",
     "public/pages/offline.html",
     "public/pages/planner.html",
     "public/pages/workout-offline.html",

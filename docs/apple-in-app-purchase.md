@@ -1,10 +1,10 @@
 # Apple In-App Purchase for Strata+
 
-Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase as an auto-renewable monthly subscription at $4.99 USD per month. The website's $29.99 yearly plan has no App Store product yet. The website keeps Paddle exactly as it is. Strata+ is one entitlement however it was paid for: Paddle, Apple, or an owner's complimentary grant.
+Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase with the website's two plans: Strata+ Monthly at $4.99 USD a month and Strata+ Yearly at $29.99 USD a year, both auto-renewable. The paywall offers whichever of them the App Store returns, monthly first, with the yearly saving worked out from the storefront's own prices. The website sells the same two plans through Paddle. Strata+ is one entitlement however it was paid for: Paddle, Apple, or an owner's complimentary grant.
 
 ## How it works
 
-1. The app buys `online.stratafitness.app.plus.monthly` with StoreKit 2 and sets the purchase's `appAccountToken` to the signed-in member's STRATA user id (a UUID).
+1. The app buys `online.stratafitness.app.plus.monthly` or `online.stratafitness.app.plus.yearly`, the plan the member chose, with StoreKit 2 and sets the purchase's `appAccountToken` to the signed-in member's STRATA user id (a UUID). A product ID ending in `.yearly` is the yearly plan: Account names it, and Admin → Metrics counts it at its yearly price.
 2. The app posts the signed transaction (a JWS) to `POST /api/billing/apple/transactions` with the session cookie and CSRF token, the same way other signed-in writes work. It does this after a purchase, after **Restore Purchases**, at launch for `Transaction.currentEntitlements`, and for every `Transaction.updates` item. It finishes a transaction only after the server accepts it.
 3. The server verifies each JWS against Apple Root CA - G3 (`src/apple-jws.js`), then checks the bundle id, product id, environment, and that `appAccountToken` equals the signed-in account. It stores one row per `originalTransactionId` in `apple_subscriptions` and answers with the member's `discovery` (the same shape as `/api/me`) and the accepted transaction ids.
    Strata+ is not shared through Family Sharing. A transaction whose `inAppOwnershipType` is `FAMILY_SHARED` never grants access: it is left out of `accepted`, and a post that holds nothing else is refused with `422 APPLE_FAMILY_SHARED` ("Strata+ is not shared through Family Sharing. Subscribe with your own Apple Account to unlock it."). The member's own purchase in the same post still counts.
@@ -49,7 +49,7 @@ Strata+ is one entitlement, so a member is never asked to pay for it twice:
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `APPLE_BUNDLE_ID` | `online.stratafitness.app` | Must match the app's bundle id. |
-| `APPLE_IAP_PRODUCT_IDS` | `online.stratafitness.app.plus.monthly` | Comma list of accepted Strata+ products. |
+| `APPLE_IAP_PRODUCT_IDS` | `online.stratafitness.app.plus.monthly,online.stratafitness.app.plus.yearly` | Comma list of accepted Strata+ products. |
 | `APPLE_SANDBOX_ACCOUNTS` | (unset) | Comma list of STRATA account emails a Sandbox purchase unlocks Strata+ for in production. Put the App Review demo account here. |
 | `APPLE_ROOT_FINGERPRINT` | (unset) | Test-only root override; ignored unless `NODE_ENV=test`. |
 
@@ -58,7 +58,7 @@ There is no shared secret or API key. Purchases from both the Production and San
 ## App Store Connect steps
 
 1. **Agreements, Tax, and Banking:** accept the Paid Apps agreement and complete the bank and tax forms. Purchases do not work until it is active.
-2. **Subscriptions:** create a subscription group named `Strata+`. In it, create an auto-renewable subscription with product id `online.stratafitness.app.plus.monthly`, duration 1 month, price $4.99 USD (let Apple fill other storefronts), and a display name and description. Leave **Family Sharing** off: the server never grants Strata+ to a family member's shared copy. Add the review screenshot of the in-app purchase screen.
+2. **Subscriptions:** create a subscription group named `Strata+`. In it, create two auto-renewable subscriptions on the same level: `online.stratafitness.app.plus.monthly`, duration 1 month, price $4.99 USD, and `online.stratafitness.app.plus.yearly`, duration 1 year, price $29.99 USD (let Apple fill other storefronts), each with a display name and description. On one level, moving between them is a crossgrade that starts at the next renewal. Leave **Family Sharing** off: the server never grants Strata+ to a family member's shared copy. Add the review screenshot of the in-app purchase screen.
 3. **App Store Server Notifications:** under App Information, set Version 2 notifications with the URL `https://stratafitness.online/api/billing/apple/notifications` for both the Production and the Sandbox server. Use **Request a Test Notification** (or the App Store Server API) and expect a `200`; the server logs `apple.notification` with outcome `test`.
 4. **Submit the subscription with the app version** the first time; later changes can be submitted on their own.
 

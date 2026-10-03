@@ -8,10 +8,14 @@ const { APPLE_ROOT_CA_G3_FINGERPRINT, AppleJwsError, verifyAppleJws } = require(
 const { MAX_WEBHOOK_BYTES, bodyBuffer } = require("./http");
 
 const DEFAULT_BUNDLE_ID = "online.stratafitness.app";
-const DEFAULT_PRODUCT_IDS = Object.freeze(["online.stratafitness.app.plus.monthly"]);
+// The App Store sells the website's two plans: Strata+ Monthly and Strata+ Yearly, one subscription group.
+const DEFAULT_PRODUCT_IDS = Object.freeze([
+  "online.stratafitness.app.plus.monthly",
+  "online.stratafitness.app.plus.yearly",
+]);
 const MANAGE_SUBSCRIPTIONS_URL = "https://apps.apple.com/account/subscriptions";
 const DELETION_NOTICE =
-  "Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions.";
+  "Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions.";
 const FAMILY_SHARED_MESSAGE =
   "Strata+ is not shared through Family Sharing. Subscribe with your own Apple Account to unlock it.";
 const MAX_TRANSACTIONS = 20;
@@ -40,6 +44,14 @@ const STATE_NOTIFICATIONS = new Set([
   "OFFER_REDEEMED",
 ]);
 const GRACE_ENDING_NOTIFICATIONS = new Set(["EXPIRED", "GRACE_PERIOD_EXPIRED", "DID_RENEW"]);
+
+/**
+ * The plan an App Store product sells: a product ID ending in ".yearly" is the yearly plan, every other one monthly.
+ * @param {unknown} productId @returns {"monthly"|"yearly"}
+ */
+function appleProductPlan(productId) {
+  return /\.yearly$/.test(String(productId || "")) ? "yearly" : "monthly";
+}
 
 /** @param {string} message @param {number} status @param {string} code */
 function appleError(message, status, code) {
@@ -298,6 +310,7 @@ function appleSubscriptionSummary(rows, now, user = null, settings = null) {
   return {
     active: active(row),
     productId: String(row.product_id),
+    plan: appleProductPlan(row.product_id),
     expiresAt,
     autoRenew: row.auto_renew == null ? null : Number(row.auto_renew) === 1,
     inGracePeriod:
@@ -675,6 +688,7 @@ module.exports = {
   FAMILY_SHARED_MESSAGE,
   MANAGE_SUBSCRIPTIONS_URL,
   appleBillingSettings,
+  appleProductPlan,
   appleRowActive,
   appleSubscriptionSummary,
   createAppleBillingService,

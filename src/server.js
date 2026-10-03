@@ -135,6 +135,7 @@ const STATIC_FILES = new Map([
   ["contact.html", "pages/contact.html"],
   ["dashboard.html", "pages/dashboard.html"],
   ["policies.html", "pages/policies.html"],
+  ["not-found.html", "pages/not-found.html"],
   ["terms.html", "pages/terms.html"],
   ["privacy.html", "pages/privacy.html"],
   ["refunds.html", "pages/refunds.html"],
@@ -758,6 +759,29 @@ async function handleApi(req, res, url) {
   json(res, 404, { error: "API route not found." });
 }
 
+/**
+ * A person who follows a wrong address gets STRATA's page, with the navigation; scripts and tools still get JSON.
+ * @param {import("node:http").IncomingMessage} req @param {import("node:http").ServerResponse} res
+ */
+function notFound(req, res) {
+  if (!/\btext\/html\b/i.test(String(req.headers.accept || ""))) {
+    json(res, 404, { error: "Page not found." });
+    return;
+  }
+  const page = publicAssets.get("not-found.html");
+  const headers = {
+    ...securityHeaders(),
+    "Content-Type": MIME[".html"],
+    "Cache-Control": "no-cache",
+  };
+  const body = page
+    ? cachedResponseBody(req, page, headers)
+    : responseBody(req, readFileSync(join(PUBLIC_ROOT, "pages/not-found.html")), headers);
+  res.writeHead(404, headers);
+  if (req.method === "HEAD") res.end();
+  else res.end(body);
+}
+
 async function serveStatic(req, res, url) {
   const aliasPath = url.pathname.length > 1 ? url.pathname.replace(/\/+$/g, "") : url.pathname;
   const requested =
@@ -783,7 +807,7 @@ async function serveStatic(req, res, url) {
     }
   }
   if (!STATIC_FILES.has(requested)) {
-    json(res, 404, { error: "Page not found." });
+    notFound(req, res);
     return;
   }
   const activeSession =
@@ -861,7 +885,7 @@ async function serveStatic(req, res, url) {
   const filePath = join(PUBLIC_ROOT, publicFile);
   const cached = publicAssets.get(requested);
   if (!cached && !existsSync(filePath)) {
-    json(res, 404, { error: "Page not found." });
+    notFound(req, res);
     return;
   }
   let body = cached ? cached.body : readFileSync(filePath);
