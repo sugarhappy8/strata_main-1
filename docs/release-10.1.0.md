@@ -1,8 +1,8 @@
 # Build 10.1.0 — Android
 
-Build 10.1.0 brings STRATA to Android. The STRATA Android app (repository `sugarhappy8/strata-fitness-ios`, folder
-`android/`) opens this site like the iPhone app does and sells the same Strata+ through Google Play Billing. This
-release is the website's side: it checks Google Play purchases, keeps one Strata+ across every way to pay, and adapts
+Build 10.1.0 brings STRATA to Android. The STRATA Android app (repository `sugarhappy8/strata-fitness-android`) opens
+this site like the iPhone app does and sells the same Strata+ through Google Play Billing. This release is the
+website's side: it checks Google Play purchases, keeps one Strata+ across every way to pay, and adapts
 app mode, Account, the policies, and the admin desk to Android.
 
 The steps only the owner can take (the Play developer account, the subscription in the Play Console, the Google Cloud
@@ -72,8 +72,8 @@ service account, and Pub/Sub) are under [Upgrade notes](#upgrade-notes).
    `online.stratafitness.app.plus` and are set in `render.yaml`.
 4. **Google Play Console, Google Cloud, and Pub/Sub.** Create the subscription and its two base plans, the service
    account and its Play Console permissions, and the notification topic and push subscription:
-   [google-play-billing.md](google-play-billing.md) has every step, and the app repository's `docs/google-play.md`
-   takes the app from a developer account to a live listing.
+   [google-play-billing.md](google-play-billing.md) has every step, and `docs/google-play.md` in
+   `sugarhappy8/strata-fitness-android` takes the app from a developer account to a live listing.
 5. **After deploying:**
    `STRATA_SMOKE_BASE_URL=https://your-host STRATA_EXPECTED_BUILD=10.1.0 npm run smoke:deploy`. Then:
    - the admin Overview shows Google Play billing (set up or not, as configured);
