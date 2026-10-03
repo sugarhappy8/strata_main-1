@@ -13,10 +13,19 @@ const PRODUCT = {
   id: "online.stratafitness.app.plus.monthly",
   displayName: "Strata+",
   description: "Monthly",
-  displayPrice: "2,99 €",
-  price: "2.99",
+  displayPrice: "4,99 €",
+  price: "4.99",
   currencyCode: "EUR",
   period: { unit: "month", value: 1 },
+};
+const YEARLY = {
+  id: "online.stratafitness.app.plus.yearly",
+  displayName: "Strata+ Yearly",
+  description: "Yearly",
+  displayPrice: "29,99 €",
+  price: "29.99",
+  currencyCode: "EUR",
+  period: { unit: "year", value: 1 },
 };
 const USER_ID = "6a8f5e0c-1d2b-4c3a-9e8f-7a6b5c4d3e2f";
 const APPLE = {
@@ -140,12 +149,12 @@ test("the paywall shows StoreKit's price and period, what Strata+ includes, and 
   await page.controller.load();
   assert.deepEqual(JSON.parse(JSON.stringify(page.calls[0])), [
     "getProducts",
-    { productIds: [PRODUCT.id] },
+    { productIds: [PRODUCT.id, YEARLY.id] },
   ]);
   const html = page.html();
   assert.match(
     html,
-    /<h2 id="appPaywallTitle">Unlock Strata\+<\/h2><p class="app-paywall-price"><strong>2,99 €<\/strong><span>per month<\/span><\/p>/,
+    /<h2 id="appPaywallTitle">Unlock Strata\+<\/h2><p class="app-paywall-price"><strong>4,99 €<\/strong><span>per month<\/span><\/p>/,
   );
   assert.match(
     html,
@@ -153,7 +162,7 @@ test("the paywall shows StoreKit's price and period, what Strata+ includes, and 
   );
   assert.doesNotMatch(html, /\$2\.99|USD/, "the price is never hard-coded");
   const terms = page.api.disclosure(PRODUCT);
-  assert.match(terms, /auto-renewing monthly subscription at 2,99 € per month/);
+  assert.match(terms, /auto-renewing monthly subscription at 4,99 € per month/);
   assert.match(terms, /charged to your Apple Account/);
   assert.match(terms, /at least 24 hours before the end of the current period/);
   assert.match(terms, /Settings › Apple Account › Subscriptions/);
@@ -167,6 +176,96 @@ test("the paywall shows StoreKit's price and period, what Strata+ includes, and 
   const pricing = read("public/pages/pricing.html");
   for (const benefit of ["Know what’s next.", "Remember last time.", "Let Strata AI plan it."])
     assert.ok(pricing.includes(benefit), "the paywall reuses the plan card's own copy");
+});
+
+test("with both App Store plans the paywall offers monthly or yearly, like the website, and buys the chosen one", async () => {
+  // StoreKit may return the products in any order; the paywall shows monthly first and starts on it.
+  const page = paywall({ server: accepted(), products: [YEARLY, PRODUCT] });
+  await page.controller.load();
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(page.view().products.map((product) => [product.plan, product.id]))),
+    [
+      ["monthly", PRODUCT.id],
+      ["yearly", YEARLY.id],
+    ],
+  );
+  assert.equal(page.view().plan, "monthly");
+  assert.equal(page.view().savings, 50, "29.99 a year against 12 × 4.99 saves 50%");
+  const html = page.html();
+  assert.match(html, /<fieldset class="app-plan-choice"><legend>Choose a plan<\/legend>/);
+  assert.match(
+    html,
+    /value="monthly" data-paywall-plan="monthly" checked \/><span><strong>Monthly<\/strong>4,99 € per month<\/span>/,
+  );
+  assert.match(
+    html,
+    /value="yearly" data-paywall-plan="yearly" \/><span><strong>Yearly · save 50%<\/strong>29,99 € per year<\/span>/,
+  );
+  assert.doesNotMatch(html, /app-paywall-price/, "the plan choice carries both prices");
+  assert.equal(page.controller.choosePlan("yearly"), "yearly");
+  assert.match(page.html(), /data-paywall-plan="yearly" checked/);
+  assert.match(
+    page.api.disclosure(page.view().product),
+    /auto-renewing yearly subscription at 29,99 € per year/,
+  );
+  assert.equal(
+    page.controller.choosePlan("weekly"),
+    "monthly",
+    "an unknown plan falls back to the first",
+  );
+  page.controller.choosePlan("yearly");
+  assert.equal(await page.controller.subscribe(), "purchased");
+  assert.deepEqual(JSON.parse(JSON.stringify(page.calls.find(([name]) => name === "purchase"))), [
+    "purchase",
+    { productId: YEARLY.id, appAccountToken: USER_ID },
+  ]);
+  // Prices that do not add up to a real saving show no "save" label; a lone product shows no choice.
+  assert.equal(
+    page.api.yearlySavings([
+      { ...PRODUCT, plan: "monthly" },
+      { ...YEARLY, plan: "yearly", price: "58.00" },
+    ]),
+    0,
+  );
+  assert.equal(
+    page.api.yearlySavings([
+      { ...PRODUCT, plan: "monthly" },
+      { ...YEARLY, plan: "yearly", currencyCode: "USD" },
+    ]),
+    0,
+    "two currencies cannot be compared",
+  );
+  const yearlyOnly = paywall({ server: accepted(), products: [YEARLY] });
+  await yearlyOnly.controller.load();
+  assert.equal(yearlyOnly.view().plan, "yearly");
+  assert.match(
+    yearlyOnly.html(),
+    /<p class="app-paywall-price"><strong>29,99 €<\/strong><span>per year<\/span><\/p>/,
+  );
+});
+
+test("a paused subscription or blocked payments keep Subscribe off, as on the website", async () => {
+  for (const [discovery, message] of [
+    [{ subscription: { id: "sub_1", status: "paused", active: false } }, /paused/],
+    [{ checkoutBlocked: true }, /turned off for this account/],
+  ]) {
+    const page = paywall({
+      server: accepted(),
+      user: {
+        id: USER_ID,
+        discovery: { active: false, accessType: null, apple: null, ...discovery },
+      },
+    });
+    await page.controller.load();
+    const html = page.html();
+    assert.doesNotMatch(html, /data-paywall-action="subscribe"/);
+    assert.match(html, message);
+    assert.equal(await page.controller.subscribe(), "blocked");
+    assert.equal(
+      page.calls.some(([name]) => name === "purchase"),
+      false,
+    );
+  }
 });
 
 test("a purchase carries the STRATA user id, is confirmed by STRATA, then finished, with a success haptic", async () => {
@@ -403,7 +502,7 @@ test("signed-out people are asked to sign in first, and an old app build without
   assert.match(html, /href="\/account\.html\?mode=signup&amp;next=pricing"/);
   assert.match(html, /href="\/account\.html\?mode=login&amp;next=pricing">Sign in to subscribe/);
   assert.doesNotMatch(html, /data-paywall-action\s*=\s*"subscribe"/);
-  assert.match(html, /2,99 €/, "the price is visible before signing in");
+  assert.match(html, /4,99 €/, "the price is visible before signing in");
   assert.equal(await visitor.controller.restore(), "signed-out");
   assert.match(visitor.view().status, /Sign in to STRATA first/);
   assert.equal(

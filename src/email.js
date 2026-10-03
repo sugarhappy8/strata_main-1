@@ -330,7 +330,7 @@ async function sendAccountActionEmail(config, message, fetchImpl = globalThis.fe
   // Apple bills an in-app subscription until the member cancels it with Apple; deleting STRATA does not stop it.
   const appleText =
     isDeletion && message?.appleSubscription === true
-      ? "Your Strata+ subscription was bought through Apple. Deleting your STRATA account does not cancel it: Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions (https://apps.apple.com/account/subscriptions)."
+      ? "Your Strata+ subscription was bought through Apple. Deleting your STRATA account does not cancel it: Apple keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions (https://apps.apple.com/account/subscriptions)."
       : "";
   const text = [
     `Hi ${name},`,

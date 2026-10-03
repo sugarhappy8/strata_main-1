@@ -52,7 +52,7 @@ const METRICS_SQL = Object.freeze({
       COALESCE(event_occurred_at,updated_at) AS changed_at
     FROM paddle_subscriptions`,
   // App Store Sandbox purchases are tests, never revenue.
-  metricsAppleSubscriptions: `SELECT user_id,COALESCE(original_purchased_at,purchased_at,created_at) AS started_at,
+  metricsAppleSubscriptions: `SELECT user_id,product_id,COALESCE(original_purchased_at,purchased_at,created_at) AS started_at,
       MAX(COALESCE(expires_at,0),COALESCE(grace_period_expires_at,0)) AS ends_at,revoked_at
     FROM apple_subscriptions
     WHERE environment='Production'`,

@@ -29,7 +29,7 @@ an investor sees the numbers.
 | **Week 4 / week 8 retention** | Of the accounts whose week 4 (days 28–34 after signing up) or week 8 (days 56–62) is over, the share active in it, grouped by sign-up week. |
 | **Free-to-paid conversion** | Accounts that ever started a paid subscription (Paddle, or the App Store outside Sandbox), out of all customer accounts. |
 | **Paying members** | Accounts with a Paddle subscription that is active or past due, or an App Store subscription that has not expired or is in its billing grace period. Lifetime purchases from before the subscription and owner grants are shown separately and are not paying members. |
-| **MRR** | Each paying subscription at its list price per month: $4.99 for monthly, $29.99 ÷ 12 ($2.50) for yearly. Also shown after Paddle's 5% + $0.50 per charge or Apple's 15%. Before VAT and sales tax; App Store prices outside the US differ. A subscription started before 9.8.0 is counted at today's monthly price. |
+| **MRR** | Each paying subscription at its list price per month: $4.99 for monthly, $29.99 ÷ 12 ($2.50) for yearly, on Paddle or the App Store. Also shown after Paddle's 5% + $0.50 per charge or Apple's 15%. Before VAT and sales tax; App Store prices outside the US differ. A subscription started before 9.8.0 is counted at today's monthly price. |
 | **Monthly churn** | Subscriptions paying when a month began that ended during it, divided by those paying when it began. A paused or canceled Paddle subscription ends at its last change; an App Store one ends when it expires or is revoked. |
 | **Strata AI cost per active Strata+ member** | Tokens used by customer accounts that month × `STRATA_AI_USD_PER_MILLION_TOKENS`, divided by members who used a Strata+ feature that month (a workout, nutrition log, check-in, or Strata AI message). Set the rate from the Groq bill: the month's bill divided by that month's tokens in millions. AI usage is kept 90 days, so a month is shown only while every day of it is kept: three months for most of a month, two near its end. |
 
@@ -50,7 +50,8 @@ an investor sees the numbers.
 ## Pricing maths
 
 Paddle's fee is 5% + $0.50 per charge, so the fixed $0.50 weighs most on small charges. Until 9.8.0 Strata+ was $2.99
-a month, of which Paddle kept 22%. 9.8.0 sells $4.99 monthly and $29.99 yearly.
+a month, of which Paddle kept 22%. 9.8.0 sells $4.99 monthly and $29.99 yearly on the web, and 10.0.0 sells both
+in the app.
 
 | Plan | Paddle fee | You keep via Paddle | You keep via Apple (15%) | Paddle fee share |
 |---|---|---|---|---|

@@ -312,7 +312,7 @@ test("serves only explicitly mapped files from the public tree", () => {
   );
   assert.match(
     source,
-    /if\s*\(\s*!\s*STATIC_FILES\s*\.has\s*\(\s*requested\s*,?\s*\)\s*,?\s*\)\s*\{\s*json\s*\(\s*res\s*,\s*404\s*,/,
+    /if\s*\(\s*!\s*STATIC_FILES\s*\.has\s*\(\s*requested\s*,?\s*\)\s*,?\s*\)\s*\{\s*notFound\s*\(\s*req\s*,\s*res\s*,?\s*\)/,
   );
   assert.match(
     source,

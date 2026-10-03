@@ -60,7 +60,7 @@ services:
       - key: APPLE_BUNDLE_ID
         value: online.stratafitness.app
       - key: APPLE_IAP_PRODUCT_IDS
-        value: online.stratafitness.app.plus.monthly
+        value: online.stratafitness.app.plus.monthly,online.stratafitness.app.plus.yearly
       - key: APPLE_SANDBOX_ACCOUNTS
         sync: false
       - key: STRATA_INTERNAL_ACCOUNTS

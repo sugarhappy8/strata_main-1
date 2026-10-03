@@ -217,7 +217,12 @@
     "src/admin-metrics.js": {
       "role": "Owner investor-metrics route and the first-full-week milestone",
       "maxLines": 180,
-      "allowedDependencies": ["src/plans.js", "src/metrics.js", "src/paddle-catalog.js"]
+      "allowedDependencies": [
+        "src/apple-billing.js",
+        "src/metrics.js",
+        "src/paddle-catalog.js",
+        "src/plans.js"
+      ]
     },
     "src/metrics.js": {
       "role": "Pure investor-metrics figures and CSV from account-scoped rows",

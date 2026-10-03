@@ -1635,7 +1635,13 @@ export interface InvestorMetricsRows {
     created_at: number;
     changed_at: number;
   }>;
-  apple: Array<{ user_id: string; started_at: number; ends_at: number; revoked_at: number | null }>;
+  apple: Array<{
+    user_id: string;
+    product_id: string;
+    started_at: number;
+    ends_at: number;
+    revoked_at: number | null;
+  }>;
   lifetime: Array<{ user_id: string }>;
   aiUsage: Array<{ user_id: string; month: string; requests: number; tokens: number }>;
   activationSince: number | null;
@@ -2033,6 +2039,7 @@ export interface AppleBillingStore {
 export interface AppleSubscriptionSummary {
   active: boolean;
   productId: string;
+  plan: "monthly" | "yearly";
   expiresAt: number | null;
   autoRenew: boolean | null;
   inGracePeriod: boolean;

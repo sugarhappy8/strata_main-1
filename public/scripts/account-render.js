@@ -165,7 +165,7 @@
       el("accountBillingDetail").textContent =
         apple.active !== true
           ? "This App Store subscription no longer provides Strata+. You can subscribe again in the STRATA app."
-          : `Billed to your Apple Account through the App Store. ${apple.inGracePeriod === true ? "Apple could not collect the latest payment; update your payment method to keep Strata+." : apple.autoRenew === false ? (date ? `It ends ${date} and will not renew.` : "It will not renew.") : date ? `It renews ${date} unless cancelled at least 24 hours before.` : "It renews monthly until cancelled."}${app ? "" : " Manage it in Settings › Apple Account › Subscriptions on your iPhone."}`;
+          : `Billed to your Apple Account through the App Store. ${apple.inGracePeriod === true ? "Apple could not collect the latest payment; update your payment method to keep Strata+." : apple.autoRenew === false ? (date ? `It ends ${date} and will not renew.` : "It will not renew.") : date ? `It renews ${date} unless cancelled at least 24 hours before.` : `It renews ${apple.plan === "yearly" ? "yearly" : "monthly"} until cancelled.`}${app ? "" : " Manage it in Settings › Apple Account › Subscriptions on your iPhone."}`;
       el("accountManageApple").hidden = false;
     }
 
@@ -306,7 +306,10 @@
       discoveryAction.textContent = discoveryActive
         ? "Open Strata+ studio →"
         : managedInactive
-          ? "Manage Strata+ billing →"
+          ? // The app shows a website subscription's status but manages it only on the website.
+            app
+            ? "See Strata+ billing →"
+            : "Manage Strata+ billing →"
           : subscription?.status === "canceled"
             ? "Restart Strata+ →"
             : discoveryPending

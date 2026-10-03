@@ -1591,7 +1591,7 @@ function accountRoutes(user, { appleBilling = null } = {}) {
 }
 const APPLE_DELETION = {
   message:
-    "Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions.",
+    "Deleting your STRATA account does not cancel a Strata+ subscription bought through Apple. Apple keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions.",
   manageUrl: "https://apps.apple.com/account/subscriptions",
 };
 const APPLE_ACTIVE = {
@@ -1648,7 +1648,7 @@ test("in the app, an App Store subscriber manages Strata+ on Apple's own sheet",
   assert.equal(page.elements.get("accountAccessState").textContent, "Active");
   assert.match(
     page.elements.get("accountAccessDetail").textContent,
-    /^App Store · renews Nov 1, 2026$/,
+    /^Monthly · App Store · renews Nov 1, 2026$/,
   );
   let prevented = false;
   await page.elements.get("accountManageApple").emit("click", {
@@ -1713,6 +1713,34 @@ test("in the app, an App Store subscriber manages Strata+ on Apple's own sheet",
   await deleting.elements.get("accountSecurityAppleLink").emit("click", { preventDefault() {} });
   await settle();
   assert.deepEqual(calls, ["manage", "manage-from-delete"]);
+});
+
+test("in the app, a paused website subscription points to its status, not to controls the app hides", async () => {
+  const paused = {
+    discovery: {
+      active: false,
+      accessType: null,
+      pendingPurchaseCount: 0,
+      subscription: {
+        id: "sub-web",
+        status: "paused",
+        active: false,
+        pastDue: false,
+        scheduledChange: null,
+        currentPeriodEndsAt: Date.now() - 1,
+      },
+    },
+  };
+  const inApp = createPage({ route: accountRoutes(memberFixture(paused)), app: { plugin: {} } });
+  await settle();
+  assert.equal(inApp.elements.get("accountDiscoveryAction").textContent, "See Strata+ billing →");
+  assert.equal(inApp.elements.get("accountManageSubscription").hidden, true);
+  const onWeb = createPage({ route: accountRoutes(memberFixture(paused)) });
+  await settle();
+  assert.equal(
+    onWeb.elements.get("accountDiscoveryAction").textContent,
+    "Manage Strata+ billing →",
+  );
 });
 
 test("in the app, Paddle billing is read-only and the deletion copy names the App Store", async () => {
@@ -1782,7 +1810,7 @@ test("in the app, Paddle billing is read-only and the deletion copy names the Ap
   await settle();
   assert.equal(
     free.elements.get("accountDiscoveryStatus").textContent,
-    "The exercise index and weekly planner are free. Strata+ is available as a monthly subscription.",
+    "The exercise index and weekly planner are free. Strata+ is available as a monthly or yearly subscription.",
     "no fixed USD price in the app",
   );
 });
@@ -1847,7 +1875,7 @@ test("on the website an App Store subscriber gets Apple's subscriptions link and
   await settle();
   assert.match(
     apple.elements.get("accountSecurityStatus").textContent,
-    /Apple keeps billing your Apple Account until you cancel it in Settings > Apple ID > Subscriptions\.$/,
+    /Apple keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions\.$/,
   );
   assert.equal(apple.elements.get("accountSecurityAppleLink").hidden, false);
   const paddle = createPage({

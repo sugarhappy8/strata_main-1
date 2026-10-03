@@ -18,7 +18,7 @@ const RETENTION_WEEKS = Object.freeze([4, 8]);
 /**
  * What one subscription brings in per month at list price, and after the provider's fee per charge: Paddle 5% +
  * $0.50, Apple 15% (Small Business Program). A yearly plan is spread over twelve months. App Store subscriptions are
- * valued at the monthly plan's US price.
+ * valued at their plan's US price.
  * @param {"monthly"|"yearly"} planKey @param {"paddle"|"apple"} provider
  */
 function monthlyValue(planKey, provider) {
@@ -34,7 +34,7 @@ const ENDED_PADDLE_STATUSES = Object.freeze(["canceled", "paused"]);
  * @typedef {{id:string,createdAt:number,method:"email"|"google",fullWeekAt:number|null}} MetricsAccount
  * @typedef {{userId:string,day:number,plus:boolean}} MetricsActiveDay
  * @typedef {{userId:string,status:string,startedAt:number,changedAt:number,plan:"monthly"|"yearly"}} MetricsPaddleSubscription
- * @typedef {{userId:string,startedAt:number,endsAt:number,revokedAt:number|null}} MetricsAppleSubscription
+ * @typedef {{userId:string,plan?:"monthly"|"yearly",startedAt:number,endsAt:number,revokedAt:number|null}} MetricsAppleSubscription
  * @typedef {{userId:string,month:string,requests:number,tokens:number}} MetricsAiUsage
  * @typedef {{accounts:MetricsAccount[],activeDays:MetricsActiveDay[],paddle:MetricsPaddleSubscription[],
  *   apple:MetricsAppleSubscription[],lifetimeUserIds:string[],aiUsage:MetricsAiUsage[],activationSince:number|null,
@@ -194,7 +194,10 @@ function paidIntervals(source, now) {
     })),
     ...source.apple.map((row) => ({
       provider: /** @type {"apple"} */ ("apple"),
-      plan: /** @type {"monthly"} */ ("monthly"),
+      plan:
+        row.plan === "yearly"
+          ? /** @type {"yearly"} */ ("yearly")
+          : /** @type {"monthly"} */ ("monthly"),
       userId: row.userId,
       start: row.startedAt,
       end: row.revokedAt ?? (row.endsAt <= now ? row.endsAt : null),
