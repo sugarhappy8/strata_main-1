@@ -232,12 +232,18 @@ const STATIC_FILES = new Map([
   ["service-worker.js", "service-worker.js"],
   ["manifest.webmanifest", "manifest.webmanifest"],
   ["exercises.json", "data/exercises.json"],
+  ["exercise-library.json", "data/exercise-library.json"],
   ["icons/strata-icon.svg", "icons/strata-icon.svg"],
   ["icons/strata-192.png", "icons/strata-192.png"],
   ["icons/strata-512.png", "icons/strata-512.png"],
   ["icons/strata-maskable-512.png", "icons/strata-maskable-512.png"],
   ["icons/apple-touch-icon.png", "icons/apple-touch-icon.png"],
-  ["images/hero-training.jpg", "images/hero-training.jpg"],
+  ["images/hero-training-960.avif", "images/hero-training-960.avif"],
+  ["images/hero-training-960.webp", "images/hero-training-960.webp"],
+  ["images/hero-training-960.jpg", "images/hero-training-960.jpg"],
+  ["images/hero-training-1600.avif", "images/hero-training-1600.avif"],
+  ["images/hero-training-1600.webp", "images/hero-training-1600.webp"],
+  ["images/hero-training-1600.jpg", "images/hero-training-1600.jpg"],
   ["images/strata-og.jpg", "images/strata-og.jpg"],
   ["fonts/manrope-latin.woff2", "fonts/manrope-latin.woff2"],
   ["fonts/dm-mono-400-latin.woff2", "fonts/dm-mono-400-latin.woff2"],
@@ -301,6 +307,8 @@ const MIME = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".jpg": "image/jpeg",
+  ".webp": "image/webp",
+  ".avif": "image/avif",
   ".woff2": "font/woff2",
 };
 let publicAssets = new Map();
@@ -801,7 +809,7 @@ async function serveStatic(req, res, url) {
           ...securityHeaders(),
           Location: `/account.html?${params}`,
           "Cache-Control": "no-store",
-          "Set-Cookie": auth.sessionCookie("", 0),
+          "Set-Cookie": auth.sessionCookies("", 0),
         }),
       );
       res.end();
@@ -863,7 +871,7 @@ async function serveStatic(req, res, url) {
     const user = activeSession ? await userPayload(activeSession) : null;
     const actions = user
       ? `<a class="account-button discover-button" id="discoverButton" href="${user.discovery.active ? "/discover.html" : "/pricing"}">${user.discovery.active ? "Strata+" : "Unlock Strata+"}</a>\n        <a class="account-button account-create" id="signupButton" href="/account.html?mode=signup" hidden>Sign up</a>\n        <a class="account-button account-link signed-in" id="accountButton" href="/account.html">${escapeHtml(user.name.split(/\s+/)[0])} profile</a>\n        <a class="session-button" id="planButton" href="/planner.html">Plan <span id="planCount">${user.planCount}</span></a>`
-      : `<a class="account-button discover-button" id="discoverButton" href="/discover.html" hidden>Strata+</a>\n        <a class="account-button account-create" id="signupButton" href="/account.html?mode=signup">Sign up</a>\n        <a class="account-button account-link" id="accountButton" href="/account.html?mode=login">Log in</a>\n        <a class="session-button" id="planButton" href="/planner.html">Plan <span id="planCount">0</span></a>`;
+      : `<a class="account-button discover-button" id="discoverButton" href="/discover.html" hidden>Strata+</a>\n        <a class="account-button account-create" id="signupButton" href="/account.html?mode=signup">Sign up</a>\n        <a class="account-button account-link" id="accountButton" href="/account.html?mode=login">Sign in</a>\n        <a class="session-button" id="planButton" href="/planner.html">Plan <span id="planCount">0</span></a>`;
     body = Buffer.from(
       body
         .toString("utf8")

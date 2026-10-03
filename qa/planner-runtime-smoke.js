@@ -8,7 +8,9 @@ const { join } = require("node:path");
 const PROJECT_ROOT = join(__dirname, "..");
 const RELEASE = require(join(PROJECT_ROOT, "package.json"));
 const BUILD = RELEASE.strataBuild || RELEASE.version;
-const CATALOG_URL = `/exercises.json?v=${BUILD}`;
+// Plan loads the library (the catalog without long-form guidance) and the full catalog only for a setup guide.
+const CATALOG_URL = `/exercise-library.json?v=${BUILD}`;
+const GUIDANCE_URL = `/exercises.json?v=${BUILD}`;
 const readPublic = (...parts) => fs.readFileSync(join(PROJECT_ROOT, "public", ...parts), "utf8");
 const html = readPublic("pages", "planner.html");
 // The stylesheet is compared without layout whitespace, so these checks hold for dense and formatted CSS alike.
@@ -18,7 +20,8 @@ const compactCss = (css) =>
     .replace(/\s*([{}:;,>()])\s*/g, "$1")
     .replace(/;\}/g, "}");
 const plannerCss = compactCss(readPublic("styles", "planner.css"));
-const exercises = JSON.parse(readPublic("data", "exercises.json"));
+const fullCatalog = JSON.parse(readPublic("data", "exercises.json"));
+const exercises = JSON.parse(readPublic("data", "exercise-library.json"));
 const Discovery = require(join(PROJECT_ROOT, "public", "scripts", "discovery-core"));
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -162,6 +165,7 @@ const context = {
     fetches.push(path);
     requests.push({ path, options });
     if (path === CATALOG_URL) return { ok: true, json: async () => exercises };
+    if (path === GUIDANCE_URL) return { ok: true, json: async () => fullCatalog };
     if (path === "/api/plan")
       return {
         ok: true,
@@ -281,6 +285,38 @@ function clickSelectDay(day) {
     /data-guide-exercise=/,
     "Every planner movement should expose its catalog-backed setup guide",
   );
+  assert.equal(
+    fetches.includes(GUIDANCE_URL),
+    false,
+    "Plan's first paint must not download the catalog's long-form guidance",
+  );
+  assert.equal(vm.runInContext("LOGIC.hasGuidance(state.exercises[0])", context), false);
+  assert.match(
+    vm.runInContext("state.exercises[0].youtube", context),
+    /^https:\/\/www\.youtube\.com\/results\?search_query=/,
+    "library cards keep their tutorial link without the full catalog",
+  );
+  const guideId = exercises[0].id;
+  await vm.runInContext(`openExerciseGuide(${JSON.stringify(guideId)})`, context);
+  assert.equal(elements.get("exerciseGuideDialog").open, true, "a guide opens once its notes load");
+  assert.match(
+    elements.get("exerciseGuideBody").innerHTML,
+    /Technique cues[\s\S]*Caution \/ Common mistake/,
+  );
+  assert.ok(
+    elements
+      .get("exerciseGuideBody")
+      .innerHTML.includes(fullCatalog[0].cues[1].replace(/&/g, "&amp;")),
+    "the guide shows the full catalog's cues",
+  );
+  elements.get("exerciseGuideDialog").close();
+  await vm.runInContext(`openExerciseGuide(${JSON.stringify(exercises[1].id)})`, context);
+  elements.get("exerciseGuideDialog").close();
+  assert.equal(
+    fetches.filter((path) => path === GUIDANCE_URL).length,
+    1,
+    "the full catalog is fetched once, for the first guide",
+  );
   for (const day of DAYS) {
     const chip = dayNavMarkup.match(
       new RegExp(`<button\\b(?=[^>]*data-day-chip="${day}")[^>]*>`),
@@ -335,7 +371,7 @@ function clickSelectDay(day) {
   );
   assert.match(
     html,
-    /<a href="\/account\.html">Profile<\/a>/,
+    /<a href="\/account\.html" data-nav="profile" data-audience="member plus">Profile<\/a>/,
     "Signed-in planners reach their account through Profile in the site navigation",
   );
   assert.match(
@@ -800,24 +836,42 @@ function clickSelectDay(day) {
   );
   assert.match(elements.get("weekSummary").innerHTML, /class="week-readiness ready"/);
 
-  context.fetch = async (path) => {
-    if (path === CATALOG_URL) return { ok: true, json: async () => exercises };
-    if (path === "/api/plan")
-      return { ok: false, status: 401, json: async () => ({ error: "Not signed in." }) };
-    return { ok: false, status: 404, json: async () => ({ error: "Not found" }) };
-  };
-  await vm.runInContext("init()", context);
-  assert.equal(
-    vm.runInContext("state.entitlementTimer", context),
-    null,
-    "guest fallback must cancel account entitlement timers",
-  );
-  assert.doesNotMatch(
-    elements.get("weekSummary").innerHTML,
-    /class="week-readiness/,
-    "Free and guest planners must not receive Strata+ plan-guidance cards",
-  );
-  assert.equal(elements.get("plannerSignIn").hidden, false, "Guest planners see a sign-in link");
+  // A visitor's /api/me is 200 { user: null }, so the free device week opens without requesting the member-only
+  // /api/plan. An older server's 401, or a session that ends between /api/me and /api/plan, is signed out too.
+  const notSignedIn = [401, { error: "Not signed in." }];
+  for (const [label, answers, planReads] of [
+    ["visitor", { "/api/me": [200, { user: null }] }, 0],
+    ["older server", { "/api/me": notSignedIn }, 0],
+    ["ended session", { "/api/me": [200, { user: { id: "u1" } }], "/api/plan": notSignedIn }, 1],
+  ]) {
+    const apiReads = [];
+    context.fetch = async (path) => {
+      if (path === CATALOG_URL) return { ok: true, json: async () => exercises };
+      apiReads.push(path);
+      const [status, body] = answers[path] || [404, { error: "Not found" }];
+      return { ok: status >= 200 && status < 300, status, json: async () => body };
+    };
+    vm.runInContext("state.entitlementTimer||=setTimeout(()=>{},60000)", context);
+    await vm.runInContext("init()", context);
+    assert.equal(apiReads[0], "/api/me", `${label}: who is signed in is asked first`);
+    assert.equal(
+      apiReads.filter((path) => path === "/api/plan").length,
+      planReads,
+      `${label}: /api/plan is requested only for a signed-in answer`,
+    );
+    assert.equal(vm.runInContext("state.ready&&state.guest&&!state.user", context), true, label);
+    assert.equal(
+      vm.runInContext("state.entitlementTimer", context),
+      null,
+      `${label}: guest fallback must cancel account entitlement timers`,
+    );
+    assert.doesNotMatch(
+      elements.get("weekSummary").innerHTML,
+      /class="week-readiness/,
+      `${label}: Free and guest planners must not receive Strata+ plan-guidance cards`,
+    );
+    assert.equal(elements.get("plannerSignIn").hidden, false, "Guest planners see a sign-in link");
+  }
   assert.match(
     elements.get("plannerModeNotice").innerHTML,
     /Free device plan[\s\S]*No account required[\s\S]*stays in this browser[\s\S]*Use a synced plan/i,
@@ -1581,6 +1635,32 @@ function clickSelectDay(day) {
     /user-u1:/,
     "Account-change recovery stays scoped to the original owner",
   );
+
+  // A member's session that ends while Plan is open: /api/me answers 200 { user: null } (an older server, 401).
+  // Saving reports the ended session, and the entitlement check locks the week, exactly as for the 401.
+  for (const signedOut of [
+    { ok: true, status: 200, json: async () => ({ user: null }) },
+    { ok: false, status: 401, json: async () => ({ error: "Not signed in." }) },
+  ]) {
+    storedValues.clear();
+    reset({ guest: false });
+    context.fetch = async (path) =>
+      path === "/api/me"
+        ? signedOut
+        : { ok: false, status: 404, json: async () => ({ error: "Not found" }) };
+    const saveCheck = await run(
+      "verifyPlannerIdentity().then(()=>'verified',(error)=>[error.status,error.message,planSaveError(error),state.accountChanged].join('|'))",
+    );
+    assert.equal(
+      saveCheck,
+      "401|Not signed in.|Your session ended before the plan was saved. Sign in again, then retry.|false",
+      `a ${signedOut.status} identity check reports an ended session before saving`,
+    );
+    assert.equal(await run("refreshEntitlement({force:true})"), false);
+    assert.equal(run("state.accountChanged"), true, `a ${signedOut.status} locks the week`);
+    assert.equal(run("state.entitlementStatus"), "unavailable");
+    assert.equal(run("state.entitlementTimer"), null, "an ended session schedules no retry");
+  }
   run(`renderLoadError(new Error('Plan <b> & "x" failed'))`);
   assert.equal(
     elements.get("libraryList").innerHTML,

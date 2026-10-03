@@ -71,13 +71,15 @@
           code: "STALE_WORKSPACE_RESPONSE",
           stale: true,
         });
-      if (!response.ok) {
-        const error = Object.assign(new Error(data.error || "Request failed."), {
-          status: response.status,
-          code: data.code || "REQUEST_FAILED",
-          payload: data,
-        });
-        if (response.status === 401) {
+      // A visitor's /api/me is 200 { user: null }. Strata+ is for members, so it is the same signed-out answer as a 401.
+      const signedOut = response.ok && path === "/api/me" && data?.user === null,
+        status = signedOut ? 401 : response.status;
+      if (!response.ok || signedOut) {
+        const error = Object.assign(
+          new Error(data.error || (signedOut ? "Not signed in." : "Request failed.")),
+          { status, code: data.code || "REQUEST_FAILED", payload: data },
+        );
+        if (status === 401) {
           error.redirecting = true;
           redirect("/account.html?mode=login&next=discover");
         } else if (response.status === 402 || data.code === "DISCOVERY_ACCESS_REQUIRED") {

@@ -498,8 +498,8 @@ test("the verified exact address binds ownership, forces a fresh login, and open
   assert.equal(bootstrap.data.code, "ADMIN_RELOGIN_REQUIRED");
   assert.match(bootstrap.setCookie, /strata_session=;/);
   assert.equal(
-    (await request("/api/me", { headers: { Cookie: firstSession.cookie } })).response.status,
-    401,
+    (await request("/api/me", { headers: { Cookie: firstSession.cookie } })).data.user,
+    null,
     "binding must invalidate pre-admin sessions",
   );
 
@@ -545,9 +545,8 @@ test("the verified exact address binds ownership, forces a fresh login, and open
     deliveriesBefore,
     "opening Admin must not send a password or email-code challenge",
   );
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: admin.cookie } })).response.status,
-    200,
+  assert.ok(
+    (await request("/api/me", { headers: { Cookie: admin.cookie } })).data.user,
     "retired endpoints must not rotate or revoke the owner session",
   );
 
@@ -897,22 +896,18 @@ test("session revocation, suspension, and restoration affect only the selected a
   const revoked = await adminAction(admin, member.user.id, "revoke-sessions");
   assert.equal(revoked.response.status, 200);
   assert.match(revoked.data.message, /Signed the account out/i);
+  assert.equal((await request("/api/me", { headers: { Cookie: member.cookie } })).data.user, null);
   assert.equal(
-    (await request("/api/me", { headers: { Cookie: member.cookie } })).response.status,
-    401,
-  );
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: member.secondCookie } })).response.status,
-    401,
+    (await request("/api/me", { headers: { Cookie: member.secondCookie } })).data.user,
+    null,
   );
   assert.equal(
     (await request("/api/admin/session", { headers: { Cookie: admin.cookie } })).response.status,
     200,
     "target revocation must not touch the admin session",
   );
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: nonAdmin.cookie } })).response.status,
-    200,
+  assert.ok(
+    (await request("/api/me", { headers: { Cookie: nonAdmin.cookie } })).data.user,
     "target revocation must not touch unrelated sessions",
   );
 
@@ -921,10 +916,7 @@ test("session revocation, suspension, and restoration affect only the selected a
   const suspended = await adminAction(admin, member.user.id, "suspend");
   assert.equal(suspended.response.status, 200);
   assert.ok(Number(suspended.data.user.suspendedAt) > 0);
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: member.cookie } })).response.status,
-    401,
-  );
+  assert.equal((await request("/api/me", { headers: { Cookie: member.cookie } })).data.user, null);
   const wrongPasswordWhileSuspended = await login(
     member.user.email,
     "definitely-not-the-member-password",
@@ -984,9 +976,8 @@ test("reset and deletion assistance always emails the stored address, hides toke
   const deletedStatus = await jsonRequest("/api/account/delete/status", { token: deletionToken });
   assert.equal(deletedStatus.response.status, 200);
   assert.equal(deletedStatus.data.active, false);
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: member.cookie } })).response.status,
-    200,
+  assert.ok(
+    (await request("/api/me", { headers: { Cookie: member.cookie } })).data.user,
     "requesting or canceling deletion must not sign out the customer",
   );
 });
@@ -1400,10 +1391,7 @@ test("Admin automatically pauses deletion targets and preserves accounts with li
   const active = await adminAction(admin, target.user.id, "delete-account");
   assert.equal(active.response.status, 409);
   assert.equal(active.data.code, "SUBSCRIPTION_ACTIVE");
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: target.cookie } })).response.status,
-    401,
-  );
+  assert.equal((await request("/api/me", { headers: { Cookie: target.cookie } })).data.user, null);
   assert.ok(databaseCounts(target.user.id).user);
 
   const self = await adminAction(admin, admin.user.id, "delete-account");
@@ -1435,18 +1423,12 @@ test("Admin automatically pauses deletion targets and preserves accounts with li
     JSON.stringify(deleted.data),
     /delete-me@example\s*\.test|ctm_retained_by_paddle/i,
   );
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: target.cookie } })).response.status,
-    401,
-  );
+  assert.equal((await request("/api/me", { headers: { Cookie: target.cookie } })).data.user, null);
   assert.equal(
     (await request("/api/admin/session", { headers: { Cookie: admin.cookie } })).response.status,
     200,
   );
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: nonAdmin.cookie } })).response.status,
-    200,
-  );
+  assert.ok((await request("/api/me", { headers: { Cookie: nonAdmin.cookie } })).data.user);
 
   const check = openDatabase();
   assert.equal(
@@ -1586,10 +1568,7 @@ test("one reviewed admin deletion pauses and removes an active account without t
   });
   const deleted = await adminAction(admin, target.user.id, "delete-account");
   assert.equal(deleted.response.status, 200, JSON.stringify(deleted.data));
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: target.cookie } })).response.status,
-    401,
-  );
+  assert.equal((await request("/api/me", { headers: { Cookie: target.cookie } })).data.user, null);
   assert.equal(
     (await request(`/api/admin/users/${target.user.id}`, { headers: { Cookie: admin.cookie } }))
       .response.status,

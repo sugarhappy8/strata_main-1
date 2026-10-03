@@ -163,6 +163,8 @@ test(
             }),
             page = await context.newPage();
           await page.goto("/", { waitUntil: "domcontentloaded" });
+          // The exercise library loads once the visitor heads for the preview, as a scroll does.
+          await page.locator("#quickPreviewForm").scrollIntoViewIfNeeded();
           await page.locator("#quickPreviewEquipment").waitFor({ state: "visible" });
           await page.waitForFunction(
             () => !globalThis.document.querySelector("#quickPreviewEquipment").disabled,

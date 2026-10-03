@@ -98,6 +98,7 @@ async function setup({
     plus,
     plan: emptyWeek(),
     preferences: savedPreferences(),
+    signedOut: "",
   };
   const response = (status, data) => ({
     ok: status >= 200 && status < 300,
@@ -181,9 +182,11 @@ async function setup({
               preferencesUpdatedAt: fresh ? 0 : 90,
             });
       }
+      if (path === "/api/me" && state.signedOut === "legacy")
+        return response(401, { error: "Not signed in." });
       if (path === "/api/me")
-        return guest
-          ? response(401, { error: "Sign in required" })
+        return guest || state.signedOut
+          ? response(200, { user: null })
           : response(200, {
               user: {
                 id: switchedAccount ? "account-b" : "account-a",
@@ -281,6 +284,21 @@ test("onboarding preserves its generated preview and account plan when Strata+ e
   assert.equal(fixture.elements.get("saveControls").hidden, false);
   assert.match(fixture.elements.get("setupStatus").textContent, /Strata\+/);
   assert.deepEqual(fixture.state.plan, emptyWeek());
+});
+
+test("a session that ends before a preview locks setup alike for 200 { user: null } and an older 401", async () => {
+  for (const signedOut of ["visitor", "legacy"]) {
+    const fixture = await setup();
+    fixture.state.signedOut = signedOut;
+    await fixture.generate();
+    assert.equal(fixture.elements.get("setupFields").disabled, true, signedOut);
+    assert.equal(fixture.elements.get("saveWeek").disabled, true, signedOut);
+    assert.equal(fixture.elements.get("previewSummary").hidden, true, signedOut);
+    assert.equal(fixture.elements.get("saveControls").hidden, true, signedOut);
+    assert.equal(fixture.elements.get("setupStatus").textContent, "Not signed in.", signedOut);
+    assert.equal(fixture.elements.get("setupStatus").dataset.state, "error", signedOut);
+    assert.equal(fixture.state.generatedId, undefined, signedOut);
+  }
 });
 
 test("onboarding prevents an account A preview from being saved after switching to account B", async () => {

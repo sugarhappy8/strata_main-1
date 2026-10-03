@@ -23,15 +23,15 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=9.6.0" />
-    <link rel="stylesheet" href="/tokens.css?v=9.6.0" />
-    <link rel="stylesheet" href="styles.css?v=9.6.0" />
-    <link rel="stylesheet" href="/product-signals.css?v=9.6.0" />
-    <link rel="stylesheet" href="/experience.css?v=9.6.0" />
-    <script src="/html.js?v=9.6.0"></script>
-    <script src="/app-shell.js?v=9.6.0"></script>
-    <script src="/motion.js?v=9.6.0"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=9.6.0" />
+    <link rel="stylesheet" href="/fonts.css?v=9.7.0" />
+    <link rel="stylesheet" href="/tokens.css?v=9.7.0" />
+    <link rel="stylesheet" href="styles.css?v=9.7.0" />
+    <link rel="stylesheet" href="/product-signals.css?v=9.7.0" />
+    <link rel="stylesheet" href="/experience.css?v=9.7.0" />
+    <script src="/html.js?v=9.7.0"></script>
+    <script src="/app-shell.js?v=9.7.0"></script>
+    <script src="/motion.js?v=9.7.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=9.7.0" />
   </head>
   <body class="home-page">
     <a class="skip-link" href="#preview">Skip to training preview</a>
@@ -41,23 +41,19 @@
         <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
         <span>STRATA</span>
       </a>
-      <nav class="desktop-nav" aria-label="Primary navigation">
-        <a href="#rankings">Rankings</a><a href="/dashboard">Dashboard</a><a href="/install.html">Install</a>
-      </nav>
+      <nav class="desktop-nav" aria-label="Primary navigation"><a href="#rankings" data-nav="rankings">Rankings</a><a href="/planner.html" data-nav="plan" data-audience="visitor member">Plan</a><a href="/dashboard" data-nav="dashboard" data-audience="plus">Dashboard</a><a href="/workout.html" data-nav="train" data-audience="member plus">Train</a><a href="/recovery" data-nav="recovery" data-audience="member plus">Recovery</a><a href="/pricing" data-nav="plus" data-audience="visitor">Strata+</a><a href="/account.html" data-nav="profile" data-audience="member plus">Profile</a><a href="/account.html?mode=login" data-nav="signin" data-audience="visitor">Sign in</a></nav>
       <div class="header-actions">
         <!-- ACCOUNT_ACTIONS_START -->
         <a class="account-button discover-button" id="discoverButton" href="/discover.html" hidden>Strata+</a>
         <a class="account-button account-create" id="signupButton" href="/account.html?mode=signup">Sign up</a>
-        <a class="account-button account-link" id="accountButton" href="/account.html?mode=login">Log in</a>
+        <a class="account-button account-link" id="accountButton" href="/account.html?mode=login">Sign in</a>
         <a class="session-button" id="planButton" href="/planner.html" aria-label="Open weekly planner, 0 exercises">
           Plan <span id="planCount">0</span>
         </a>
         <!-- ACCOUNT_ACTIONS_END -->
       </div>
     </header>
-    <nav class="mobile-public-nav" aria-label="Primary navigation">
-      <a href="#rankings" aria-current="page">Rankings</a><a href="/dashboard">Dashboard</a><a href="/install.html">Install</a>
-    </nav>
+    <nav class="mobile-public-nav" aria-label="Primary navigation"><a href="#rankings" data-nav="rankings" aria-current="page">Rankings</a><a href="/planner.html" data-nav="plan" data-audience="visitor member">Plan</a><a href="/dashboard" data-nav="dashboard" data-audience="plus">Dashboard</a><a href="/workout.html" data-nav="train" data-audience="member plus">Train</a><a href="/recovery" data-nav="recovery" data-audience="member plus">Recovery</a><a href="/pricing" data-nav="plus" data-audience="visitor">Strata+</a><a href="/account.html" data-nav="profile" data-audience="member plus">Profile</a><a href="/account.html?mode=login" data-nav="signin" data-audience="visitor">Sign in</a></nav>
 
     <main>
       <section class="hero" aria-labelledby="hero-title">
@@ -206,6 +202,7 @@
                 </div>
               </div>
 
+              <p class="rank-note" id="rankNote">Ranked by <strong id="rankSortLabel">FitScore</strong>, highest first. FitScore rates how directly a movement trains its target, through a useful range, with stable, measurable progress and little extra fatigue. <a href="#method">How FitScore works</a> · <a href="#sources">Sources</a></p>
               <div class="exercise-list-head" aria-hidden="true"><span>Rank</span><span>Movement</span><span>Target</span><span>Equipment</span><span>FitScore</span><span>Actions</span></div>
               <div class="exercise-list" id="exerciseList" role="list" aria-describedby="resultsStatus"></div>
               <div class="exercise-list-more" id="exerciseListMore" hidden><button class="button button-ghost" id="showAllExercises" type="button">Show all exercises</button></div>
@@ -296,19 +293,19 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="/pwa.js?v=9.6.0"></script>
-    <script src="/product-signals.js?v=9.6.0"></script>
-    <script src="/entitlements.js?v=9.6.0"></script>
-    <script src="/discovery-core.js?v=9.6.0"></script>
-    <script src="/preview-core.js?v=9.6.0"></script>
-    <script src="/onboarding-core.js?v=9.6.0"></script>
-    <script src="/activation-core.js?v=9.6.0"></script>
-    <script src="/activation-home.js?v=9.6.0"></script>
-    <script src="/home-logic.js?v=9.6.0"></script>
-    <script src="/home-state.js?v=9.6.0"></script>
-    <script src="/home-api.js?v=9.6.0"></script>
-    <script src="/home-render.js?v=9.6.0"></script>
-    <script src="/home-events.js?v=9.6.0"></script>
-    <script src="app.js?v=9.6.0"></script>
+    <script src="/pwa.js?v=9.7.0"></script>
+    <script src="/product-signals.js?v=9.7.0"></script>
+    <script src="/entitlements.js?v=9.7.0"></script>
+    <script src="/discovery-core.js?v=9.7.0"></script>
+    <script src="/preview-core.js?v=9.7.0"></script>
+    <script src="/onboarding-core.js?v=9.7.0"></script>
+    <script src="/activation-core.js?v=9.7.0"></script>
+    <script src="/activation-home.js?v=9.7.0"></script>
+    <script src="/home-logic.js?v=9.7.0"></script>
+    <script src="/home-state.js?v=9.7.0"></script>
+    <script src="/home-api.js?v=9.7.0"></script>
+    <script src="/home-render.js?v=9.7.0"></script>
+    <script src="/home-events.js?v=9.7.0"></script>
+    <script src="app.js?v=9.7.0"></script>
   </body>
 </html>

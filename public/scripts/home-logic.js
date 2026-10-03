@@ -173,6 +173,12 @@
     return exerciseId ? `/planner.html?add=${encodeURIComponent(exerciseId)}` : "/planner.html";
   }
 
+  // The free-week preview and the rankings are built from the exercise catalog, so a link to either needs it now.
+  const CATALOG_SECTIONS = new Set(["preview", "rankings"]);
+  function catalogLinked(hash) {
+    return CATALOG_SECTIONS.has(String(hash || "").replace(/^#/, ""));
+  }
+
   function guestPlanCount(rawPlan, exercises = null) {
     try {
       const plan = typeof rawPlan === "string" ? JSON.parse(rawPlan || "null") : rawPlan;
@@ -217,6 +223,7 @@
     GUEST_PLAN_KEY,
     PREVIEW_STARTERS,
     adjustmentLabel,
+    catalogLinked,
     equipmentOptions,
     filterExercises,
     guestPlanCount,

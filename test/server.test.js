@@ -105,14 +105,14 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages", async () => {
-  assert.equal(BUILD, "9.6.0");
+  assert.equal(BUILD, "9.7.0");
   const home = await request("/");
   assert.equal(home.response.status, 200);
   assert.equal(home.response.headers.get("cache-control"), "private, no-store");
   assert.match(home.response.headers.get("vary"), /Cookie/i);
   assert.match(home.data, /Your next<br \/>workout/);
   assert.match(home.data, /id="signupButton"[^>]*>Sign up/);
-  assert.match(home.data, /id="accountButton"[^>]*>Log in/);
+  assert.match(home.data, /id="accountButton"[^>]*>Sign in/);
   assert.doesNotMatch(
     home.data,
     BUILD_LABEL,
@@ -169,7 +169,8 @@ test("serves rankings and gates private account pages", async () => {
     );
   }
   const malformedCookie = await request("/api/me", { headers: { Cookie: "broken=%E0%A4%A" } });
-  assert.equal(malformedCookie.response.status, 401);
+  assert.equal(malformedCookie.response.status, 200);
+  assert.deepEqual(malformedCookie.data, { user: null });
   const planner = await request("/planner.html", { redirect: "manual" });
   assert.equal(planner.response.status, 200);
   assert.match(planner.data, /Free device plan[\s\S]*No account required[\s\S]*Use a synced plan/);
@@ -269,6 +270,10 @@ test("creates an account with a private default plan", async () => {
     headers: { Cookie: `broken=%E0%A4%A; ${signup.cookie}` },
   });
   assert.equal(malformedAlongsideSession.response.status, 200);
+  assert.ok(
+    malformedAlongsideSession.data.user,
+    "a malformed cookie must not hide a valid session",
+  );
 
   const signedInHome = await request("/", { headers: { Cookie: signup.cookie } });
   assert.equal(signedInHome.response.status, 200);
@@ -741,7 +746,8 @@ test("logs out and signs back into the same account with the original password",
     /strata_session=;.*Max-Age=0/i,
   );
   const afterLogout = await request("/api/me", { headers: { Cookie: signup.cookie } });
-  assert.equal(afterLogout.response.status, 401);
+  assert.equal(afterLogout.response.status, 200);
+  assert.deepEqual(afterLogout.data, { user: null });
   const login = await request("/api/login", {
     method: "POST",
     headers: { Origin: BASE, "Content-Type": "application/json" },
@@ -753,6 +759,119 @@ test("logs out and signs back into the same account with the original password",
   const restored = await request("/api/me", { headers: { Cookie: login.cookie } });
   assert.equal(restored.response.status, 200);
   assert.equal(restored.data.user.name, credentials.name);
+});
+
+// Every page asks /api/me who is signed in, so a visitor's answer is a 200 no browser console logs as an error.
+test("a visitor's /api/me answers 200 { user: null } while member routes still answer 401", async () => {
+  const visitor = await request("/api/me");
+  assert.equal(visitor.response.status, 200);
+  assert.deepEqual(visitor.data, { user: null });
+  assert.equal(visitor.response.headers.get("set-cookie"), null);
+  for (const path of ["/api/plan", "/api/workouts?limit=1&offset=0", "/api/discovery"]) {
+    const member = await request(path);
+    assert.equal(member.response.status, 401, `${path} stays member-only`);
+  }
+
+  const unknown = await request("/api/me", {
+    headers: { Cookie: "strata_session=not-a-real-session-token" },
+  });
+  assert.equal(unknown.response.status, 200);
+  assert.deepEqual(unknown.data, { user: null });
+
+  const signup = await request("/api/signup", {
+    method: "POST",
+    headers: { Origin: BASE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Visitor Check",
+      email: "visitor-check@example.test",
+      password: "visitor-check-password-123",
+    }),
+  });
+  assert.equal(signup.response.status, 201);
+  const signedIn = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.equal(signedIn.response.status, 200);
+  assert.deepEqual(Object.keys(signedIn.data).sort(), ["csrfToken", "user"]);
+  assert.equal(signedIn.data.user.email, "visitor-check@example.test");
+  assert.ok(signedIn.data.csrfToken);
+
+  const database = new DatabaseSync(join(runtimeDir, "strata.sqlite"));
+  try {
+    database
+      .prepare("UPDATE sessions SET expires_at=? WHERE user_id=?")
+      .run(Date.now() - 1000, signedIn.data.user.id);
+  } finally {
+    database.close();
+  }
+  const expired = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.equal(expired.response.status, 200);
+  assert.deepEqual(expired.data, { user: null }, "an expired session reads as signed out");
+  assert.equal(
+    (await request("/api/plan", { headers: { Cookie: signup.cookie } })).response.status,
+    401,
+  );
+});
+
+test("the navigation cookie follows the session, so a member's tabs show from the first paint", async () => {
+  const navOf = (response) =>
+    response.headers.getSetCookie().find((cookie) => cookie.startsWith("strata_nav=")) || "";
+  const signup = await request("/api/signup", {
+    method: "POST",
+    headers: { Origin: BASE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Navigation Check",
+      email: "navigation-check@example.test",
+      password: "navigation-check-password-123",
+    }),
+  });
+  assert.equal(signup.response.status, 201);
+  const signedIn = navOf(signup.response);
+  assert.match(signedIn, /^strata_nav=member; Path=\/; SameSite=Lax; Max-Age=(\d+)/);
+  assert.ok(Number(/Max-Age=(\d+)/.exec(signedIn)[1]) > 0);
+  assert.doesNotMatch(
+    signedIn,
+    /HttpOnly/i,
+    "the page's head script reads it before the first paint",
+  );
+
+  const me = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.match(navOf(me.response), /^strata_nav=member;/);
+  const database = new DatabaseSync(join(runtimeDir, "strata.sqlite"));
+  try {
+    database
+      .prepare(
+        "INSERT INTO paddle_purchases(transaction_id,user_id,price_id,product_id,customer_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,?,'completed',?,NULL,NULL,?,?)",
+      )
+      .run(
+        "txn_navigationlifetime000000001",
+        me.data.user.id,
+        "pri_navigation",
+        "pro_navigation",
+        "ctm_navigation",
+        Date.now(),
+        Date.now(),
+        Date.now(),
+      );
+  } finally {
+    database.close();
+  }
+  const plus = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.equal(plus.data.user.discovery.active, true);
+  assert.match(navOf(plus.response), /^strata_nav=plus;/, "Strata+ members see Dashboard");
+
+  const logout = await request("/api/logout", {
+    method: "POST",
+    headers: { Origin: BASE, Cookie: signup.cookie },
+  });
+  assert.equal(logout.response.status, 200);
+  assert.match(navOf(logout.response), /^strata_nav=; Path=\/; SameSite=Lax; Max-Age=0/);
+
+  const stale = await request("/api/me", { headers: { Cookie: "strata_nav=member" } });
+  assert.deepEqual(stale.data, { user: null });
+  assert.match(
+    navOf(stale.response),
+    /^strata_nav=; .*Max-Age=0/,
+    "a visitor's leftover member mark is cleared",
+  );
 });
 
 test("native account forms create and restore an account without modal JavaScript", async () => {
@@ -774,6 +893,7 @@ test("native account forms create and restore an account without modal JavaScrip
   assert.ok(signup.cookie.startsWith("strata_session="));
   const me = await request("/api/me", { headers: { Cookie: signup.cookie } });
   assert.equal(me.response.status, 200);
+  assert.equal(me.data.user.email, email);
   const logout = await request("/api/logout", {
     method: "POST",
     headers: { Cookie: signup.cookie, Origin: BASE },

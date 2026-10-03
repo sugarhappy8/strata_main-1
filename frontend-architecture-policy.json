@@ -312,12 +312,6 @@
           "maxLines": 70
         },
         {
-          "file": "public/scripts/discovery-core.js",
-          "role": "logic",
-          "global": "StrataDiscovery",
-          "maxLines": 1240
-        },
-        {
           "file": "public/scripts/activation-core.js",
           "role": "logic",
           "global": "StrataActivation",

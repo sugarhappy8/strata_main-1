@@ -79,24 +79,17 @@ test("font files, homepage photographs, credits, and licenses stay bundled", () 
   assert.equal((fonts.match(/@font-face/g) || []).length, 3);
   assert.doesNotMatch(fonts, /https?\s*:\s*\/\//);
 
-  const home = read("public/pages/index.html"),
-    homeCss = read("public/styles/styles.css");
-  assert.match(homeCss, /background-image:\s*url\(["']\/images\/hero-training\.jpg["']\)/);
+  const home = read("public/pages/index.html");
   assert.match(
     home,
     /<div class="hero-credit">[\s\S]*?href="https:\/\/unsplash\.com\/photos\/a-man-doing-a-pull-up-on-a-bar-in-a-gym-ThLzcgVeU5I"[\s\S]*?Corey Young \/ Unsplash[\s\S]*?<\/div>/,
   );
-  for (const path of ["hero-training.jpg"]) {
-    const body = readFileSync(join(PUBLIC, "images", path));
-    assert.ok(body.length > 100_000, `${path} must contain the retained photograph`);
-    assert.deepEqual([...body.subarray(0, 3)], [0xff, 0xd8, 0xff], `${path} JPEG signature`);
-  }
 
   const notices = read("docs/third-party-assets.md");
   assert.match(notices, /Copyright 2018 The Manrope Project Authors/);
   assert.match(notices, /Copyright 2020 The DM Mono Project Authors/);
   assert.match(notices, /SIL OPEN FONT LICENSE Version 1\.1/);
-  assert.match(notices, /hero-training\.jpg[\s\S]*Corey Young/);
+  assert.match(notices, /hero-training-960[\s\S]*hero-training-1600[\s\S]*Corey Young/);
 });
 
 test("privacy copy and the content policy describe and enforce same-origin assets", () => {

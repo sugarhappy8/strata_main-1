@@ -231,6 +231,7 @@ function createPage({ search = "", route, app = null }) {
     vm.runInContext(moduleScript.source, context, { filename: `${moduleScript.name}.js` });
   vm.runInContext(script, context, { filename: "account.js" });
   return {
+    document,
     elements,
     requests,
     navigations,
@@ -826,6 +827,62 @@ test("signed-in session and JSON export controls are accessible and CSRF protect
   assert.match(page.elements.get("accountExportStatus").textContent, /downloaded/i);
 });
 
+test("a visitor's 200 { user: null } and an older server's 401 both open the forms, on load and on return", async () => {
+  const user = memberFixture({ id: "returning-member", name: "RETURNING MEMBER SENTINEL" });
+  for (const signedOut of [
+    () => jsonResponse(200, { user: null }),
+    () => jsonResponse(401, { error: "Not signed in." }),
+  ]) {
+    const visitor = createPage({
+      search: "?mode=login",
+      route: async (path) => {
+        if (path === "/api/me") return signedOut();
+        throw new Error(`Unexpected route ${path}`);
+      },
+    });
+    await settle();
+    assert.deepEqual(
+      visitor.requests.map(({ path }) => path),
+      ["/api/me"],
+      "a visitor requests nothing private",
+    );
+    assert.equal(visitor.elements.get("accountAccess").hidden, false);
+    assert.equal(visitor.elements.get("signedInCard").hidden, true);
+    assert.equal(visitor.elements.get("loginTitle").focused, true);
+    assert.equal(visitor.elements.get("loginMessage").hidden, true, "no session error is shown");
+
+    let identityReads = 0;
+    const member = createPage({
+      route: async (path) => {
+        if (path === "/api/me")
+          return ++identityReads === 1
+            ? jsonResponse(200, { csrfToken: "member-csrf", user })
+            : signedOut();
+        if (path === "/api/account/sessions")
+          return jsonResponse(200, { userId: user.id, sessions: [] });
+        throw new Error(`Unexpected route ${path}`);
+      },
+    });
+    await settle();
+    assert.match(member.elements.get("signedInIdentity").textContent, /RETURNING MEMBER SENTINEL/);
+    await member.emitWindow("focus");
+    await settle();
+    assert.equal(identityReads, 2);
+    assert.equal(member.elements.get("signedInCard").hidden, true);
+    assert.equal(member.elements.get("accountAccess").hidden, false, "signed out, not changed");
+    assert.notEqual(
+      member.elements.get("accountLoadingTitle").textContent,
+      "Account access changed.",
+    );
+    assert.doesNotMatch(
+      [...member.elements.values()]
+        .map((node) => `${node.textContent} ${node.innerHTML}`)
+        .join(" "),
+      /RETURNING\s*MEMBER\s*SENTINEL/,
+    );
+  }
+});
+
 test("explicit account modes bring the requested form into view on every viewport", async () => {
   for (const mode of ["signup", "login"]) {
     const page = createPage({
@@ -833,7 +890,7 @@ test("explicit account modes bring the requested form into view on every viewpor
       route: async (path) => {
         if (path === "/api/status") return jsonResponse(200, { persistent: true });
         if (path === "/healthz") return jsonResponse(200, { ok: true });
-        if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+        if (path === "/api/me") return jsonResponse(200, { user: null });
         throw new Error(`Unexpected route ${path}`);
       },
     });
@@ -876,7 +933,7 @@ test("password visibility controls expose state without changing form behavior",
     route: async (path) => {
       if (path === "/api/status") return jsonResponse(200, { persistent: true });
       if (path === "/healthz") return jsonResponse(200, { ok: true });
-      if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+      if (path === "/api/me") return jsonResponse(200, { user: null });
       throw new Error(`Unexpected route ${path}`);
     },
   });
@@ -902,7 +959,7 @@ test("auth submit buttons communicate progress and restore after failure", async
     route: async (path) => {
       if (path === "/api/status") return jsonResponse(200, { persistent: true });
       if (path === "/healthz") return jsonResponse(200, { ok: true });
-      if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+      if (path === "/api/me") return jsonResponse(200, { user: null });
       if (path === "/api/login") return pendingLogin;
       throw new Error(`Unexpected route ${path}`);
     },
@@ -926,7 +983,7 @@ test("a login error stays scoped to the login form", async () => {
   const page = createPage({
     search: "?mode=login&error=Email%20or%20password%20is%20incorrect.",
     route: async (path) => {
-      if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+      if (path === "/api/me") return jsonResponse(200, { user: null });
       throw new Error(`Unexpected route ${path}`);
     },
   });
@@ -1388,7 +1445,7 @@ test("enhanced signup reports an inline error, recovers, and retries", async () 
     route: async (path) => {
       if (path === "/api/status") return jsonResponse(200, { persistent: true });
       if (path === "/healthz") return jsonResponse(200, { ok: true });
-      if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+      if (path === "/api/me") return jsonResponse(200, { user: null });
       if (path === "/api/signup") {
         signupAttempts += 1;
         return signupAttempts === 1
@@ -1440,7 +1497,7 @@ test("enhanced login uses its own endpoint and keeps failures retryable", async 
     route: async (path) => {
       if (path === "/api/status") return jsonResponse(200, { persistent: true });
       if (path === "/healthz") return jsonResponse(200, { ok: true });
-      if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+      if (path === "/api/me") return jsonResponse(200, { user: null });
       if (path === "/api/login")
         return jsonResponse(401, { error: "Email or password is incorrect." });
       throw new Error(`Unexpected route ${path}`);
@@ -1483,7 +1540,7 @@ test("enhanced login and verification preserve only exact workout and onboarding
         route: async (path) => {
           if (path === "/api/status") return jsonResponse(200, { persistent: true });
           if (path === "/healthz") return jsonResponse(200, { ok: true });
-          if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+          if (path === "/api/me") return jsonResponse(200, { user: null });
           if (path === "/api/login")
             return verify
               ? jsonResponse(202, {
@@ -2105,4 +2162,45 @@ test("the deletion dialog closes with Escape or Cancel without deleting, holds w
     browser.elements.get("accountSecurityStatus").textContent,
     /^A deletion confirmation link was sent to a\*\*\*@example\.test\./,
   );
+});
+
+test("the tab says Sign in to a visitor and Profile once an account is open", async () => {
+  const visitor = createPage({
+    route: async (path) => {
+      if (path === "/api/status") return jsonResponse(200, { persistent: true });
+      if (path === "/healthz") return jsonResponse(200, { ok: true });
+      if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+      throw new Error(`Unexpected route ${path}`);
+    },
+  });
+  await settle();
+  assert.equal(visitor.document.title, "Sign in — STRATA");
+  assert.match(
+    html,
+    /<title>Sign in — STRATA<\/title>/,
+    "the page is titled Sign in before any script runs",
+  );
+
+  const user = memberFixture({
+    discovery: { active: false, accessType: null, pendingPurchaseCount: 0 },
+  });
+  const member = createPage({
+    route: async (path) => {
+      if (path === "/api/status") return jsonResponse(200, { persistent: true });
+      if (path === "/healthz") return jsonResponse(200, { ok: true });
+      if (path === "/api/me") return jsonResponse(200, { csrfToken: "csrf-title", user });
+      if (path === "/api/plan")
+        return jsonResponse(200, {
+          csrfToken: "csrf-title",
+          user,
+          plan: planFixture(),
+          planUpdatedAt: 0,
+        });
+      if (path === "/api/account/sessions")
+        return jsonResponse(200, { userId: user.id, sessions: [], otherCount: 0 });
+      throw new Error(`Unexpected route ${path}`);
+    },
+  });
+  await settle();
+  assert.equal(member.document.title, "Profile — STRATA");
 });

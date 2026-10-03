@@ -23,7 +23,8 @@ const ENGINES =
     requestedEngine && ALL_ENGINES[requestedEngine]
       ? { [requestedEngine]: ALL_ENGINES[requestedEngine] }
       : defaultEngines,
-  ROUTES = ["/", "/planner.html", "/pricing", "/policies", "/account.html"];
+  // "/" is the homepage as it first paints; "/#rankings" links to the rankings, which loads and renders the catalog.
+  ROUTES = ["/", "/#rankings", "/planner.html", "/pricing", "/policies", "/account.html"];
 const debug = (message) => {
   if (process.env.STRATA_E2E_DEBUG === "1") process.stderr.write(`[accessibility] ${message}\n`);
 };
@@ -148,6 +149,8 @@ test(
           for (const route of ROUTES) {
             debug(`${engineName}: axe ${route}`);
             await page.goto(`${server.baseUrl}${route}`, { waitUntil: "domcontentloaded" });
+            if (route === "/#rankings")
+              await page.locator("#exerciseList [data-detail]").first().waitFor();
             await page.waitForTimeout(150);
             assert.match(await page.title(), /STRATA/i, `${engineName} ${route} title`);
             const serious = (

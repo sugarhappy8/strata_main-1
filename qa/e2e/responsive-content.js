@@ -377,13 +377,19 @@ test(
     const browser = await chromium.launch(options),
       page = await browser.newPage({ viewport: { width: 768, height: 800 } });
     try {
-      const css = `${read("public/styles/onboarding.css")}\n${read("public/styles/product-nav.css")}`,
+      const css = `${read("public/styles/onboarding.css")}\n${read("public/styles/product-nav.css")}\n${read("public/styles/site-experience.css")}`,
         header = headerFrom("public/pages/onboarding.html");
       for (const width of WIDTHS) {
         await page.setViewportSize({ width, height: 800 });
         await page.setContent(`<style>${css}</style><body class="setup-page">${header}</body>`);
+        // Weekly setup is for members, who see the five sections; the visible tabs share the bar.
+        await page.evaluate(() => {
+          document.documentElement.dataset.audience = "member";
+        });
         const result = await layout(page),
-          links = await rects(page, ".product-nav a");
+          links = (await rects(page, ".product-nav a")).filter(
+            ({ width: linkWidth }) => linkWidth > 0,
+          );
         assert.ok(
           result.overflow <= 1,
           `setup navigation overflows ${width}px by ${result.overflow}px`,

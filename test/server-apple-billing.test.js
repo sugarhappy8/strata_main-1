@@ -545,7 +545,7 @@ test("an Apple purchase unlocks Strata+ for the buying account only, and the App
   } finally {
     db.close();
   }
-  assert.equal((await request("/api/me", { cookie: buyer.cookie })).response.status, 401);
+  assert.equal((await request("/api/me", { cookie: buyer.cookie })).data.user, null);
 
   // With the old link gone, a renewal for the deleted account is acknowledged and ignored.
   assert.equal(

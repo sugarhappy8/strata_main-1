@@ -50,5 +50,33 @@
     return { request };
   }
 
-  return { createClient };
+  // Plan starts from the library, which leaves out setup notes and cues. The first guide fetches them with the full
+  // catalog, and the guide builder (discovery-core.js) with them; offline, both come from the service worker cache.
+  // A failed load is forgotten, so the next guide tries again.
+  function createGuidanceLoader({ request, documentImpl, hasBuilder, catalogPath, builderPath }) {
+    let pending = null;
+    const loadScript = (src) =>
+      new Promise((resolve, reject) => {
+        const script = documentImpl.createElement("script");
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("The exercise guide could not load."));
+        documentImpl.head.append(script);
+      });
+    return function loadGuidance() {
+      pending ||= Promise.all([
+        request(catalogPath),
+        hasBuilder() ? null : loadScript(builderPath),
+      ]).then(
+        ([catalog]) => catalog,
+        (error) => {
+          pending = null;
+          throw error;
+        },
+      );
+      return pending;
+    };
+  }
+
+  return { createClient, createGuidanceLoader };
 });

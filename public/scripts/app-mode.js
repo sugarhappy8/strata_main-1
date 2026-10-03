@@ -344,7 +344,11 @@
     function account({ fresh = false } = {}) {
       if (fresh || !accountRequest) {
         accountRequest = requestJson("/api/me").then(
-          (data) => ({ user: data.user || null, csrfToken: String(data.csrfToken || "") }),
+          (data) => {
+            // A visitor's /api/me is 200 { user: null }; like a 401 it is not kept, so a sign-in is seen next time.
+            if (!data.user) accountRequest = null;
+            return { user: data.user || null, csrfToken: String(data.csrfToken || "") };
+          },
           (error) => {
             accountRequest = null;
             if (error.status === 401) return { user: null, csrfToken: "" };
@@ -606,7 +610,7 @@
       }
       if (screen.id === "pricing") {
         const script = document.createElement("script");
-        script.src = "/app-paywall.js?v=9.6.0";
+        script.src = "/app-paywall.js?v=9.7.0";
         document.head.append(script);
       }
       const native = plugin();

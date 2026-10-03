@@ -32,6 +32,15 @@ const apiClient = API.createClient({
 async function api(path, options = {}) {
   return apiClient.request(path, options);
 }
+// /api/me answers a signed-out request with 200 { user: null }. Where this tab holds a member's week, that answer
+// is handled exactly as the 401 it used to be.
+function signedOutError() {
+  return Object.assign(new Error("Not signed in."), {
+    status: 401,
+    code: "REQUEST_FAILED",
+    data: { error: "Not signed in." },
+  });
+}
 
 function lockChangedAccount() {
   persistAccountDraft();
@@ -59,6 +68,7 @@ async function verifyPlannerIdentity() {
       code: "ACCOUNT_CHANGED",
     });
   const identity = await api("/api/me", { cache: "no-store" });
+  if (identity?.user === null) throw signedOutError();
   if (!identity.user?.id || String(identity.user.id) !== String(state.user?.id)) {
     lockChangedAccount();
     throw Object.assign(
@@ -463,9 +473,27 @@ function renderLibrary() {
 }
 
 let exerciseGuideTrigger = null;
-function openExerciseGuide(id, trigger = null) {
+const loadGuidance = API.createGuidanceLoader({
+  request: (path) => api(path),
+  documentImpl: document,
+  hasBuilder: () => Boolean(globalThis.StrataDiscovery?.exerciseGuidance),
+  catalogPath: "/exercises.json?v=9.7.0",
+  builderPath: "/discovery-core.js?v=9.7.0",
+});
+async function openExerciseGuide(id, trigger = null) {
+  const listed = exerciseById(id);
+  if (listed && !LOGIC.hasGuidance(listed))
+    try {
+      const catalog = await loadGuidance();
+      // Read the library after the wait: a reload may have replaced it meanwhile.
+      state.exercises = LOGIC.withGuidance(state.exercises, catalog);
+    } catch {
+      /* The guide below reports itself unavailable. */
+    }
   const exercise = exerciseById(id),
-    guidance = globalThis.StrataDiscovery?.exerciseGuidance?.(exercise, state.exercises);
+    guidance =
+      LOGIC.hasGuidance(exercise) &&
+      globalThis.StrataDiscovery?.exerciseGuidance?.(exercise, state.exercises);
   if (!exercise || !guidance) {
     showToast("This exercise guide is unavailable. Try reloading Plan.");
     return;
@@ -603,6 +631,7 @@ function refreshEntitlement({ force = false } = {}) {
     try {
       const result = await api("/api/me", { cache: "no-store" });
       if (requestId !== state.entitlementRequest) return false;
+      if (result?.user === null) throw signedOutError();
       if (!result.user?.id || String(result.user.id) !== expectedUserId) {
         lockChangedAccount();
         return false;
@@ -966,10 +995,13 @@ function queueSave() {
   }, 500);
 }
 
+// The save bar shows only once there is something to say: a change saving or saved, a problem, or a review.
+// Opening the planner says nothing, so a phone's first screen starts with the exercise library.
 function setSaveStatus(message, error = false) {
   const status = el("saveStatus"),
     retry = el("retryPlanSave");
   status.textContent = message;
+  document.documentElement?.classList.toggle("planner-status-active", Boolean(message));
   status.parentElement.classList.toggle("error", error);
   retry.removeAttribute("title");
   if (state.conflictDraft) {
@@ -1306,7 +1338,7 @@ async function init({ guestOnly = false } = {}) {
   state.copyPreview = null;
   state.copyTrigger = null;
   hideActivationPanel();
-  setSaveStatus("Loading plan…");
+  setSaveStatus("");
   StrataHtml.setHtml(el("libraryList"), html`<div class="loading">Loading movements…</div>`);
   el("weekSummary").textContent = "";
   StrataHtml.setHtml(
@@ -1314,17 +1346,22 @@ async function init({ guestOnly = false } = {}) {
     html`<div class="planner-load-state">Loading your weekly plan…</div>`,
   );
   try {
-    const exercises = await api("/exercises.json?v=9.6.0");
-    if (!Array.isArray(exercises))
-      throw new Error("STRATA returned an incomplete exercise library.");
+    const exercises = LOGIC.libraryExercises(await api("/exercise-library.json?v=9.7.0"));
+    if (!exercises) throw new Error("STRATA returned an incomplete exercise library.");
     state.exercises = exercises;
-    let result;
+    let result = null;
     try {
-      result = guestOnly ? { plan: guestPlan(), user: null } : await api("/api/plan");
+      // Who is signed in comes first: a visitor's /api/me is 200 { user: null }, so the free device week opens
+      // without requesting the member-only /api/plan. A 401 from either request (a session that just ended) is
+      // signed out too.
+      if (!guestOnly) {
+        const identity = await api("/api/me", { cache: "no-store" });
+        if (identity?.user !== null) result = await api("/api/plan");
+      }
     } catch (error) {
       if (error.status !== 401) throw error;
-      result = { plan: guestPlan(), user: null };
     }
+    result ||= { plan: guestPlan(), user: null };
     if (!result.plan?.days) throw new Error("STRATA returned an incomplete plan.");
     state.plan = result.plan;
     state.user = result.user;
@@ -1359,7 +1396,7 @@ async function init({ guestOnly = false } = {}) {
     renderFilters();
     renderLibrary();
     renderWeek();
-    setSaveStatus("Saved");
+    setSaveStatus("");
     scheduleEntitlementRefresh();
     if (!state.guest) {
       const renderedPlan = state.plan;

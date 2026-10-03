@@ -123,10 +123,17 @@ async function capture(page, name) {
   mkdirSync(CAPTURE_DIR, { recursive: true });
   await page.screenshot({ path: join(CAPTURE_DIR, name), fullPage: true });
 }
+// The planner is ready when it has loaded and nothing is saving or wrong. It says nothing until there is a change
+// (a change sets "Saving…" at once), so after a change this waits for "Saved", and after a load for the quiet bar.
 async function plannerReady(page) {
-  await page.waitForFunction(
-    () => globalThis.document.querySelector("#saveStatus")?.textContent === "Saved",
-  );
+  await page.waitForFunction(() => {
+    const doc = globalThis.document;
+    return (
+      doc.querySelector("#plannerShell")?.getAttribute("aria-busy") === "false" &&
+      !doc.querySelector(".planner-header .header-center.error") &&
+      ["", "Saved"].includes(doc.querySelector("#saveStatus")?.textContent)
+    );
+  });
 }
 async function guestPlan(page) {
   return page.evaluate(() => JSON.parse(localStorage.getItem("strata_guest_plan_v1")));
@@ -199,6 +206,8 @@ test(
           reducedMotion: "reduce",
         });
         await goto(page, "/");
+        // The exercise library loads once the visitor heads for the preview, as a scroll does.
+        await page.locator("#quickPreviewForm").scrollIntoViewIfNeeded();
         const submit = page.locator("#quickPreviewSubmit");
         await submit.waitFor({ state: "visible" });
         await page.waitForFunction(
@@ -1486,7 +1495,8 @@ test(
         await goto(page, "/workout.html?guest=1");
         assert.match(page.url(), /account.html/);
         await signup(context, "setup");
-        await goto(page, "/");
+        await goto(page, "/#rankings");
+        await page.locator("#exerciseList [data-detail]").first().waitFor();
         await page.waitForFunction(
           () =>
             globalThis.document.querySelector("#catalogTotal")?.textContent === "320" &&
@@ -1500,7 +1510,8 @@ test(
         await goto(page, "/onboarding.html");
         assert.match(page.url(), /pricing/);
         await activatePlus(context);
-        await goto(page, "/");
+        await goto(page, "/#rankings");
+        await page.locator("#exerciseList [data-detail]").first().waitFor();
         await page.waitForFunction(
           () => globalThis.document.querySelector("#catalogTotal")?.textContent === "320",
         );

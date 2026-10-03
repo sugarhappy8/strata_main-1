@@ -74,7 +74,12 @@ test("keeps root, private server, and public browser files separated", () => {
     "public/fonts/manrope-latin.woff2",
     "public/fonts/dm-mono-400-latin.woff2",
     "public/fonts/dm-mono-500-latin.woff2",
-    "public/images/hero-training.jpg",
+    "public/images/hero-training-960.avif",
+    "public/images/hero-training-960.webp",
+    "public/images/hero-training-960.jpg",
+    "public/images/hero-training-1600.avif",
+    "public/images/hero-training-1600.webp",
+    "public/images/hero-training-1600.jpg",
     "public/styles/fonts.css",
     "public/service-worker.js",
     "public/manifest.webmanifest",
@@ -227,6 +232,8 @@ test("keeps credentials, databases, and private modules out of public", () => {
     ".png",
     ".jpg",
     ".jpeg",
+    ".webp",
+    ".avif",
     ".woff2",
   ]);
   const forbiddenNames = new Set([

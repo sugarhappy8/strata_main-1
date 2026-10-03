@@ -240,7 +240,7 @@ async function complete(
 }
 async function me(session) {
   const result = await request("/api/me", { cookie: session });
-  return result.status === 200 ? { ...result.data.user, csrf: result.data.csrfToken } : null;
+  return result.data?.user ? { ...result.data.user, csrf: result.data.csrfToken } : null;
 }
 const errorOf = (location) => new URL(location, "http://strata.local").searchParams.get("error");
 

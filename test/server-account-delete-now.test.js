@@ -157,8 +157,11 @@ const deleteNow = (account, body, options = {}) =>
     ...options,
   });
 const database = () => new DatabaseSync(join(runtime, "strata.sqlite"), { timeout: 5000 });
-const signedIn = async (account) =>
-  (await request("/api/me", { cookie: account.cookie })).response.status === 200;
+const signedIn = async (account) => {
+  const { response, data } = await request("/api/me", { cookie: account.cookie });
+  assert.equal(response.status, 200);
+  return Boolean(data.user);
+};
 
 async function member(
   name,

@@ -2,7 +2,8 @@
 /* global document, getComputedStyle, innerWidth, NodeFilter */
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { spawn } = require("node:child_process");
+const { mkdirSync, mkdtempSync, readFileSync, rmSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
 const { chromium } = require("playwright");
@@ -32,52 +33,67 @@ test(
           name: "account",
           header: headerFrom("public/pages/account.html"),
           css: `${read("public/styles/account.css")}\n${sharedCss}`,
-          current: "Profile",
+          current: { visitor: "Sign in", member: "Profile" },
         },
         {
           name: "setup",
           header: headerFrom("public/pages/onboarding.html"),
           css: `${read("public/styles/onboarding.css")}\n${sharedCss}`,
-          current: null,
+          current: { visitor: null, member: null },
         },
       ];
+      // A visitor sees only what they can use; a member sees the five sections.
+      const tabs = {
+        visitor: ["Rankings", "Plan", "Strata+", "Sign in"],
+        member: ["Rankings", "Plan", "Train", "Recovery", "Profile"],
+      };
       for (const width of [320, 390])
-        for (const fixture of fixtures) {
-          const page = await browser.newPage({ viewport: { width, height: 700 } });
-          await page.setContent(
-            `<style>${fixture.css}\n${read("public/styles/site-experience.css")}</style>${fixture.header}`,
-          );
-          const result = await page.evaluate(() => ({
-            overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-            links: [...document.querySelectorAll(".product-nav a")].map((link) => ({
-              text: link.textContent.trim(),
-              width: link.getBoundingClientRect().width,
-              height: link.getBoundingClientRect().height,
-              fontSize: parseFloat(getComputedStyle(link).fontSize),
-            })),
-            current:
-              document.querySelector('.product-nav [aria-current="page"]')?.textContent.trim() ||
-              null,
-          }));
-          assert.ok(
-            result.overflow <= 1,
-            `${fixture.name} navigation overflows ${width}px by ${result.overflow}px`,
-          );
-          assert.deepEqual(
-            result.links.map((link) => link.text),
-            ["Rankings", "Dashboard", "Train", "Recovery", "Profile"],
-          );
-          assert.ok(
-            result.links.every((link) => link.width >= 44 && link.height >= 44),
-            `${fixture.name} navigation must keep 44×44px targets at ${width}px`,
-          );
-          assert.ok(
-            result.links.every((link) => link.fontSize >= 11),
-            `${fixture.name} navigation text must remain readable at ${width}px`,
-          );
-          assert.equal(result.current, fixture.current);
-          await page.close();
-        }
+        for (const fixture of fixtures)
+          for (const audience of ["visitor", "member"]) {
+            const page = await browser.newPage({ viewport: { width, height: 700 } });
+            await page.setContent(
+              `<style>${fixture.css}\n${read("public/styles/site-experience.css")}</style>${fixture.header}`,
+            );
+            const result = await page.evaluate((audience) => {
+              document.documentElement.dataset.audience = audience;
+              const visible = (link) => getComputedStyle(link).display !== "none";
+              return {
+                overflow:
+                  document.documentElement.scrollWidth - document.documentElement.clientWidth,
+                links: [...document.querySelectorAll(".product-nav a")]
+                  .filter(visible)
+                  .map((link) => ({
+                    text: link.textContent.trim(),
+                    width: link.getBoundingClientRect().width,
+                    height: link.getBoundingClientRect().height,
+                    fontSize: parseFloat(getComputedStyle(link).fontSize),
+                  })),
+                current:
+                  [...document.querySelectorAll('.product-nav [aria-current="page"]')]
+                    .find(visible)
+                    ?.textContent.trim() || null,
+              };
+            }, audience);
+            assert.ok(
+              result.overflow <= 1,
+              `${fixture.name} navigation overflows ${width}px by ${result.overflow}px`,
+            );
+            assert.deepEqual(
+              result.links.map((link) => link.text),
+              tabs[audience],
+              `${fixture.name} navigation for a ${audience} at ${width}px`,
+            );
+            assert.ok(
+              result.links.every((link) => link.width >= 44 && link.height >= 44),
+              `${fixture.name} navigation must keep 44×44px targets at ${width}px`,
+            );
+            assert.ok(
+              result.links.every((link) => link.fontSize >= 11),
+              `${fixture.name} navigation text must remain readable at ${width}px`,
+            );
+            assert.equal(result.current, fixture.current[audience]);
+            await page.close();
+          }
     } finally {
       await browser.close();
     }
@@ -123,29 +139,23 @@ test(
           header: headerFrom("public/pages/planner.html"),
           css: read("public/styles/planner.css"),
           signedIn: true,
-          desktop: [
-            "STRATA home",
-            "Rankings",
-            "Dashboard",
-            "Train",
-            "Recovery",
-            "Profile",
-            "Sign out",
-          ],
-          mobile: [
-            "STRATA home",
-            "Sign out",
-            "Rankings",
-            "Dashboard",
-            "Train",
-            "Recovery",
-            "Profile",
-          ],
+          audience: "member",
+          desktop: ["STRATA home", "Rankings", "Plan", "Train", "Recovery", "Profile", "Sign out"],
+          mobile: ["STRATA home", "Sign out", "Rankings", "Plan", "Train", "Recovery", "Profile"],
+        },
+        {
+          name: "Plan for a visitor",
+          header: headerFrom("public/pages/planner.html"),
+          css: read("public/styles/planner.css"),
+          audience: "visitor",
+          desktop: ["STRATA home", "Rankings", "Plan", "Strata+", "Sign in"],
+          mobile: ["STRATA home", "Rankings", "Plan", "Strata+", "Sign in"],
         },
         {
           name: "Train",
           header: headerFrom("public/pages/workout.html"),
           css: read("public/styles/workout.css"),
+          audience: "plus",
           desktop: ["STRATA home", "Rankings", "Dashboard", "Train", "Recovery", "Profile"],
           mobile: ["STRATA home", "Rankings", "Dashboard", "Train", "Recovery", "Profile"],
         },
@@ -168,6 +178,10 @@ test(
             await page.evaluate(() => {
               document.getElementById("logoutButton").hidden = false;
             });
+          if (fixture.audience)
+            await page.evaluate((audience) => {
+              document.documentElement.dataset.audience = audience;
+            }, fixture.audience);
           const result = await page.evaluate(() => {
             const controls = [...document.querySelectorAll("header a,header button")].filter(
               (control) => {
@@ -443,6 +457,175 @@ test(
       await page.close();
     } finally {
       await browser.close();
+    }
+  },
+);
+
+function startVisitorServer(dataDirectory) {
+  const child = spawn(process.execPath, ["server.js"], {
+    cwd: ROOT,
+    env: {
+      PATH: process.env.PATH,
+      PORT: "0",
+      HOST: "127.0.0.1",
+      NODE_ENV: "test",
+      TZ: "UTC",
+      STRATA_DATA_DIR: dataDirectory,
+      TURSO_DATABASE_URL: "",
+      TURSO_AUTH_TOKEN: "",
+      TRUST_PROXY: "false",
+      APP_BASE_URL: "",
+      SECURE_COOKIES: "false",
+      ADMIN_EMAIL: "",
+      EMAIL_VERIFICATION_ENABLED: "false",
+      ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS: "true",
+      PADDLE_CHECKOUT_ENABLED: "false",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return new Promise((resolveStart, reject) => {
+    let output = "";
+    const timer = setTimeout(
+      () => reject(new Error(`The visitor server did not start.\n${output}`)),
+      8_000,
+    );
+    const collect = (chunk) => {
+      output = (output + chunk.toString()).slice(-4096);
+      const match = output.match(/Strata running at http:\/\/127\.0\.0\.1:(\d+)/);
+      if (!match) return;
+      clearTimeout(timer);
+      resolveStart({ child, baseUrl: `http://127.0.0.1:${match[1]}` });
+    };
+    child.stdout.on("data", collect);
+    child.stderr.on("data", collect);
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`The visitor server exited (${code}).\n${output}`));
+    });
+  });
+}
+
+// A visitor's pages ask /api/me (200 { user: null }) and request nothing a member owns, so a reviewer who opens
+// developer tools on a public page sees a clean console.
+test(
+  "a signed-out visitor's public pages request no member data and log no console errors",
+  { timeout: 60_000 },
+  async () => {
+    mkdirSync(join(ROOT, "test-runtime"), { recursive: true });
+    const dataDirectory = mkdtempSync(join(ROOT, "test-runtime", "visitor-console-"));
+    const options = { headless: true };
+    if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)
+      options.executablePath = resolve(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
+    let server, browser;
+    try {
+      server = await startVisitorServer(dataDirectory);
+      browser = await chromium.launch(options);
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      // Third-party fonts and Paddle.js answer empty: they are not STRATA's to test, and offline they log errors.
+      await context.route(
+        /^https:\/\/(?:cdn\.paddle\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//,
+        (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: route.request().url().includes(".js") ? "text/javascript" : "text/css",
+            body: "",
+          }),
+      );
+      const page = await context.newPage();
+      let api = [],
+        errors = [];
+      page.on("response", (response) => {
+        const url = new URL(response.url());
+        if (url.origin === server.baseUrl && url.pathname.startsWith("/api/"))
+          api.push({ path: url.pathname, status: response.status() });
+      });
+      page.on("console", (message) => {
+        if (message.type() === "error") errors.push(message.text());
+      });
+      page.on("pageerror", (error) => errors.push(error.message));
+      for (const path of [
+        "/",
+        "/planner.html",
+        "/dashboard",
+        "/pricing",
+        "/account.html",
+        "/contact",
+        "/policies",
+        "/install.html",
+        "/discover.html",
+      ]) {
+        api = [];
+        errors = [];
+        await page.goto(`${server.baseUrl}${path}`, { waitUntil: "load" });
+        await page.waitForLoadState("networkidle");
+        const calls = api.map((call) => `${call.path} ${call.status}`).join(", ");
+        assert.deepEqual(
+          api.filter(({ status }) => status >= 400),
+          [],
+          `${path} must not get an error from STRATA's API: ${calls}`,
+        );
+        assert.deepEqual(
+          api.filter((call) => !["/api/me", "/api/billing/config"].includes(call.path)),
+          [],
+          `${path} must not request member data for a visitor: ${calls}`,
+        );
+        assert.deepEqual(errors, [], `${path} must not log console errors`);
+        if (["/", "/planner.html", "/account.html"].includes(path))
+          assert.ok(
+            api.some((call) => call.path === "/api/me" && call.status === 200),
+            `${path} asks who is signed in: ${calls}`,
+          );
+      }
+      // Signing in sends the navigation cookie that app-shell.js reads in <head>, so the very next page shows a
+      // member's tabs; signing out clears it.
+      const tabsAt = async (path) => {
+        await page.goto(`${server.baseUrl}${path}`, { waitUntil: "domcontentloaded" });
+        return page.evaluate(() => ({
+          audience: document.documentElement.dataset.audience,
+          tabs: [...document.querySelectorAll(".info-nav a")]
+            .filter((link) => getComputedStyle(link).display !== "none")
+            .map((link) => link.textContent.trim()),
+        }));
+      };
+      assert.deepEqual(await tabsAt("/pricing"), {
+        audience: "visitor",
+        tabs: ["Rankings", "Plan", "Strata+", "Sign in"],
+      });
+      const send = (path, body) =>
+        page.evaluate(
+          async ({ path, body }) =>
+            (
+              await fetch(path, {
+                method: "POST",
+                headers: body ? { "Content-Type": "application/json" } : {},
+                body: body ? JSON.stringify(body) : undefined,
+              })
+            ).status,
+          { path, body },
+        );
+      assert.equal(
+        await send("/api/signup", {
+          name: "Tab Check",
+          email: "tab-check@example.test",
+          password: "tab-check-password-123",
+        }),
+        201,
+      );
+      assert.deepEqual(await tabsAt("/pricing"), {
+        audience: "member",
+        tabs: ["Rankings", "Plan", "Train", "Recovery", "Profile"],
+      });
+      assert.equal(await send("/api/logout"), 200);
+      assert.equal((await tabsAt("/pricing")).audience, "visitor");
+      await context.close();
+    } finally {
+      await browser?.close();
+      if (server && server.child.exitCode === null) {
+        const exited = new Promise((resolveExit) => server.child.once("exit", resolveExit));
+        server.child.kill("SIGTERM");
+        await exited;
+      }
+      rmSync(dataDirectory, { recursive: true, force: true });
     }
   },
 );

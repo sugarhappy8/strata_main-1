@@ -226,7 +226,7 @@ async function initializeCatalog() {
   state.catalogStatus = "loading";
   renderAll();
   try {
-    STATE.setCatalog(state, await api("/exercises.json?v=9.6.0"));
+    STATE.setCatalog(state, await api("/exercises.json?v=9.7.0"));
     el("catalogTotal").textContent = state.exercises.length;
   } catch {
     STATE.failCatalog(state);
@@ -266,5 +266,12 @@ EVENTS.bindHomeEvents({
   },
 });
 
-void initializeCatalog();
+renderAll();
+EVENTS.watchCatalogDemand({
+  window,
+  location,
+  sections: [el("quickPreviewForm"), el("rankings")],
+  linked: LOGIC.catalogLinked,
+  onDemand: () => void initializeCatalog(),
+});
 void initializeAccount();

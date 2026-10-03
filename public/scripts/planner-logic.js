@@ -62,6 +62,30 @@
       : null;
   }
 
+  // Plan loads exercise-library.json, the catalog without its long-form guidance. Each entry gets its tutorial
+  // search link from its name; the setup guide adds the rest from the full catalog the first time it opens.
+  function libraryExercises(exercises) {
+    if (!Array.isArray(exercises)) return null;
+    return exercises.map((exercise) => ({
+      ...exercise,
+      youtube:
+        exercise.youtube ||
+        `https://www.youtube.com/results?search_query=${encodeURIComponent(`${exercise.name} exercise form tutorial`)}`,
+    }));
+  }
+  function hasGuidance(exercise) {
+    return Array.isArray(exercise?.cues);
+  }
+  function withGuidance(exercises, catalog) {
+    const full = new Map((Array.isArray(catalog) ? catalog : []).map((item) => [item?.id, item]));
+    return exercises.map((exercise) => {
+      const source = full.get(exercise.id);
+      return source && !hasGuidance(exercise)
+        ? { ...exercise, why: source.why, caution: source.caution, cues: source.cues }
+        : exercise;
+    });
+  }
+
   function filterExercises(exercises, { group = "all", query = "" } = {}) {
     const normalized = String(query).trim().toLowerCase();
     return (Array.isArray(exercises) ? exercises : [])
@@ -180,6 +204,9 @@
     isEmptyPlan,
     isDefaultPlan,
     nextScheduledDay,
+    libraryExercises,
+    hasGuidance,
+    withGuidance,
     filterExercises,
     validateWeekPlan,
     saveErrorMessage,

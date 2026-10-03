@@ -266,6 +266,12 @@ test("planner rendering names the destination and safely escapes catalog content
   );
   assert.equal((navigation.match(/aria-pressed="true"/g) || []).length, 1);
   assert.match(navigation, /Sunday, recovery day/);
+  assert.match(
+    navigation,
+    /data-day-chip="Sunday"[^>]*disabled[^>]*>Sun<small>Rest day<\/small><\/button>/,
+    "a rest day is labelled in the picker, not only greyed out",
+  );
+  assert.doesNotMatch(navigation, /data-day-chip="Monday"[^>]*>Mon<small>/);
 });
 
 const HOSTILE = 'Press <b> & "x"',
@@ -381,7 +387,7 @@ test("planner views escape member and catalog text exactly once", () => {
 
   assert.match(
     String(PlannerRender.modeNoticeMarkup({ guest: true, oversized: true })),
-    /href="\/account\.html\?mode=login&amp;next=planner">Use a synced plan<\/a>\.<p><strong>Large saved draft preserved\.<\/strong>/,
+    /href="\/account\.html\?mode=login&amp;next=planner">Use a synced plan<\/a><p><strong>Large saved draft preserved\.<\/strong>/,
   );
 });
 
@@ -625,4 +631,40 @@ test("planner entrypoint composes bounded modules in dependency order", () => {
     /state\s*\.entitlementStatus\s*=\s*"checking"\s*;\s*renderSummary\s*\(\s*,?\s*\)\s*;\s*renderPlannerModeNotice\s*\(\s*,?\s*\)/,
     "foreground checks must hide entitlement-bound UI before awaiting the network",
   );
+});
+
+test("the planner loads exercise guidance once, adds the guide builder only if missing, and retries a failure", async () => {
+  const requests = [],
+    scripts = [];
+  let fail = true,
+    builder = false;
+  const documentImpl = {
+    createElement: () => ({}),
+    head: {
+      append(script) {
+        scripts.push(script.src);
+        setImmediate(() => (fail ? script.onerror() : script.onload()));
+      },
+    },
+  };
+  const load = PlannerApi.createGuidanceLoader({
+    request: async (path) => {
+      requests.push(path);
+      return [{ id: "squat", cues: ["Brace"] }];
+    },
+    documentImpl,
+    hasBuilder: () => builder,
+    catalogPath: "/exercises.json?v=test",
+    builderPath: "/discovery-core.js?v=test",
+  });
+  await assert.rejects(Promise.all([load(), load()]), /could not load/);
+  assert.equal(requests.length, 1, "two guides opened together share one request");
+  assert.deepEqual(scripts, ["/discovery-core.js?v=test"]);
+  fail = false;
+  assert.deepEqual(await load(), [{ id: "squat", cues: ["Brace"] }], "a failed load is retried");
+  assert.equal(requests.length, 2);
+  builder = true;
+  await load();
+  assert.equal(requests.length, 2, "a loaded catalog is kept");
+  assert.equal(scripts.length, 2);
 });

@@ -386,7 +386,7 @@ function createSocialAuthService({
       "Content-Type": "text/html; charset=utf-8",
       "Cache-Control": "no-store",
       "Referrer-Policy": "no-referrer",
-      "Set-Cookie": [auth().sessionCookie(session.token), clear],
+      "Set-Cookie": [...auth().sessionCookies(session.token), clear],
     });
     res.end(page);
   }

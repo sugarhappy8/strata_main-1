@@ -25,6 +25,11 @@
     node.textContent = message;
     if (message && focus) node.focus({ preventScroll: false });
   }
+  function lockSignedOut() {
+    ready = false;
+    $("setupFields").disabled = true;
+    $("saveWeek").disabled = true;
+  }
   async function request(path, options = {}) {
     let response;
     try {
@@ -47,11 +52,7 @@
       throw new Error("Connection interrupted. Your preview is still here; reconnect and retry.");
     }
     const data = await response.json().catch(() => ({}));
-    if (response.status === 401) {
-      ready = false;
-      $("setupFields").disabled = true;
-      $("saveWeek").disabled = true;
-    }
+    if (response.status === 401) lockSignedOut();
     if (!response.ok)
       throw Object.assign(
         new Error(data.error || "STRATA could not load your account. Retry in a moment."),
@@ -223,6 +224,11 @@
   }
   async function verifyAccess() {
     const me = await request("/api/me", { cache: "no-store" });
+    // A visitor's /api/me is 200 { user: null }; setup locks exactly as it does for a 401.
+    if (me?.user === null) {
+      lockSignedOut();
+      throw Object.assign(new Error("Not signed in."), { status: 401 });
+    }
     requirePlus(me);
     if (String(me.user.id) !== String(user?.id)) {
       ready = false;
@@ -238,7 +244,7 @@
     status("Loading your starting point…");
     try {
       if (!exercises.length) {
-        const response = await fetch("/exercises.json?v=9.6.0");
+        const response = await fetch("/exercises.json?v=9.7.0");
         if (!response.ok)
           throw new Error("The exercise library is unavailable. Reconnect and retry.");
         exercises = await response.json();

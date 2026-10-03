@@ -358,6 +358,35 @@ test("account API owns endpoint details and attaches current CSRF", async () => 
   );
 });
 
+test("account API reads a visitor's 200 { user: null } as signed out wherever a member is required", async () => {
+  const answers = [];
+  const client = apiModule.createClient({
+    fetchImpl: async () => {
+      const [status, body] = answers.shift();
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        headers: { get: () => "application/json" },
+        json: async () => body,
+      };
+    },
+  });
+  const member = { user: { id: "member-1" }, csrfToken: "csrf-1" };
+  answers.push([200, { user: null }], [200, { user: null }]);
+  assert.deepEqual(await client.identity(), { user: null }, "a page may show a visitor its forms");
+  await assert.rejects(client.memberIdentity(), (error) => {
+    assert.equal(error.status, 401);
+    assert.equal(error.message, "Not signed in.");
+    return true;
+  });
+  answers.push([401, { error: "Not signed in." }]);
+  await assert.rejects(client.memberIdentity(), { status: 401, message: "Not signed in." });
+  answers.push([200, member]);
+  assert.deepEqual(await client.memberIdentity(), member);
+  answers.push([503, { error: "Busy." }]);
+  await assert.rejects(client.memberIdentity(), { status: 503, message: "Busy." });
+});
+
 test("in-app deletion logic names Apple billing and turns every refusal into a short inline message", () => {
   assert.equal(logic.appleMayBill({ discovery: { accessType: "apple", apple: null } }), true);
   assert.equal(

@@ -33,6 +33,7 @@ done as part of the stranger test (`docs/stranger-test-9.0.0.md`) on phone and d
 | P7 | **Changed in 9.1.0:** Dashboard opens the planner for visitors and free accounts; members get a page with two choices, Plan (the same planner) and the Strata+ dashboard. Old `/my-week` links still work | `test/server.test.js`, `qa/e2e/strata-plus-state-matrix.js` | Tap Dashboard in all three states |
 | P8 | **New:** offline, Dashboard opens the cached planner with the device week | `test/pwa.test.js` (fallback map) | DevTools offline, tap Dashboard |
 | P9 | **Better:** coaching targets and Strata AI read the same saved week (no second generated program); every save records whether it came from the member, Strata AI, or setup | `test/coaching-core.test.js`, `test/server-data-layer.test.js` ("plan saves are tagged by source") | Edit the week, then open Plan: the coaching week follows |
+| P10 | **New:** a visitor's Plan asks `/api/me` first (`200 { user: null }`) and opens the device week without requesting `/api/plan`; no public page logs a 401 or any console error | `qa/e2e/navigation-layout.js` ("a signed-out visitor's public pages…"), `qa/planner-runtime-smoke.js`, `test/server.test.js` | Signed out, open Plan with developer tools: the console is clean |
 
 ## How a failure is handled
 

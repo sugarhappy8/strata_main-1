@@ -450,6 +450,16 @@ test("the page's requests carry the account and security token and report failur
   await assert.rejects(client.status(), { code: "INVALID_RESPONSE" });
   reply = new TypeError("offline");
   await assert.rejects(client.me(), { code: "NETWORK_ERROR" });
+  // A visitor's 200 { user: null } is the same signed-out answer as an older server's 401.
+  for (const signedOut of [
+    { status: 200, body: { user: null } },
+    { status: 401, body: { error: "Not signed in." } },
+  ]) {
+    reply = signedOut;
+    await assert.rejects(client.me(), { status: 401, message: "Not signed in." });
+  }
+  reply = { status: 200, body: { user: { id: "user-9" }, csrfToken: "csrf-9" } };
+  assert.deepEqual(await client.me(), { user: { id: "user-9" }, csrfToken: "csrf-9" });
   assert.throws(() => createClient({ fetchImpl: null }), TypeError);
   const anonymous = createClient({
     fetchImpl: async (url, init) => {

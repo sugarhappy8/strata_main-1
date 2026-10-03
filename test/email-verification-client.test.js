@@ -242,7 +242,7 @@ test("enhanced signup sends only a masked hint to verification and preserves leg
   const page = accountPage(async (path) => {
     if (path === "/api/status") return response(200, { persistent: true });
     if (path === "/healthz") return response(200, { ok: true });
-    if (path === "/api/me") return response(401, { error: "Not signed in." });
+    if (path === "/api/me") return response(200, { user: null });
     if (path === "/api/signup")
       return response(202, {
         verificationRequired: true,
@@ -276,7 +276,7 @@ test("enhanced login continues an unverified account on the verification page", 
   const page = accountPage(async (path) => {
     if (path === "/api/status") return response(200, { persistent: true });
     if (path === "/healthz") return response(200, { ok: true });
-    if (path === "/api/me") return response(401, { error: "Not signed in." });
+    if (path === "/api/me") return response(200, { user: null });
     if (path === "/api/login")
       return response(202, {
         verificationRequired: true,
@@ -299,7 +299,7 @@ test("enhanced signup carries a safe delivery failure into the verification page
   const account = accountPage(async (path) => {
     if (path === "/api/status") return response(200, { persistent: true });
     if (path === "/healthz") return response(200, { ok: true });
-    if (path === "/api/me") return response(401, { error: "Not signed in." });
+    if (path === "/api/me") return response(200, { user: null });
     if (path === "/api/signup")
       return response(503, {
         error: "The verification email could not be sent. Please wait a moment and resend it.",

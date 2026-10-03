@@ -268,10 +268,18 @@ select:focus-visible,
   mask-image: linear-gradient(90deg, #000, transparent 70%);
   pointer-events: none;
 }
+/* The photo comes in two frames: the full 1600px frame here, and a 960px phone crop under
+   (max-width: 560px). Each lists AVIF, WebP, then JPEG; the plain url() before it is for browsers
+   without image-set() type(). Only the frame the media query picks is downloaded. */
 .hero-media {
   position: absolute;
   inset: 0;
-  background-image: url("/images/hero-training.jpg");
+  background-image: url("/images/hero-training-1600.jpg");
+  background-image: image-set(
+    url("/images/hero-training-1600.avif") type("image/avif"),
+    url("/images/hero-training-1600.webp") type("image/webp"),
+    url("/images/hero-training-1600.jpg") type("image/jpeg")
+  );
   background-size: cover;
   background-position: 62% 34%;
   filter: saturate(0.48) contrast(1.06);
@@ -1118,6 +1126,24 @@ select:focus-visible,
   overflow-wrap: anywhere;
   font: 600 12.5px/1.5 var(--body, "Manrope", Arial, sans-serif);
   letter-spacing: 0;
+}
+/* What the list is ranked by, with the method and sources one tap away. */
+.rank-note {
+  margin: 0;
+  padding: 10px 0;
+  color: var(--muted, #5f6559);
+  border-bottom: 1px solid var(--line, #d8dbd2);
+  font: 500 12.5px/1.55 var(--body, "Manrope", Arial, sans-serif);
+}
+.rank-note strong {
+  color: var(--ink);
+}
+.rank-note a {
+  display: inline-block;
+  padding-block: 4px;
+  color: var(--ink);
+  font-weight: 700;
+  text-underline-offset: 3px;
 }
 .results-controls {
   flex-shrink: 0;
@@ -1992,7 +2018,8 @@ dialog::backdrop {
     left: 0;
     min-height: calc(var(--mobile-public-nav-height) + env(safe-area-inset-bottom));
     display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     padding-bottom: env(safe-area-inset-bottom);
     color: var(--white);
     background: rgba(16, 17, 15, 0.98);
@@ -2004,14 +2031,14 @@ dialog::backdrop {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.68);
     text-decoration: none;
-    font: 600 12px var(--body, "Manrope", Arial, sans-serif);
+    font: 600 11px var(--body, "Manrope", Arial, sans-serif);
     letter-spacing: 0;
   }
-  .mobile-public-nav a:last-child {
-    border-right: 0;
+  .mobile-public-nav a:first-child {
+    border-left: 0;
   }
   .mobile-public-nav a:hover,
   .mobile-public-nav a:focus-visible,
@@ -2220,6 +2247,16 @@ dialog::backdrop {
   }
   .hero {
     min-height: max(720px, 100svh);
+  }
+  /* A full-height crop taken 65% across the photo, the position (max-width: 800px) gives it, so it
+     frames exactly like the whole photo while the hero is at most 960/1467 as wide as it is tall. */
+  .hero-media {
+    background-image: url("/images/hero-training-960.jpg");
+    background-image: image-set(
+      url("/images/hero-training-960.avif") type("image/avif"),
+      url("/images/hero-training-960.webp") type("image/webp"),
+      url("/images/hero-training-960.jpg") type("image/jpeg")
+    );
   }
   .home-page .hero h1 {
     font-size: clamp(50px, 14.5vw, 72px);

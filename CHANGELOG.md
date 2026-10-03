@@ -1,5 +1,19 @@
 # Changelog
 
+## 9.7.0 — First-visit polish
+
+- One navigation on every page, the same tabs in the same order. A visitor sees only what they can use: Rankings, Plan, Strata+, and Sign in. A member sees Rankings, Plan, Train, Recovery, and Profile; a Strata+ member sees Dashboard in place of Plan. Each tab is named after the page it opens, so "Dashboard" no longer opens the Weekly Plan. Signing in sets a `strata_nav` cookie that `app-shell.js` reads before the page draws, so the right tabs show from the first paint; every tab label is 11px.
+- Install leaves the main navigation. It stays in the footers and on Profile, and from a second visit a small note suggests installing until it is done or dismissed.
+- On a phone the planner opens on the exercise library: the save bar appears only after a change, the plan banner is one line, and its stray space before the full stop is gone. A rest day in the day picker says "Rest day" instead of only looking greyed out.
+- The rankings say what they are sorted by ("Ranked by FitScore, highest first", following the Sort control), what FitScore rates, and link to How FitScore works and its sources. The planner library says "Highest FitScore first" with the same link.
+- The sign-in page's tab says "Sign in — STRATA" until an account is open, and the home header says Sign in, as the tab does.
+- Lighter pages. The hero photo is AVIF or WebP (JPEG fallback) in a phone and a desktop size, about 70 KB instead of 530 KB. The home page loads the exercise catalog only when the preview or the rankings are needed, and Plan opens on a 111 KB exercise library and loads guides on demand. On a phone, the home page's first load drops from 702 KB to 185 KB and Plan's from 187 KB to 134 KB; `npm run performance` now holds both to a byte budget.
+- A visitor's console is clean. `/api/me` answers `200 { user: null }` without a session instead of `401`, and pages ask it first and request member data only for a member, so no public page logs a `401`.
+- A button's hover lift is motion, so it no longer applies with reduced motion, where it could jump under a resting pointer.
+- Advance every asset version and the offline cache to 9.7.0.
+
+See the [9.7.0 release guide](docs/release-9.7.0.md).
+
 ## 9.6.0 — Fix list
 
 - The App Store paywall says "Welcome to Strata+" only when STRATA reports that the purchase unlocked it. A purchase STRATA saved but did not unlock gets a plain warning instead, and an App Store test (Sandbox) purchase is told that test purchases do not unlock Strata+.

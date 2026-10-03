@@ -20,6 +20,25 @@ const visibleText = (html) =>
     .replace(/\s+/g, " ")
     .trim();
 const text = (name) => visibleText(read(name));
+// The tabs a navigation shows to one audience: visitor (signed out), member, or plus (Strata+). A tab without
+// data-audience is for everyone (site-experience.css hides the rest).
+const navTabs = (html, className) => {
+  const nav =
+    html.match(new RegExp(`<nav class="[^"]*${className}[^"]*"[\\s\\S]*?<\\/nav>`))?.[0] || "";
+  return [...nav.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/g)].map(([, attrs, label]) => ({
+    label: visibleText(label),
+    href: /href="([^"]+)"/.exec(attrs)?.[1],
+    audience: /data-audience="([^"]+)"/.exec(attrs)?.[1].split(" ") || null,
+    current: /aria-current="page"/.test(attrs),
+  }));
+};
+const tabsFor = (tabs, audience) =>
+  tabs.filter((tab) => !tab.audience || tab.audience.includes(audience)).map((tab) => tab.label);
+const AUDIENCE_TABS = {
+  visitor: ["Rankings", "Plan", "Strata+", "Sign in"],
+  member: ["Rankings", "Plan", "Train", "Recovery", "Profile"],
+  plus: ["Rankings", "Dashboard", "Train", "Recovery", "Profile"],
+};
 const navLabels = (html, className) => {
   const nav =
     html.match(new RegExp(`<nav class="[^"]*${className}[^"]*"[\\s\\S]*?<\\/nav>`))?.[0] || "";
@@ -29,20 +48,27 @@ const navLabels = (html, className) => {
 test("homepage exposes pricing, contact, and the public policy directory without JavaScript", () => {
   const home = read("index.html"),
     policies = read("policies.html");
-  const mobileNav = home.match(/<nav class="mobile-public-nav"[\s\S]*?<\/nav>/)?.[0] || "";
-  const mobileLinks = [...mobileNav.matchAll(/<a href="([^"]+)"(?: [^>]*)?>([^<]+)<\/a>/g)].map(
-    (match) => [match[1], match[2]],
-  );
+  const mobileTabs = navTabs(home, "mobile-public-nav");
   const footer = home.match(/<nav class="footer-links"[\s\S]*?<\/nav>/)?.[0] || "";
   for (const route of ["/pricing", "/contact", "/policies"])
     assert.match(home, new RegExp(`href="${route}"`), `${route} homepage link`);
   for (const route of ["/terms", "/privacy", "/refunds"])
     assert.match(policies, new RegExp(`href="${route}"`), `${route} policy-directory link`);
-  assert.deepEqual(mobileLinks, [
-    ["#rankings", "Rankings"],
-    ["/dashboard", "Dashboard"],
-    ["/install.html", "Install"],
-  ]);
+  assert.deepEqual(tabsFor(mobileTabs, "visitor"), AUDIENCE_TABS.visitor);
+  assert.deepEqual(
+    mobileTabs.map((tab) => tab.href),
+    [
+      "#rankings",
+      "/planner.html",
+      "/dashboard",
+      "/workout.html",
+      "/recovery",
+      "/pricing",
+      "/account.html",
+      "/account.html?mode=login",
+    ],
+  );
+  assert.match(footer, /href="\/install\.html">Install<\/a>/, "Install lives in the footer");
   assert.equal(
     (footer.match(/href="\/policies"/g) || []).length,
     1,
@@ -103,67 +129,71 @@ test("the editorial homepage and the five-section navigation remain canonical", 
       `${removed} was cut: the homepage is hero, free preview, rankings, method, sources`,
     );
 
-  const expected = ["Rankings", "Dashboard", "Train", "Recovery", "Profile"];
-  // The homepage is the landing page: Rankings, Dashboard, and Install. Every other page keeps all five sections.
-  assert.deepEqual(navLabels(home, "desktop-nav"), ["Rankings", "Dashboard", "Install"]);
-  assert.deepEqual(
-    navLabels(read("dashboard.html"), "info-nav"),
-    expected,
-    "the Strata+ dashboard page",
-  );
+  // One navigation on every page: the same tabs in the same order, each shown to the audiences it serves.
+  // Visitors see only what they can use; each tab is named after the page it opens; Install is not a tab.
   const pages = {
-    discover: [discover, "studio-nav-desktop"],
-    planner: [planner, "planner-primary-nav-desktop"],
-    workout: [workout, "workout-nav-desktop"],
+    home: [home, "mobile-public-nav"],
+    homeDesktop: [home, "desktop-nav"],
+    planner: [planner, "planner-primary-nav-mobile"],
+    plannerDesktop: [planner, "planner-primary-nav-desktop"],
+    workout: [workout, "workout-nav-mobile"],
+    dashboard: [read("dashboard.html"), "info-nav"],
+    account: [read("account.html"), "account-nav"],
+    onboarding: [read("onboarding.html"), "product-nav"],
+    install: [read("install.html"), "install-nav"],
   };
-  for (const page of [
-    "ai",
-    "account",
-    "onboarding",
-    "install",
-    "contact",
-    "policies",
-    "pricing",
-    "privacy",
-    "refunds",
-    "terms",
-  ])
-    pages[page] = [
-      read(`${page}.html`),
-      page === "ai"
-        ? "studio-nav-desktop"
-        : page === "account"
-          ? "account-nav"
-          : page === "onboarding"
-            ? "product-nav"
-            : page === "install"
-              ? "install-nav"
-              : "info-nav",
-    ];
-  for (const [name, [html, className]] of Object.entries(pages))
-    assert.deepEqual(navLabels(html, className), expected, `${name} uses the five sections`);
-  // One way to each section: no page keeps a separate Account link next to Profile, or the retired Strata+/Plan/Exercises labels.
-  for (const [name, [html]] of Object.entries(pages)) {
-    const header = html.match(/<header\b[\s\S]*?<\/header>/)?.[0] || "";
+  for (const page of ["contact", "policies", "pricing", "privacy", "refunds", "terms"])
+    pages[page] = [read(`${page}.html`), "info-nav"];
+  const reference = navTabs(planner, "planner-primary-nav-mobile").map(({ label, audience }) => ({
+    label,
+    audience,
+  }));
+  for (const [name, [html, className]] of Object.entries(pages)) {
+    const tabs = navTabs(html, className);
+    assert.deepEqual(
+      tabs.map(({ label, audience }) => ({ label, audience })),
+      reference,
+      `${name} uses the one navigation`,
+    );
+    for (const [audience, expected] of Object.entries(AUDIENCE_TABS))
+      assert.deepEqual(tabsFor(tabs, audience), expected, `${name} for a ${audience}`);
     assert.doesNotMatch(
-      header,
-      />\s*(?:Account|Exercises|Plan|Strata\s*\+)\s*<\s*\/a\s*>/,
-      `${name} header keeps only the five sections`,
+      html.match(/<header\b[\s\S]*?<\/header>/)?.[0] || "",
+      />\s*Install(?: app)?\s*<\/a>/,
+      `${name} keeps Install out of its navigation`,
     );
   }
-  // Member-aware sections resolve on the server; the studio switches its own views in place.
-  assert.match(
-    planner,
-    /<a href="\/rankings">Rankings<\/a><a href="\/dashboard" aria-current="page">Dashboard<\/a><a href="\/workout\.html">Train<\/a><a href="\/recovery">Recovery<\/a><a href="\/account\.html">Profile<\/a>/,
-  );
+  const current = (html, className) =>
+    navTabs(html, className)
+      .filter((tab) => tab.current)
+      .map((tab) => tab.label);
+  assert.deepEqual(current(planner, "planner-primary-nav-mobile"), ["Plan", "Dashboard"]);
+  assert.deepEqual(current(workout, "workout-nav-mobile"), ["Train"]);
+  assert.deepEqual(current(read("account.html"), "account-nav"), ["Profile", "Sign in"]);
+  assert.deepEqual(current(read("pricing.html"), "info-nav"), ["Strata+"]);
+  assert.deepEqual(current(read("dashboard.html"), "info-nav"), ["Dashboard"]);
+  // The Strata+ studio is for members with Strata+ only; it switches its own views in place.
+  for (const [html, className] of [
+    [discover, "studio-nav-desktop"],
+    [read("ai.html"), "studio-nav-mobile"],
+  ])
+    assert.deepEqual(navLabels(html, className), AUDIENCE_TABS.plus);
   assert.match(
     discover,
     /<a href="#exerciseExplorer" data-section="rankings">Rankings<\/a><a class="active" href="\/dashboard" data-section="week" aria-current="page">Dashboard<\/a>/,
   );
-  assert.match(workout, /<a href="\/workout\.html" aria-current="page">Train<\/a>/);
+  const css = fs.readFileSync(path.join(PUBLIC_ROOT, "styles", "site-experience.css"), "utf8");
+  for (const audience of ["member", "plus"])
+    assert.match(
+      css,
+      new RegExp(
+        `:root\\[data-audience="${audience}"\\] a\\[data-audience\\]:not\\(\\[data-audience~="${audience}"\\]\\)`,
+      ),
+    );
   assert.match(
-    read("account.html"),
-    /<a class="back-link" href="\/account\.html" aria-current="page">Profile<\/a>/,
+    css,
+    /:root:not\(\[data-audience="member"\]\):not\(\[data-audience="plus"\]\)\s*a\[data-audience\]:not\(\[data-audience~="visitor"\]\)/,
+    "with no audience mark, a page shows the visitor's tabs",
   );
 });
 
@@ -218,7 +248,7 @@ test("core footers use the policy directory instead of repeating every legal pag
 });
 
 test("published Strata+ price and refund promise are exact and consistent", () => {
-  assert.equal(BUILD, "9.6.0");
+  assert.equal(BUILD, "9.7.0");
   const pricingHtml = read("pricing.html"),
     pricing = text("pricing.html"),
     refunds = text("refunds.html"),
@@ -307,10 +337,10 @@ test("contact and policy pages publish the official support address and cross-li
     "privacy.html",
     "refunds.html",
   ]) {
-    assert.match(
-      read(page),
-      /class="info-nav"[^>]*>[\s\S]*href="\/dashboard">Dashboard<\/a>/,
-      `${page} Dashboard navigation`,
+    assert.deepEqual(
+      tabsFor(navTabs(read(page), "info-nav"), "visitor"),
+      AUDIENCE_TABS.visitor,
+      `${page} navigation`,
     );
   }
   for (const page of ["policies.html", "terms.html", "privacy.html", "refunds.html"]) {

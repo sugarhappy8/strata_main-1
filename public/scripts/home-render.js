@@ -120,6 +120,10 @@
       el("resultNoun").textContent = rows.length === 1 ? "exercise" : "exercises";
       el("activeTarget").textContent =
         `${groups[state.group].name} · ${activeFilters.length ? activeFilters.join(" · ") : "All targets"}`;
+      // Say what the list is ranked by, so the top of "All targets" never looks arbitrary.
+      const sortLabel = el("rankSortLabel");
+      if (sortLabel)
+        sortLabel.textContent = el("sortSelect")?.selectedOptions?.[0]?.textContent || "FitScore";
       el("resetActiveFilters").hidden = activeFilters.length === 0;
       el("emptyState").hidden = rows.length !== 0;
       // The ten best matches lead; the rest of the ranking is one click away.
@@ -208,7 +212,7 @@
         signup = el("signupButton"),
         discoveryButton = el("discoverButton"),
         discoveryActive = logic.hasPlus(state.user);
-      button.textContent = state.user ? `${state.user.name.split(/\s+/)[0]} profile` : "Log in";
+      button.textContent = state.user ? `${state.user.name.split(/\s+/)[0]} profile` : "Sign in";
       button.href = state.user ? "/account.html" : "/account.html?mode=login";
       button.classList.toggle("signed-in", Boolean(state.user));
       signup.hidden = Boolean(state.user);

@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const http = require("node:http");
 const { spawn } = require("node:child_process");
-const { mkdirSync, mkdtempSync, rmSync } = require("node:fs");
+const { mkdirSync, mkdtempSync, readFileSync, rmSync } = require("node:fs");
 const { join } = require("node:path");
 const { gunzipSync } = require("node:zlib");
 
@@ -155,6 +155,27 @@ test("negotiates gzip for large text while preserving response semantics", async
   assert.equal(status.headers["cache-control"], "no-store");
 });
 
+test("serves every hero photo frame with its own image type and leaves it uncompressed", async () => {
+  for (const [file, type] of [
+    ["hero-training-960.avif", "image/avif"],
+    ["hero-training-960.webp", "image/webp"],
+    ["hero-training-960.jpg", "image/jpeg"],
+    ["hero-training-1600.avif", "image/avif"],
+    ["hero-training-1600.webp", "image/webp"],
+    ["hero-training-1600.jpg", "image/jpeg"],
+  ]) {
+    const image = await request(`/images/${file}`, { headers: { "Accept-Encoding": "gzip" } });
+    assert.equal(image.status, 200, `${file} must be served`);
+    assert.equal(image.headers["content-type"], type, `${file} must not be sniffed`);
+    assert.equal(image.headers["x-content-type-options"], "nosniff");
+    assert.equal(image.headers["content-encoding"], undefined, `${file} is already compressed`);
+    assert.equal(image.headers["cache-control"], "public, max-age=300");
+    assert.equal(Number(image.headers["content-length"]), image.body.length);
+    assert.deepEqual(image.body, readFileSync(join(PROJECT_ROOT, "public", "images", file)));
+  }
+  assert.equal((await request("/images/hero-training.jpg")).status, 404);
+});
+
 test("keeps an unpaid Discovery denial small, uncompressed, and private", async () => {
   const credentials = JSON.stringify({
     name: "Compression Tester",
@@ -175,7 +196,7 @@ test("keeps an unpaid Discovery denial small, uncompressed, and private", async 
   assert.equal(signedInHome.headers["cache-control"], "private, no-store");
   const publicHome = await request("/", { headers: { "Accept-Encoding": "gzip" } });
   assert.doesNotMatch(gunzipSync(publicHome.body).toString(), /Compression\s*profile/);
-  assert.match(gunzipSync(publicHome.body).toString(), /id="accountButton"[^>]*>Log in/);
+  assert.match(gunzipSync(publicHome.body).toString(), /id="accountButton"[^>]*>Sign in/);
 
   const discovery = await request("/api/discovery", {
     headers: { Cookie: cookie, "Accept-Encoding": "gzip" },
