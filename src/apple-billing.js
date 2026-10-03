@@ -175,19 +175,17 @@ function validateAppleRenewal(payload, transaction) {
 
 /**
  * Whether a stored subscription is paid up at this moment. With an account and settings it also answers whether it
- * unlocks Strata+ for that account: a Sandbox purchase does so in production only for a listed account. Without them it
- * is Apple's own state, which decides ownership and the deletion notice.
+ * unlocks Strata+ for that account: a Sandbox purchase does so in production only for a listed account with a verified
+ * email. Without them it is Apple's own state, which decides ownership and the deletion notice.
  * @param {import("./domain-types").AppleSubscriptionRow} row @param {number} now
- * @param {{email?:string|null}|null} [user] @param {import("./domain-types").AppleSandboxPolicy|null} [settings]
+ * @param {{email?:string|null,emailVerified?:boolean}|null} [user] @param {import("./domain-types").AppleSandboxPolicy|null} [settings]
  */
 function appleRowActive(row, now, user = null, settings = null) {
-  if (
-    row.environment === "Sandbox" &&
-    settings &&
-    !settings.allowSandbox &&
-    !settings.sandboxAccounts.has(String(user?.email || "").toLowerCase())
-  )
-    return false;
+  // A listed Sandbox account counts only once its email is verified, as in hasActiveAppleSubscription.
+  const listed =
+    user?.emailVerified === true &&
+    Boolean(settings?.sandboxAccounts.has(String(user?.email || "").toLowerCase()));
+  if (row.environment === "Sandbox" && settings && !settings.allowSandbox && !listed) return false;
   return (
     row.revoked_at == null &&
     (Number(row.expires_at || 0) > now || Number(row.grace_period_expires_at || 0) > now)
@@ -281,7 +279,7 @@ function nextAppleState(
  * The member-facing Apple summary for /api/me "discovery.apple": the subscription giving access, else the latest one.
  * Admin passes no account or settings and sees Apple's own state.
  * @param {import("./domain-types").AppleSubscriptionRow[]} rows @param {number} now
- * @param {{email?:string|null}|null} [user] @param {import("./domain-types").AppleSandboxPolicy|null} [settings]
+ * @param {{email?:string|null,emailVerified?:boolean}|null} [user] @param {import("./domain-types").AppleSandboxPolicy|null} [settings]
  * @returns {import("./domain-types").AppleSubscriptionSummary|null}
  */
 function appleSubscriptionSummary(rows, now, user = null, settings = null) {
@@ -632,12 +630,15 @@ function createAppleBillingService({
     },
   ];
 
-  /** @param {string} userId @param {string|null} [email] */
-  async function subscriptionForUser(userId, email = null) {
+  /** @param {string} userId @param {{email?:unknown,email_verified_at?:unknown}|null} [account] */
+  async function subscriptionForUser(userId, account = null) {
     return appleSubscriptionSummary(
       await store.appleSubscriptionsForUser(userId),
       now(),
-      { email },
+      {
+        email: account?.email == null ? null : String(account.email),
+        emailVerified: account?.email_verified_at != null,
+      },
       settings,
     );
   }

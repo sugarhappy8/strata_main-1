@@ -38,17 +38,13 @@ function validateRetiredPaddleCheckoutTransaction(data) {
  *   transactionError:(message:string,code:string)=>Error,
  *   validateTransaction:(data:import("./domain-types").PaddleTransactionData|null|undefined,
  *     config:import("./domain-types").PaymentConfig,identity:import("./domain-types").CheckoutIdentity)=>
- *     {ok:boolean,reason?:string},
- *   defaultProductId:string,
- *   defaultPriceId:string
+ *     {ok:boolean,reason?:string}
  * }} dependencies
  */
 function createPaddleCheckoutRetirement({
   transactionRequest,
   transactionError,
   validateTransaction,
-  defaultProductId,
-  defaultPriceId,
 }) {
   /** @param {import("./domain-types").PaymentConfig} config @param {unknown} transactionId @param {import("./domain-types").FetchLike} fetchImpl */
   async function retirePaddleDraftTransaction(config, transactionId, fetchImpl = globalThis.fetch) {
@@ -81,15 +77,12 @@ function createPaddleCheckoutRetirement({
     const durableProductId = clean(productId),
       remoteProductId = clean(data?.items?.[0]?.price?.product_id),
       expectedProductId = durableProductId || remoteProductId;
-    const retiredOneTimeCancellation =
-      clean(priceId) === defaultPriceId && expectedProductId === defaultProductId;
     return expectedProductId
       ? validateTransaction(data, config, {
           userId,
           checkoutId,
           priceId,
           productId: expectedProductId,
-          retiredOneTimeCancellation,
         })
       : { ok: false, reason: "product" };
   }

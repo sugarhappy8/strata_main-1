@@ -13,6 +13,7 @@
 
   const FRESH_MS = 5 * 60 * 1000,
     WEEKS = [4, 8, 12];
+  const { html } = StrataHtml;
 
   function createController({ element, api, state, core, getGeneration }) {
     let today = null,
@@ -22,8 +23,7 @@
       weeks = 4,
       active = "",
       failed = false;
-    const esc = core.escapeHtml,
-      date = () => core.localDate();
+    const date = () => core.localDate();
     function stateMessage(result) {
       const connection = result?.connection;
       if (!result)
@@ -85,12 +85,12 @@
       badge.dataset.tone = status <= 2 ? "low" : status === 3 ? "mid" : "good";
       StrataHtml.setHtml(
         badge,
-        `<span class="plan-readiness-dot" aria-hidden="true"></span><strong>${esc(summary.recovery.label)} recovery</strong><span>${esc(when)} · Polar Nightly Recharge</span>${summary.lighterSession?.offer ? '<a href="/workout.html">Lighter session in Train <span aria-hidden="true">↗</span></a>' : ""}<a href="#recoveryWorkspace" data-feature-target="recovery">Recovery <span aria-hidden="true">→</span></a>`,
+        html`<span class="plan-readiness-dot" aria-hidden="true"></span><strong>${summary.recovery.label} recovery</strong><span>${when} · Polar Nightly Recharge</span>${summary.lighterSession?.offer ? html`<a href="/workout.html">Lighter session in Train <span aria-hidden="true">↗</span></a>` : ""}<a href="#recoveryWorkspace" data-feature-target="recovery">Recovery <span aria-hidden="true">→</span></a>`,
       );
       badge.hidden = false;
     }
     function metric(label, value, detail, tone = "none") {
-      return StrataHtml.html`<article class="recovery-metric" data-tone="${tone}"><span>${label}</span><strong>${value}</strong><small>${detail}</small></article>`;
+      return html`<article class="recovery-metric" data-tone="${tone}"><span>${label}</span><strong>${value}</strong><small>${detail}</small></article>`;
     }
     function usualText(usual, format) {
       return usual
@@ -100,8 +100,8 @@
     function lighterLink(summary) {
       const text = core.lighterText(summary.lighterSession);
       return text
-        ? `<p class="recovery-lighter${summary.lighterSession?.offer ? "" : " is-note"}">${esc(text)}${summary.lighterSession?.offer ? ' <a href="/workout.html">Open Train <span aria-hidden="true">↗</span></a>' : ""}</p>`
-        : "";
+        ? html`<p class="recovery-lighter${summary.lighterSession?.offer ? "" : " is-note"}">${text}${summary.lighterSession?.offer ? html` <a href="/workout.html">Open Train <span aria-hidden="true">↗</span></a>` : ""}</p>`
+        : html``;
     }
     function renderTodayCard() {
       const card = element("todayRecovery");
@@ -139,9 +139,7 @@
             "Resting HR",
             core.numberText(summary.heart?.today?.resting ?? summary.heart?.overnight, 0, "bpm"),
           ],
-        ]
-          .map(([label, value]) => StrataHtml.html`<div><dt>${label}</dt><dd>${value}</dd></div>`)
-          .join(""),
+        ].map(([label, value]) => html`<div><dt>${label}</dt><dd>${value}</dd></div>`),
       );
     }
     function renderTodaySection(summary, connection) {
@@ -155,27 +153,27 @@
           (Number(sleep.remSeconds) || 0);
       const stage = (key, label) =>
         total
-          ? `<i class="stage-${key}" style="width:${Math.round(((Number(sleep[`${key}Seconds`]) || 0) / total) * 1000) / 10}%" title="${label} ${core.durationText(sleep[`${key}Seconds`])}"></i>`
+          ? html`<i class="stage-${key}" style="width:${Math.round(((Number(sleep[`${key}Seconds`]) || 0) / total) * 1000) / 10}%" title="${label} ${core.durationText(sleep[`${key}Seconds`])}"></i>`
           : "";
       const heartDetail = heart.today
         ? `Today: resting ${core.numberText(heart.today.resting, 0, "bpm")}, range ${core.numberText(heart.today.min)}–${core.numberText(heart.today.max, 0, "bpm")}`
         : "24/7 heart rate appears after Polar syncs today";
       StrataHtml.setHtml(
         element("recoveryToday"),
-        `<p class="recovery-date">Night ending ${esc(core.dateLabel(summary.date))}${summary.state === "stale" ? StrataHtml.html` · ${String(summary.ageDays)} days ago` : ""} · synced ${esc(core.ago(connection?.lastSyncAt))}</p>
+        html`<p class="recovery-date">Night ending ${core.dateLabel(summary.date)}${summary.state === "stale" ? html` · ${String(summary.ageDays)} days ago` : ""} · synced ${core.ago(connection?.lastSyncAt)}</p>
         <div class="recovery-metrics">${metric("Nightly Recharge", recovery.label || "Not ready", `ANS charge ${recovery.ansChargeLabel ? recovery.ansChargeLabel.toLowerCase() : "—"}${recovery.ansCharge !== null && recovery.ansCharge !== undefined ? ` (${recovery.ansCharge > 0 ? "+" : ""}${core.numberText(recovery.ansCharge, 1)})` : ""} · sleep charge ${recovery.sleepChargeLabel ? recovery.sleepChargeLabel.toLowerCase() : "—"}`, core.recoveryTone(recovery.status))}
         ${metric("Overnight stress signals", stress.label, stress.detail, stress.tone)}
-        <article class="recovery-metric"><span>Sleep</span><strong>${esc(core.durationText(sleep.asleepSeconds))}</strong><small>${sleep.score !== null && sleep.score !== undefined ? StrataHtml.html`Sleep score ${core.numberText(sleep.score)} · ` : ""}${esc(usualText(sleep.usual, core.durationText))}</small>${total ? `<div class="recovery-stages" role="img" aria-label="Deep ${esc(core.durationText(sleep.deepSeconds))}, light ${esc(core.durationText(sleep.lightSeconds))}, REM ${esc(core.durationText(sleep.remSeconds))}">${stage("deep", "Deep")}${stage("light", "Light")}${stage("rem", "REM")}</div>` : ""}</article>
+        <article class="recovery-metric"><span>Sleep</span><strong>${core.durationText(sleep.asleepSeconds)}</strong><small>${sleep.score !== null && sleep.score !== undefined ? html`Sleep score ${core.numberText(sleep.score)} · ` : ""}${usualText(sleep.usual, core.durationText)}</small>${total ? html`<div class="recovery-stages" role="img" aria-label="Deep ${core.durationText(sleep.deepSeconds)}, light ${core.durationText(sleep.lightSeconds)}, REM ${core.durationText(sleep.remSeconds)}">${stage("deep", "Deep")}${stage("light", "Light")}${stage("rem", "REM")}</div>` : ""}</article>
         ${metric("Overnight heart", `${core.numberText(heart.overnight, 0, "bpm")} · HRV ${core.numberText(heart.hrv, 0, "ms")}`, `Breathing ${core.numberText(heart.breathing, 1, "/min")}. ${heartDetail}.`)}</div>${lighterLink(summary)}`,
       );
     }
     function chart(title, series, key, usual, format, unit) {
       const geometry = core.chartGeometry(series, key, { width: 320, height: 120, usual });
       if (geometry.empty)
-        return StrataHtml.html`<figure class="recovery-chart"><figcaption>${title}</figcaption><p class="recovery-chart-empty">No ${title.toLowerCase()} in this range yet.</p></figure>`;
+        return html`<figure class="recovery-chart"><figcaption>${title}</figcaption><p class="recovery-chart-empty">No ${title.toLowerCase()} in this range yet.</p></figure>`;
       const last = geometry.points.at(-1),
         label = `${title}: ${geometry.points.length} nights, latest ${format(last.value)}${unit}. ${usual ? `Your usual range is ${format(usual.low)} to ${format(usual.high)}${unit}.` : "Your usual range appears after 7 nights."}`;
-      return `<figure class="recovery-chart"><figcaption>${esc(title)} <small>${esc(usual ? `usual ${format(usual.low)}–${format(usual.high)}${unit}` : "")}</small></figcaption><svg viewBox="0 0 320 120" role="img" aria-label="${esc(label)}">${geometry.band ? `<rect class="recovery-band" x="0" y="${geometry.band.y1}" width="320" height="${Math.max(1, geometry.band.y2 - geometry.band.y1)}"/>` : ""}${geometry.segments.map((segment) => (segment.length > 1 ? `<polyline points="${segment.join(" ")}"/>` : "")).join("")}${geometry.points.map((point) => `<circle cx="${point.x}" cy="${point.y}" r="2.6"><title>${esc(core.dateLabel(point.date))}: ${esc(format(point.value))}${esc(unit)}</title></circle>`).join("")}</svg></figure>`;
+      return html`<figure class="recovery-chart"><figcaption>${title} <small>${usual ? `usual ${format(usual.low)}–${format(usual.high)}${unit}` : ""}</small></figcaption><svg viewBox="0 0 320 120" role="img" aria-label="${label}">${geometry.band ? html`<rect class="recovery-band" x="0" y="${geometry.band.y1}" width="320" height="${Math.max(1, geometry.band.y2 - geometry.band.y1)}"/>` : ""}${geometry.segments.map((segment) => (segment.length > 1 ? html`<polyline points="${segment.join(" ")}"/>` : ""))}${geometry.points.map((point) => html`<circle cx="${point.x}" cy="${point.y}" r="2.6"><title>${core.dateLabel(point.date)}: ${format(point.value)}${unit}</title></circle>`)}</svg></figure>`;
     }
     function renderTrends(result) {
       const data = result?.trends;
@@ -186,22 +184,21 @@
         round = (value) => core.numberText(value);
       StrataHtml.setHtml(
         element("recoveryCharts"),
-        `<figure class="recovery-chart recovery-recharge"><figcaption>Nightly Recharge <small><i data-tone="good"></i>OK or better <i data-tone="mid"></i>Compromised <i data-tone="low"></i>Poor</small></figcaption><ol aria-label="Nightly Recharge by night">${series.map((point) => `<li data-tone="${core.recoveryTone(point.recoveryStatus)}" title="${esc(`${core.dateLabel(point.date)}: ${core.recoveryName(point.recoveryStatus)}`)}"><span class="sr-only">${esc(core.dateLabel(point.date))}: ${point.recoveryStatus ? esc(core.recoveryName(point.recoveryStatus)) : "no result"}</span></li>`).join("")}</ol></figure>
+        html`<figure class="recovery-chart recovery-recharge"><figcaption>Nightly Recharge <small><i data-tone="good"></i>OK or better <i data-tone="mid"></i>Compromised <i data-tone="low"></i>Poor</small></figcaption><ol aria-label="Nightly Recharge by night">${series.map((point) => html`<li data-tone="${core.recoveryTone(point.recoveryStatus)}" title="${core.dateLabel(point.date)}: ${core.recoveryName(point.recoveryStatus)}"><span class="sr-only">${core.dateLabel(point.date)}: ${point.recoveryStatus ? core.recoveryName(point.recoveryStatus) : "no result"}</span></li>`)}</ol></figure>
         ${chart("Heart rate variability", series, "hrv", usual.hrv, round, " ms")}${chart("Overnight heart rate", series, "heartRate", usual.heartRate, round, " bpm")}${chart("Sleep", series, "asleepSeconds", usual.asleepSeconds, hours, "")}`,
       );
       const training = new Map((data.training || []).map((week) => [week.start, week]));
       StrataHtml.setHtml(
         element("recoveryWeekly"),
-        `<table><caption class="sr-only">Weekly averages and training</caption><thead><tr><th scope="col">Week</th><th scope="col">Nights</th><th scope="col">Typical Recharge</th><th scope="col">Avg HRV</th><th scope="col">Avg sleep</th><th scope="col">STRATA workouts</th><th scope="col">Polar cardio load</th></tr></thead><tbody>${(
+        html`<table><caption class="sr-only">Weekly averages and training</caption><thead><tr><th scope="col">Week</th><th scope="col">Nights</th><th scope="col">Typical Recharge</th><th scope="col">Avg HRV</th><th scope="col">Avg sleep</th><th scope="col">STRATA workouts</th><th scope="col">Polar cardio load</th></tr></thead><tbody>${(
           data.weekly || []
         )
           .slice()
           .reverse()
           .map(
             (week) =>
-              `<tr><th scope="row">${esc(core.rangeLabel(week.start, week.end))}</th><td>${week.nights}</td><td>${esc(core.recoveryName(week.recoveryStatus))}</td><td>${esc(core.numberText(week.hrv, 0, "ms"))}</td><td>${esc(core.durationText(week.asleepSeconds))}</td><td>${Number(training.get(week.start)?.strataWorkouts) || 0}</td><td>${Number(training.get(week.start)?.cardioLoad) || 0}</td></tr>`,
-          )
-          .join("")}</tbody></table>`,
+              html`<tr><th scope="row">${core.rangeLabel(week.start, week.end)}</th><td>${week.nights}</td><td>${core.recoveryName(week.recoveryStatus)}</td><td>${core.numberText(week.hrv, 0, "ms")}</td><td>${core.durationText(week.asleepSeconds)}</td><td>${Number(training.get(week.start)?.strataWorkouts) || 0}</td><td>${Number(training.get(week.start)?.cardioLoad) || 0}</td></tr>`,
+          )}</tbody></table>`,
       );
       for (const button of element("recoveryRange").querySelectorAll("[data-recovery-weeks]"))
         button.setAttribute("aria-pressed", String(Number(button.dataset.recoveryWeeks) === weeks));

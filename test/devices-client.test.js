@@ -94,7 +94,6 @@ const flush = async () => {
 };
 
 test("device wording, dates, and durations stay readable when values are missing", () => {
-  assert.equal(Core.escapeHtml(`<a href="x">'&`), "&lt;a href=&quot;x&quot;&gt;&#39;&amp;");
   assert.equal(Core.localDate(new Date(2026, 8, 5, 23, 30)), "2026-09-05");
   assert.equal(Core.durationText(25800), "7h 10m");
   assert.equal(Core.durationText(2700), "45m");
@@ -720,7 +719,6 @@ test("Train shows last night from Polar and starts a lighter session only when a
     $: element,
     state,
     core: Core,
-    esc: Core.escapeHtml,
     request: async (path) => {
       requests.push(path);
       return path.startsWith("/api/wellness/today")
@@ -793,7 +791,6 @@ test("Train hides the recovery line without a current Polar connection", async (
       $: element,
       state: { mode: "account", history: [] },
       core: Core,
-      esc: Core.escapeHtml,
       request: async () => {
         if (answer instanceof Error) throw answer;
         return answer;
@@ -807,7 +804,6 @@ test("Train hides the recovery line without a current Polar connection", async (
     $: element,
     state: { mode: "account", history: [] },
     core: Core,
-    esc: Core.escapeHtml,
     request: async () =>
       wellnessToday({
         summary: {
@@ -825,12 +821,36 @@ test("Train hides the recovery line without a current Polar connection", async (
     $: element,
     state: { mode: "guest", history: [] },
     core: Core,
-    esc: Core.escapeHtml,
     request: async () => {
       throw new Error("should not load");
     },
   });
   await guest.load();
+});
+
+test("Train escapes Polar's recovery wording exactly once", async () => {
+  const { element, elements } = page(["deviceRecovery", "startWorkout"]),
+    hostile = '<b>"Tom & Jerry"</b>';
+  const view = WorkoutRecovery.create({
+    $: element,
+    state: { mode: "account", history: [] },
+    core: Core,
+    request: async (path) =>
+      path.startsWith("/api/wellness/today")
+        ? wellnessToday({
+            summary: {
+              ...wellnessToday().summary,
+              recovery: { ...wellnessToday().summary.recovery, label: hostile },
+            },
+          })
+        : { workouts: [] },
+  });
+  await view.load();
+  const markup = elements.get("deviceRecovery").innerHTML;
+  assert.match(markup, /Polar recovery: &lt;b&gt;&quot;Tom &amp; Jerry&quot;&lt;\/b&gt;/);
+  assert.doesNotMatch(markup, /&amp;(?:lt|gt|quot|amp|#39);/, "escaped once, never twice");
+  assert.doesNotMatch(markup, /<b>/);
+  assert.match(markup, /<button class="button secondary" type="button" id="startLighterWorkout">/);
 });
 
 const DISCOVER_IDS = [

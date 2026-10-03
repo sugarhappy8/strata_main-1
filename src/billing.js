@@ -6,8 +6,6 @@ const { adminGrantState } = require("./access-controls");
 const { randomUUID } = require("node:crypto");
 const { MAX_WEBHOOK_BYTES, bodyBuffer: readBodyBuffer } = require("./http");
 const {
-  DEFAULT_PRODUCT_ID,
-  DEFAULT_PRICE_ID,
   publicPaymentConfig,
   webhookSecretFor,
   verifyPaddleSignature,
@@ -22,14 +20,9 @@ const {
   validateCheckoutTransactionForRetirement,
   validateCompletedTransaction,
   validateSubscription,
-  subscriptionCatalogTransition,
   createCustomerPortalSession,
   fullRevocationFromAdjustment,
 } = require("./payments");
-const {
-  validateRetiredCompletedTransaction,
-  createLegacyCheckoutPolicy,
-} = require("./legacy-checkout");
 const { MANAGE_SUBSCRIPTIONS_URL } = require("./apple-billing");
 const { cleanText } = require("./plans");
 
@@ -112,20 +105,11 @@ function createBillingService({
     return service;
   }
 
-  /** @param {unknown} priceId */
-  function legacyRecurringPrice(priceId) {
-    return paymentConfig.legacyRecurringPriceIds.includes(String(priceId || ""));
-  }
-
-  function entitledRecurringPrices() {
-    return [paymentConfig.priceId, ...paymentConfig.legacyRecurringPriceIds];
-  }
-
   /** @param {string} userId @param {number} [timestamp] */
   function hasCurrentPaidAccess(userId, timestamp = now()) {
     return store.hasEntitledPaidDiscoveryAccess(
       userId,
-      entitledRecurringPrices(),
+      paymentConfig.priceId,
       paymentConfig.productId,
       timestamp,
     );
@@ -146,7 +130,7 @@ function createBillingService({
   function accessSummaryForUser(userId, timestamp = now()) {
     return store.entitledDiscoveryAccessSummary(
       userId,
-      entitledRecurringPrices(),
+      paymentConfig.priceId,
       paymentConfig.productId,
       timestamp,
     );
@@ -221,21 +205,12 @@ function createBillingService({
     return authService().accountActionError(message, 503, code);
   }
 
-  const legacy = createLegacyCheckoutPolicy({ store, paymentConfig, now, reconciliationError });
   const {
-    purchaseCatalog,
-    checkoutCatalog,
+    currentPurchase,
+    currentCheckout,
     validatePurchaseCheckoutForCancellation,
-    migrateReusableDraft,
-    completeCatalogMigration,
-  } = legacy;
-  const { reconcileUnsettledPurchases } = createCheckoutReconciliation({
-    store,
-    paymentConfig,
-    now,
-    authService,
-    legacy,
-  });
+    reconcileUnsettledPurchases,
+  } = createCheckoutReconciliation({ store, paymentConfig, now, authService });
 
   /** @param {import("./domain-types").CheckoutClaimRow} claim @param {string|null} [expectedTransactionId] */
   async function releaseCheckoutClaim(claim, expectedTransactionId = null) {
@@ -248,10 +223,7 @@ function createBillingService({
 
   /** @param {import("./domain-types").CheckoutClaimRow} claim @param {{retirement?:boolean}} [options] */
   async function transactionForCheckoutClaim(claim, { retirement = false } = {}) {
-    const legacy = claim.price_id === DEFAULT_PRICE_ID,
-      current = claim.price_id === paymentConfig.priceId,
-      legacyRecurring = legacyRecurringPrice(claim.price_id);
-    if (!retirement && !legacy && !current && !legacyRecurring)
+    if (!retirement && claim.price_id !== paymentConfig.priceId)
       throw reconciliationError(
         "STRATA could not safely validate an interrupted checkout catalog. Please contact support.",
         "PURCHASE_RECONCILIATION_INVALID",
@@ -260,8 +232,7 @@ function createBillingService({
       userId: claim.user_id,
       checkoutId: claim.claim_id,
       priceId: claim.price_id,
-      productId: legacy ? DEFAULT_PRODUCT_ID : paymentConfig.productId,
-      retiredOneTimeCancellation: legacy,
+      productId: paymentConfig.productId,
     };
     /** @type {import("./domain-types").PaddleFetchedTransactionResult|null} */
     let remote;
@@ -273,20 +244,12 @@ function createBillingService({
             createdAt: Number(claim.created_at),
             retirement,
           });
-      if (!remote && legacy && !retirement)
-        remote = await findPaddleCheckoutTransaction(paymentConfig, {
-          userId: claim.user_id,
-          checkoutId: claim.claim_id,
-          createdAt: Number(claim.created_at),
-        });
     } catch {
       throw reconciliationError(
         "STRATA could not safely confirm an interrupted Strata+ checkout. Please try again later.",
       );
     }
     if (!remote) return null;
-    const remoteCatalog = checkoutCatalog(remote, claim.user_id, claim.claim_id);
-    const remotePriceId = cleanText(remote.data.items?.[0]?.price?.id, 100);
     const retirementValidation = validateCheckoutTransactionForRetirement(
       remote.data,
       paymentConfig,
@@ -295,12 +258,7 @@ function createBillingService({
     const alreadyRetired =
       claim.transaction_id === remote.transactionId &&
       validateRetiredPaddleCheckoutTransaction(remote.data).ok;
-    const currentCatalogValid =
-      Boolean(remoteCatalog) &&
-      (!current || remoteCatalog === "current") &&
-      (!legacyRecurring ||
-        remoteCatalog === "current" ||
-        (remoteCatalog === "legacy-recurring" && remotePriceId === claim.price_id));
+    const currentCatalogValid = currentCheckout(remote, claim.user_id, claim.claim_id);
     if (
       retirement
         ? !currentCatalogValid && !retirementValidation.ok && !alreadyRetired
@@ -310,14 +268,6 @@ function createBillingService({
         "STRATA could not safely validate an interrupted Strata+ checkout. Please contact support.",
         "PURCHASE_RECONCILIATION_INVALID",
       );
-    }
-    if (legacy && remoteCatalog === "current") {
-      const partial = await store.purchaseByTransaction(remote.transactionId);
-      if (partial?.user_id !== claim.user_id || purchaseCatalog(partial) !== "retired")
-        throw reconciliationError(
-          "STRATA could not safely match the interrupted checkout catalog. Please contact support.",
-          "PURCHASE_RECONCILIATION_INVALID",
-        );
     }
     if (!claim.transaction_id) {
       const recorded = await store.recordCheckoutCreationTransaction(
@@ -354,8 +304,7 @@ function createBillingService({
         "PURCHASE_RECONCILIATION_INVALID",
       );
     }
-    const remoteCatalog = checkoutCatalog(remote, claim.user_id, claim.claim_id);
-    if (purchase && !purchaseCatalog(purchase))
+    if (purchase && !currentPurchase(purchase))
       throw reconciliationError(
         "STRATA could not safely validate the interrupted checkout catalog. Please contact support.",
         "PURCHASE_RECONCILIATION_INVALID",
@@ -383,13 +332,8 @@ function createBillingService({
         purchase = await store.insertPendingPurchase({
           transactionId: remote.transactionId,
           userId: claim.user_id,
-          priceId:
-            remoteCatalog === "retired"
-              ? DEFAULT_PRICE_ID
-              : remoteCatalog === "legacy-recurring"
-                ? claim.price_id
-                : paymentConfig.priceId,
-          productId: remoteCatalog === "retired" ? DEFAULT_PRODUCT_ID : paymentConfig.productId,
+          priceId: paymentConfig.priceId,
+          productId: paymentConfig.productId,
           paddleStatus: remote.status,
           createdAt,
           updatedAt,
@@ -403,50 +347,20 @@ function createBillingService({
       return (await store.activeAccountDeletion(claim.user_id, now()))
         ? { state: "deletion" }
         : { state: "blocked" };
-    const sourceCatalog = purchaseCatalog(purchase);
-    if (!sourceCatalog)
+    if (!currentPurchase(purchase))
       throw reconciliationError(
         "STRATA could not safely validate the interrupted checkout catalog. Please contact support.",
         "PURCHASE_RECONCILIATION_INVALID",
       );
-    if (remote.status === "draft" && ["retired", "legacy-recurring"].includes(sourceCatalog))
-      purchase = await migrateReusableDraft(remote, purchase);
-    else if (
-      remote.status === "ready" &&
-      (sourceCatalog === "legacy-recurring" ||
-        (sourceCatalog === "retired" && remoteCatalog === "current"))
-    )
-      purchase = await migrateReusableDraft(remote, purchase);
-    else if (sourceCatalog !== remoteCatalog && remote.status !== "completed")
-      throw reconciliationError(
-        "STRATA could not safely match the interrupted checkout catalog. Please contact support.",
-        "PURCHASE_RECONCILIATION_INVALID",
-      );
     let entitled = false;
     if (remote.status === "completed") {
-      if (["retired", "legacy-recurring"].includes(sourceCatalog) && remoteCatalog === "current")
-        purchase = await completeCatalogMigration(
-          remote,
-          purchase,
-          eventTime(remote.data.updated_at, now()),
-        );
-      const legacy = remoteCatalog === "retired";
-      const validation = legacy
-        ? validateRetiredCompletedTransaction(remote.data, paymentConfig, {
-            userId: claim.user_id,
-            checkoutId: claim.claim_id,
-          })
-        : validateCompletedTransaction(remote.data, paymentConfig, {
-            priceId: purchase.price_id,
-            productId: paymentConfig.productId,
-          });
-      if (!validation.ok)
+      if (!validateCompletedTransaction(remote.data, paymentConfig).ok)
         throw reconciliationError(
           "STRATA could not safely validate a completed Strata+ checkout. Please contact support.",
           "PURCHASE_RECONCILIATION_INVALID",
         );
       const completedAt = eventTime(remote.data.updated_at, now());
-      const subscriptionId = legacy ? null : cleanText(remote.data.subscription_id, 100);
+      const subscriptionId = cleanText(remote.data.subscription_id, 100);
       const completed = await store.completePurchase(remote.transactionId, {
         customerId: cleanText(remote.data.customer_id, 100) || null,
         subscriptionId,
@@ -459,26 +373,6 @@ function createBillingService({
           "PURCHASE_RECONCILIATION_INVALID",
         );
       entitled = await hasCurrentPaidAccess(claim.user_id);
-    } else if (
-      sourceCatalog === "retired" &&
-      remoteCatalog === "retired" &&
-      PADDLE_CANCELABLE_STALE_STATUSES.has(remote.status)
-    ) {
-      try {
-        await cancelPaddleTransaction(paymentConfig, remote.transactionId);
-      } catch {
-        throw reconciliationError(
-          "STRATA could not safely close the retired checkout. Please try again later.",
-        );
-      }
-      await store.updatePurchaseStatus(
-        remote.transactionId,
-        "canceled",
-        Math.max(now(), Number(purchase.updated_at) + 1),
-      );
-      return (await releaseCheckoutClaim(claim, remote.transactionId))
-        ? { state: "replace" }
-        : { state: "waiting" };
     } else if (purchase.paddle_status !== remote.status) {
       await store.updatePurchaseStatus(
         remote.transactionId,
@@ -518,9 +412,7 @@ function createBillingService({
         "PURCHASE_RECONCILIATION_INVALID",
       );
     }
-    const sourceCatalog = purchase ? purchaseCatalog(purchase) : "",
-      checkoutId = cleanText(remote.data.custom_data?.strata_checkout_id, 100),
-      remoteCatalog = checkoutCatalog(remote, userId, checkoutId);
+    const checkoutId = cleanText(remote.data.custom_data?.strata_checkout_id, 100);
     const purchaseRetirement = purchase
       ? validateCheckoutTransactionForRetirement(remote.data, paymentConfig, {
           userId,
@@ -605,37 +497,12 @@ function createBillingService({
       return (await releaseCheckoutClaim(claim, remote.transactionId)) ? 0 : 1;
     }
     if (remote.status === "completed") {
-      if (purchase && !sourceCatalog)
+      if (purchase && !currentPurchase(purchase))
         throw reconciliationError(
           "STRATA could not safely validate the completed checkout catalog. Please contact support.",
           "PURCHASE_RECONCILIATION_INVALID",
         );
-      if (
-        purchase &&
-        ["retired", "legacy-recurring"].includes(sourceCatalog) &&
-        remoteCatalog === "current"
-      )
-        purchase = await completeCatalogMigration(
-          remote,
-          purchase,
-          eventTime(remote.data.updated_at, now()),
-        );
-      const legacy = remoteCatalog === "retired";
-      const validation = legacy
-        ? sourceCatalog && sourceCatalog !== "retired"
-          ? { ok: false }
-          : validateRetiredCompletedTransaction(remote.data, paymentConfig, { userId, checkoutId })
-        : validateCompletedTransaction(
-            remote.data,
-            paymentConfig,
-            remoteCatalog === "legacy-recurring"
-              ? {
-                  priceId: purchase?.price_id || claim.price_id,
-                  productId: paymentConfig.productId,
-                }
-              : undefined,
-          );
-      if (!validation.ok)
+      if (!validateCompletedTransaction(remote.data, paymentConfig).ok)
         throw reconciliationError(
           "STRATA could not safely validate a completed Strata+ checkout. Please contact support.",
           "PURCHASE_RECONCILIATION_INVALID",
@@ -647,12 +514,8 @@ function createBillingService({
             {
               transactionId: remote.transactionId,
               userId,
-              priceId: legacy
-                ? DEFAULT_PRICE_ID
-                : remoteCatalog === "legacy-recurring"
-                  ? claim.price_id
-                  : paymentConfig.priceId,
-              productId: legacy ? DEFAULT_PRODUCT_ID : paymentConfig.productId,
+              priceId: paymentConfig.priceId,
+              productId: paymentConfig.productId,
               paddleStatus: remote.status,
               createdAt: eventTime(remote.data.created_at, Number(claim.created_at)),
               updatedAt: stamp,
@@ -666,7 +529,7 @@ function createBillingService({
           );
       }
       const completedAt = eventTime(remote.data.updated_at, now());
-      const subscriptionId = legacy ? null : cleanText(remote.data.subscription_id, 100);
+      const subscriptionId = cleanText(remote.data.subscription_id, 100);
       const completed = await store.completePurchase(remote.transactionId, {
         customerId: cleanText(remote.data.customer_id, 100) || null,
         subscriptionId,
@@ -709,50 +572,21 @@ function createBillingService({
       const transactionId = cleanText(data.id, 100);
       const purchase = await store.purchaseByTransaction(transactionId);
       const claimedUser = cleanText(data.custom_data?.strata_user_id, 100);
-      const checkoutId = cleanText(data.custom_data?.strata_checkout_id, 100);
-      const sourceCatalog = purchase ? purchaseCatalog(purchase) : "";
-      const legacyValidation =
-        sourceCatalog === "retired"
-          ? validateRetiredCompletedTransaction(data, paymentConfig, {
-              userId: purchase?.user_id,
-              checkoutId,
-            })
-          : { ok: false, reason: "catalog" };
-      const recurringValidation =
-        sourceCatalog === "current"
+      const validation =
+        purchase && currentPurchase(purchase)
           ? validateCompletedTransaction(data, paymentConfig)
-          : sourceCatalog === "legacy-recurring"
-            ? validateCompletedTransaction(data, paymentConfig, {
-                priceId: purchase?.price_id,
-                productId: paymentConfig.productId,
-              })
-            : legacyValidation;
-      const validation = recurringValidation;
-      if (
-        purchase &&
-        ["retired", "legacy-recurring"].includes(sourceCatalog) &&
-        validateCompletedTransaction(data, paymentConfig).ok &&
-        claimedUser === purchase.user_id
-      ) {
-        const remote = { transactionId, status: "completed", data };
-        const completed = await completeCatalogMigration(remote, purchase, occurredAt);
-        outcome =
-          completed.subscription_id === cleanText(data.subscription_id, 100)
-            ? "subscription-payment-recorded"
-            : "rejected:subscription-link";
-      } else if (purchase && validation.ok && claimedUser === purchase.user_id) {
+          : { ok: false, reason: "catalog" };
+      if (purchase && validation.ok && claimedUser === purchase.user_id) {
         const subscriptionId = cleanText(data.subscription_id, 100);
         const completed = await store.completePurchase(transactionId, {
           customerId: cleanText(data.customer_id, 100) || null,
-          subscriptionId: sourceCatalog === "retired" ? null : subscriptionId,
+          subscriptionId,
           completedAt: eventTime(data.updated_at || event.occurred_at, timestamp),
           updatedAt: occurredAt,
         });
         outcome =
-          completed?.subscription_id === (sourceCatalog === "retired" ? null : subscriptionId)
-            ? sourceCatalog === "retired"
-              ? "lifetime-payment-recorded"
-              : "subscription-payment-recorded"
+          completed?.subscription_id === subscriptionId
+            ? "subscription-payment-recorded"
             : "rejected:subscription-link";
       } else
         outcome = purchase
@@ -814,49 +648,12 @@ function createBillingService({
           eventOccurredAt: occurredAt,
           updatedAt: timestamp,
         };
-        const linkedPurchase = await store.purchaseByTransaction(existing.transaction_id),
-          ownedPurchase =
-            linkedPurchase?.user_id === existing.user_id &&
-            linkedPurchase.subscription_id === existing.subscription_id
-              ? linkedPurchase
-              : null;
-        const transition = subscriptionCatalogTransition(
-          existing,
-          ownedPurchase,
-          validation,
-          paymentConfig,
-        );
-        if (transition === "reject") outcome = "rejected:catalog";
-        else {
-          const migratingPurchase = transition === "migrate" ? ownedPurchase : null;
-          const saved = migratingPurchase
-            ? await store.updatePaddleSubscriptionCatalog(existing, migratingPurchase, update)
-            : await store.updatePaddleSubscription(update);
-          if (migratingPurchase && !saved) {
-            const [latest, latestPurchase] = await Promise.all([
-              store.subscriptionById(subscriptionId),
-              store.purchaseByTransaction(existing.transaction_id),
-            ]);
-            if (
-              latest &&
-              latestPurchase?.subscription_id === latest.subscription_id &&
-              latestPurchase.price_id === latest.price_id &&
-              latestPurchase.product_id === latest.product_id &&
-              Number(latest.event_occurred_at) >= occurredAt
-            )
-              outcome = "subscription-stale";
-            else
-              throw Object.assign(
-                new Error("Subscription catalog migration conflicted. Please retry."),
-                { status: 503, code: "SUBSCRIPTION_CATALOG_MIGRATION_PENDING" },
-              );
-          } else
-            outcome = saved
-              ? validation.entitled
-                ? "subscription-updated"
-                : "subscription-catalog-changed"
-              : "subscription-stale";
-        }
+        const saved = await store.updatePaddleSubscription(update);
+        outcome = saved
+          ? validation.entitled
+            ? "subscription-updated"
+            : "subscription-catalog-changed"
+          : "subscription-stale";
       } else if (!existing) {
         // Updates can arrive before subscription.created. A retry after the
         // creation link is stored is safer than acknowledging and losing the
@@ -939,15 +736,6 @@ function createBillingService({
     }
     const outcome = await processPaddleEvent(event);
     json(res, 200, { ok: true, outcome });
-  }
-
-  /** @param {import("./domain-types").HttpResponse} res */
-  function retiredTrial(res) {
-    // Installed apps from earlier builds may still offer the old trial button.
-    json(res, 410, {
-      error: "The free Strata+ trial is no longer offered. Subscribe to use Strata+.",
-      code: "TRIAL_RETIRED",
-    });
   }
 
   // Never take a second payment: a member whose Strata+ comes from the App Store is told so.
@@ -1283,13 +1071,6 @@ function createBillingService({
       path: "/api/billing/config",
       public: true,
       handler: ({ res }) => json(res, 200, publicPaymentConfig(paymentConfig)),
-    },
-    // Installed apps from earlier builds may still offer the old trial button.
-    {
-      method: "POST",
-      path: "/api/discovery/trial",
-      public: true,
-      handler: ({ res }) => retiredTrial(res),
     },
     {
       method: "POST",

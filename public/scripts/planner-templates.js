@@ -7,6 +7,7 @@
   root.StrataPlannerTemplates = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   const TEMPLATE_PREFIX = "strata_week_template_v1:";
   const MAX_TEMPLATES = 12;
@@ -64,12 +65,9 @@
       const templates = weekTemplates();
       StrataHtml.setHtml(
         el("weekTemplateSelect"),
-        '<option value="">Choose a saved week</option>' +
-          templates
-            .map(
-              (entry) => StrataHtml.html`<option value="${entry.key}">${entry.data.name}</option>`,
-            )
-            .join(""),
+        html`<option value="">Choose a saved week</option>${templates.map(
+          (entry) => html`<option value="${entry.key}">${entry.data.name}</option>`,
+        )}`,
       );
       el("weekTemplateSelect").value = "";
       el("previewWeekTemplate").disabled = true;

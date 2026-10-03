@@ -11,6 +11,7 @@
   root.StrataAccountRender = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (logic, StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   function createRenderer({
     documentImpl = globalThis.document,
@@ -351,14 +352,13 @@
         others = sessions.filter((session) => session?.current !== true);
       StrataHtml.setHtml(
         list,
-        sessions
-          .map((session) => {
-            const current = session?.current === true,
-              id = logic.escapeHtml(session?.id || "");
-            return `<li><div><strong>${current ? "This session" : "Other session"}</strong><small>Signed in ${logic.escapeHtml(logic.sessionDate(session?.createdAt))} · Expires ${logic.escapeHtml(logic.sessionDate(session?.expiresAt))}</small></div>${current ? '<span class="account-current-session">Current</span>' : `<button type="button" data-revoke-session="${id}" aria-label="Sign out session created ${logic.escapeHtml(logic.sessionDate(session?.createdAt))}">Sign out</button>`}</li>`;
-          })
-          .join("") ||
-          '<li class="account-session-loading">No active sessions were found. Refresh this page before making account changes.</li>',
+        sessions.length
+          ? sessions.map((session) => {
+              const current = session?.current === true,
+                created = logic.sessionDate(session?.createdAt);
+              return html`<li><div><strong>${current ? "This session" : "Other session"}</strong><small>Signed in ${created} · Expires ${logic.sessionDate(session?.expiresAt)}</small></div>${current ? html`<span class="account-current-session">Current</span>` : html`<button type="button" data-revoke-session="${session?.id || ""}" aria-label="Sign out session created ${created}">Sign out</button>`}</li>`;
+            })
+          : html`<li class="account-session-loading">No active sessions were found. Refresh this page before making account changes.</li>`,
       );
       list.setAttribute("aria-busy", "false");
       const revokeAll = el("accountRevokeOtherSessions");
@@ -371,7 +371,7 @@
       list.setAttribute("aria-busy", "true");
       StrataHtml.setHtml(
         list,
-        '<li class="account-session-loading">Checking active sessions…</li>',
+        html`<li class="account-session-loading">Checking active sessions…</li>`,
       );
       el("accountRevokeOtherSessions").disabled = true;
     }
@@ -380,7 +380,7 @@
       list.setAttribute("aria-busy", "false");
       StrataHtml.setHtml(
         list,
-        '<li class="account-session-loading">Active sessions could not be loaded. Nothing was changed.</li>',
+        html`<li class="account-session-loading">Active sessions could not be loaded. Nothing was changed.</li>`,
       );
       showAccountControlStatus(
         "accountSessionStatus",

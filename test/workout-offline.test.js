@@ -4,8 +4,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { readFileSync } = require("node:fs");
 const { join } = require("node:path");
+const vm = require("node:vm");
+const W = require("../public/scripts/workout-core");
 
-const BUILD = "9.5.0";
+const BUILD = "9.6.0";
 const ROOT = join(__dirname, ".."),
   read = (path) => readFileSync(join(ROOT, path), "utf8");
 
@@ -114,4 +116,94 @@ test("offline input is checked per field, completed sets are read-only, and a fa
   assert.match(offline, /W\.cleanNote\(event\.target\.value\)/);
   assert.match(html, /id="finishOfflineCounts"/);
   assert.match(html, /To change a completed set, uncheck Completed first\./);
+});
+
+test("the offline page renders member text escaped exactly once through the real page script", async () => {
+  const hostile = '<b>"Tom & Jerry"</b>',
+    escaped = "&lt;b&gt;&quot;Tom &amp; Jerry&quot;&lt;/b&gt;",
+    ownerId = "account:member-1",
+    draftKey = `${W.draftPrefix(ownerId)}context-1:offline-workout`;
+  const workout = {
+    id: "offline-workout",
+    title: "Monday workout",
+    date: "2026-09-28",
+    status: "active",
+    startedAt: Date.now() - 60_000,
+    entries: [
+      {
+        id: "entry-1",
+        exerciseId: "press",
+        measurement: "reps",
+        loadType: "external",
+        unit: "kg",
+        effortType: "rpe",
+        prescribedReps: hostile,
+        note: hostile,
+        sets: [{ reps: 8, weight: 40, seconds: null, effort: null, completed: false }],
+      },
+    ],
+  };
+  const storage = new Map([
+    [
+      "strata_workout_offline_context_v1",
+      JSON.stringify({
+        version: 1,
+        ownerId,
+        userId: "member-1",
+        contextId: "context-1",
+        draftKey,
+        authorizedUntil: Date.now() + 60_000,
+      }),
+    ],
+    [draftKey, JSON.stringify({ ownerId, contextId: "context-1", workout, dirty: true })],
+  ]);
+  const elements = new Map(),
+    element = (id) => {
+      if (!elements.has(id))
+        elements.set(id, {
+          id,
+          hidden: false,
+          disabled: false,
+          textContent: "",
+          innerHTML: "",
+          dataset: {},
+          addEventListener() {},
+          focus() {},
+        });
+      return elements.get(id);
+    };
+  const context = {
+    document: { getElementById: element, addEventListener() {}, visibilityState: "visible" },
+    localStorage: {
+      getItem: (key) => storage.get(key) ?? null,
+      setItem: (key, value) => storage.set(key, value),
+    },
+    fetch: async () => ({ ok: true, json: async () => [{ id: "press", name: hostile }] }),
+    window: { addEventListener() {} },
+    navigator: { onLine: true },
+    setInterval: () => 1,
+    setTimeout: () => 1,
+    StrataWorkout: W,
+  };
+  context.globalThis = context;
+  vm.createContext(context);
+  vm.runInContext(read("public/scripts/html.js"), context, { filename: "html.js" });
+  vm.runInContext(read("public/scripts/workout-offline.js"), context, {
+    filename: "workout-offline.js",
+  });
+  for (let index = 0; index < 5; index++) await new Promise(setImmediate);
+  assert.equal(element("offlineSession").hidden, false);
+  const markup = element("offlineEntries").innerHTML;
+  assert.ok(markup.includes(`<h3>${escaped}</h3>`), "the exercise name is text");
+  assert.ok(markup.includes(`<p>${escaped} planned · reps · external load in kg</p>`));
+  assert.ok(markup.includes(`data-note>${escaped}</textarea>`), "the private note is text");
+  assert.match(
+    markup,
+    /<input type="number" min="0" max="1000" step="0\.01" inputmode="decimal" data-value="weight" value="40" \/>/,
+  );
+  assert.match(
+    markup,
+    /<input type="number" min="1" max="10" step="0\.5" inputmode="decimal" data-value="effort"/,
+  );
+  assert.doesNotMatch(markup, /&amp;(?:lt|gt|quot|amp|#39);/, "escaped once, never twice");
 });

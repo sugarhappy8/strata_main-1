@@ -133,7 +133,6 @@ async function start() {
       RESEND_API_KEY: "",
       PADDLE_PRODUCT_ID: PRODUCT_ID,
       PADDLE_PRICE_ID: PRICE_ID,
-      PADDLE_LEGACY_RECURRING_PRICE_IDS: "",
       PADDLE_CLIENT_TOKEN: "live_browser_token_for_apple_paddle_test",
       PADDLE_API_KEY: "pdl_live_apikey_01applepaddlefixture00000_fixture_secret_123",
       PADDLE_WEBHOOK_SECRET: "pdl_ntfset_live_apple_paddle_test_secret",

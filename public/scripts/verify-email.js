@@ -101,15 +101,15 @@ function setVerificationPurpose(value) {
   StrataHtml.setHtml(
     el("verificationRestart"),
     verificationPurpose === "login"
-      ? 'Start sign-in again <span aria-hidden="true">→</span>'
-      : 'Restart signup <span aria-hidden="true">→</span>',
+      ? StrataHtml.html`Start sign-in again <span aria-hidden="true">→</span>`
+      : StrataHtml.html`Restart signup <span aria-hidden="true">→</span>`,
   );
   el("verificationSignIn").href = accountLocation(next, "login");
   StrataHtml.setHtml(
     el("verificationSignIn"),
     verificationPurpose === "login"
-      ? 'Use another account <span aria-hidden="true">→</span>'
-      : 'Sign in instead <span aria-hidden="true">→</span>',
+      ? StrataHtml.html`Use another account <span aria-hidden="true">→</span>`
+      : StrataHtml.html`Sign in instead <span aria-hidden="true">→</span>`,
   );
 }
 

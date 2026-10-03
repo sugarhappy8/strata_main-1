@@ -18,7 +18,6 @@ test("strict checkJs covers provider, transport, storage, and service compositio
   for (const file of [
     "src/domain-types.d.ts",
     "src/http.js",
-    "src/legacy-checkout.js",
     "src/paddle-catalog.js",
     "src/payments.js",
     "src/plans.d.ts",

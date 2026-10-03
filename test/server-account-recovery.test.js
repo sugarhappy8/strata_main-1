@@ -30,10 +30,6 @@ let appErrors = "";
 let transactionSequence = 0;
 let requestAddressOctet = 10;
 let malformedCancellationResponses = 0;
-let failedItemReplacementResponses = 0;
-let malformedItemReplacementResponses = 0;
-let invalidItemReplacementPrices = [];
-let readyItemReplacementResponses = 0;
 let transactionListHook = null;
 let transactionListResults = [];
 const deliveries = [];
@@ -119,53 +115,6 @@ async function startPaddle() {
         transaction.custom_data = null;
         transaction.checkout = null;
         transaction.updated_at = new Date().toISOString();
-        res.writeHead(200, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ data: transaction }));
-        return;
-      }
-      if (
-        transaction?.status === "draft" &&
-        Array.isArray(body?.items) &&
-        body.items.length === 1 &&
-        body.items[0]?.price_id === PRICE_ID &&
-        body.items[0]?.quantity === 1
-      ) {
-        if (failedItemReplacementResponses > 0) {
-          failedItemReplacementResponses -= 1;
-          res.writeHead(502, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: { detail: "temporary failure" } }));
-          return;
-        }
-        const invalidPrice = invalidItemReplacementPrices.shift();
-        transaction.items = [
-          {
-            quantity: 1,
-            price: {
-              id: PRICE_ID,
-              product_id: PRODUCT_ID,
-              billing_cycle: { interval: "month", frequency: 1 },
-              ...(invalidPrice === "missing"
-                ? {}
-                : {
-                    unit_price: {
-                      amount: invalidPrice === "wrong" ? "99" : "299",
-                      currency_code: "USD",
-                    },
-                  }),
-            },
-          },
-        ];
-        if (readyItemReplacementResponses > 0) {
-          readyItemReplacementResponses -= 1;
-          transaction.status = "ready";
-        }
-        transaction.updated_at = new Date().toISOString();
-        if (malformedItemReplacementResponses > 0) {
-          malformedItemReplacementResponses -= 1;
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ data: { ...transaction, status: "paid" } }));
-          return;
-        }
         res.writeHead(200, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ data: transaction }));
         return;
@@ -810,67 +759,7 @@ test("password recovery is private, preserves account data, and revokes every se
   assert.equal(replayedReset.data.code, "INVALID_RESET_LINK");
 });
 
-test("monthly checkout safely upgrades an abandoned 7.4 draft to the current recurring catalog", async () => {
-  const account = await verifiedSignup({
-    name: "Legacy Checkout Upgrade",
-    email: "legacy-checkout-upgrade@example.test",
-    password: "legacy-checkout-upgrade-password-123",
-  });
-  const transactionId = `txn_${"l".repeat(26)}`;
-  const checkoutId = "legacy_checkout_upgrade";
-  const oldTimestamp = Date.now() - 31 * 60 * 1000;
-  paddleTransactions.set(
-    transactionId,
-    paddleTransactionFixture({
-      id: transactionId,
-      userId: account.user.id,
-      checkoutId,
-      status: "draft",
-      priceId: LEGACY_PRICE_ID,
-      billingCycle: null,
-    }),
-  );
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_purchases
-      (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at)
-      VALUES(?,?,?,?,NULL,NULL,'draft',NULL,NULL,NULL,?,?)`,
-    ).run(transactionId, account.user.id, LEGACY_PRICE_ID, PRODUCT_ID, oldTimestamp, oldTimestamp);
-    db.close();
-  }
-
-  const paddleBefore = paddleRequests.length;
-  readyItemReplacementResponses = 1;
-  const replacement = await checkout(account);
-  assert.equal(replacement.response.status, 200);
-  assert.equal(replacement.data.transactionId, transactionId);
-  assert.equal(replacement.data.reused, true);
-  assert.deepEqual(
-    paddleRequests.slice(paddleBefore).map((entry) => entry.method),
-    ["GET", "PATCH"],
-  );
-  assert.equal(
-    paddleTransactions.get(transactionId).status,
-    "ready",
-    "the migrated response may safely advance to Paddle's ready state",
-  );
-  assert.equal(paddleTransactions.get(transactionId).items[0].price.id, PRICE_ID);
-  const db = database({ readOnly: true });
-  assert.deepEqual(
-    {
-      ...db
-        .prepare(
-          "SELECT price_id,product_id,paddle_status FROM paddle_purchases WHERE transaction_id=?",
-        )
-        .get(transactionId),
-    },
-    { price_id: PRICE_ID, product_id: PRODUCT_ID, paddle_status: "ready" },
-  );
-  db.close();
-});
-
-test("legacy checkout migration rejects unknown catalogs and recovers lost provider responses", async () => {
+test("checkout switches off an abandoned checkout on another price, then starts a current one", async () => {
   const arbitrary = await verifiedSignup({
     name: "Unknown Catalog",
     email: "unknown-catalog@example.test",
@@ -898,268 +787,41 @@ test("legacy checkout migration rejects unknown catalogs and recovers lost provi
   }
   const arbitraryBefore = paddleRequests.length,
     arbitraryResult = await checkout(arbitrary);
-  assert.equal(arbitraryResult.response.status, 503);
-  assert.equal(arbitraryResult.data.code, "PURCHASE_RECONCILIATION_INVALID");
-  assert.equal(
-    paddleRequests.length,
-    arbitraryBefore,
-    "an unrecognized monthly pair is rejected before any provider request or mutation",
-  );
-
-  const failed = await verifiedSignup({
-    name: "Failed Migration",
-    email: "failed-migration@example.test",
-    password: "failed-migration-password-123",
-  });
-  const failedTransactionId = `txn_${"f".repeat(26)}`;
-  paddleTransactions.set(
-    failedTransactionId,
-    paddleTransactionFixture({
-      id: failedTransactionId,
-      userId: failed.user.id,
-      checkoutId: "failed_migration",
-      status: "draft",
-      priceId: LEGACY_PRICE_ID,
-      billingCycle: null,
-    }),
-  );
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_purchases (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,'draft',NULL,NULL,NULL,?,?)`,
-    ).run(failedTransactionId, failed.user.id, LEGACY_PRICE_ID, PRODUCT_ID, old, old);
-    db.close();
-  }
-  failedItemReplacementResponses = 1;
-  assert.equal((await checkout(failed)).response.status, 503);
-  {
-    const db = database({ readOnly: true }),
-      row = db
-        .prepare("SELECT price_id,paddle_status FROM paddle_purchases WHERE transaction_id=?")
-        .get(failedTransactionId);
-    db.close();
-    assert.deepEqual(
-      { ...row },
-      { price_id: LEGACY_PRICE_ID, paddle_status: "draft" },
-      "a failed provider PATCH cannot mutate the local ledger",
-    );
-  }
-
-  const retry = await verifiedSignup({
-    name: "Retry Migration",
-    email: "retry-migration@example.test",
-    password: "retry-migration-password-123",
-  });
-  const retryTransactionId = `txn_${"m".repeat(26)}`;
-  paddleTransactions.set(
-    retryTransactionId,
-    paddleTransactionFixture({
-      id: retryTransactionId,
-      userId: retry.user.id,
-      checkoutId: "retry_migration",
-      status: "draft",
-      priceId: LEGACY_PRICE_ID,
-      billingCycle: null,
-    }),
-  );
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_purchases (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,'draft',NULL,NULL,NULL,?,?)`,
-    ).run(retryTransactionId, retry.user.id, LEGACY_PRICE_ID, PRODUCT_ID, old, old);
-    db.close();
-  }
-  malformedItemReplacementResponses = 1;
-  const malformed = await checkout(retry);
-  assert.equal(malformed.response.status, 503, "a malformed success response is not trusted");
-  {
-    const db = database({ readOnly: true }),
-      row = db
-        .prepare("SELECT price_id,paddle_status FROM paddle_purchases WHERE transaction_id=?")
-        .get(retryTransactionId);
-    db.close();
-    assert.deepEqual(
-      { ...row },
-      { price_id: LEGACY_PRICE_ID, paddle_status: "draft" },
-      "provider success with an invalid response leaves the local row retryable",
-    );
-  }
-  const retryBefore = paddleRequests.length,
-    recovered = await checkout(retry);
-  assert.equal(recovered.response.status, 200);
-  assert.equal(recovered.data.transactionId, retryTransactionId);
+  assert.equal(arbitraryResult.response.status, 201, JSON.stringify(arbitraryResult.data));
   assert.deepEqual(
-    paddleRequests.slice(retryBefore).map((entry) => entry.method),
-    ["GET"],
-    "a retry detects the provider-current/local-legacy split without another PATCH",
+    paddleRequests
+      .slice(arbitraryBefore)
+      .filter((entry) => entry.url === `/transactions/${arbitraryTransactionId}`)
+      .map((entry) => entry.method),
+    ["GET", "PATCH"],
+    "the old checkout is read, checked against its recorded price, and switched off",
   );
-  {
-    const db = database({ readOnly: true }),
-      row = db
-        .prepare(
-          "SELECT price_id,product_id,paddle_status FROM paddle_purchases WHERE transaction_id=?",
-        )
-        .get(retryTransactionId);
-    db.close();
-    assert.deepEqual(
-      { ...row },
-      { price_id: PRICE_ID, product_id: PRODUCT_ID, paddle_status: "draft" },
-    );
-  }
-});
-
-test("legacy checkout migration never exposes a wrong or missing current price", async () => {
-  for (const invalidPrice of ["wrong", "missing"]) {
-    const account = await verifiedSignup({
-      name: `Invalid Price ${invalidPrice}`,
-      email: `invalid-price-${invalidPrice}@example.test`,
-      password: "invalid-price-migration-password-123",
-    });
-    const transactionId = `txn_${(invalidPrice === "wrong" ? "w" : "n").repeat(26)}`,
-      old = Date.now() - 31 * 60 * 1000;
-    paddleTransactions.set(
-      transactionId,
-      paddleTransactionFixture({
-        id: transactionId,
-        userId: account.user.id,
-        checkoutId: `invalid_price_${invalidPrice}`,
-        status: "draft",
-        priceId: LEGACY_PRICE_ID,
-        billingCycle: null,
-      }),
-    );
-    {
-      const db = database();
-      db.prepare(
-        `INSERT INTO paddle_purchases (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,'draft',NULL,NULL,NULL,?,?)`,
-      ).run(transactionId, account.user.id, LEGACY_PRICE_ID, PRODUCT_ID, old, old);
-      db.close();
-    }
-    invalidItemReplacementPrices.push(invalidPrice);
-    const result = await checkout(account);
-    assert.equal(result.response.status, 503, `${invalidPrice} provider price must fail closed`);
-    assert.equal(result.data.code, "PURCHASE_RECONCILIATION_INVALID");
-    const db = database({ readOnly: true }),
-      purchase = db
-        .prepare("SELECT price_id,paddle_status FROM paddle_purchases WHERE transaction_id=?")
-        .get(transactionId);
-    db.close();
-    assert.deepEqual(
-      { ...purchase },
-      { price_id: LEGACY_PRICE_ID, paddle_status: "draft" },
-      "the local catalog stays retryable after an invalid provider response",
-    );
-  }
-});
-
-test("completed current and delayed exact-legacy payments recover without losing entitlement", async () => {
-  const migrated = await verifiedSignup({
-    name: "Completed Migration",
-    email: "completed-migration@example.test",
-    password: "completed-migration-password-123",
-  });
-  const migratedTransactionId = `txn_${"c".repeat(26)}`,
-    old = Date.now() - 31 * 60 * 1000;
-  paddleTransactions.set(
-    migratedTransactionId,
-    paddleTransactionFixture({
-      id: migratedTransactionId,
-      userId: migrated.user.id,
-      checkoutId: "completed_migration",
-      status: "draft",
-      priceId: LEGACY_PRICE_ID,
-      billingCycle: null,
-    }),
-  );
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_purchases (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,'draft',NULL,NULL,NULL,?,?)`,
-    ).run(migratedTransactionId, migrated.user.id, LEGACY_PRICE_ID, PRODUCT_ID, old, old);
-    db.close();
-  }
-  const migratedEvent = completedEvent(migratedTransactionId, migrated.user.id, "catalogdone");
-  const migratedResult = await signedWebhook(migratedEvent);
-  assert.equal(migratedResult.response.status, 200);
-  assert.equal(migratedResult.data.outcome, "subscription-payment-recorded");
-  {
-    const db = database({ readOnly: true }),
-      row = db
-        .prepare(
-          "SELECT price_id,product_id,paddle_status,completed_at,subscription_id FROM paddle_purchases WHERE transaction_id=?",
-        )
-        .get(migratedTransactionId);
-    assert.equal(row.price_id, PRICE_ID);
-    assert.equal(row.product_id, PRODUCT_ID);
-    assert.equal(row.paddle_status, "completed");
-    assert.ok(row.completed_at);
-    assert.equal(row.subscription_id, subscriptionId(migratedTransactionId));
-    assert.equal(
-      db
-        .prepare("SELECT COUNT(*) AS count FROM paddle_webhook_events WHERE event_id=?")
-        .get(migratedEvent.event_id).count,
-      1,
-    );
-    db.close();
-  }
-
-  const conflicted = await verifiedSignup({
-    name: "Completion Conflict",
-    email: "completion-conflict@example.test",
-    password: "completion-conflict-password-123",
-  });
-  const conflictTransactionId = `txn_${"x".repeat(26)}`;
-  paddleTransactions.set(
-    conflictTransactionId,
-    paddleTransactionFixture({
-      id: conflictTransactionId,
-      userId: conflicted.user.id,
-      checkoutId: "completion_conflict",
-      status: "draft",
-      priceId: LEGACY_PRICE_ID,
-      billingCycle: null,
-    }),
-  );
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_purchases (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,?,NULL,'draft',NULL,NULL,NULL,?,?)`,
-    ).run(
-      conflictTransactionId,
-      conflicted.user.id,
-      LEGACY_PRICE_ID,
-      PRODUCT_ID,
-      "ctm_00000000000000000000000099",
-      old,
-      old,
-    );
-    db.close();
-  }
-  const conflictEvent = completedEvent(conflictTransactionId, conflicted.user.id, "catalograce"),
-    conflictResult = await signedWebhook(conflictEvent);
-  assert.equal(
-    conflictResult.response.status,
-    503,
-    "an atomic migration conflict asks Paddle to retry",
-  );
+  const retired = paddleTransactions.get(arbitraryTransactionId);
+  assert.equal(retired.billing_details.enable_checkout, false);
+  assert.equal(retired.custom_data, null);
   {
     const db = database({ readOnly: true });
-    assert.equal(
-      db
-        .prepare("SELECT price_id FROM paddle_purchases WHERE transaction_id=?")
-        .get(conflictTransactionId).price_id,
-      LEGACY_PRICE_ID,
-    );
-    assert.equal(
-      db
-        .prepare("SELECT COUNT(*) AS count FROM paddle_webhook_events WHERE event_id=?")
-        .get(conflictEvent.event_id).count,
-      0,
-      "an uncommitted migration is never marked processed",
+    assert.deepEqual(
+      {
+        ...db
+          .prepare(
+            "SELECT revocation_reason,access_revoked_at IS NOT NULL AS revoked FROM paddle_purchases WHERE transaction_id=?",
+          )
+          .get(arbitraryTransactionId),
+      },
+      { revocation_reason: "checkout_disabled", revoked: 1 },
     );
     db.close();
   }
+  assert.notEqual(
+    arbitraryResult.data.transactionId,
+    arbitraryTransactionId,
+    "the new checkout is a fresh one on the current price",
+  );
+});
 
+test("late completions on the retired 7.4 or an unknown one-time catalog are refused", async () => {
+  const old = Date.now() - 31 * 60 * 1000;
   const lifetime = await verifiedSignup({
     name: "Delayed Lifetime",
     email: "delayed-lifetime@example.test",
@@ -1190,11 +852,11 @@ test("completed current and delayed exact-legacy payments recover without losing
   lifetimeEvent.data.items[0].price.billing_cycle = null;
   const lifetimeResult = await signedWebhook(lifetimeEvent);
   assert.equal(lifetimeResult.response.status, 200);
-  assert.equal(lifetimeResult.data.outcome, "lifetime-payment-recorded");
+  assert.equal(lifetimeResult.data.outcome, "rejected:catalog");
   assert.equal(
     (await request("/api/me", { headers: { Cookie: lifetime.cookie } })).data.user.discovery.active,
-    true,
-    "a strictly validated paid 7.4 completion remains grandfathered",
+    false,
+    "an unfinished 7.4 checkout is no longer completed",
   );
 
   const unknown = await verifiedSignup({
@@ -1228,235 +890,6 @@ test("completed current and delayed exact-legacy payments recover without losing
   unknownEvent.data.items[0].price.billing_cycle = null;
   const unknownResult = await signedWebhook(unknownEvent);
   assert.equal(unknownResult.data.outcome, "rejected:catalog");
-});
-
-test("a surviving 7.4 checkout claim and purchase migrate together", async () => {
-  const account = await verifiedSignup({
-    name: "Legacy Claim",
-    email: "legacy-claim@example.test",
-    password: "legacy-claim-password-123",
-  });
-  const transactionId = `txn_${"q".repeat(26)}`,
-    claimId = "legacy_claim_recovery",
-    old = Date.now() - 31 * 60 * 1000;
-  paddleTransactions.set(
-    transactionId,
-    paddleTransactionFixture({
-      id: transactionId,
-      userId: account.user.id,
-      checkoutId: claimId,
-      status: "draft",
-      priceId: LEGACY_PRICE_ID,
-      billingCycle: null,
-    }),
-  );
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_purchases (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,'draft',NULL,NULL,NULL,?,?)`,
-    ).run(transactionId, account.user.id, LEGACY_PRICE_ID, PRODUCT_ID, old, old);
-    db.prepare(
-      `INSERT INTO paddle_checkout_claims (user_id,price_id,claim_id,transaction_id,expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`,
-    ).run(account.user.id, LEGACY_PRICE_ID, claimId, transactionId, Date.now() + 60_000, old, old);
-    db.close();
-  }
-  const before = paddleRequests.length,
-    result = await checkout(account);
-  assert.equal(result.response.status, 200);
-  assert.equal(result.data.transactionId, transactionId);
-  assert.equal(result.data.recovered, true);
-  assert.deepEqual(
-    paddleRequests.slice(before).map((entry) => entry.method),
-    ["GET", "PATCH"],
-  );
-  {
-    const db = database({ readOnly: true });
-    assert.equal(
-      db.prepare("SELECT price_id FROM paddle_purchases WHERE transaction_id=?").get(transactionId)
-        .price_id,
-      PRICE_ID,
-    );
-    assert.equal(
-      db
-        .prepare("SELECT COUNT(*) AS count FROM paddle_checkout_claims WHERE user_id=?")
-        .get(account.user.id).count,
-      0,
-    );
-    db.close();
-  }
-
-  const paid = await verifiedSignup({
-    name: "Legacy Claim Paid",
-    email: "legacy-claim-paid@example.test",
-    password: "legacy-claim-paid-password-123",
-  });
-  const paidTransactionId = `txn_${"z".repeat(26)}`,
-    paidClaimId = "legacy_claim_paid";
-  const paidRemote = paddleTransactionFixture({
-    id: paidTransactionId,
-    userId: paid.user.id,
-    checkoutId: paidClaimId,
-    status: "completed",
-    priceId: LEGACY_PRICE_ID,
-    billingCycle: null,
-  });
-  paidRemote.customer_id = "ctm_00000000000000000000000001";
-  paidRemote.subscription_id = null;
-  paddleTransactions.set(paidTransactionId, paidRemote);
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_purchases (transaction_id,user_id,price_id,product_id,customer_id,subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,NULL,NULL,'draft',NULL,NULL,NULL,?,?)`,
-    ).run(paidTransactionId, paid.user.id, LEGACY_PRICE_ID, PRODUCT_ID, old, old);
-    db.prepare(
-      `INSERT INTO paddle_checkout_claims (user_id,price_id,claim_id,transaction_id,expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`,
-    ).run(
-      paid.user.id,
-      LEGACY_PRICE_ID,
-      paidClaimId,
-      paidTransactionId,
-      Date.now() + 60_000,
-      old,
-      old,
-    );
-    db.close();
-  }
-  const paidBefore = paddleRequests.length,
-    paidResult = await checkout(paid);
-  assert.equal(paidResult.response.status, 409);
-  assert.equal(paidResult.data.code, "ALREADY_ENTITLED");
-  assert.deepEqual(
-    paddleRequests.slice(paidBefore).map((entry) => entry.method),
-    ["GET"],
-    "provider-fetch recovery validates the exact retired completion without mutation",
-  );
-  {
-    const db = database({ readOnly: true }),
-      row = db
-        .prepare(
-          "SELECT price_id,paddle_status,completed_at,subscription_id FROM paddle_purchases WHERE transaction_id=?",
-        )
-        .get(paidTransactionId);
-    assert.equal(row.price_id, LEGACY_PRICE_ID);
-    assert.equal(row.paddle_status, "completed");
-    assert.ok(row.completed_at);
-    assert.equal(row.subscription_id, null);
-    db.close();
-  }
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: paid.cookie } })).data.user.discovery.active,
-    true,
-    "reconciled legacy payment grants lifetime access before deletion can proceed",
-  );
-
-  const discovered = await verifiedSignup({
-    name: "Discovered Legacy Payment",
-    email: "discovered-legacy-payment@example.test",
-    password: "discovered-legacy-payment-password-123",
-  });
-  const discoveredTransactionId = `txn_${"y".repeat(26)}`,
-    discoveredClaimId = "discovered_legacy_payment",
-    discoveredAt = Date.now();
-  const discoveredRemote = paddleTransactionFixture({
-    id: discoveredTransactionId,
-    userId: discovered.user.id,
-    checkoutId: discoveredClaimId,
-    status: "completed",
-    priceId: LEGACY_PRICE_ID,
-    billingCycle: null,
-  });
-  discoveredRemote.customer_id = "ctm_00000000000000000000000001";
-  discoveredRemote.subscription_id = null;
-  transactionListResults = [discoveredRemote];
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_checkout_claims (user_id,price_id,claim_id,transaction_id,expires_at,created_at,updated_at) VALUES(?,?,?,NULL,?,?,?)`,
-    ).run(
-      discovered.user.id,
-      LEGACY_PRICE_ID,
-      discoveredClaimId,
-      discoveredAt + 60_000,
-      discoveredAt,
-      discoveredAt,
-    );
-    db.close();
-  }
-  const providerPostsBefore = paddleRequests.filter(
-      (entry) => entry.method === "POST" && entry.url === "/transactions",
-    ).length,
-    discoveredResult = await checkout(discovered);
-  assert.equal(discoveredResult.response.status, 409);
-  assert.equal(discoveredResult.data.code, "ALREADY_ENTITLED");
-  assert.equal(
-    paddleRequests.filter((entry) => entry.method === "POST" && entry.url === "/transactions")
-      .length,
-    providerPostsBefore,
-    "an unbound paid legacy claim is rediscovered instead of opening a second checkout",
-  );
-  {
-    const db = database({ readOnly: true }),
-      row = db
-        .prepare(
-          "SELECT price_id,paddle_status,completed_at,subscription_id FROM paddle_purchases WHERE transaction_id=?",
-        )
-        .get(discoveredTransactionId);
-    assert.equal(row.price_id, LEGACY_PRICE_ID);
-    assert.equal(row.paddle_status, "completed");
-    assert.ok(row.completed_at);
-    assert.equal(row.subscription_id, null);
-    assert.equal(
-      db
-        .prepare("SELECT COUNT(*) AS count FROM paddle_checkout_claims WHERE user_id=?")
-        .get(discovered.user.id).count,
-      0,
-    );
-    db.close();
-  }
-
-  const unbound = await verifiedSignup({
-    name: "Unbound Legacy Claim",
-    email: "unbound-legacy-claim@example.test",
-    password: "unbound-legacy-claim-password-123",
-  });
-  const unboundTransactionId = `txn_${"v".repeat(26)}`,
-    unboundClaimId = "unbound_legacy_claim",
-    unboundRemote = paddleTransactionFixture({
-      id: unboundTransactionId,
-      userId: unbound.user.id,
-      checkoutId: unboundClaimId,
-      status: "draft",
-    });
-  paddleTransactions.set(unboundTransactionId, unboundRemote);
-  {
-    const db = database();
-    db.prepare(
-      `INSERT INTO paddle_checkout_claims (user_id,price_id,claim_id,transaction_id,expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`,
-    ).run(
-      unbound.user.id,
-      LEGACY_PRICE_ID,
-      unboundClaimId,
-      unboundTransactionId,
-      Date.now() + 60_000,
-      old,
-      old,
-    );
-    db.close();
-  }
-  const unboundResult = await checkout(unbound);
-  assert.equal(unboundResult.response.status, 503);
-  assert.equal(unboundResult.data.code, "PURCHASE_RECONCILIATION_INVALID");
-  {
-    const db = database({ readOnly: true });
-    assert.equal(
-      db
-        .prepare("SELECT COUNT(*) AS count FROM paddle_purchases WHERE transaction_id=?")
-        .get(unboundTransactionId).count,
-      0,
-      "a legacy claim cannot create a current-catalog purchase without a bound retired row",
-    );
-    db.close();
-  }
 });
 
 test("account deletion requires email confirmation, supports cancel, blocks pending checkout, and cannot be undone by a late webhook", async () => {

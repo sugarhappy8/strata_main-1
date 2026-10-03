@@ -4,12 +4,10 @@
     typeof module === "object" && module.exports
       ? require("./entitlements")
       : root.StrataEntitlements;
-  const StrataHtml =
-    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
-  const api = factory(entitlements, StrataHtml);
+  const api = factory(entitlements);
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataHomeLogic = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements, StrataHtml) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function (entitlements) {
   "use strict";
 
   const GROUPS = {
@@ -77,8 +75,6 @@
     bodyweight: { equipment: "Bodyweight", level: "Intermediate", minutes: 20, goal: "balanced" },
     barbell: { equipment: "Barbell / Smith", level: "Intermediate", minutes: 50, goal: "strength" },
   };
-
-  const escapeHtml = StrataHtml.escape;
 
   function normalizeExercise(exercise) {
     if (!exercise || typeof exercise !== "object" || !GROUPS[exercise.group])
@@ -222,7 +218,6 @@
     PREVIEW_STARTERS,
     adjustmentLabel,
     equipmentOptions,
-    escapeHtml,
     filterExercises,
     guestPlanCount,
     hasPlus,

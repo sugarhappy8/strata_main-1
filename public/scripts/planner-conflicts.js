@@ -7,6 +7,7 @@
   root.StrataPlannerConflicts = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   const DRAFT_PREFIX = "strata_plan_draft_v1:";
 
@@ -19,7 +20,6 @@
     validateWeekPlan,
     planMovementCount,
     planConflictSummary,
-    escapeHtml,
     readSelectedDay,
     persistSelectedDay,
     selectionContext,
@@ -130,12 +130,10 @@
       el("draftRecoveryLabel").hidden = state.recoveredDrafts.length < 2 || state.conflictReview;
       StrataHtml.setHtml(
         el("draftRecoverySelect"),
-        state.recoveredDrafts
-          .map(
-            (entry, index) =>
-              `<option value="${escapeHtml(entry.key)}">Draft ${index + 1} · ${escapeHtml(new Date(entry.data.updatedAt).toLocaleString())} · ${planMovementCount(entry.data.plan)} movements</option>`,
-          )
-          .join(""),
+        state.recoveredDrafts.map(
+          (entry, index) =>
+            html`<option value="${entry.key}">Draft ${index + 1} · ${new Date(entry.data.updatedAt).toLocaleString()} · ${planMovementCount(entry.data.plan)} movements</option>`,
+        ),
       );
       el("draftRecoverySelect").value = state.recoverySource?.key || "";
       panel.hidden = false;

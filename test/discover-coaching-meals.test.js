@@ -181,3 +181,25 @@ test("without saved food preferences, Nutrition offers Personal setup instead of
   assert.equal(element("coachingFoodRefresh").hidden, false);
   assert.equal(element("coachingFoodSetup").hidden, true);
 });
+
+test("food option text is escaped exactly once in the rendered cards", async () => {
+  const result = response(),
+    hostile = 'Tofu <b>"bowl"</b> & rice',
+    escaped = "Tofu &lt;b&gt;&quot;bowl&quot;&lt;/b&gt; &amp; rice";
+  result.options[0].meals[0] = {
+    ...result.options[0].meals[0],
+    name: hostile,
+    portion: hostile,
+    ingredients: [hostile],
+  };
+  const { controller, element } = fixture(async () => result);
+  await controller.refresh();
+  const markup = element("coachingFoodOptions").innerHTML;
+  assert.ok(markup.includes(`<li><strong>${escaped}</strong><span>${escaped} · about `));
+  assert.ok(markup.includes(`<b>Amounts for this portion:</b> ${escaped}.</small>`));
+  assert.equal(
+    (markup.match(/<li class="coaching-meal-card">/g) || []).length,
+    result.options.length,
+  );
+  assert.doesNotMatch(markup, /&amp;(?:lt|gt|quot|amp);|<b>"bowl/);
+});

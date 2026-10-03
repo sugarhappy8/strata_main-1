@@ -16,7 +16,7 @@
     previousDownload = null,
     savedPreferenceTags = [],
     activationIntent = null;
-  const escape = StrataHtml.escape;
+  const { html } = StrataHtml;
   const signal = (name) => globalThis.StrataSignals?.record?.(name);
   function status(message, { tone = "", focus = false } = {}) {
     const node = $("setupStatus");
@@ -148,16 +148,15 @@
         .sort()
         .map(
           (value) =>
-            `<label><input type="checkbox" name="equipment" value="${escape(value)}" ${saved.equipment.includes(value) ? "checked" : ""} /> ${escape(value)}</label>`,
-        )
-        .join(""),
+            html`<label><input type="checkbox" name="equipment" value="${value}" ${saved.equipment.includes(value) ? "checked" : ""} /> ${value}</label>`,
+        ),
     );
     StrataHtml.setHtml(
       $("dayChoices"),
       core.DAYS.map(
         (day) =>
-          `<label><input type="checkbox" name="days" value="${day}" ${saved.availability.includes(day) ? "checked" : ""} /> ${day.slice(0, 3)}</label>`,
-      ).join(""),
+          html`<label><input type="checkbox" name="days" value="${day}" ${saved.availability.includes(day) ? "checked" : ""} /> ${day.slice(0, 3)}</label>`,
+      ),
     );
     document.querySelectorAll('input[name="limitations"]').forEach((input) => {
       input.checked = saved.limitations.includes(input.value);
@@ -239,7 +238,7 @@
     status("Loading your starting point…");
     try {
       if (!exercises.length) {
-        const response = await fetch("/exercises.json?v=9.5.0");
+        const response = await fetch("/exercises.json?v=9.6.0");
         if (!response.ok)
           throw new Error("The exercise library is unavailable. Reconnect and retry.");
         exercises = await response.json();
@@ -266,15 +265,15 @@
     const snapshot = core.trainingSnapshot(profile(), preview);
     StrataHtml.setHtml(
       $("previewSummary"),
-      `<div><strong>${snapshot.trainingDays}</strong><span>training day${snapshot.trainingDays === 1 ? "" : "s"}</span></div><div><strong>${snapshot.movementCount}</strong><span>movements</span></div><div><strong>${snapshot.workingSets}</strong><span>working sets</span></div>`,
+      html`<div><strong>${snapshot.trainingDays}</strong><span>training day${snapshot.trainingDays === 1 ? "" : "s"}</span></div><div><strong>${snapshot.movementCount}</strong><span>movements</span></div><div><strong>${snapshot.workingSets}</strong><span>working sets</span></div>`,
     );
     $("previewSummary").hidden = false;
     StrataHtml.setHtml(
       $("weekPreview"),
       core.DAYS.map((day) => {
         const session = preview.sessions.find((item) => item.day === day);
-        return `<section class="preview-day"><h3>${day} ${session ? StrataHtml.html`<small> / ${session.focusLabel}</small>` : ""}</h3>${session ? `<small>${escape(session.summary)}</small><details><summary>Review ${session.items.length} movements</summary><ul>${session.items.map((item) => `<li>${escape(item.exercise.name)} · ${item.sets} × ${escape(item.reps)}<br /><small>${escape(item.roleLabel)} · ${escape(item.exercise.equipment)}</small></li>`).join("")}</ul></details>` : "<small>Recovery / no planned session</small>"}</section>`;
-      }).join(""),
+        return html`<section class="preview-day"><h3>${day} ${session ? html`<small> / ${session.focusLabel}</small>` : ""}</h3>${session ? html`<small>${session.summary}</small><details><summary>Review ${session.items.length} movements</summary><ul>${session.items.map((item) => html`<li>${item.exercise.name} · ${item.sets} × ${item.reps}<br /><small>${item.roleLabel} · ${item.exercise.equipment}</small></li>`)}</ul></details>` : html`<small>Recovery / no planned session</small>`}</section>`;
+      }),
     );
     $("replaceNotice").textContent = hasItems(original)
       ? "You already have a saved week. Saving this preview replaces it; download a copy of your current week first."

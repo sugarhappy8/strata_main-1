@@ -88,3 +88,24 @@ test("the weight trend is drawn at the figure's width and labels its unit once",
     "a hidden figure falls back to a default width",
   );
 });
+
+test("the weight trend escapes its date labels exactly once in text and attributes", () => {
+  const RealDateTimeFormat = Intl.DateTimeFormat;
+  Intl.DateTimeFormat = function () {
+    return { format: () => 'Sep <b>"1"</b> & 2' };
+  };
+  try {
+    const el = elements(),
+      trend = createTrend({ element: el }),
+      logs = [day(-1), day(0)].map((date) => ({ date, calories: 2000, morningWeightKg: 80 }));
+    trend.render({ profile: { measurementSystem: "metric" }, week, logs });
+    const markup = el("coachingTrendChart").innerHTML,
+      label = "Sep &lt;b&gt;&quot;1&quot;&lt;/b&gt; &amp; 2";
+    assert.ok(markup.includes(`aria-label="Morning weight from ${label} to ${label} with`));
+    assert.ok(markup.includes(`<title>${label}: 80.0 kg · seven-day average 80.0 kg</title>`));
+    assert.ok(markup.includes(`<tr><th scope="row">${label}</th><td>80.0</td>`));
+    assert.doesNotMatch(markup, /&amp;(?:lt|gt|quot|amp);|<b>/);
+  } finally {
+    Intl.DateTimeFormat = RealDateTimeFormat;
+  }
+});

@@ -4,12 +4,17 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const { MIGRATIONS, migrateLocalSchema, migrateTursoSchema } = require("../src/migrations");
+const { BILLING_SQL } = require("../src/billing-schema");
 const {
   SCHEMA,
   WORKOUT_ACTIVE_INDEX,
   RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,
   PRODUCT_SIGNAL_TABLE,
 } = require("../src/schema");
+
+const BUILD7_PRICE_ID = "pri_01m1kyc2zd313d7a3ssmg02424";
+const BUILD7_PRODUCT_ID = "pro_01m1ky8j916ybyacs836dxbz8x";
+const CURRENT_PRICE_ID = "pri_01monthlyfixture00000000000000";
 
 function legacyDatabase() {
   const database = new DatabaseSync(":memory:", { enableForeignKeyConstraints: true });
@@ -97,6 +102,91 @@ function legacyDatabase() {
   return database;
 }
 
+function seedBuild7Checkouts(database) {
+  const user = database.prepare(
+    "INSERT INTO users(id,name,email,password_hash,password_salt,created_at) VALUES(?,?,?,?,?,?)",
+  );
+  for (const id of ["build7-open", "build7-paid", "current-open"])
+    user.run(id, id, `${id}@example.test`, "hash", "salt", 1000);
+  const purchase = database.prepare(
+    `INSERT INTO paddle_purchases(transaction_id,user_id,price_id,product_id,customer_id,
+      subscription_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at)
+    VALUES(?,?,?,?,?,NULL,?,?,NULL,NULL,900,?)`,
+  );
+  // [transaction, account, price, customer, status, completed_at, updated_at]
+  for (const [transactionId, userId, priceId, ...rest] of [
+    ["txn_build7_draft", "build7-open", BUILD7_PRICE_ID, null, "draft", null, 1000],
+    ["txn_build7_ready", "build7-open", BUILD7_PRICE_ID, null, "ready", null, 9000],
+    ["txn_build7_closed", "build7-open", BUILD7_PRICE_ID, null, "canceled", null, 950],
+    ["txn_build7_paid", "build7-paid", BUILD7_PRICE_ID, "ctm_1", "completed", 800, 800],
+    ["txn_current", "current-open", CURRENT_PRICE_ID, null, "draft", null, 1000],
+  ])
+    purchase.run(transactionId, userId, priceId, BUILD7_PRODUCT_ID, ...rest);
+  const claim = database.prepare(
+    "INSERT INTO paddle_checkout_claims(user_id,price_id,claim_id,transaction_id,expires_at,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
+  );
+  claim.run("build7-open", BUILD7_PRICE_ID, "claim-build7", "txn_build7_draft", 99_000, 900, 900);
+  claim.run("current-open", CURRENT_PRICE_ID, "claim-current", "txn_current", 99_000, 900, 900);
+}
+
+function assertBuild7CheckoutsClosed(database, closedAt) {
+  const purchases = Object.fromEntries(
+    database
+      .prepare(
+        "SELECT transaction_id,paddle_status,completed_at,access_revoked_at,revocation_reason,updated_at FROM paddle_purchases",
+      )
+      .all()
+      .map(({ transaction_id, ...row }) => [transaction_id, { ...row }]),
+  );
+  const closed = {
+    paddle_status: "canceled",
+    completed_at: null,
+    revocation_reason: "checkout_disabled",
+  };
+  assert.deepEqual(purchases, {
+    txn_build7_draft: { ...closed, access_revoked_at: closedAt, updated_at: closedAt },
+    txn_build7_ready: { ...closed, access_revoked_at: closedAt, updated_at: 9000 },
+    txn_build7_closed: {
+      ...closed,
+      access_revoked_at: null,
+      revocation_reason: null,
+      updated_at: 950,
+    },
+    txn_build7_paid: {
+      paddle_status: "completed",
+      completed_at: 800,
+      access_revoked_at: null,
+      revocation_reason: null,
+      updated_at: 800,
+    },
+    txn_current: {
+      paddle_status: "draft",
+      completed_at: null,
+      access_revoked_at: null,
+      revocation_reason: null,
+      updated_at: 1000,
+    },
+  });
+  assert.equal(
+    database.prepare(BILLING_SQL.pendingPurchasesForUser).get("build7-open").pending_count,
+    0,
+    "closed Build 7.4 checkouts no longer block account deletion",
+  );
+  assert.ok(
+    database
+      .prepare(BILLING_SQL.hasEntitledDiscoveryAccess)
+      .get(closedAt, "build7-paid", CURRENT_PRICE_ID, BUILD7_PRODUCT_ID),
+    "a completed Build 7.4 purchase keeps lifetime access",
+  );
+  assert.deepEqual(
+    database
+      .prepare("SELECT user_id FROM paddle_checkout_claims ORDER BY user_id")
+      .all()
+      .map(({ user_id }) => user_id),
+    ["current-open"],
+  );
+}
+
 function assertRetiredTables(database) {
   const tables = new Set(
     database
@@ -108,14 +198,13 @@ function assertRetiredTables(database) {
   assert.equal(tables.has("admin_elevations"), false, "the unused elevation table is dropped");
   assert.equal(tables.has("discovery_trials"), false, "legacy trials no longer grant access");
   assert.equal(tables.has("community_weekly_plans"), false, "shared community plans are retired");
-  assert.deepEqual(
-    database
-      .prepare("SELECT id,title FROM archive_community_weekly_plans")
-      .all()
-      .map((row) => ({ ...row })),
-    [{ id: "shared-1", title: "Legacy week" }],
-    "shared plans are archived, not deleted",
+  // Build 9 archived the retired rows for one release; 9.6 drops the archives after the owner's backup.
+  assert.equal(
+    tables.has("archive_community_weekly_plans"),
+    false,
+    "the shared-plan archive is dropped",
   );
+  assert.equal(tables.has("archive_discovery_trials"), false, "the trial archive is dropped");
   assert.equal(
     database
       .prepare(
@@ -123,14 +212,6 @@ function assertRetiredTables(database) {
       )
       .get().count,
     0,
-  );
-  assert.deepEqual(
-    database
-      .prepare("SELECT user_id,started_at,expires_at FROM archive_discovery_trials")
-      .all()
-      .map((row) => ({ ...row })),
-    [{ user_id: "legacy-coach", started_at: 1000, expires_at: 2000 }],
-    "legacy trial rows are archived, not deleted",
   );
   assert.deepEqual(
     database
@@ -184,7 +265,8 @@ test("a 9.3 database gains separate signed-in and anonymous counts, and the dail
     database.exec(
       "CREATE TABLE schema_migrations (migration_id TEXT PRIMARY KEY,applied_at INTEGER NOT NULL)",
     );
-    for (const { id } of MIGRATIONS.slice(0, -1))
+    const audiences = MIGRATIONS.findIndex(({ id }) => id === "010-product-signal-audiences");
+    for (const { id } of MIGRATIONS.slice(0, audiences))
       database.prepare("INSERT INTO schema_migrations VALUES(?,?)").run(id, 1);
     const result = migrateLocalSchema(database, {
       activeWorkoutIndex: WORKOUT_ACTIVE_INDEX,
@@ -192,7 +274,11 @@ test("a 9.3 database gains separate signed-in and anonymous counts, and the dail
       productSignalTable: PRODUCT_SIGNAL_TABLE,
       now: () => 1234,
     });
-    assert.deepEqual(result.applied, ["010-product-signal-audiences"]);
+    assert.deepEqual(result.applied, [
+      "010-product-signal-audiences",
+      "011-drop-build9-archives",
+      "012-close-build7-checkouts",
+    ]);
     assert.deepEqual(
       {
         ...database
@@ -334,47 +420,18 @@ test("SQLite records each idempotent migration once", () => {
   }
 });
 
-test("the documented 9.0.0 rollback restores archived rows under their 8.9.0 table names", () => {
+test("migration 012 closes unfinished Build 7.4 checkouts and leaves lifetime purchases alone", () => {
   const database = legacyDatabase();
   try {
-    migrateLocalSchema(database, {
+    seedBuild7Checkouts(database);
+    const result = migrateLocalSchema(database, {
       activeWorkoutIndex: WORKOUT_ACTIVE_INDEX,
       reconcileActiveWorkouts: RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,
       productSignalTable: PRODUCT_SIGNAL_TABLE,
       now: () => 1234,
     });
-    // The rollback plan in CHANGELOG_9.0.0.md: rename the archives back before redeploying 8.9.0.
-    database.exec("ALTER TABLE archive_discovery_trials RENAME TO discovery_trials");
-    database.exec("ALTER TABLE archive_community_weekly_plans RENAME TO community_weekly_plans");
-    assert.deepEqual(
-      database
-        .prepare("SELECT user_id,started_at,expires_at FROM discovery_trials")
-        .all()
-        .map((row) => ({ ...row })),
-      [{ user_id: "legacy-coach", started_at: 1000, expires_at: 2000 }],
-    );
-    assert.deepEqual(
-      database
-        .prepare("SELECT id,user_id,title,is_published FROM community_weekly_plans")
-        .all()
-        .map((row) => ({ ...row })),
-      [{ id: "shared-1", user_id: "legacy-coach", title: "Legacy week", is_published: 1 }],
-    );
-    // The renamed tables keep their constraints, so 8.9.0 writes behave as before.
-    assert.throws(
-      () =>
-        database
-          .prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)")
-          .run("legacy-coach", 3000, 4000),
-      /UNIQUE constraint failed/,
-    );
-    assert.throws(
-      () =>
-        database
-          .prepare("INSERT INTO discovery_trials(user_id,started_at,expires_at) VALUES(?,?,?)")
-          .run("missing-user", 3000, 4000),
-      /FOREIGN KEY constraint failed/,
-    );
+    assert.equal(result.applied.at(-1), "012-close-build7-checkouts");
+    assertBuild7CheckoutsClosed(database, 1234);
   } finally {
     database.close();
   }
@@ -411,6 +468,7 @@ test("Turso migration runner records the same ordered ledger", async () => {
     },
   };
   try {
+    seedBuild7Checkouts(database);
     const first = await migrateTursoSchema(client, {
       activeWorkoutIndex: WORKOUT_ACTIVE_INDEX,
       reconcileActiveWorkouts: RECONCILE_DUPLICATE_ACTIVE_WORKOUTS,
@@ -430,6 +488,7 @@ test("Turso migration runner records the same ordered ledger", async () => {
       MIGRATIONS.map(({ id }) => ({ migration_id: id, applied_at: 5678 })),
     );
     assertRetiredTables(database);
+    assertBuild7CheckoutsClosed(database, 5678);
     assert.deepEqual(
       {
         ...database

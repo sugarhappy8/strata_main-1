@@ -7,7 +7,7 @@
     "This browser could not keep the latest device changes. Keep this page open and download a draft before leaving.";
   // saveError stays set until a device write succeeds, so no later render or message can report a failed save as saved.
   const state = { context: null, record: null, catalog: new Map(), locked: false, saveError: "" };
-  const esc = StrataHtml.escape;
+  const { html } = StrataHtml;
   // Inside the iOS app the screen stays awake while an unfinished workout is open here; browsers have no StrataAppMode.
   const appBridge = globalThis.StrataAppMode?.createWorkoutBridge?.() || null;
   let leaving = false;
@@ -88,12 +88,12 @@
     return state.catalog.get(id) || { name: String(id || "Movement") };
   }
   const LIMITS = {
-    weight: 'min="0" max="1000" step="0.01" inputmode="decimal"',
-    reps: 'min="1" max="1000" step="1" inputmode="numeric"',
-    seconds: 'min="1" max="3600" step="1" inputmode="numeric"',
+    weight: html`min="0" max="1000" step="0.01" inputmode="decimal"`,
+    reps: html`min="1" max="1000" step="1" inputmode="numeric"`,
+    seconds: html`min="1" max="3600" step="1" inputmode="numeric"`,
   };
   function input(entry, set, field, label, locked) {
-    return `<label>${esc(label)}<input type="number" ${LIMITS[field] || `min="${entry.effortType === "rpe" ? 1 : 0}" max="10" step="0.5" inputmode="decimal"`} data-value="${field}" value="${esc(set[field] ?? "")}"${locked ? " disabled" : ""} /></label>`;
+    return html`<label>${label}<input type="number" ${LIMITS[field] || html`min="${entry.effortType === "rpe" ? 1 : 0}" max="10" step="0.5" inputmode="decimal"`} data-value="${field}" value="${set[field] ?? ""}"${locked ? " disabled" : ""} /></label>`;
   }
   function render() {
     const workout = state.record.workout,
@@ -104,23 +104,19 @@
       `${W.displayDate(workout.date)} · ${counts.completed}/${counts.total} sets · authorized on this device`;
     StrataHtml.setHtml(
       $("offlineEntries"),
-      workout.entries
-        .map((entry) => {
-          const movement = exercise(entry.exerciseId),
-            timed = entry.measurement === "timed",
-            weighted = entry.loadType !== "bodyweight",
-            effort = ["rir", "rpe"].includes(entry.effortType);
-          // Completed sets and finished workouts are read-only; uncheck a set to reopen it for editing.
-          return `<article class="offline-entry" data-entry="${esc(entry.id)}"><h3>${esc(movement.name)}</h3><p>${esc(entry.prescribedReps)} planned · ${timed ? "time" : "reps"}${weighted ? StrataHtml.html` · ${entry.loadType} load in ${entry.unit}` : " · bodyweight"}</p><div class="offline-sets">${entry.sets
-            .map((set, index) => {
-              const locked = set.completed || !active;
-              return `<div class="offline-set${set.completed ? " is-complete" : ""}" data-set="${index}"><span>Set ${index + 1}</span>${weighted ? input(entry, set, "weight", entry.loadType === "assisted" ? `Assist (${entry.unit})` : `Load (${entry.unit})`, locked) : ""}${timed ? input(entry, set, "seconds", "Seconds", locked) : input(entry, set, "reps", "Reps", locked)}${effort ? input(entry, set, "effort", entry.effortType.toUpperCase(), locked) : ""}<label class="offline-complete"><input type="checkbox" data-complete ${set.completed ? "checked" : ""}${active ? "" : " disabled"} /> Completed</label></div>`;
-            })
-            .join(
-              "",
-            )}</div><label class="offline-note">Private note<textarea maxlength="500" data-note${active ? "" : " disabled"}>${esc(entry.note || "")}</textarea></label></article>`;
-        })
-        .join(""),
+      workout.entries.map((entry) => {
+        const movement = exercise(entry.exerciseId),
+          timed = entry.measurement === "timed",
+          weighted = entry.loadType !== "bodyweight",
+          effort = ["rir", "rpe"].includes(entry.effortType);
+        // Completed sets and finished workouts are read-only; uncheck a set to reopen it for editing.
+        return html`<article class="offline-entry" data-entry="${entry.id}"><h3>${movement.name}</h3><p>${entry.prescribedReps} planned · ${timed ? "time" : "reps"}${weighted ? html` · ${entry.loadType} load in ${entry.unit}` : " · bodyweight"}</p><div class="offline-sets">${entry.sets.map(
+          (set, index) => {
+            const locked = set.completed || !active;
+            return html`<div class="offline-set${set.completed ? " is-complete" : ""}" data-set="${index}"><span>Set ${index + 1}</span>${weighted ? input(entry, set, "weight", entry.loadType === "assisted" ? `Assist (${entry.unit})` : `Load (${entry.unit})`, locked) : ""}${timed ? input(entry, set, "seconds", "Seconds", locked) : input(entry, set, "reps", "Reps", locked)}${effort ? input(entry, set, "effort", entry.effortType.toUpperCase(), locked) : ""}<label class="offline-complete"><input type="checkbox" data-complete ${set.completed ? "checked" : ""}${active ? "" : " disabled"} /> Completed</label></div>`;
+          },
+        )}</div><label class="offline-note">Private note<textarea maxlength="500" data-note${active ? "" : " disabled"}>${entry.note || ""}</textarea></label></article>`;
+      }),
     );
     $("finishOffline").disabled = !active;
     setStates();
@@ -298,7 +294,7 @@
     state.context = restored.context;
     state.record = restored.record;
     try {
-      const response = await fetch("/exercises.json?v=9.5.0");
+      const response = await fetch("/exercises.json?v=9.6.0");
       if (response.ok) {
         const catalog = await response.json();
         state.catalog = new Map(catalog.map((item) => [item.id, item]));

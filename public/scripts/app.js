@@ -128,10 +128,7 @@ function generateQuickPreview() {
         limit: 3,
       });
       el("quickPreviewSummary").textContent = fallback.summary;
-      StrataHtml.setHtml(
-        el("quickPreviewResults"),
-        fallback.items.map(previewResultMarkup).join(""),
-      );
+      StrataHtml.setHtml(el("quickPreviewResults"), fallback.items.map(previewResultMarkup));
       el("quickPreviewActions").hidden = false;
       el("quickPreviewStatus").textContent =
         "Shortlist ready. Reload before continuing if the complete-week preview does not appear.";
@@ -229,7 +226,7 @@ async function initializeCatalog() {
   state.catalogStatus = "loading";
   renderAll();
   try {
-    STATE.setCatalog(state, await api("/exercises.json?v=9.5.0"));
+    STATE.setCatalog(state, await api("/exercises.json?v=9.6.0"));
     el("catalogTotal").textContent = state.exercises.length;
   } catch {
     STATE.failCatalog(state);

@@ -255,7 +255,6 @@ test("refreshing history retries failed progression while loading another page p
     state: fixture.state,
     workout: W,
     view: {},
-    esc: String,
     number: String,
     exercise: (id) => ({ name: id }),
     formatLabel: () => "",
@@ -526,7 +525,7 @@ test("a latest session without completed sets cannot reveal or apply an older ne
       workout: W,
       nextTarget: (item) => fixture.api.targetFor(item),
     }),
-    markup = view.renderEntry(fixture.entry, 0);
+    markup = String(view.renderEntry(fixture.entry, 0));
   assert.match(markup, /No sets were completed/);
   assert.doesNotMatch(markup, /data-use-last|data-apply-target/);
 });

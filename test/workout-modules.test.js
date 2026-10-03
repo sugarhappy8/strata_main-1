@@ -14,10 +14,30 @@ const Context = require("../public/scripts/workout-context");
 const Guidance = require("../public/scripts/workout-guidance");
 const History = require("../public/scripts/workout-history");
 const Events = require("../public/scripts/workout-events");
+const { html } = require("../public/scripts/html");
 
 const ROOT = join(__dirname, "..");
 const DAYS = W.DAYS;
 const emptyWeek = () => ({ version: 1, days: Object.fromEntries(DAYS.map((day) => [day, []])) });
+// A member-supplied value with every character that matters in markup, and how it reads escaped once.
+const HOSTILE = '<b>"Tom & Jerry"</b>',
+  ESCAPED = "&lt;b&gt;&quot;Tom &amp; Jerry&quot;&lt;/b&gt;",
+  DOUBLE_ESCAPED = /&amp;(?:lt|gt|quot|amp|#39);/;
+const fakeNodes = () => {
+  const nodes = new Map();
+  return (id) => {
+    if (!nodes.has(id))
+      nodes.set(id, {
+        id,
+        value: "",
+        hidden: false,
+        disabled: false,
+        textContent: "",
+        dataset: {},
+      });
+    return nodes.get(id);
+  };
+};
 
 test("workout state accepts explicit day and start deep links without weakening defaults", () => {
   assert.equal(State.deepLinkedDay({ search: "?day=Thursday", hash: "" }, W), "Thursday");
@@ -225,7 +245,7 @@ test("workout renderer keeps the training essentials visible and nests configura
   const workout = W.createWorkout(plan, "Monday", catalog, 1_780_000_000_000),
     state = { catalog, workout, memoryHistory: [], memoryReady: true, memoryError: "" };
   const view = Render.create({ state, workout: W, discovery: null }),
-    markup = view.renderEntry(workout.entries[0], 0);
+    markup = String(view.renderEntry(workout.entries[0], 0));
   assert.match(markup, /aria-label="Previous performance"/);
   assert.match(markup, /Complete set/);
   assert.match(markup, /data-actual="weight"/);
@@ -243,6 +263,28 @@ test("workout renderer keeps the training essentials visible and nests configura
   assert.match(markup, /<details class="set-more">/);
   assert.match(markup, /Duplicate set/);
   assert.match(markup, /Remove set/);
+});
+
+test("workout renderer escapes member text exactly once in the logger, plan preview and history detail", () => {
+  const catalog = [{ id: "press", name: "Standing Press", equipment: "Barbell", reps: "8–12" }];
+  const plan = emptyWeek();
+  plan.days.Monday = [{ instanceId: "press-one", exerciseId: "press", sets: 2, reps: "8–12" }];
+  const workout = W.createWorkout(plan, "Monday", catalog, 1_780_000_000_000);
+  Object.assign(workout.entries[0], { prescribedReps: HOSTILE, note: HOSTILE });
+  const state = { catalog, workout, memoryHistory: [], memoryReady: true, memoryError: "" },
+    view = Render.create({ state, workout: W, discovery: null });
+  const entry = String(view.renderEntry(workout.entries[0], 0));
+  assert.ok(entry.includes(`Planned: 2 × ${ESCAPED}`), "planned reps are text");
+  assert.ok(entry.includes(`>${ESCAPED}</textarea>`), "the private note is text");
+  assert.match(entry, /<input type="number" inputmode="decimal" min="0" max="1000"/);
+  assert.doesNotMatch(entry, DOUBLE_ESCAPED);
+  const preview = String(view.planPreview([{ exerciseId: "press", sets: 3, reps: HOSTILE }]));
+  assert.ok(preview.includes(`<small>3 sets · ${ESCAPED}</small>`));
+  assert.doesNotMatch(preview, DOUBLE_ESCAPED);
+  const detail = String(view.detailMarkup({ ...workout, status: "completed" }));
+  assert.ok(detail.includes(`<blockquote>${ESCAPED}</blockquote>`));
+  assert.ok(detail.includes(`planned ${ESCAPED}`));
+  assert.doesNotMatch(detail, DOUBLE_ESCAPED);
 });
 
 test("workout API module owns security headers and identity checks", async () => {
@@ -285,6 +327,81 @@ test("training guidance keeps labels and explicit targets predictable", () => {
   assert.equal(typeof History.create, "function");
 });
 
+test("progression guidance escapes suggestion text exactly once", () => {
+  const $ = fakeNodes();
+  Guidance.create({
+    $,
+    state: {},
+    exercise: () => ({ name: HOSTILE }),
+    number: Render.number,
+  }).render({
+    progression: {
+      suggestions: [
+        {
+          action: "increase_load",
+          exerciseId: "press",
+          unit: "kg",
+          target: { weight: 42.5, reps: 8 },
+          targetSets: [{ weight: 42.5, reps: 8 }],
+          explanation: HOSTILE,
+          timing: HOSTILE,
+        },
+      ],
+    },
+  });
+  const markup = $("progressionList").innerHTML;
+  assert.ok(markup.includes(`<h4>${ESCAPED}</h4>`));
+  assert.ok(markup.includes(`<p>${ESCAPED}</p>`));
+  assert.ok(markup.includes(`<small>${ESCAPED} · review before applying</small>`));
+  assert.match(markup, /<ol class="progression-sets"><li>Set 1 · 42\.5 kg · 8 reps<\/li><\/ol>/);
+  assert.doesNotMatch(markup, DOUBLE_ESCAPED);
+});
+
+test("workout history escapes session titles and exercise names exactly once", () => {
+  const catalog = [{ id: "press", name: HOSTILE, equipment: "Barbell", reps: "8–12" }],
+    plan = emptyWeek();
+  plan.days.Monday = [{ instanceId: "press-one", exerciseId: "press", sets: 1, reps: "8–12" }];
+  const workout = W.createWorkout(plan, "Monday", catalog, 1_780_000_000_000);
+  workout.id = "history-one";
+  workout.title = HOSTILE;
+  workout.status = "completed";
+  workout.completedAt = workout.startedAt + 60_000;
+  workout.entries[0].sets = [
+    { reps: 8, weight: 42.5, seconds: null, completed: true, effort: null },
+  ];
+  const summary = W.summary(workout),
+    chartEntry = summary.exerciseSummaries[0],
+    $ = fakeNodes();
+  $("chartExercise").value = W.formatKey(chartEntry);
+  $("chartMetric").value = W.metrics(chartEntry)[0].key;
+  const view = Render.create({ state: { catalog }, workout: W, discovery: null });
+  History.create({
+    $,
+    state: {
+      history: [summary],
+      recoveries: [],
+      hasMore: false,
+      historyBusy: false,
+      historyLoaded: true,
+      historyLoadError: "",
+    },
+    workout: W,
+    view,
+    number: view.number,
+    exercise: view.exercise,
+    formatLabel: view.formatLabel,
+  }).render();
+  const list = $("historyList").innerHTML,
+    options = $("chartExercise").innerHTML,
+    chart = $("performanceChart").innerHTML;
+  assert.ok(list.includes(`<h4>${ESCAPED}</h4>`));
+  assert.ok(options.includes(`>${ESCAPED} · Reps · External load · kg</option>`));
+  assert.match(chart, /<svg class="chart-svg"/);
+  assert.match(chart, /<p class='single-point-note'>Your first data point\./);
+  for (const markup of [list, options, $("chartMetric").innerHTML, chart])
+    assert.doesNotMatch(markup, DOUBLE_ESCAPED);
+});
+
 test("workout context exposes exactly one truthful action for each plan state", () => {
   const node = () => ({
     hidden: false,
@@ -297,7 +414,7 @@ test("workout context exposes exactly one truthful action for each plan state", 
       this.focused = true;
     },
   });
-  const render = (overrides = {}) => {
+  const render = (overrides = {}, view = { planPreview: () => html`<p>preview</p>` }) => {
     const nodes = Object.fromEntries(
       [
         "startWorkout",
@@ -337,8 +454,7 @@ test("workout context exposes exactly one truthful action for each plan state", 
       $: (id) => nodes[id],
       state,
       workout: W,
-      view: { planPreview: () => "preview" },
-      esc: String,
+      view,
       openDetail: async () => {},
       recover: async () => {},
     }).render();
@@ -371,6 +487,22 @@ test("workout context exposes exactly one truthful action for each plan state", 
   assert.match(scheduled.startWorkout.innerHTML, /Start workout/);
   assert.equal(scheduled.differentWorkout.hidden, false);
   assert.equal(scheduled.resumeWorkout.hidden, true);
+  assert.equal(scheduled.planPreview.innerHTML, "<p>preview</p>");
+  assert.match(scheduled.planBrief.innerHTML, /<strong>Monday<\/strong>/);
+  assert.match(scheduled.planDay.innerHTML, /<option value="Monday" selected>Monday/);
+
+  const named = emptyWeek();
+  named.days.Monday = [{ exerciseId: "press", sets: 3, reps: HOSTILE }];
+  const preview = render(
+    { plan: named, day: "Monday" },
+    Render.create({
+      state: { catalog: [{ id: "press", name: HOSTILE }] },
+      workout: W,
+      discovery: null,
+    }),
+  ).planPreview.innerHTML;
+  assert.ok(preview.includes(`<strong>${ESCAPED}</strong><small>3 sets · ${ESCAPED}</small>`));
+  assert.doesNotMatch(preview, DOUBLE_ESCAPED);
 
   const active = {
     id: "active-1",

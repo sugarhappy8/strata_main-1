@@ -8,7 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
-  const escape = StrataHtml.escape;
+  const { html } = StrataHtml;
   const title = (value) =>
     String(value || "")
       .replaceAll("_", " ")
@@ -175,20 +175,18 @@
         fitLabel = option.withinNutritionFit
           ? "Approximate fit for the remaining plan"
           : "Partial idea: review the differences below";
-      const meals = option.meals
-          .map(
-            (meal) =>
-              `<li><strong>${escape(meal.name)}</strong><span>${escape(meal.portion)} · about ${ui.formatCalories(meal.calories)} · ${ui.formatUsd(meal.estimatedCostCents)}</span><details><summary>Ingredients</summary><small><b>Amounts for this portion:</b> ${escape(meal.ingredients.join(", "))}.</small></details></li>`,
-          )
-          .join(""),
+      const meals = option.meals.map(
+          (meal) =>
+            html`<li><strong>${meal.name}</strong><span>${meal.portion} · about ${ui.formatCalories(meal.calories)} · ${ui.formatUsd(meal.estimatedCostCents)}</span><details><summary>Ingredients</summary><small><b>Amounts for this portion:</b> ${meal.ingredients.join(", ")}.</small></details></li>`,
+        ),
         allergens = [...new Set(option.meals.flatMap((meal) => meal.allergens))];
-      return `<li class="coaching-meal-card"><header><div><span class="kicker">Option ${index + 1}</span><h5>${option.meals.length} meal${option.meals.length === 1 ? "" : "s"} for what remains</h5></div></header><p>${escape(fitLabel)}. ${escape(budget)}.${favoriteCount ? ` ${favoriteCount} saved favorite match${favoriteCount === 1 ? "" : "es"}.` : ""}</p><p class="coaching-meal-fit"><strong>Calories:</strong> ${escape(fit.calories)}. ${fit.macros ? escape(fit.macros) : "Macro differences are unavailable; this is a calorie-only comparison."}</p><ol class="coaching-meal-components">${meals}</ol><dl><div><dt>Est. calories</dt><dd>${ui.formatCalories(option.totals.calories)}</dd></div><div><dt>Est. protein</dt><dd>${ui.formatGrams(option.totals.proteinG)}</dd></div><div><dt>Est. carbs</dt><dd>${ui.formatGrams(option.totals.carbsG)}</dd></div><div><dt>Est. fat</dt><dd>${ui.formatGrams(option.totals.fatG)}</dd></div><div><dt>Est. cost</dt><dd>${ui.formatUsd(option.totals.estimatedCostCents)}</dd></div></dl><p class="coaching-meal-allergens">${allergens.length ? StrataHtml.html`Catalog allergen tags: ${allergens.map(title).join(", ")}.` : `No major allergens are tagged in these listed ingredients.`} Verify labels and cross-contact.</p></li>`;
+      return html`<li class="coaching-meal-card"><header><div><span class="kicker">Option ${index + 1}</span><h5>${option.meals.length} meal${option.meals.length === 1 ? "" : "s"} for what remains</h5></div></header><p>${fitLabel}. ${budget}.${favoriteCount ? ` ${favoriteCount} saved favorite match${favoriteCount === 1 ? "" : "es"}.` : ""}</p><p class="coaching-meal-fit"><strong>Calories:</strong> ${fit.calories}. ${fit.macros ? fit.macros : "Macro differences are unavailable; this is a calorie-only comparison."}</p><ol class="coaching-meal-components">${meals}</ol><dl><div><dt>Est. calories</dt><dd>${ui.formatCalories(option.totals.calories)}</dd></div><div><dt>Est. protein</dt><dd>${ui.formatGrams(option.totals.proteinG)}</dd></div><div><dt>Est. carbs</dt><dd>${ui.formatGrams(option.totals.carbsG)}</dd></div><div><dt>Est. fat</dt><dd>${ui.formatGrams(option.totals.fatG)}</dd></div><div><dt>Est. cost</dt><dd>${ui.formatUsd(option.totals.estimatedCostCents)}</dd></div></dl><p class="coaching-meal-allergens">${allergens.length ? html`Catalog allergen tags: ${allergens.map(title).join(", ")}.` : `No major allergens are tagged in these listed ingredients.`} Verify labels and cross-contact.</p></li>`;
     }
     function render(result) {
       renderRemaining(result.remaining);
       const count = result.options?.length || 0;
       for (const surface of surfaces()) {
-        StrataHtml.setHtml(surface.options, (result.options || []).map(mealCard).join(""));
+        StrataHtml.setHtml(surface.options, (result.options || []).map(mealCard));
         surface.options.setAttribute("aria-busy", "false");
         surface.status.textContent =
           result.status === "ready"

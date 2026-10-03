@@ -81,8 +81,7 @@ function subscriptionStateRank(status) {
   return `CASE ${status} WHEN 'canceled' THEN 4 WHEN 'paused' THEN 3 WHEN 'past_due' THEN 2 WHEN 'trialing' THEN 1 ELSE 0 END`;
 }
 const ACTIVE_ENTITLEMENT = activeEntitlement();
-const ENTITLED_RECURRING_CATALOG =
-  "subscription_id IS NULL OR (price_id IN (SELECT value FROM json_each(?)) AND product_id=?)";
+const ENTITLED_RECURRING_CATALOG = "subscription_id IS NULL OR (price_id=? AND product_id=?)";
 const BILLING_DELETION_BLOCKER = `((p.completed_at IS NULL AND p.paddle_status<>'canceled' AND p.access_revoked_at IS NULL) OR (p.subscription_id IS NOT NULL AND (NOT EXISTS (SELECT 1 FROM paddle_subscriptions s WHERE s.subscription_id=p.subscription_id) OR EXISTS (SELECT 1 FROM paddle_subscriptions s WHERE s.subscription_id=p.subscription_id AND s.user_id=p.user_id AND s.status IN ('active','trialing','past_due','paused')))))`;
 
 const BILLING_SQL = {
@@ -109,28 +108,6 @@ const BILLING_SQL = {
   JOIN users u ON u.id=c.user_id
   WHERE c.user_id=? AND c.claim_id=? AND c.transaction_id=? AND c.price_id=?
   ON CONFLICT(transaction_id) DO NOTHING
-  RETURNING ${PURCHASE_COLUMNS}`,
-  replacePendingPurchaseCatalog: `UPDATE paddle_purchases
-  SET price_id=?,product_id=?,paddle_status=?,updated_at=?
-  WHERE transaction_id=? AND user_id=? AND price_id=? AND product_id=? AND updated_at=?
-    AND paddle_status=? AND paddle_status IN ('draft','ready') AND ? IN ('draft','ready')
-    AND completed_at IS NULL AND access_revoked_at IS NULL AND subscription_id IS NULL
-    AND EXISTS (SELECT 1
-      FROM users u
-      WHERE u.id=paddle_purchases.user_id AND u.suspended_at IS NULL
-        AND NOT EXISTS(SELECT 1 FROM admin_account_controls ac WHERE ac.user_id=u.id AND ac.checkout_blocked_at IS NOT NULL)
-        AND NOT EXISTS (SELECT 1
-          FROM account_action_requests a
-          WHERE a.user_id=u.id AND a.purpose='account_delete' AND a.delivery_state='sent'
-            AND a.consumed_at IS NULL AND a.expires_at>?))
-  RETURNING ${PURCHASE_COLUMNS}`,
-  completePurchaseCatalogMigration: `UPDATE paddle_purchases
-  SET price_id=?,product_id=?,customer_id=COALESCE(customer_id,?),
-    subscription_id=COALESCE(subscription_id,?),paddle_status='completed',
-    completed_at=COALESCE(completed_at,?),updated_at=MAX(updated_at,?)
-  WHERE transaction_id=? AND user_id=? AND price_id=? AND product_id=? AND paddle_status=?
-    AND updated_at=? AND completed_at IS NULL AND access_revoked_at IS NULL
-    AND (subscription_id IS NULL OR subscription_id=?) AND (customer_id IS NULL OR customer_id=?)
   RETURNING ${PURCHASE_COLUMNS}`,
   checkoutCreationForUser:
     "SELECT user_id,price_id,claim_id,transaction_id,expires_at,created_at,updated_at FROM paddle_checkout_claims WHERE user_id=?",
@@ -203,27 +180,6 @@ const BILLING_SQL = {
   WHERE subscription_id=? AND user_id=?
     AND (event_occurred_at<? OR (event_occurred_at=? AND ${subscriptionStateRank("?")}>${subscriptionStateRank("status")}))
   RETURNING ${SUBSCRIPTION_COLUMNS}`,
-  updatePaddleSubscriptionAfterCatalog: `UPDATE paddle_subscriptions
-  SET customer_id=?,status=?,price_id=?,product_id=?,scheduled_change_action=?,scheduled_change_at=?,
-    current_period_ends_at=?,event_occurred_at=?,updated_at=?
-  WHERE subscription_id=? AND user_id=?
-    AND (event_occurred_at<? OR (event_occurred_at=? AND ${subscriptionStateRank("?")}>${subscriptionStateRank("status")}))
-    AND EXISTS (SELECT 1
-      FROM paddle_purchases p
-      WHERE p.transaction_id=paddle_subscriptions.transaction_id
-        AND p.user_id=paddle_subscriptions.user_id
-        AND p.subscription_id=paddle_subscriptions.subscription_id AND p.price_id=? AND p.product_id=?)
-  RETURNING ${SUBSCRIPTION_COLUMNS}`,
-  replaceSubscriptionPurchaseCatalog: `UPDATE paddle_purchases
-  SET price_id=?,product_id=?,updated_at=MAX(updated_at,?)
-  WHERE transaction_id=? AND user_id=? AND subscription_id=? AND price_id=? AND product_id=?
-    AND paddle_status='completed' AND completed_at IS NOT NULL
-    AND EXISTS (SELECT 1
-      FROM paddle_subscriptions s
-      WHERE s.subscription_id=paddle_purchases.subscription_id
-        AND s.transaction_id=paddle_purchases.transaction_id AND s.user_id=paddle_purchases.user_id
-        AND (s.event_occurred_at<? OR (s.event_occurred_at=? AND ${subscriptionStateRank("?")}>${subscriptionStateRank("s.status")})))
-  RETURNING ${PURCHASE_COLUMNS}`,
   subscriptionById: `SELECT ${SUBSCRIPTION_COLUMNS} FROM paddle_subscriptions WHERE subscription_id=?`,
   subscriptionForUser: `SELECT ${SUBSCRIPTION_COLUMNS}
   FROM paddle_subscriptions

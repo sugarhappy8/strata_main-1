@@ -73,7 +73,7 @@ function planSaveError(error) {
   return LOGIC.saveErrorMessage(error);
 }
 
-const escapeHtml = StrataHtml.escape;
+const { html } = StrataHtml;
 function exerciseById(id) {
   return state.exercises.find((exercise) => exercise.id === id);
 }
@@ -174,7 +174,6 @@ const conflictActions = CONFLICTS.createController({
   validateWeekPlan,
   planMovementCount,
   planConflictSummary,
-  escapeHtml,
   readSelectedDay: STATE.readSelectedDay,
   persistSelectedDay,
   selectionContext: plannerSelectionContext,
@@ -273,13 +272,10 @@ function renderReplacementOptions() {
   );
   StrataHtml.setHtml(
     el("replaceExerciseSelect"),
-    '<option value="">Choose a replacement</option>' +
-      exercises
-        .map(
-          (exercise) =>
-            StrataHtml.html`<option value="${exercise.id}">${exercise.name} · ${exercise.equipment}</option>`,
-        )
-        .join(""),
+    html`<option value="">Choose a replacement</option>${exercises.map(
+      (exercise) =>
+        html`<option value="${exercise.id}">${exercise.name} · ${exercise.equipment}</option>`,
+    )}`,
   );
   el("replaceExerciseSelect").value = exercises.some((exercise) => exercise.id === current)
     ? current
@@ -479,7 +475,7 @@ function openExerciseGuide(id, trigger = null) {
   el("exerciseGuideTitle").textContent = exercise.name;
   StrataHtml.setHtml(
     el("exerciseGuideBody"),
-    `<p class="guide-purpose">${escapeHtml(guidance.purpose)}</p><div class="guide-grid"><section><span>01 / Set up</span><p>${escapeHtml(guidance.setup)}</p></section><section><span>02 / Working range</span><p>${escapeHtml(guidance.prescription)}</p></section><section><span>03 / Technique cues</span><ul>${guidance.cues.map((cue) => StrataHtml.html`<li>${cue}</li>`).join("")}</ul></section><section class="guide-caution"><span>04 / Caution / Common mistake</span><p>${escapeHtml(guidance.mistake)}</p></section></div><section class="guide-swaps"><h3>Same target, different equipment</h3><p>Choose a swap only when its setup fits your available equipment.</p><div>${guidance.alternatives.map(({ exercise: alternative, reason }) => StrataHtml.html`<button type="button" data-guide-exercise="${alternative.id}"><strong>${alternative.name}</strong><span>${alternative.equipment} · ${reason}</span></button>`).join("")}</div></section>`,
+    html`<p class="guide-purpose">${guidance.purpose}</p><div class="guide-grid"><section><span>01 / Set up</span><p>${guidance.setup}</p></section><section><span>02 / Working range</span><p>${guidance.prescription}</p></section><section><span>03 / Technique cues</span><ul>${guidance.cues.map((cue) => html`<li>${cue}</li>`)}</ul></section><section class="guide-caution"><span>04 / Caution / Common mistake</span><p>${guidance.mistake}</p></section></div><section class="guide-swaps"><h3>Same target, different equipment</h3><p>Choose a swap only when its setup fits your available equipment.</p><div>${guidance.alternatives.map(({ exercise: alternative, reason }) => html`<button type="button" data-guide-exercise="${alternative.id}"><strong>${alternative.name}</strong><span>${alternative.equipment} · ${reason}</span></button>`)}</div></section>`,
   );
   if (!dialog.open) dialog.showModal();
   requestAnimationFrame(() => el("exerciseGuideTitle").focus());
@@ -556,7 +552,7 @@ function renderSummary() {
   }
   StrataHtml.setHtml(
     el("weekSummary"),
-    `<div class="summary-stat"><span>Scheduled movements</span><strong>${total}</strong></div><div class="summary-stat"><span>Training days</span><strong>${trainingDays}</strong></div><div class="summary-stat"><span>Working sets</span><strong>${totalSets}</strong></div><div class="summary-stat ${restConflict ? "summary-warning" : ""}"><span>Rest days</span><strong>${restDays().length}${restConflict ? " · clear" : ""}</strong></div><div class="week-distribution" role="img" aria-label="Weekly exercise distribution. ${distribution}">${DAYS.map((day) => `<div aria-hidden="true"><span>${state.plan.days[day].length}</span><div class="week-bar-track"><i style="height:${Math.max(3, (state.plan.days[day].length / peak) * 100)}%" class="${isRestDay(day) ? "is-rest" : ""}"></i></div><small>${day.slice(0, 3)}</small></div>`).join("")}</div>${readiness ? `<section class="week-readiness ${readiness.tone}" aria-label="Plan guidance"><div><span>${readiness.label}</span><strong>${readiness.title}</strong><p>${readiness.detail}</p></div>${readiness.href ? `<a href="${readiness.href}">${readiness.action} <span aria-hidden="true">→</span></a>` : ""}</section>` : ""}`,
+    html`<div class="summary-stat"><span>Scheduled movements</span><strong>${total}</strong></div><div class="summary-stat"><span>Training days</span><strong>${trainingDays}</strong></div><div class="summary-stat"><span>Working sets</span><strong>${totalSets}</strong></div><div class="summary-stat ${restConflict ? "summary-warning" : ""}"><span>Rest days</span><strong>${restDays().length}${restConflict ? " · clear" : ""}</strong></div><div class="week-distribution" role="img" aria-label="Weekly exercise distribution. ${distribution}">${DAYS.map((day) => html`<div aria-hidden="true"><span>${state.plan.days[day].length}</span><div class="week-bar-track"><i style="height:${Math.max(3, (state.plan.days[day].length / peak) * 100)}%" class="${isRestDay(day) ? "is-rest" : ""}"></i></div><small>${day.slice(0, 3)}</small></div>`)}</div>${readiness ? html`<section class="week-readiness ${readiness.tone}" aria-label="Plan guidance"><div><span>${readiness.label}</span><strong>${readiness.title}</strong><p>${readiness.detail}</p></div>${readiness.href ? html`<a href="${readiness.href}">${readiness.action} <span aria-hidden="true">→</span></a>` : ""}</section>` : ""}`,
   );
   renderInsights();
 }
@@ -699,13 +695,11 @@ function insightRows(entries, emptyMessage) {
   const rows = entries.slice(0, 6),
     peak = Math.max(1, ...rows.map((entry) => Number(entry.sets) || 0));
   return rows.length
-    ? rows
-        .map(
-          (entry) =>
-            `<div class="insight-row"><span>${escapeHtml(entry.label)}</span><div aria-hidden="true"><i style="width:${Math.max(3, ((Number(entry.sets) || 0) / peak) * 100)}%"></i></div><strong>${Number(entry.sets) || 0} sets</strong></div>`,
-        )
-        .join("")
-    : StrataHtml.html`<p class="insight-empty">${emptyMessage}</p>`;
+    ? rows.map(
+        (entry) =>
+          html`<div class="insight-row"><span>${entry.label}</span><div aria-hidden="true"><i style="width:${Math.max(3, ((Number(entry.sets) || 0) / peak) * 100)}%"></i></div><strong>${Number(entry.sets) || 0} sets</strong></div>`,
+      )
+    : html`<p class="insight-empty">${emptyMessage}</p>`;
 }
 
 function syncCopyDayOptions() {
@@ -719,20 +713,18 @@ function syncCopyDayOptions() {
     source,
     DAYS.map(
       (day) =>
-        `<option value="${day}"${day === sourceDay ? " selected" : ""}>${day} · ${state.plan?.days?.[day]?.length || 0} movements</option>`,
-    ).join(""),
+        html`<option value="${day}"${day === sourceDay ? " selected" : ""}>${day} · ${state.plan?.days?.[day]?.length || 0} movements</option>`,
+    ),
   );
   const targets = DAYS.filter((day) => day !== sourceDay),
     nextDay = DAYS[(DAYS.indexOf(sourceDay) + 1) % DAYS.length],
     targetDay = targets.includes(previousTarget) ? previousTarget : nextDay;
   StrataHtml.setHtml(
     target,
-    targets
-      .map(
-        (day) =>
-          `<option value="${day}"${day === targetDay ? " selected" : ""}>${day} · ${state.plan?.days?.[day]?.length || 0} movements${isRestDay(day) ? " · recovery day" : ""}</option>`,
-      )
-      .join(""),
+    targets.map(
+      (day) =>
+        html`<option value="${day}"${day === targetDay ? " selected" : ""}>${day} · ${state.plan?.days?.[day]?.length || 0} movements${isRestDay(day) ? " · recovery day" : ""}</option>`,
+    ),
   );
   el("previewCopyDay").disabled = !state.ready || !state.plan?.days?.[sourceDay]?.length;
 }
@@ -750,7 +742,7 @@ function renderInsights() {
     );
   StrataHtml.setHtml(
     el("insightMetrics"),
-    `<div><span>Planning estimate</span><strong>${analysis.metrics.estimatedMinutes} min</strong><small>Sets and transitions</small></div><div><span>Largest day</span><strong>${largest.workingSets ? escapeHtml(largest.day) : "—"}</strong><small>${largest.workingSets} working sets</small></div><div><span>Primary areas</span><strong>${analysis.muscles.length}</strong><small>Catalog groups</small></div><div><span>Equipment setups</span><strong>${analysis.equipment.length}</strong><small>Across the week</small></div>`,
+    html`<div><span>Planning estimate</span><strong>${analysis.metrics.estimatedMinutes} min</strong><small>Sets and transitions</small></div><div><span>Largest day</span><strong>${largest.workingSets ? largest.day : "—"}</strong><small>${largest.workingSets} working sets</small></div><div><span>Primary areas</span><strong>${analysis.muscles.length}</strong><small>Catalog groups</small></div><div><span>Equipment setups</span><strong>${analysis.equipment.length}</strong><small>Across the week</small></div>`,
   );
   StrataHtml.setHtml(
     el("insightMuscles"),
@@ -767,13 +759,11 @@ function renderInsights() {
   StrataHtml.setHtml(
     el("insightAlerts"),
     analysis.alerts.length
-      ? analysis.alerts
-          .map(
-            (alert) =>
-              StrataHtml.html`<article class="insight-alert ${alert.tone}"><strong>${alert.title}</strong><p>${alert.detail}</p><span>${alert.action}</span></article>`,
-          )
-          .join("")
-      : '<article class="insight-alert clear"><strong>No obvious structure conflicts</strong><p>The current week has no observable density, duplicate, high-frequency, or recovery-marker flags.</p><span>Review, then train</span></article>',
+      ? analysis.alerts.map(
+          (alert) =>
+            html`<article class="insight-alert ${alert.tone}"><strong>${alert.title}</strong><p>${alert.detail}</p><span>${alert.action}</span></article>`,
+        )
+      : html`<article class="insight-alert clear"><strong>No obvious structure conflicts</strong><p>The current week has no observable density, duplicate, high-frequency, or recovery-marker flags.</p><span>Review, then train</span></article>`,
   );
   el("insightNextAction").textContent = analysis.nextAction;
   syncCopyDayOptions();
@@ -799,7 +789,7 @@ function openCopyDayPreview(trigger) {
       `${sourceDay} → ${targetDay}. This is a preview; your editable week has not changed.`;
     StrataHtml.setHtml(
       el("copyDayPreview"),
-      `<div class="copy-preview-counts"><div><span>Destination now</span><strong>${before}</strong><small>movements</small></div><div><span>After approval</span><strong>${after}</strong><small>movements</small></div><div><span>New copies</span><strong>${preview.added}</strong><small>new identities</small></div></div><p><strong>${mode === "replace" ? "Replace" : "Add missing"}:</strong> ${mode === "replace" ? `${preview.replaced} destination movement${preview.replaced === 1 ? "" : "s"} will be replaced by copies from ${escapeHtml(sourceDay)}.` : `Existing movements stay; matching exercise IDs are not duplicated.`}</p>${skippedNames.length ? `<p><strong>Already present:</strong> ${skippedNames.map(escapeHtml).join(", ")}.</p>` : ""}${isRestDay(targetDay) ? StrataHtml.html`<p><strong>Recovery marker:</strong> ${targetDay} will become a training day.</p>` : ""}`,
+      html`<div class="copy-preview-counts"><div><span>Destination now</span><strong>${before}</strong><small>movements</small></div><div><span>After approval</span><strong>${after}</strong><small>movements</small></div><div><span>New copies</span><strong>${preview.added}</strong><small>new identities</small></div></div><p><strong>${mode === "replace" ? "Replace" : "Add missing"}:</strong> ${mode === "replace" ? `${preview.replaced} destination movement${preview.replaced === 1 ? "" : "s"} will be replaced by copies from ${sourceDay}.` : `Existing movements stay; matching exercise IDs are not duplicated.`}</p>${skippedNames.length ? html`<p><strong>Already present:</strong> ${skippedNames.join(", ")}.</p>` : ""}${isRestDay(targetDay) ? html`<p><strong>Recovery marker:</strong> ${targetDay} will become a training day.</p>` : ""}`,
     );
     el("confirmCopyDay").checked = false;
     el("applyCopyDay").disabled = true;
@@ -1017,7 +1007,6 @@ const activationActions = ACTIVATION.createController({
   storage: localStorage,
   activation: globalThis.StrataActivation,
   logic: LOGIC,
-  escapeHtml,
   planMovementCount,
   validateWeekPlan,
   planConflictSummary,
@@ -1098,7 +1087,7 @@ async function performSave({ keepalive = true, silent = false } = {}) {
         // would let a later retry silently replace another tab's saved week.
         StrataHtml.setHtml(
           el("plannerModeNotice"),
-          StrataHtml.html`<strong>Guest save conflict.</strong> ${detail}`,
+          html`<strong>Guest save conflict.</strong> ${detail}`,
         );
       }
       setSaveStatus("Couldn't save — Retry", true);
@@ -1183,21 +1172,21 @@ function handlePendingAdd() {
 }
 
 function renderLoadError(error) {
-  const message = escapeHtml(error.message || "Unable to load your plan.");
+  const message = error.message || "Unable to load your plan.";
   el("libraryCount").textContent = "0";
   el("plannerFilters").textContent = "";
-  StrataHtml.setHtml(el("libraryList"), `<div class="loading">${message}</div>`);
+  StrataHtml.setHtml(el("libraryList"), html`<div class="loading">${message}</div>`);
   el("libraryResultStatus").textContent = "Exercise library could not be loaded.";
   el("plannerDayNav").textContent = "";
   el("quickAddDayValue").textContent = "Unavailable";
   el("weekSummary").textContent = "";
   const localOption =
     error.code === "NETWORK_ERROR" && state.exercises.length
-      ? '<p>You can open the separate free plan stored in this browser while offline. Account plans need a connection.</p><button type="button" data-open-guest>Open free device plan</button>'
+      ? html`<p>You can open the separate free plan stored in this browser while offline. Account plans need a connection.</p><button type="button" data-open-guest>Open free device plan</button>`
       : "";
   StrataHtml.setHtml(
     el("weekBoard"),
-    `<div class="planner-load-state planner-error" role="alert"><strong>Plan unavailable</strong><p>${message}</p><button type="button" data-retry-init>Try again</button>${localOption}</div>`,
+    html`<div class="planner-load-state planner-error" role="alert"><strong>Plan unavailable</strong><p>${message}</p><button type="button" data-retry-init>Try again</button>${localOption}</div>`,
   );
   el("weekBoard").setAttribute("aria-busy", "false");
 }
@@ -1318,14 +1307,14 @@ async function init({ guestOnly = false } = {}) {
   state.copyTrigger = null;
   hideActivationPanel();
   setSaveStatus("Loading plan…");
-  StrataHtml.setHtml(el("libraryList"), '<div class="loading">Loading movements…</div>');
+  StrataHtml.setHtml(el("libraryList"), html`<div class="loading">Loading movements…</div>`);
   el("weekSummary").textContent = "";
   StrataHtml.setHtml(
     el("weekBoard"),
-    '<div class="planner-load-state">Loading your weekly plan…</div>',
+    html`<div class="planner-load-state">Loading your weekly plan…</div>`,
   );
   try {
-    const exercises = await api("/exercises.json?v=9.5.0");
+    const exercises = await api("/exercises.json?v=9.6.0");
     if (!Array.isArray(exercises))
       throw new Error("STRATA returned an incomplete exercise library.");
     state.exercises = exercises;

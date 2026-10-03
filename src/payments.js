@@ -22,14 +22,11 @@ const {
   validPaddleEnvironment,
   validPaddleProductId,
   validPaddlePriceId,
-  parseLegacyRecurringPriceIds,
-  validPaddleLegacyRecurringPriceIds,
   validPaddleClientToken,
   validPaddleApiKey,
   validPaddleWebhookSecret,
   currentPublicPrice,
   exactCurrentCheckoutPrice,
-  subscriptionCatalogTransition,
 } = require("./paddle-catalog");
 
 const LIVE_API_BASE = "https://api.paddle.com";
@@ -75,10 +72,6 @@ function getPaymentConfig(env = process.env) {
   // A recurring price has a different Paddle catalog ID from the retired
   // one-time price. Require the deployment to supply that ID explicitly.
   const priceId = clean(env.PADDLE_PRICE_ID);
-  const legacyRecurring = parseLegacyRecurringPriceIds(
-    env.PADDLE_LEGACY_RECURRING_PRICE_IDS,
-    priceId,
-  );
   const clientToken = clean(env.PADDLE_CLIENT_TOKEN);
   const apiKey = clean(env.PADDLE_API_KEY);
   const webhookSecret = clean(env.PADDLE_WEBHOOK_SECRET);
@@ -90,12 +83,7 @@ function getPaymentConfig(env = process.env) {
   // accepted for new recurring checkouts, even when supplied explicitly.
   const validCatalog = validPaddleProductId(productId, sandbox) && validPaddlePriceId(priceId);
   const configured =
-    environmentAllowed &&
-    validClientToken &&
-    validApiKey &&
-    validWebhookSecret &&
-    validCatalog &&
-    legacyRecurring.valid;
+    environmentAllowed && validClientToken && validApiKey && validWebhookSecret && validCatalog;
   /** @type {string[]} */
   const missing = [];
   if (!environmentAllowed)
@@ -104,7 +92,6 @@ function getPaymentConfig(env = process.env) {
   if (!validApiKey) missing.push(`${environment} API key`);
   if (!validWebhookSecret) missing.push("webhook signing secret");
   if (!validCatalog) missing.push(`valid ${environment} catalog IDs`);
-  if (!legacyRecurring.valid) missing.push("valid legacy recurring price IDs");
 
   // Deliberately contains browser-safe fields only. Server credentials live in
   // a private WeakMap so they cannot be serialized into a response by mistake.
@@ -113,7 +100,6 @@ function getPaymentConfig(env = process.env) {
     environment,
     productId,
     priceId,
-    legacyRecurringPriceIds: Object.freeze([...legacyRecurring.ids]),
     clientToken: environmentAllowed && validClientToken ? clientToken : "",
     price: currentPublicPrice(),
     requestedEnabled,
@@ -343,26 +329,11 @@ async function cancelPaddleTransaction(config, transactionId, fetchImpl = global
   return { transactionId: transaction.transactionId, status: transaction.status };
 }
 
-/** @param {import("./domain-types").PaymentConfig} config @param {unknown} transactionId @param {import("./domain-types").FetchLike} fetchImpl */
-function replacePaddleTransactionItems(config, transactionId, fetchImpl = globalThis.fetch) {
-  return paddleTransactionRequest(config, transactionId, {
-    method: "PATCH",
-    body: { items: [{ price_id: config.priceId, quantity: 1 }] },
-    fetchImpl,
-  });
-}
-
 /** @param {import("./domain-types").PaddleTransactionData|null|undefined} data @param {import("./domain-types").PaymentConfig} config @param {import("./domain-types").CheckoutIdentity} identity */
 function validateCheckoutTransaction(
   data,
   config,
-  {
-    userId,
-    checkoutId,
-    priceId = config?.priceId,
-    productId = config?.productId,
-    retiredOneTimeCancellation = false,
-  } = {},
+  { userId, checkoutId, priceId = config?.priceId, productId = config?.productId } = {},
 ) {
   if (!data || !validTransactionId(data.id) || !TRANSACTION_STATUSES.has(clean(data.status)))
     return { ok: false, reason: "transaction" };
@@ -380,25 +351,11 @@ function validateCheckoutTransaction(
   if (Number(item.quantity) !== 1) return { ok: false, reason: "quantity" };
   if (price.id !== priceId) return { ok: false, reason: "price" };
   if (price.product_id !== productId) return { ok: false, reason: "product" };
-  const legacy =
-    retiredOneTimeCancellation && priceId === DEFAULT_PRICE_ID && productId === DEFAULT_PRODUCT_ID;
-  return legacy
-    ? price.billing_cycle === null
-      ? { ok: true }
-      : { ok: false, reason: "billing_cycle" }
-    : monthlyCycle(price.billing_cycle)
-      ? { ok: true }
-      : { ok: false, reason: "billing_cycle" };
+  return monthlyCycle(price.billing_cycle) ? { ok: true } : { ok: false, reason: "billing_cycle" };
 }
 
 /** @param {import("./domain-types").PaddleTransactionData|null|undefined} data @param {import("./domain-types").PaymentConfig} config @param {import("./domain-types").CheckoutIdentity} identity */
 function validateCheckoutRecoveryTransaction(data, config, identity = {}) {
-  if (data?.status === "completed" && identity.retiredOneTimeCancellation) {
-    const validation = validateCheckoutTransaction(data, config, identity);
-    return validation.ok && !/^ctm_[a-z0-9]{26}$/.test(clean(data.customer_id))
-      ? { ok: false, reason: "customer" }
-      : validation;
-  }
   if (data?.status !== "completed") return validateCheckoutTransaction(data, config, identity);
   const completed = validateCompletedTransaction(data, {
     ...config,
@@ -418,8 +375,6 @@ const { retirePaddleDraftTransaction, validateCheckoutTransactionForRetirement }
     transactionRequest: paddleTransactionRequest,
     transactionError: paddleTransactionError,
     validateTransaction: validateCheckoutTransaction,
-    defaultProductId: DEFAULT_PRODUCT_ID,
-    defaultPriceId: DEFAULT_PRICE_ID,
   });
 
 /**
@@ -436,7 +391,6 @@ async function findPaddleCheckoutTransaction(
     createdAt,
     priceId = config?.priceId,
     productId = config?.productId,
-    retiredOneTimeCancellation = false,
     retirement = false,
   } = {},
   fetchImpl = globalThis.fetch,
@@ -516,7 +470,6 @@ async function findPaddleCheckoutTransaction(
         checkoutId,
         priceId,
         productId,
-        retiredOneTimeCancellation,
       });
       const validation =
         retirement && !standard.ok
@@ -632,12 +585,10 @@ module.exports = {
   validPaddleEnvironment,
   validPaddleProductId,
   validPaddlePriceId,
-  validPaddleLegacyRecurringPriceIds,
   validPaddleClientToken,
   validPaddleApiKey,
   validPaddleWebhookSecret,
   exactCurrentCheckoutPrice,
-  subscriptionCatalogTransition,
   publicPaymentConfig,
   webhookSecretFor,
   verifyPaddleSignature,
@@ -646,7 +597,6 @@ module.exports = {
   cancelPaddleTransaction,
   retirePaddleDraftTransaction,
   validateRetiredPaddleCheckoutTransaction,
-  replacePaddleTransactionItems,
   validateCheckoutTransaction,
   validateCheckoutTransactionForRetirement,
   validateCheckoutRecoveryTransaction,

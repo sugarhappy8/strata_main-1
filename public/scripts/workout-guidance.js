@@ -8,6 +8,7 @@
   else root.StrataWorkoutGuidance = guidance;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   function suggestionTarget(suggestion, number) {
     const target = suggestion?.target || {},
@@ -25,17 +26,7 @@
       .replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
-  function create({
-    $,
-    state,
-    accountRead,
-    api,
-    assertIdentity,
-    saveError,
-    exercise,
-    esc,
-    number,
-  }) {
+  function create({ $, state, accountRead, api, assertIdentity, saveError, exercise, number }) {
     let loadGeneration = 0;
     function reset() {
       loadGeneration++;
@@ -88,13 +79,11 @@
       StrataHtml.setHtml(
         $("progressionList"),
         suggestions.length
-          ? suggestions
-              .map(
-                (suggestion) =>
-                  `<article class="progression-suggestion"><div><span>${esc(actionLabel(suggestion.action))}</span><h4>${esc(exercise(suggestion.exerciseId).name)}</h4></div><div class="progression-target"><strong>${esc(suggestionTarget(suggestion, number))}</strong>${Array.isArray(suggestion.targetSets) ? `<ol class="progression-sets">${suggestion.targetSets.map((target, index) => `<li>Set ${index + 1} · ${esc(suggestionTarget({ ...suggestion, target }, number))}</li>`).join("")}</ol>` : ""}</div><p>${esc(suggestion.explanation || "Review this target against your next planned session.")}</p><small>${esc(suggestion.timing || "Next time you train this exercise")} · review before applying</small></article>`,
-              )
-              .join("")
-          : "<p class='muted'>No progression change is suggested from this session. Keep the current targets and continue logging comparable sets.</p>",
+          ? suggestions.map(
+              (suggestion) =>
+                html`<article class="progression-suggestion"><div><span>${actionLabel(suggestion.action)}</span><h4>${exercise(suggestion.exerciseId).name}</h4></div><div class="progression-target"><strong>${suggestionTarget(suggestion, number)}</strong>${Array.isArray(suggestion.targetSets) ? html`<ol class="progression-sets">${suggestion.targetSets.map((target, index) => html`<li>Set ${index + 1} · ${suggestionTarget({ ...suggestion, target }, number)}</li>`)}</ol>` : ""}</div><p>${suggestion.explanation || "Review this target against your next planned session."}</p><small>${suggestion.timing || "Next time you train this exercise"} · review before applying</small></article>`,
+            )
+          : html`<p class='muted'>No progression change is suggested from this session. Keep the current targets and continue logging comparable sets.</p>`,
       );
       renderAdaptation(result?.adaptation || null);
     }
@@ -104,7 +93,7 @@
       $("progressionPanel").hidden = false;
       StrataHtml.setHtml(
         $("progressionList"),
-        "<p class='muted'>Checking completed sets for your next workout target…</p>",
+        html`<p class='muted'>Checking completed sets for your next workout target…</p>`,
       );
       try {
         const result = await accountRead(`/api/workouts/${encodeURIComponent(workoutId)}/check-in`);
@@ -122,7 +111,7 @@
         if (state.workout?.id === workoutId) {
           StrataHtml.setHtml(
             $("progressionList"),
-            "<p class='muted'>Next-weight guidance could not be loaded. Your completed workout is saved; reload to try again.</p>",
+            html`<p class='muted'>Next-weight guidance could not be loaded. Your completed workout is saved; reload to try again.</p>`,
           );
           $("checkInStatus").textContent =
             "Couldn’t load an earlier check-in — you can still save these answers.";

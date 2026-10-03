@@ -105,7 +105,7 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages", async () => {
-  assert.equal(BUILD, "9.5.0");
+  assert.equal(BUILD, "9.6.0");
   const home = await request("/");
   assert.equal(home.response.status, 200);
   assert.equal(home.response.headers.get("cache-control"), "private, no-store");
@@ -351,8 +351,7 @@ test("creates an account with a private default plan", async () => {
     },
     body: "{}",
   });
-  assert.equal(retiredTrial.response.status, 410);
-  assert.equal(retiredTrial.data.code, "TRIAL_RETIRED");
+  assert.equal(retiredTrial.response.status, 404, "the retired trial route was removed in 9.6");
   assert.equal(
     (await request("/api/me", { headers: { Cookie: signup.cookie } })).data.user.discovery.active,
     false,

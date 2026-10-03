@@ -181,7 +181,7 @@
     },
     "src/migrations.js": {
       "role": "Ordered, idempotent SQLite and Turso schema migration ledger",
-      "maxLines": 510,
+      "maxLines": 600,
       "allowedDependencies": ["src/billing-schema.js", "src/product-signals-schema.js"]
     },
     "src/schema.js": {
@@ -240,15 +240,9 @@
         "src/apple-billing.js",
         "src/checkout-reconciliation.js",
         "src/http.js",
-        "src/legacy-checkout.js",
         "src/payments.js",
         "src/plans.js"
       ]
-    },
-    "src/legacy-checkout.js": {
-      "role": "Strict retired-checkout migration and completion policy",
-      "maxLines": 240,
-      "allowedDependencies": ["src/payments.js"]
     },
     "src/billing-schema.js": {
       "role": "Commercial entitlement and recurring-subscription schema",
@@ -271,7 +265,7 @@
       ]
     },
     "src/paddle-catalog.js": {
-      "role": "Paddle catalog, credential, exact checkout-price, and subscription-transition policy",
+      "role": "Paddle catalog, credential, and exact checkout-price policy",
       "maxLines": 170,
       "allowedDependencies": []
     },
@@ -341,9 +335,9 @@
       "allowedDependencies": ["src/access-controls.js", "src/plans.js"]
     },
     "src/checkout-reconciliation.js": {
-      "role": "Validated checkout closure and settlement reconciliation",
+      "role": "Current-catalog checkout checks, validated closure, and settlement reconciliation",
       "maxLines": 330,
-      "allowedDependencies": ["src/legacy-checkout.js", "src/payments.js", "src/plans.js"]
+      "allowedDependencies": ["src/payments.js", "src/plans.js"]
     },
     "src/progression.js": {
       "role": "Pure per-set performance progression and comparison rules",

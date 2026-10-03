@@ -676,6 +676,41 @@ assert.equal(
       "state.user===null&&state.workouts.length===0&&state.trainingBlock===null",
       context,
     );
+  // Text from a saved monthly plan reaches the calendar escaped exactly once, and nested lists stay markup.
+  const savedMonthlyPlan = {
+    title: "Plan",
+    days: [
+      {
+        dayNumber: 1,
+        date: "2026-10-01",
+        weekday: 'Mon <b>"x"</b> & y',
+        rest: true,
+        targets: [],
+        exercises: [],
+      },
+      {
+        dayNumber: 2,
+        date: "2026-10-02",
+        weekday: "Tuesday",
+        rest: false,
+        targets: ["chest", "back"],
+        exercises: [{ exerciseId: "flat-dumbbell-press", sets: 3, reps: "8–12" }],
+      },
+    ],
+  };
+  vm.runInContext(
+    `state.exercises=${JSON.stringify(exercises)};renderMonthlyPlan(${JSON.stringify(savedMonthlyPlan)})`,
+    context,
+  );
+  const monthlyDays = elements.get("monthlyDays").innerHTML;
+  assert.match(monthlyDays, /<h4>Mon &lt;b&gt;&quot;x&quot;&lt;\/b&gt; &amp; y<\/h4>/);
+  assert.doesNotMatch(monthlyDays, /&amp;(?:lt|gt|quot|amp);|&lt;(?:p|ol|li|strong)\b/);
+  assert.match(monthlyDays, /<p class="monthly-day-targets">[^<]+ \+ [^<]+<\/p>/);
+  assert.match(
+    monthlyDays,
+    /<ol class="monthly-exercise-list"><li><strong>Flat Dumbbell Press<small>/,
+  );
+  assert.equal((elements.get("monthlySummary").innerHTML.match(/<div>/g) || []).length, 4);
   assert.equal(result.recommendations, 8);
   assert.equal(result.results, exercises.length);
   assert.equal(result.renderedResults, Math.min(24, result.results));

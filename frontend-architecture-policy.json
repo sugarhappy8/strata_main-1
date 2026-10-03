@@ -7,7 +7,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/entitlements.js",
@@ -89,7 +89,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/session-selection-core.js",
@@ -303,7 +303,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/entitlements.js",
@@ -391,7 +391,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/workout-core.js",
@@ -485,7 +485,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/entitlements.js",
@@ -537,7 +537,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/personal-training-energy-ui-core.js",
@@ -595,7 +595,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/entitlements.js",
@@ -665,7 +665,7 @@
           "file": "public/scripts/html.js",
           "role": "logic",
           "global": "StrataHtml",
-          "maxLines": 100
+          "maxLines": 140
         },
         {
           "file": "public/scripts/admin-state.js",

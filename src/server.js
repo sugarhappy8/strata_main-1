@@ -382,7 +382,7 @@ async function userPayload(session) {
       planFor(session.id),
       billing.accessSummaryForUser(session.id),
       billing.subscriptionForUser(session.id),
-      appleBilling.subscriptionForUser(session.id, session.email),
+      appleBilling.subscriptionForUser(session.id, session),
       store.activeAccountDeletion(session.id, now),
       admin.adminIdentity(session),
       store.adminControls(session.id),

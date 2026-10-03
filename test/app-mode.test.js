@@ -290,7 +290,7 @@ test("screens map every page to its tab, title, and Back target", () => {
 test("the tab bar marks the current section, keeps studio panels in place, and has five labelled targets", () => {
   const { window } = realm();
   const { resolveScreen, tabBarHtml, topBarHtml } = window.StrataAppMode;
-  const train = tabBarHtml(resolveScreen({ pathname: "/workout.html" }));
+  const train = String(tabBarHtml(resolveScreen({ pathname: "/workout.html" })));
   assert.equal((train.match(/class="app-tab"/g) || []).length, 5);
   assert.deepEqual(
     [...train.matchAll(/data-app-tab="(\w+)"/g)].map((match) => match[1]),
@@ -306,8 +306,8 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
   );
   assert.match(train, /<svg[^>]*aria-hidden="true"/);
   assert.doesNotMatch(train, /data-section/);
-  const studio = tabBarHtml(
-    resolveScreen({ pathname: "/discover.html", hash: "#recoveryWorkspace" }),
+  const studio = String(
+    tabBarHtml(resolveScreen({ pathname: "/discover.html", hash: "#recoveryWorkspace" })),
   );
   assert.match(studio, /href="#exerciseExplorer" data-app-tab="rankings" data-section="rankings"/);
   assert.match(
@@ -316,10 +316,10 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
   );
   assert.match(studio, /data-app-tab="dashboard" data-section="week"/);
   assert.match(
-    topBarHtml(resolveScreen({ pathname: "/privacy" })),
+    String(topBarHtml(resolveScreen({ pathname: "/privacy" }))),
     /<a class="app-back" href="\/policies" data-app-back>[\s\S]*Back<\/span><\/a><p class="app-title" data-app-title>Privacy<\/p>/,
   );
-  assert.doesNotMatch(topBarHtml(resolveScreen({ pathname: "/dashboard" })), /app-back/);
+  assert.doesNotMatch(String(topBarHtml(resolveScreen({ pathname: "/dashboard" }))), /app-back/);
   // 44pt+ targets, safe areas, no live blur, and the bars stay put through view transitions.
   assert.match(
     CSS,
@@ -522,12 +522,12 @@ test("Profile keeps Strata+, support, and legal pages one tap away", () => {
   const accountPage = fakeNode("accountPage");
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
-    selector === "body > footer > span" ? { textContent: "About STRATA · Build 9.5.0" } : null;
+    selector === "body > footer > span" ? { textContent: "About STRATA · Build 9.6.0" } : null;
   page.ready();
   const more = accountPage.html[0].html;
   for (const href of ["/pricing", "/contact", "/policies", "/terms", "/privacy"])
     assert.match(more, new RegExp(`href="${href}"`));
-  assert.match(more, /About STRATA · Build 9\.5\.0/);
+  assert.match(more, /About STRATA · Build 9\.6\.0/);
 });
 
 test("on /pricing the app loads its App Store paywall, and the website never loads Paddle there", () => {
@@ -535,7 +535,7 @@ test("on /pricing the app loads its App Store paywall, and the website never loa
   page.insertBody();
   page.ready();
   assert.equal(page.document.head.children.length, 1);
-  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=9.5.0");
+  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=9.6.0");
   const pricing = read("public/scripts/pricing.js");
   assert.match(
     pricing,
@@ -784,17 +784,17 @@ test("Profile names the app build when the app can say", async () => {
   });
   page.insertBody();
   const accountPage = fakeNode("accountPage"),
-    line = { textContent: "About STRATA · Build 9.5.0" };
+    line = { textContent: "About STRATA · Build 9.6.0" };
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
     selector === "body > footer > span"
-      ? { textContent: "About STRATA · Build 9.5.0" }
+      ? { textContent: "About STRATA · Build 9.6.0" }
       : selector === ".app-more-build"
         ? line
         : null;
   page.ready();
   for (let index = 0; index < 5; index += 1) await new Promise(setImmediate);
-  assert.equal(line.textContent, "About STRATA · Build 9.5.0 · App 1.2 (34)");
+  assert.equal(line.textContent, "About STRATA · Build 9.6.0 · App 1.2 (34)");
 });
 
 test("downloads keep their file for a minute, so the app's share sheet can still read it, and the app says where it goes", () => {

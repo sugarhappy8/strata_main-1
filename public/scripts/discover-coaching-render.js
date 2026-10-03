@@ -55,7 +55,7 @@
         : equation === "nasem_2023_eer" || String(equation || "").includes("eer")
           ? "2023 DRI EER · age, height, weight, activity, and coefficient"
           : "Mifflin–St Jeor · age, height, weight, and coefficient";
-  const escape = StrataHtml.escape;
+  const { html } = StrataHtml;
   function structuredActivitySummary(profile, nutrition) {
     const activity = nutrition.activityBreakdown || {},
       sessions = Array.isArray(activity.sessions) ? activity.sessions : [],
@@ -114,7 +114,7 @@
         ...(Array.isArray(scenarios) ? scenarios : []),
       ].filter((item) => Number.isFinite(Number(item.weightKg)) && Array.isArray(item.rangeKg));
     if (points.length < 2)
-      return '<p class="coaching-field-intro">A projection appears after a complete energy estimate is available.</p>';
+      return html`<p class="coaching-field-intro">A projection appears after a complete energy estimate is available.</p>`;
     const width = 720,
       height = 210,
       pad = { left: 54, right: 18, top: 18, bottom: 38 },
@@ -140,27 +140,23 @@
         .reverse()
         .map((item) => `${x(item.weeks).toFixed(1)},${y(Math.min(...item.rangeKg)).toFixed(1)}`),
     ].join(" ");
-    const grids = points
-      .map(
-        (item) =>
-          `<line class="projection-grid" x1="${x(item.weeks)}" y1="${pad.top}" x2="${x(item.weeks)}" y2="${height - pad.bottom}"/><text x="${x(item.weeks)}" y="${height - 13}" text-anchor="middle">${item.weeks ? `${item.weeks} wk` : "Start"}</text>`,
-      )
-      .join("");
+    const grids = points.map(
+      (item) =>
+        html`<line class="projection-grid" x1="${x(item.weeks)}" y1="${pad.top}" x2="${x(item.weeks)}" y2="${height - pad.bottom}"/><text x="${x(item.weeks)}" y="${height - 13}" text-anchor="middle">${item.weeks ? `${item.weeks} wk` : "Start"}</text>`,
+    );
     const labels = points
       .slice(1)
       .map(
         (item) =>
-          `<circle cx="${x(item.weeks)}" cy="${y(item.weightKg)}" r="4" fill="#657a22"/><text x="${x(item.weeks)}" y="${Math.max(12, y(item.weightKg) - 10)}" text-anchor="middle">${escape(displayWeight(item.weightKg))}</text>`,
-      )
-      .join("");
+          html`<circle cx="${x(item.weeks)}" cy="${y(item.weightKg)}" r="4" fill="#657a22"/><text x="${x(item.weeks)}" y="${Math.max(12, y(item.weightKg) - 10)}" text-anchor="middle">${displayWeight(item.weightKg)}</text>`,
+      );
     const valuesList = points
       .slice(1)
       .map(
         (item) =>
-          `<div><dt>${number(item.weeks)} weeks</dt><dd><strong>${escape(displayWeight(item.weightKg))}</strong><span>Scenario range ${escape(displayWeight(Math.min(...item.rangeKg)))}–${escape(displayWeight(Math.max(...item.rangeKg)))}</span></dd></div>`,
-      )
-      .join("");
-    return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated weight scenario over ${weeks} weeks"><polygon class="projection-range" points="${range}"/><g>${grids}</g><path class="projection-line" d="${line}"/>${labels}</svg><dl class="coaching-projection-data">${valuesList}</dl>`;
+          html`<div><dt>${number(item.weeks)} weeks</dt><dd><strong>${displayWeight(item.weightKg)}</strong><span>Scenario range ${displayWeight(Math.min(...item.rangeKg))}–${displayWeight(Math.max(...item.rangeKg))}</span></dd></div>`,
+      );
+    return html`<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Estimated weight scenario over ${weeks} weeks"><polygon class="projection-range" points="${range}"/><g>${grids}</g><path class="projection-line" d="${line}"/>${labels}</svg><dl class="coaching-projection-data">${valuesList}</dl>`;
   }
   function createRenderer({ element, ui, diaryUi }) {
     const el = element;
@@ -339,12 +335,10 @@
       el("coachingTdeeDetail").textContent = `${maintenance.detail} ${maintenanceBasis}`;
       StrataHtml.setHtml(
         el("coachingTdeeSteps"),
-        (steps || [])
-          .map(
-            (row) =>
-              `<li${row.total ? ' class="is-total"' : ""}><span>${escape(row.label)}</span><strong>${escape(row.value)}</strong></li>`,
-          )
-          .join(""),
+        (steps || []).map(
+          (row) =>
+            html`<li${row.total ? html` class="is-total"` : ""}><span>${row.label}</span><strong>${row.value}</strong></li>`,
+        ),
       );
       el("coachingTdeeSteps").hidden = !steps;
       const summary = energyUi.targetSummary(nutrition);
@@ -389,12 +383,10 @@
       ];
       StrataHtml.setHtml(
         el("coachingGoalComparison"),
-        estimates
-          .map(
-            (item) =>
-              `<article class="coaching-goal-option${nutrition.selectedGoal === item.goal ? " is-selected" : ""}"${nutrition.selectedGoal === item.goal ? ' aria-current="true"' : ""}><span>${escape(item.label)}</span><strong>${energyUi.calorieTargetLabel(item.value)}</strong><small>${escape(item.detail)}</small></article>`,
-          )
-          .join(""),
+        estimates.map(
+          (item) =>
+            html`<article class="coaching-goal-option${nutrition.selectedGoal === item.goal ? " is-selected" : ""}"${nutrition.selectedGoal === item.goal ? html` aria-current="true"` : ""}><span>${item.label}</span><strong>${energyUi.calorieTargetLabel(item.value)}</strong><small>${item.detail}</small></article>`,
+        ),
       );
       renderCalibration(nutrition);
       el("coachingRotationLabel").textContent =
@@ -420,13 +412,11 @@
             target = targets.find((item) => item.day === day),
             date = target?.date || session?.date || "";
           if (!session)
-            return `<article class="coaching-day-card is-rest"><header><span>${String(index + 1).padStart(2, "0")} · ${escape(day)}</span><time datetime="${escape(date)}">${escape(dateLabel(date))}</time></header><h5>Recovery day</h5><p>No programmed lifting. Normal daily movement can continue if it feels appropriate.</p></article>`;
-          const exercises = (session.exercises || [])
-            .map(
-              (exercise) =>
-                `<li><strong>${escape(exercise.name)}</strong><span>${number(exercise.sets)} sets × ${escape(exercise.reps)} · ${escape(exercise.rest)} rest</span>${exercise.loadingGuidance === sharedGuidance ? "" : StrataHtml.html`<span>${exercise.loadingGuidance || "Use a controlled load and repeatable form."}</span>`}${exercise.performance?.sourceDate ? StrataHtml.html`<span>Recorded source: ${dateLabel(exercise.performance.sourceDate)} · ${String(exercise.performance.status || "reference").replaceAll("_", " ")}</span>` : ""}${exercise.targetSets ? StrataHtml.html`<span>Optional set targets: ${exercise.targetSets.map((set) => `${exercise.measurement === "timed" ? `${set.seconds} s` : `${set.reps} ${exercise.countUnit || "reps"}`}${exercise.loadType !== "bodyweight" && set.weight != null ? ` · ${set.weight} ${exercise.unit}${exercise.loadType === "assisted" ? " assistance" : ""}` : ""}`).join("; ")}</span>` : ""}${exercise.enteredCapability ? `<span>${exercise.measurement && exercise.measurement !== "reps" ? "Entered repetition reference; not a time or distance target" : "Entered reference"}: ${number(exercise.enteredCapability.maxSets)} sets × ${number(exercise.enteredCapability.maxReps)} reps${exercise.enteredCapability.maxWeightKg == null ? "" : StrataHtml.html` · ${ui.displayWeight(exercise.enteredCapability.maxWeightKg, profile.preferredLoadUnit === "lb" ? "imperial" : "metric")}`}</span>` : ""}</li>`,
-            )
-            .join("");
+            return html`<article class="coaching-day-card is-rest"><header><span>${String(index + 1).padStart(2, "0")} · ${day}</span><time datetime="${date}">${dateLabel(date)}</time></header><h5>Recovery day</h5><p>No programmed lifting. Normal daily movement can continue if it feels appropriate.</p></article>`;
+          const exercises = (session.exercises || []).map(
+            (exercise) =>
+              html`<li><strong>${exercise.name}</strong><span>${number(exercise.sets)} sets × ${exercise.reps} · ${exercise.rest} rest</span>${exercise.loadingGuidance === sharedGuidance ? "" : html`<span>${exercise.loadingGuidance || "Use a controlled load and repeatable form."}</span>`}${exercise.performance?.sourceDate ? html`<span>Recorded source: ${dateLabel(exercise.performance.sourceDate)} · ${String(exercise.performance.status || "reference").replaceAll("_", " ")}</span>` : ""}${exercise.targetSets ? html`<span>Optional set targets: ${exercise.targetSets.map((set) => `${exercise.measurement === "timed" ? `${set.seconds} s` : `${set.reps} ${exercise.countUnit || "reps"}`}${exercise.loadType !== "bodyweight" && set.weight != null ? ` · ${set.weight} ${exercise.unit}${exercise.loadType === "assisted" ? " assistance" : ""}` : ""}`).join("; ")}</span>` : ""}${exercise.enteredCapability ? html`<span>${exercise.measurement && exercise.measurement !== "reps" ? "Entered repetition reference; not a time or distance target" : "Entered reference"}: ${number(exercise.enteredCapability.maxSets)} sets × ${number(exercise.enteredCapability.maxReps)} reps${exercise.enteredCapability.maxWeightKg == null ? "" : html` · ${ui.displayWeight(exercise.enteredCapability.maxWeightKg, profile.preferredLoadUnit === "lb" ? "imperial" : "metric")}`}</span>` : ""}</li>`,
+          );
           const unavailable = session.status === "unavailable" || !session.exercises?.length,
             partial = !unavailable && session.status === "partial",
             needsReview = unavailable || partial,
@@ -440,8 +430,8 @@
               (unavailable
                 ? "No compatible exercises are available for this requested day. Review your equipment, experience, and movement constraints."
                 : "Some required movements are unavailable. Review the missing movements before treating this as a complete session.");
-          return `<article class="coaching-day-card is-training${unavailable ? " is-unavailable" : partial ? " is-partial" : ""}"><header><span>${String(index + 1).padStart(2, "0")} · ${escape(day)}</span><time datetime="${escape(date)}">${escape(dateLabel(date))}</time></header><h5>${escape(title)}</h5>${needsReview ? `<p><strong>${escape(warning)}</strong>${session.missingRoles?.length ? StrataHtml.html` Missing movements: ${session.missingRoles.join(", ")}.` : ""}</p>` : ""}${unavailable ? "" : `<p>${session.workingSets != null ? `${number(session.workingSets)} working sets · about ${number(session.estimatedDurationMinutes)} minutes including planned rests and setup.` : escape(session.rationale)}</p><ol>${exercises}</ol>`}</article>`;
-        }).join(""),
+          return html`<article class="coaching-day-card is-training${unavailable ? " is-unavailable" : partial ? " is-partial" : ""}"><header><span>${String(index + 1).padStart(2, "0")} · ${day}</span><time datetime="${date}">${dateLabel(date)}</time></header><h5>${title}</h5>${needsReview ? html`<p><strong>${warning}</strong>${session.missingRoles?.length ? html` Missing movements: ${session.missingRoles.join(", ")}.` : ""}</p>` : ""}${unavailable ? "" : html`<p>${session.workingSets != null ? `${number(session.workingSets)} working sets · about ${number(session.estimatedDurationMinutes)} minutes including planned rests and setup.` : session.rationale}</p><ol>${exercises}</ol>`}</article>`;
+        }),
       );
       el("coachingPlanMethod").textContent = [
         sharedGuidance ? `Unless an exercise says otherwise: ${sharedGuidance}` : "",
@@ -480,17 +470,15 @@
         logMap = new Map((logs || []).map((log) => [log.date, log]));
       StrataHtml.setHtml(
         el("coachingCalorieWeek"),
-        targets
-          .map((target) => {
-            const macros = target.macros,
-              log = logMap.get(target.date),
-              share =
-                log && target.calories > 0
-                  ? Math.min(1, Math.max(0, Number(log.calories) || 0) / target.calories)
-                  : 0;
-            return `<article class="coaching-calorie-card${target.date === today ? " is-today" : ""}${target.kind === "flexible_day" ? " is-flexible" : ""}${log ? " is-logged" : ""}"><span>${escape(target.day)} · ${escape(dateLabel(target.date))}</span><strong>${energyUi.calorieTargetLabel(target.calories, "kcal")}</strong><small>${escape(targetKind(target.kind))}${target.date === today ? " · today" : ""}</small>${log ? `<p class="coaching-calorie-logged"><i aria-hidden="true"><b style="--value:${share.toFixed(3)}"></b></i>${number(log.calories)} kcal logged${log.complete === true ? " · complete" : ""}</p>` : ""}${macros ? `<dl><div><dt>Protein</dt><dd>${number(macros.proteinG)} g</dd></div><div><dt>Carbs</dt><dd>${number(macros.carbsG)} g</dd></div><div><dt>Fat</dt><dd>${number(macros.fatG)} g</dd></div></dl>` : ""}</article>`;
-          })
-          .join(""),
+        targets.map((target) => {
+          const macros = target.macros,
+            log = logMap.get(target.date),
+            share =
+              log && target.calories > 0
+                ? Math.min(1, Math.max(0, Number(log.calories) || 0) / target.calories)
+                : 0;
+          return html`<article class="coaching-calorie-card${target.date === today ? " is-today" : ""}${target.kind === "flexible_day" ? " is-flexible" : ""}${log ? " is-logged" : ""}"><span>${target.day} · ${dateLabel(target.date)}</span><strong>${energyUi.calorieTargetLabel(target.calories, "kcal")}</strong><small>${targetKind(target.kind)}${target.date === today ? " · today" : ""}</small>${log ? html`<p class="coaching-calorie-logged"><i aria-hidden="true"><b style="--value:${share.toFixed(3)}"></b></i>${number(log.calories)} kcal logged${log.complete === true ? " · complete" : ""}</p>` : ""}${macros ? html`<dl><div><dt>Protein</dt><dd>${number(macros.proteinG)} g</dd></div><div><dt>Carbs</dt><dd>${number(macros.carbsG)} g</dd></div><div><dt>Fat</dt><dd>${number(macros.fatG)} g</dd></div></dl>` : ""}</article>`;
+        }),
       );
       const patternText = {
           steady: "Steady targets keep each day nearly equal.",
@@ -524,7 +512,7 @@
         .filter((item) => /^https:\/\//.test(String(item?.url || "")))
         .map(
           (item) =>
-            StrataHtml.html`<li><a href="${item.url}" rel="noreferrer" target="_blank">${item.label || "Method source"} <span aria-hidden="true">↗</span></a></li>`,
+            html`<li><a href="${item.url}" rel="noreferrer" target="_blank">${item.label || "Method source"} <span aria-hidden="true">↗</span></a></li>`,
         );
       StrataHtml.setHtml(
         el("coachingMethodList"),
@@ -538,9 +526,8 @@
                 `Population equation reference error: ${number(maintenanceData.referencePredictionErrorKcal)} kcal/day. ${maintenanceData.referencePredictionErrorBasis || "Not a personalized confidence interval."}`,
               ]),
         ]
-          .map((item) => StrataHtml.html`<li>${item}</li>`)
-          .concat(references)
-          .join(""),
+          .map((item) => html`<li>${item}</li>`)
+          .concat(references),
       );
       const diaryTargets = diaryUi.targetsFor(week),
         keep = diaryUi.selectedDate(week, selectedDate, today);
@@ -548,12 +535,10 @@
         const select = el(id);
         StrataHtml.setHtml(
           select,
-          diaryTargets
-            .map(
-              (target) =>
-                `<option value="${escape(target.date)}"${target.date === keep ? " selected" : ""}>${escape(target.day)} · ${escape(dateLabel(target.date))}${target.date === today ? " · today" : target.calories == null ? " · no saved target" : ""}</option>`,
-            )
-            .join(""),
+          diaryTargets.map(
+            (target) =>
+              html`<option value="${target.date}"${target.date === keep ? " selected" : ""}>${target.day} · ${dateLabel(target.date)}${target.date === today ? " · today" : target.calories == null ? " · no saved target" : ""}</option>`,
+          ),
         );
       }
       document
@@ -577,7 +562,7 @@
         percent = progress
           ? Math.round((progress.consumedCalories / progress.targetCalories) * 100)
           : 0;
-      const summary = `<div class="coaching-progress-stat"><span>Logged</span><strong>${number(log?.calories || 0)} kcal</strong><small>${log ? (log.complete === true ? "Saved as a complete day" : "Saved running total") : "Nothing logged yet"}</small></div><div class="coaching-progress-stat"><span>Target</span><strong>${target ? energyUi.calorieTargetLabel(target.calories, "kcal") : "Not available"}</strong><small>${target ? StrataHtml.html`${targetKind(target.kind)} · planning estimate` : "No target was saved for this date"}</small></div><div class="coaching-progress-stat"><span>${progress ? label : "Comparison"}</span><strong>${progress ? `${number(progress.status === "over" ? progress.overByCalories : progress.remainingCalories)} kcal` : "Unavailable"}</strong><small>${progress ? `${number(percent)}% of the target logged` : "You can log or correct intake and weight without a historical calorie target."}</small></div>${progress ? `<div class="coaching-progress-meter${progress.status === "over" ? " is-over" : ""}" aria-hidden="true"><span style="--value:${Math.min(1, percent / 100).toFixed(3)}"></span></div>` : ""}`;
+      const summary = html`<div class="coaching-progress-stat"><span>Logged</span><strong>${number(log?.calories || 0)} kcal</strong><small>${log ? (log.complete === true ? "Saved as a complete day" : "Saved running total") : "Nothing logged yet"}</small></div><div class="coaching-progress-stat"><span>Target</span><strong>${target ? energyUi.calorieTargetLabel(target.calories, "kcal") : "Not available"}</strong><small>${target ? html`${targetKind(target.kind)} · planning estimate` : "No target was saved for this date"}</small></div><div class="coaching-progress-stat"><span>${progress ? label : "Comparison"}</span><strong>${progress ? `${number(progress.status === "over" ? progress.overByCalories : progress.remainingCalories)} kcal` : "Unavailable"}</strong><small>${progress ? `${number(percent)}% of the target logged` : "You can log or correct intake and weight without a historical calorie target."}</small></div>${progress ? html`<div class="coaching-progress-meter${progress.status === "over" ? " is-over" : ""}" aria-hidden="true"><span style="--value:${Math.min(1, percent / 100).toFixed(3)}"></span></div>` : ""}`;
       const macrosEnabled = Boolean(profile.macroPreference);
       const imperial = profile.measurementSystem === "imperial",
         weightValue = ui.dailyWeightFromKilograms(log?.morningWeightKg, profile.measurementSystem);

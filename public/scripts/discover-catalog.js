@@ -8,6 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
+  const { html } = StrataHtml;
   function createCatalog({
     state,
     core,
@@ -21,7 +22,6 @@
     document,
     window,
     element,
-    escapeHtml,
     exerciseById,
     titleCase,
     personalResult,
@@ -79,7 +79,7 @@
           : "Profile mismatch";
     }
     function choiceMarkup(name, value, label, checked) {
-      return `<label class="choice-pill"><input type="checkbox" name="${name}" value="${escapeHtml(value)}" ${checked ? "checked" : ""}/><span>${escapeHtml(label)}</span></label>`;
+      return html`<label class="choice-pill"><input type="checkbox" name="${name}" value="${value}" ${checked ? "checked" : ""}/><span>${label}</span></label>`;
     }
     function renderProfile() {
       element("goalSelect").value = state.preferences.goal;
@@ -88,52 +88,36 @@
       const equipment = [...new Set(state.exercises.map((exercise) => exercise.equipment))];
       StrataHtml.setHtml(
         element("equipmentChoices"),
-        equipment
-          .map((value) =>
-            choiceMarkup("equipment", value, value, state.preferences.equipment.includes(value)),
-          )
-          .join(""),
+        equipment.map((value) =>
+          choiceMarkup("equipment", value, value, state.preferences.equipment.includes(value)),
+        ),
       );
       StrataHtml.setHtml(
         element("preferenceChoices"),
-        Object.entries(preferenceOptions)
-          .map(([value, label]) =>
-            choiceMarkup(
-              "preferences",
-              value,
-              label,
-              state.preferences.preferences.includes(value),
-            ),
-          )
-          .join(""),
+        Object.entries(preferenceOptions).map(([value, label]) =>
+          choiceMarkup("preferences", value, label, state.preferences.preferences.includes(value)),
+        ),
       );
       StrataHtml.setHtml(
         element("limitationChoices"),
-        Object.entries(limitationOptions)
-          .map(([value, label]) =>
-            choiceMarkup(
-              "limitations",
-              value,
-              label,
-              state.preferences.limitations.includes(value),
-            ),
-          )
-          .join(""),
+        Object.entries(limitationOptions).map(([value, label]) =>
+          choiceMarkup("limitations", value, label, state.preferences.limitations.includes(value)),
+        ),
       );
       element("profileStatus").textContent = "Saved";
       renderRankingLens();
     }
     function scoreButton(exercise) {
-      return `<button class="score-button" data-open-detail="${exercise.id}" type="button" aria-label="Open transparent FitScore for ${escapeHtml(exercise.name)}"><strong>${exercise.score}</strong><span>FitScore</span></button>`;
+      return html`<button class="score-button" data-open-detail="${exercise.id}" type="button" aria-label="Open transparent FitScore for ${exercise.name}"><strong>${exercise.score}</strong><span>FitScore</span></button>`;
     }
     function compareButton(exercise) {
       const active = state.compare.includes(exercise.id);
-      return `<button class="${active ? "active" : ""}" data-toggle-compare="${exercise.id}" type="button" aria-pressed="${active}" aria-label="${active ? "Remove" : "Add"} ${escapeHtml(exercise.name)} ${active ? "from" : "to"} comparison">${active ? "Selected ✓" : "Compare +"}</button>`;
+      return html`<button class="${active ? "active" : ""}" data-toggle-compare="${exercise.id}" type="button" aria-pressed="${active}" aria-label="${active ? "Remove" : "Add"} ${exercise.name} ${active ? "from" : "to"} comparison">${active ? "Selected ✓" : "Compare +"}</button>`;
     }
     function movementBoardButton(exercise, { compact = false } = {}) {
       const active = state.shortlist.includes(exercise.id),
         label = active ? "Saved" : "Save";
-      return `<button class="movement-save${active ? " is-saved" : ""}${compact ? " is-compact" : ""}" data-toggle-shortlist="${exercise.id}" type="button" aria-pressed="${active}" aria-label="${active ? "Remove" : "Save"} ${escapeHtml(exercise.name)} ${active ? "from" : "to"} your decision board"><span aria-hidden="true">${active ? "✓" : "+"}</span><b>${label}</b></button>`;
+      return html`<button class="movement-save${active ? " is-saved" : ""}${compact ? " is-compact" : ""}" data-toggle-shortlist="${exercise.id}" type="button" aria-pressed="${active}" aria-label="${active ? "Remove" : "Save"} ${exercise.name} ${active ? "from" : "to"} your decision board"><span aria-hidden="true">${active ? "✓" : "+"}</span><b>${label}</b></button>`;
     }
     function renderRankingLens() {
       if (!state.preferences || !element("rankingLensItems")) return;
@@ -155,9 +139,7 @@
           `${state.preferences.days} days`,
           `${state.preferences.equipment.length} equipment types`,
           constraints,
-        ]
-          .map((item) => StrataHtml.html`<li>${item}</li>`)
-          .join(""),
+        ].map((item) => html`<li>${item}</li>`),
       );
     }
     function renderMovementBoard({ message = "" } = {}) {
@@ -194,13 +176,11 @@
       StrataHtml.setHtml(
         element("recommendationGrid"),
         state.recommendations.length
-          ? state.recommendations
-              .map(
-                ({ exercise, result }, index) =>
-                  `<article class="recommend-card" data-rank="${String(index + 1).padStart(2, "0")}"><div class="card-topline"><span class="match-pill">${result.match}% personal match</span><div class="card-tools">${movementBoardButton(exercise, { compact: true })}${scoreButton(exercise)}</div></div><h3>${escapeHtml(exercise.name)}</h3><span class="target">${escapeHtml(labels[exercise.group])} / ${escapeHtml(exercise.sub)}</span><p>${escapeHtml(profileReason(result))}. ${escapeHtml(exercise.why)}</p><div class="mini-meta"><span>${escapeHtml(exercise.equipment)}</span><span>${escapeHtml(exercise.level)}</span></div><div class="community-line"><span>Community rating</span><strong>${escapeHtml(communityLabel(exercise.id))}</strong></div><div class="mini-actions"><button data-open-detail="${exercise.id}" type="button" aria-label="Why ${escapeHtml(exercise.name)} ranks here">Why it ranks</button>${compareButton(exercise)}<a href="/planner.html?add=${encodeURIComponent(exercise.id)}" aria-label="Add ${escapeHtml(exercise.name)} to weekly plan">Add to plan</a></div></article>`,
-              )
-              .join("")
-          : `<div class="loading-card recommendation-empty"><p>No exercise matches all saved equipment and constraints.</p><a class="small-button" href="#profile" data-feature-target="profile">Tune my ranking →</a></div>`,
+          ? state.recommendations.map(
+              ({ exercise, result }, index) =>
+                html`<article class="recommend-card" data-rank="${String(index + 1).padStart(2, "0")}"><div class="card-topline"><span class="match-pill">${result.match}% personal match</span><div class="card-tools">${movementBoardButton(exercise, { compact: true })}${scoreButton(exercise)}</div></div><h3>${exercise.name}</h3><span class="target">${labels[exercise.group]} / ${exercise.sub}</span><p>${profileReason(result)}. ${exercise.why}</p><div class="mini-meta"><span>${exercise.equipment}</span><span>${exercise.level}</span></div><div class="community-line"><span>Community rating</span><strong>${communityLabel(exercise.id)}</strong></div><div class="mini-actions"><button data-open-detail="${exercise.id}" type="button" aria-label="Why ${exercise.name} ranks here">Why it ranks</button>${compareButton(exercise)}<a href="/planner.html?add=${encodeURIComponent(exercise.id)}" aria-label="Add ${exercise.name} to weekly plan">Add to plan</a></div></article>`,
+            )
+          : html`<div class="loading-card recommendation-empty"><p>No exercise matches all saved equipment and constraints.</p><a class="small-button" href="#profile" data-feature-target="profile">Tune my ranking →</a></div>`,
       );
     }
     function populateFilters() {
@@ -209,15 +189,15 @@
         patterns = [...new Set(state.exercises.map((exercise) => exercise.pattern))];
       StrataHtml.setHtml(
         element("groupFilter"),
-        `<option value="all">All muscles</option>${groups.map((value) => `<option value="${value}">${escapeHtml(labels[value] || titleCase(value))}</option>`).join("")}`,
+        html`<option value="all">All muscles</option>${groups.map((value) => html`<option value="${value}">${labels[value] || titleCase(value)}</option>`)}`,
       );
       StrataHtml.setHtml(
         element("equipmentFilter"),
-        `<option value="all">All equipment</option>${equipment.map((value) => StrataHtml.html`<option value="${value}">${value}</option>`).join("")}`,
+        html`<option value="all">All equipment</option>${equipment.map((value) => html`<option value="${value}">${value}</option>`)}`,
       );
       StrataHtml.setHtml(
         element("patternFilter"),
-        `<option value="all">All patterns</option>${patterns.map((value) => StrataHtml.html`<option value="${value}">${value}</option>`).join("")}`,
+        html`<option value="all">All patterns</option>${patterns.map((value) => html`<option value="${value}">${value}</option>`)}`,
       );
     }
     function discoveryResults() {
@@ -261,15 +241,14 @@
         : "Try clearing the search or one of the exercise filters.";
       StrataHtml.setHtml(
         element("exerciseGrid"),
-        visibleItems
-          .map((exercise, index) => {
-            const personal = personalResult(exercise);
-            return `<article class="exercise-card" data-result-index="${index}"><div class="card-topline"><span class="match-pill ${personal.eligible ? "" : "is-excluded"}">${escapeHtml(personalLabel(personal))}</span><div class="card-tools">${movementBoardButton(exercise, { compact: true })}${scoreButton(exercise)}</div></div><h3>${escapeHtml(exercise.name)}</h3><span class="target">${escapeHtml(labels[exercise.group] || titleCase(exercise.group))} / ${escapeHtml(exercise.sub)}</span><p>${escapeHtml(exercise.why)}</p><div class="mini-meta"><span>${escapeHtml(exercise.equipment)}</span><span>${escapeHtml(exercise.pattern)}</span><span>${escapeHtml(exercise.level)}</span></div><div class="community-line"><span>Community rating</span><strong>${escapeHtml(communityLabel(exercise.id))}</strong></div><div class="mini-actions"><button data-open-detail="${exercise.id}" type="button" aria-label="Inspect ${escapeHtml(exercise.name)}">Inspect</button>${compareButton(exercise)}<a href="/planner.html?add=${encodeURIComponent(exercise.id)}" aria-label="Add ${escapeHtml(exercise.name)} to weekly plan">Add to plan</a></div></article>`;
-          })
-          .join("") +
-          (!remaining
+        html`${visibleItems.map((exercise, index) => {
+          const personal = personalResult(exercise);
+          return html`<article class="exercise-card" data-result-index="${index}"><div class="card-topline"><span class="match-pill ${personal.eligible ? "" : "is-excluded"}">${personalLabel(personal)}</span><div class="card-tools">${movementBoardButton(exercise, { compact: true })}${scoreButton(exercise)}</div></div><h3>${exercise.name}</h3><span class="target">${labels[exercise.group] || titleCase(exercise.group)} / ${exercise.sub}</span><p>${exercise.why}</p><div class="mini-meta"><span>${exercise.equipment}</span><span>${exercise.pattern}</span><span>${exercise.level}</span></div><div class="community-line"><span>Community rating</span><strong>${communityLabel(exercise.id)}</strong></div><div class="mini-actions"><button data-open-detail="${exercise.id}" type="button" aria-label="Inspect ${exercise.name}">Inspect</button>${compareButton(exercise)}<a href="/planner.html?add=${encodeURIComponent(exercise.id)}" aria-label="Add ${exercise.name} to weekly plan">Add to plan</a></div></article>`;
+        })}${
+          !remaining
             ? ""
-            : `<div class="explorer-load-more"><p>Showing ${visibleItems.length} of ${items.length} matching exercises</p><button data-load-more-exercises type="button" aria-controls="exerciseGrid">Load ${nextCount} more <span aria-hidden="true">↓</span></button></div>`),
+            : html`<div class="explorer-load-more"><p>Showing ${visibleItems.length} of ${items.length} matching exercises</p><button data-load-more-exercises type="button" aria-controls="exerciseGrid">Load ${nextCount} more <span aria-hidden="true">↓</span></button></div>`
+        }`,
       );
     }
     function renderCommunityViews() {
@@ -314,30 +293,25 @@
       renderBattleBuilder();
     }
     function battleOptions(selected) {
-      return `<option value="">Choose an exercise…</option>${Object.keys(labels)
-        .map(
-          (group) =>
-            `<optgroup label="${escapeHtml(labels[group])}">${state.exercises
-              .filter((exercise) => exercise.group === group)
-              .sort((a, b) => b.score - a.score)
-              .map(
-                (exercise) =>
-                  `<option value="${exercise.id}" ${exercise.id === selected ? "selected" : ""}>${escapeHtml(exercise.name)} — ${exercise.score}</option>`,
-              )
-              .join("")}</optgroup>`,
-        )
-        .join("")}`;
+      return html`<option value="">Choose an exercise…</option>${Object.keys(labels).map(
+        (group) =>
+          html`<optgroup label="${labels[group]}">${state.exercises
+            .filter((exercise) => exercise.group === group)
+            .sort((a, b) => b.score - a.score)
+            .map(
+              (exercise) =>
+                html`<option value="${exercise.id}" ${exercise.id === selected ? "selected" : ""}>${exercise.name} — ${exercise.score}</option>`,
+            )}</optgroup>`,
+      )}`;
     }
     function renderBattleBuilder() {
       if (!state.exercises.length) return;
       StrataHtml.setHtml(
         element("battleSelects"),
-        [0, 1, 2, 3]
-          .map(
-            (index) =>
-              `<label class="battle-slot">Exercise ${index + 1}${index < 2 ? " (required)" : " (optional)"}<select data-battle-slot="${index}" ${index < 2 ? "required" : ""}>${battleOptions(state.compare[index] || "")}</select></label>`,
-          )
-          .join(""),
+        [0, 1, 2, 3].map(
+          (index) =>
+            html`<label class="battle-slot">Exercise ${index + 1}${index < 2 ? " (required)" : " (optional)"}<select data-battle-slot="${index}" ${index < 2 ? "required" : ""}>${battleOptions(state.compare[index] || "")}</select></label>`,
+        ),
       );
       const count = state.compare.length;
       element("battleStatus").textContent =

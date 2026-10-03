@@ -8,13 +8,13 @@
   else root.StrataWorkoutHistory = history;
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
+  const { html } = StrataHtml;
 
   function create({
     $,
     state,
     workout: W,
     view,
-    esc,
     number,
     exercise,
     formatLabel,
@@ -52,12 +52,10 @@
       $("chartControls").hidden = !entries.length;
       StrataHtml.setHtml(
         $("chartExercise"),
-        entries
-          .map(
-            ([key, entry]) =>
-              StrataHtml.html`<option value="${key}">${exercise(entry.exerciseId).name} · ${formatLabel(entry)}</option>`,
-          )
-          .join(""),
+        entries.map(
+          ([key, entry]) =>
+            html`<option value="${key}">${exercise(entry.exerciseId).name} · ${formatLabel(entry)}</option>`,
+        ),
       );
       if (entries.some(([key]) => key === current)) $("chartExercise").value = current;
       renderMetricOptions();
@@ -69,13 +67,11 @@
       StrataHtml.setHtml(
         $("chartMetric"),
         entry
-          ? W.metrics(entry)
-              .map(
-                (metric) =>
-                  `<option value="${metric.key}">${esc(metric.label)} (${esc(metric.unit)})</option>`,
-              )
-              .join("")
-          : "",
+          ? W.metrics(entry).map(
+              (metric) =>
+                html`<option value="${metric.key}">${metric.label} (${metric.unit})</option>`,
+            )
+          : html``,
       );
       if (entry && W.metrics(entry).some((metric) => metric.key === current))
         $("chartMetric").value = current;
@@ -94,7 +90,7 @@
       if (!points.length) {
         StrataHtml.setHtml(
           $("performanceChart"),
-          "<p class='chart-no-data'>No completed sets in this logging format yet.</p>",
+          html`<p class='chart-no-data'>No completed sets in this logging format yet.</p>`,
         );
         return;
       }
@@ -107,15 +103,13 @@
         x: points.length === 1 ? 200 : left + (index / (points.length - 1)) * (right - left),
         y: bottom - (point.value / top) * height,
       }));
-      const table = points
-        .map(
-          (point) =>
-            `<tr><td>${esc(W.displayDate(point.date))}</td><td>${number(point.value)} ${esc(metric.unit)}</td></tr>`,
-        )
-        .join("");
+      const table = points.map(
+        (point) =>
+          html`<tr><td>${W.displayDate(point.date)}</td><td>${number(point.value)} ${metric.unit}</td></tr>`,
+      );
       StrataHtml.setHtml(
         $("performanceChart"),
-        `<div class="chart-best"><strong>${number(best)} <small>${esc(metric.unit)}</small></strong><span>Best in loaded history</span></div><svg class="chart-svg" viewBox="0 0 375 196" role="img" aria-label="${esc(metric.label)} across ${points.length} completed session${points.length === 1 ? "" : "s"}. Best in loaded history: ${number(best)} ${esc(metric.unit)}. Exact values in the table below."><line class="chart-grid" x1="${left}" x2="${right}" y1="34" y2="34"/><line class="chart-grid" x1="${left}" x2="${right}" y1="96.5" y2="96.5"/><line class="chart-baseline" x1="${left}" x2="${right}" y1="${bottom}" y2="${bottom}"/><text class="chart-label" x="0" y="38">${number(top)}</text><text class="chart-label" x="0" y="101">${number(top / 2)}</text><text class="chart-label" x="0" y="163">0</text>${points.length > 1 ? `<polyline class="chart-line" points="${coords.map((point) => `${point.x},${point.y}`).join(" ")}"/>` : ""}${coords.map((point, index) => `<circle class="chart-dot" cx="${point.x}" cy="${point.y}" r="5"><title>${esc(W.displayDate(points[index].date))}: ${number(points[index].value)} ${esc(metric.unit)}</title></circle>`).join("")}<text class="chart-label" x="${left}" y="186">${esc(W.displayDate(points[0].date, { weekday: false }))}</text>${points.length > 1 ? `<text class="chart-label" x="${right}" y="186" text-anchor="end">${esc(W.displayDate(points.at(-1).date, { weekday: false }))}</text>` : ""}</svg>${points.length === 1 ? "<p class='single-point-note'>Your first data point. Another completed session makes a comparison possible.</p>" : "<p class='single-point-note'>Sessions are spaced equally in chronological order.</p>"}<details class="chart-data"><summary>View exact session values</summary><table class="chart-table"><thead><tr><th scope="col">Session date</th><th scope="col">${esc(metric.label)}</th></tr></thead><tbody>${table}</tbody></table></details>`,
+        html`<div class="chart-best"><strong>${number(best)} <small>${metric.unit}</small></strong><span>Best in loaded history</span></div><svg class="chart-svg" viewBox="0 0 375 196" role="img" aria-label="${metric.label} across ${points.length} completed session${points.length === 1 ? "" : "s"}. Best in loaded history: ${number(best)} ${metric.unit}. Exact values in the table below."><line class="chart-grid" x1="${left}" x2="${right}" y1="34" y2="34"/><line class="chart-grid" x1="${left}" x2="${right}" y1="96.5" y2="96.5"/><line class="chart-baseline" x1="${left}" x2="${right}" y1="${bottom}" y2="${bottom}"/><text class="chart-label" x="0" y="38">${number(top)}</text><text class="chart-label" x="0" y="101">${number(top / 2)}</text><text class="chart-label" x="0" y="163">0</text>${points.length > 1 ? html`<polyline class="chart-line" points="${coords.map((point) => `${point.x},${point.y}`).join(" ")}"/>` : ""}${coords.map((point, index) => html`<circle class="chart-dot" cx="${point.x}" cy="${point.y}" r="5"><title>${W.displayDate(points[index].date)}: ${number(points[index].value)} ${metric.unit}</title></circle>`)}<text class="chart-label" x="${left}" y="186">${W.displayDate(points[0].date, { weekday: false })}</text>${points.length > 1 ? html`<text class="chart-label" x="${right}" y="186" text-anchor="end">${W.displayDate(points.at(-1).date, { weekday: false })}</text>` : ""}</svg>${points.length === 1 ? html`<p class='single-point-note'>Your first data point. Another completed session makes a comparison possible.</p>` : html`<p class='single-point-note'>Sessions are spaced equally in chronological order.</p>`}<details class="chart-data"><summary>View exact session values</summary><table class="chart-table"><thead><tr><th scope="col">Session date</th><th scope="col">${metric.label}</th></tr></thead><tbody>${table}</tbody></table></details>`,
       );
       $("chartScope").textContent =
         `Based on ${points.length} matching completed session${points.length === 1 ? "" : "s"} in ${state.history.length} loaded sessions${state.hasMore ? "; load more to extend the window" : ""}. Formats and units are compared separately. ${entry.loadType === "assisted" ? "Assistance is excluded from load records; rep comparisons do not account for differing assistance." : entry.loadType === "bodyweight" ? "Bodyweight is excluded from external load and volume records." : entry.measurement === "timed" ? "Timed sets are measured in seconds and do not generate weight-volume records." : "Volume uses only completed sets with recorded external loads."}`;
@@ -131,19 +125,17 @@
       StrataHtml.setHtml(
         $("historyList"),
         visibleHistory.length
-          ? visibleHistory
-              .map(
-                (item) =>
-                  `<article class="history-row"><div><span class="status-chip${item.status === "active" ? " active" : ""}">${item.status === "active" ? "In progress" : "Completed"}</span><h4>${esc(item.title)}</h4><p>${esc(W.displayDate(item.date))} · ${item.completedSets}/${item.totalSets} sets · ${W.duration(item.elapsedSeconds)}</p>${item.adjustment === "recovery" ? "<p class='history-note'>Lighter session after a poor night</p>" : ""}${((note) => (note ? StrataHtml.html`<p class='history-note'>${note}</p>` : ""))(state.deviceNote?.(item))}</div><button type="button" class="button secondary compact" data-history="${esc(item.id)}">${item.status === "active" ? "Resume" : "View"}</button></article>`,
-              )
-              .join("")
+          ? visibleHistory.map(
+              (item) =>
+                html`<article class="history-row"><div><span class="status-chip${item.status === "active" ? " active" : ""}">${item.status === "active" ? "In progress" : "Completed"}</span><h4>${item.title}</h4><p>${W.displayDate(item.date)} · ${item.completedSets}/${item.totalSets} sets · ${W.duration(item.elapsedSeconds)}</p>${item.adjustment === "recovery" ? html`<p class='history-note'>Lighter session after a poor night</p>` : ""}${((note) => (note ? html`<p class='history-note'>${note}</p>` : ""))(state.deviceNote?.(item))}</div><button type="button" class="button secondary compact" data-history="${item.id}">${item.status === "active" ? "Resume" : "View"}</button></article>`,
+            )
           : recoveryIds.size
-            ? "<div class='empty-state'><strong>Review your device draft above.</strong>The saved session stays separate until you choose which work to keep.</div>"
+            ? html`<div class='empty-state'><strong>Review your device draft above.</strong>The saved session stays separate until you choose which work to keep.</div>`
             : state.historyLoadError
-              ? "<div class='empty-state'><strong>Workout history is unavailable.</strong>Retry before starting another workout.</div>"
+              ? html`<div class='empty-state'><strong>Workout history is unavailable.</strong>Retry before starting another workout.</div>`
               : !state.historyLoaded
-                ? "<div class='empty-state'><strong>Loading workout history…</strong>Checking saved workouts before you start.</div>"
-                : "<div class='empty-state'><strong>Your story starts with one workout.</strong>Finished sessions appear here, set by set.</div>",
+                ? html`<div class='empty-state'><strong>Loading workout history…</strong>Checking saved workouts before you start.</div>`
+                : html`<div class='empty-state'><strong>Your story starts with one workout.</strong>Finished sessions appear here, set by set.</div>`,
       );
       $("loadMore").hidden = !state.hasMore;
       $("loadMore").disabled = state.historyBusy;

@@ -1,11 +1,9 @@
-/* global module, require */
+/* global module */
 (function (root, factory) {
-  const StrataHtml =
-    typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
-  const api = factory(StrataHtml);
+  const api = factory();
   if (typeof module === "object" && module.exports) module.exports = api;
   root.StrataDevicesCore = api;
-})(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
   // Shared wording and calculations for connected devices on Account, Strata+, and Train. Polar's numbers are
@@ -47,7 +45,6 @@
     POLAR_TIMEOUT: "Polar was slow at the last sync. STRATA will try again.",
   });
 
-  const escapeHtml = StrataHtml.escape;
   const finite = (value) =>
     value !== null && value !== undefined && value !== "" && Number.isFinite(Number(value));
   /** The member's own calendar date, which the server uses as "today". */
@@ -362,7 +359,6 @@
     dateLabel,
     deviceWorkoutText,
     durationText,
-    escapeHtml,
     lighterText,
     lighterWorkout,
     localDate,

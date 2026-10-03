@@ -127,9 +127,7 @@ function validateSubscription(
     return { ok: false, reason: "billing_period" };
   return {
     ok: true,
-    entitled:
-      price.product_id === config.productId &&
-      [config.priceId, ...(config.legacyRecurringPriceIds || [])].includes(clean(price.id)),
+    entitled: price.product_id === config.productId && clean(price.id) === config.priceId,
     subscriptionId: clean(data.id),
     customerId: clean(data.customer_id),
     status: /** @type {import("./domain-types").SubscriptionStatus} */ (status),

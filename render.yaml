@@ -45,8 +45,6 @@ services:
         sync: false
       - key: PADDLE_PRICE_ID
         sync: false
-      - key: PADDLE_LEGACY_RECURRING_PRICE_IDS
-        sync: false
       - key: PADDLE_CLIENT_TOKEN
         sync: false
       - key: PADDLE_API_KEY

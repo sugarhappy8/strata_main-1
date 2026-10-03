@@ -53,6 +53,15 @@ const MIGRATIONS = Object.freeze([
     id: "010-product-signal-audiences",
     description: "Count signed-in and anonymous product activity separately.",
   },
+  {
+    id: "011-drop-build9-archives",
+    description:
+      "Drop the Build 9 archives of retired trials and shared community plans (backed up before 9.6).",
+  },
+  {
+    id: "012-close-build7-checkouts",
+    description: "Close unfinished checkouts on the retired Build 7.4 one-time price.",
+  },
 ]);
 const SIGNAL_AUDIENCE_COLUMNS = Object.freeze([
   ["member_count", "INTEGER NOT NULL DEFAULT 0"],
@@ -60,7 +69,12 @@ const SIGNAL_AUDIENCE_COLUMNS = Object.freeze([
 ]);
 const LATEST_MIGRATION_ID = MIGRATIONS.at(-1).id;
 
-// Build 9 keeps the trial rows under an archive name so the cut stays reversible for one release.
+// Build 9 kept the trial rows under an archive name so the cut stayed reversible for one release; 9.6 drops the
+// archives (ARCHIVE_DROP_STATEMENTS) once the owner has exported a backup.
+const ARCHIVE_DROP_STATEMENTS = Object.freeze([
+  "DROP TABLE IF EXISTS archive_discovery_trials",
+  "DROP TABLE IF EXISTS archive_community_weekly_plans",
+]);
 const RETIRED_TABLE_STATEMENTS = Object.freeze([
   "DROP INDEX IF EXISTS admin_elevations_expiry",
   "DROP TABLE IF EXISTS admin_elevations",
@@ -78,6 +92,23 @@ const productSignalRebuild = (table) => [
   WHERE event_name<>'trial_started'`,
   "DROP TABLE product_signal_counts",
   "ALTER TABLE product_signal_counts_build9 RENAME TO product_signal_counts",
+];
+// Build 9.6 no longer recovers Build 7.4 one-time checkouts. Close the unfinished ones so they
+// block neither account deletion nor a new checkout. Completed lifetime purchases are untouched.
+/** @param {number} closedAt */
+const build7CheckoutClosure = (closedAt) => [
+  {
+    sql: `UPDATE paddle_purchases
+    SET paddle_status='canceled',access_revoked_at=?,revocation_reason='checkout_disabled',
+      updated_at=MAX(updated_at,?)
+    WHERE price_id='pri_01m1kyc2zd313d7a3ssmg02424' AND product_id='pro_01m1ky8j916ybyacs836dxbz8x'
+      AND completed_at IS NULL AND paddle_status<>'canceled' AND access_revoked_at IS NULL`,
+    args: [closedAt, closedAt],
+  },
+  {
+    sql: "DELETE FROM paddle_checkout_claims WHERE price_id='pri_01m1kyc2zd313d7a3ssmg02424'",
+    args: [],
+  },
 ];
 function localColumnNames(database, table) {
   return new Set(
@@ -298,6 +329,30 @@ function migrateLocalSchema(
     )
   )
     applied.push(MIGRATIONS[9].id);
+  if (
+    runLocalMigration(
+      database,
+      MIGRATIONS[10].id,
+      () => {
+        for (const sql of ARCHIVE_DROP_STATEMENTS) database.exec(sql);
+      },
+      now(),
+    )
+  )
+    applied.push(MIGRATIONS[10].id);
+  const closedAt = now();
+  if (
+    runLocalMigration(
+      database,
+      MIGRATIONS[11].id,
+      () => {
+        for (const { sql, args } of build7CheckoutClosure(closedAt))
+          database.prepare(sql).run(...args);
+      },
+      closedAt,
+    )
+  )
+    applied.push(MIGRATIONS[11].id);
   return { latest: LATEST_MIGRATION_ID, applied };
 }
 
@@ -471,6 +526,33 @@ async function migrateTursoSchema(
       "write",
     );
     applied.push(MIGRATIONS[9].id);
+  }
+  if (!completed.has(MIGRATIONS[10].id)) {
+    await client.batch(
+      [
+        ...ARCHIVE_DROP_STATEMENTS,
+        {
+          sql: "INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",
+          args: [MIGRATIONS[10].id, now()],
+        },
+      ],
+      "write",
+    );
+    applied.push(MIGRATIONS[10].id);
+  }
+  if (!completed.has(MIGRATIONS[11].id)) {
+    const closedAt = now();
+    await client.batch(
+      [
+        ...build7CheckoutClosure(closedAt),
+        {
+          sql: "INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",
+          args: [MIGRATIONS[11].id, closedAt],
+        },
+      ],
+      "write",
+    );
+    applied.push(MIGRATIONS[11].id);
   }
   return { latest: LATEST_MIGRATION_ID, applied };
 }

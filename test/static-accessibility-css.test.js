@@ -322,7 +322,10 @@ test("planner keeps evidence collapsed and shows plan guidance only to active St
   );
   assert.match(planner, /plusActive\s*=\s*STATE\s*\.hasConfirmedPlusAccess\s*\(\s*state\s*,?\s*\)/);
   assert.match(planner, /else\s*if\s*\(\s*plusActive\s*&&\s*!\s*total\s*,?\s*\)\s*readiness\s*=/);
-  assert.match(planner, /\$\s*\{\s*readiness\s*\?\s*`\s*<\s*section\s*class\s*=\s*"week-readiness/);
+  assert.match(
+    planner,
+    /\$\s*\{\s*readiness\s*\?\s*html\s*`\s*<\s*section\s*class\s*=\s*"week-readiness/,
+  );
   assert.match(planner, /href\s*:\s*`\/workout\s*\.html\s*\?\s*day\s*=/);
   assert.match(plannerRender, /Free device plan/);
   assert.match(plannerRender, /Free synced plan/);

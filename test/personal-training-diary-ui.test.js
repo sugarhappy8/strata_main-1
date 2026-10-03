@@ -214,10 +214,12 @@ test("a delayed coaching write cannot repopulate a reset account view", async ()
 });
 
 test("weight scenarios begin at their dated engine weight basis", () => {
-  const markup = projectionSvg(
-    { weightKg: 100 },
-    [{ weeks: 4, startWeightKg: 80, weightKg: 79, rangeKg: [77, 83] }],
-    (kg) => `${kg} kg`,
+  const markup = String(
+    projectionSvg(
+      { weightKg: 100 },
+      [{ weeks: 4, startWeightKg: 80, weightKg: 79, rangeKg: [77, 83] }],
+      (kg) => `${kg} kg`,
+    ),
   );
   assert.match(markup, /Start/);
   assert.match(markup, /77 kg–83 kg/);
@@ -900,4 +902,136 @@ test("logging streaks and weight trends use only real logs", () => {
     null,
     "a rate needs weights spanning at least a week",
   );
+});
+
+test("plan text in the coaching dashboard is escaped exactly once", () => {
+  const previous = globalThis.document;
+  globalThis.document = { querySelectorAll: () => [] };
+  try {
+    const el = elements(),
+      render = createRenderer({ element: el, ui: Ui, diaryUi: Diary }),
+      hostile = 'Press <b>"wide"</b> & row',
+      escaped = "Press &lt;b&gt;&quot;wide&quot;&lt;/b&gt; &amp; row",
+      profile = {
+        version: 3,
+        measurementSystem: "metric",
+        preferredLoadUnit: "kg",
+        weightKg: 82,
+        experience: "intermediate",
+        sessionMinutes: 45,
+        sessionsPerWeek: 1,
+        lifestyleActivity: "moderately_active",
+        usualExercises: [],
+        trainingGoal: "strength",
+      };
+    render.renderDashboard(
+      profile,
+      {
+        ...week,
+        nextWeekStart: "2026-09-21",
+        training: {
+          source: "plan",
+          sessions: [
+            {
+              day: "Wednesday",
+              label: hostile,
+              workingSets: 3,
+              estimatedDurationMinutes: 12,
+              exercises: [
+                { name: hostile, sets: 3, reps: "8", rest: "90 sec", loadingGuidance: hostile },
+              ],
+            },
+          ],
+        },
+        nutrition: {
+          ...week.nutrition,
+          maintenance: { targetKcal: 2300 },
+          weightScenarios: [{ weeks: 4, startWeightKg: 80, weightKg: 79, rangeKg: [77, 83] }],
+        },
+        methodology: { assumptions: [hostile] },
+      },
+      [],
+      "2026-09-16",
+    );
+    const grid = el("coachingWeekGrid").innerHTML;
+    assert.ok(grid.includes(`<h5>${escaped}</h5>`));
+    assert.ok(
+      grid.includes(`<li><strong>${escaped}</strong><span>3 sets × 8 · 90 sec rest</span>`),
+    );
+    assert.ok(grid.includes(`<span>${escaped}</span></li>`));
+    assert.equal((grid.match(/<article class="coaching-day-card/g) || []).length, 7);
+    assert.ok(el("coachingMethodList").innerHTML.includes(`<li>${escaped}</li>`));
+    assert.match(el("coachingLogDate").innerHTML, /^<option value="2026-09-07">/);
+    assert.match(el("coachingProjectionChart").innerHTML, /^<svg viewBox="0 0 720 210"/);
+    for (const id of ["coachingWeekGrid", "coachingMethodList", "coachingCalorieWeek"])
+      assert.doesNotMatch(el(id).innerHTML, /&amp;(?:lt|gt|quot|amp);|<b>"wide/, id);
+  } finally {
+    if (previous === undefined) delete globalThis.document;
+    else globalThis.document = previous;
+  }
+});
+
+test("a saved known exercise name is escaped exactly once in its capability row and options", async () => {
+  const el = elements(),
+    rows = [],
+    hostile = 'Press <b>"wide"</b> & row',
+    escaped = "Press &lt;b&gt;&quot;wide&quot;&lt;/b&gt; &amp; row",
+    document = {
+      querySelectorAll: () => [],
+      querySelector: () => null,
+      createElement: () => ({ className: "", innerHTML: "" }),
+    },
+    profile = {
+      version: 4,
+      measurementSystem: "metric",
+      preferredLoadUnit: "kg",
+      age: 31,
+      heightCm: 178,
+      weightKg: 82,
+      sexForEquation: "male",
+      goal: "maintenance",
+      experience: "intermediate",
+      sessionsPerWeek: 3,
+      workoutDays: ["Monday", "Wednesday", "Friday"],
+      sessionMinutes: 45,
+      usualExercises: [{ exerciseId: "press", maxSets: 3, maxReps: 8, maxWeightKg: null }],
+      caloriePattern: "steady",
+    };
+  el("coachingCapabilityRows").append = (row) => rows.push(row);
+  const controller = createController({
+    document,
+    element: el,
+    api: async (url) =>
+      url === "/api/coaching/profile"
+        ? { csrfToken: "csrf", profile }
+        : { csrfToken: "csrf", week, logs: [] },
+    state: {
+      user: { id: "member" },
+      csrfToken: "csrf",
+      exercises: [{ id: "press", name: hostile, group: "chest", equipment: "Bench & bar" }],
+      preferences: {},
+    },
+    ui: Ui,
+    diaryUi: Diary,
+    meals: { sync() {}, clearPrivate() {}, fillPreferences() {} },
+    assertAccountResponse,
+    renderFactory: () => ({
+      renderDashboard: () => "2026-09-16",
+      renderLog() {},
+      clearPrivate() {},
+      show() {},
+    }),
+    saveRetryMessage: (error) => error.message,
+    showToast() {},
+  });
+  await controller.load();
+  assert.equal(rows.length, 1);
+  assert.ok(rows[0].innerHTML.includes(`list="coachingExerciseOptions" value="${escaped}"`));
+  assert.ok(rows[0].innerHTML.includes('<option value="kg" selected>kg</option>'));
+  assert.equal(
+    el("coachingExerciseOptions").innerHTML,
+    `<option value="${escaped}">chest · Bench &amp; bar</option>`,
+  );
+  for (const markup of [rows[0].innerHTML, el("coachingExerciseOptions").innerHTML])
+    assert.doesNotMatch(markup, /&amp;(?:lt|gt|quot|amp);|<b>"wide/);
 });

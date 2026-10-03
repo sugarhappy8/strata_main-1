@@ -13,6 +13,7 @@
     P = globalThis.StrataWorkoutProgression,
     V = globalThis.StrataWorkoutRecovery;
   const $ = (id) => document.getElementById(id);
+  const { html } = StrataHtml;
   const signal = (name) => globalThis.StrataSignals?.record?.(name);
   const state = S.create(W, location);
   const view = R.create({
@@ -21,7 +22,7 @@
     discovery: G,
     nextTarget: (entry) => progression.targetFor(entry),
   });
-  const { esc, number, exercise, formatLabel, hasActuals, memoryFor } = view;
+  const { number, exercise, formatLabel, hasActuals, memoryFor } = view;
   const saveError = S.saveError;
   // Inside the iOS app the screen stays awake while a workout is in progress on screen, and a native alert marks the
   // end of a rest that runs out while STRATA is in the background. Browsers have no StrataAppMode, so none of this runs.
@@ -230,12 +231,10 @@
     $("recoveryPanel").hidden = !state.recoveries.length || !!state.workout || state.blocked;
     StrataHtml.setHtml(
       $("recoveryList"),
-      state.recoveries
-        .map((record, index) => {
-          const counts = W.progress(record.workout);
-          return `<div class="recovery-item"><div><strong>${esc(record.workout.title)}</strong><small>${esc(W.displayDate(record.workout.date))} · ${counts.completed}/${counts.total} sets · ${record.dirty ? "Unsaved device changes" : "Previously saved session"}</small></div><div class="actions"><button class="button secondary compact" data-recover="${index}" type="button">Review &amp; recover</button><button class="button quiet compact" data-discard="${index}" type="button">Remove device draft</button></div></div>`;
-        })
-        .join(""),
+      state.recoveries.map((record, index) => {
+        const counts = W.progress(record.workout);
+        return html`<div class="recovery-item"><div><strong>${record.workout.title}</strong><small>${W.displayDate(record.workout.date)} · ${counts.completed}/${counts.total} sets · ${record.dirty ? "Unsaved device changes" : "Previously saved session"}</small></div><div class="actions"><button class="button secondary compact" data-recover="${index}" type="button">Review &amp; recover</button><button class="button quiet compact" data-discard="${index}" type="button">Remove device draft</button></div></div>`;
+      }),
     );
   }
   function selectWorkout(workout, { dirty = false, pausedSeconds = null } = {}) {
@@ -414,7 +413,7 @@
     $("sessionTitle").textContent = workout.title;
     $("sessionDate").textContent =
       `${W.displayDate(workout.date)} · ${workout.planDay || "Training"}${workout.adjustment === "recovery" ? " · Lighter session" : ""}${workout.status === "completed" ? " · awaiting save" : ""}`;
-    StrataHtml.setHtml($("sessionEntries"), workout.entries.map(view.renderEntry).join(""));
+    StrataHtml.setHtml($("sessionEntries"), workout.entries.map(view.renderEntry));
     updateSessionMeta();
     tick();
     if (workout.status === "active") {
@@ -507,7 +506,7 @@
       comparison = W.swapComparison(current, candidate);
     StrataHtml.setHtml(
       $("swapComparison"),
-      `<div><span>Current</span><strong>${esc(current.name)}</strong><small>${esc(current.sub || current.group)} · ${esc(current.equipment)} · FitScore ${Number(current.score)} · Stability ${Number(current.metrics?.stability || 0)}</small></div><span class="swap-arrow" aria-hidden="true">→</span><div><span>Alternative</span><strong>${esc(candidate.name)}</strong><small>${esc(candidate.sub || candidate.group)} · ${esc(candidate.equipment)} · FitScore ${Number(candidate.score)} · Stability ${Number(candidate.metrics?.stability || 0)}</small></div><p>${esc(comparison.explanation)}</p>`,
+      html`<div><span>Current</span><strong>${current.name}</strong><small>${current.sub || current.group} · ${current.equipment} · FitScore ${Number(current.score)} · Stability ${Number(current.metrics?.stability || 0)}</small></div><span class="swap-arrow" aria-hidden="true">→</span><div><span>Alternative</span><strong>${candidate.name}</strong><small>${candidate.sub || candidate.group} · ${candidate.equipment} · FitScore ${Number(candidate.score)} · Stability ${Number(candidate.metrics?.stability || 0)}</small></div><p>${comparison.explanation}</p>`,
     );
     $("planSwapReview").hidden = true;
     state.swapProposal = null;
@@ -527,12 +526,10 @@
     state.swapTrigger = button;
     StrataHtml.setHtml(
       $("swapExercise"),
-      choices
-        .map(
-          (candidate) =>
-            `<option value="${esc(candidate.id)}">${esc(candidate.name)} · ${esc(candidate.equipment)} · FitScore ${Number(candidate.score)}</option>`,
-        )
-        .join(""),
+      choices.map(
+        (candidate) =>
+          html`<option value="${candidate.id}">${candidate.name} · ${candidate.equipment} · FitScore ${Number(candidate.score)}</option>`,
+      ),
     );
     $("swapExercise").value = state.swapCandidateId;
     $("swapTitle").textContent = `Replace ${exercise(entry.exerciseId).name}`;
@@ -703,7 +700,7 @@
       saved = latest ? W.progress(latest) : null;
     StrataHtml.setHtml(
       $("conflictComparison"),
-      `<div><strong>Latest saved version</strong><span>${latest ? `${esc(latest.title)} · ${saved.completed}/${saved.total} sets · revision ${Number(latest.revision)}` : "This session is no longer in saved history."}</span></div><div><strong>Your device draft</strong><span>${esc(state.workout.title)} · ${mine.completed}/${mine.total} sets · ${esc(state.workout.status)}</span></div>`,
+      html`<div><strong>Latest saved version</strong><span>${latest ? `${latest.title} · ${saved.completed}/${saved.total} sets · revision ${Number(latest.revision)}` : "This session is no longer in saved history."}</span></div><div><strong>Your device draft</strong><span>${state.workout.title} · ${mine.completed}/${mine.total} sets · ${state.workout.status}</span></div>`,
     );
     $("useLatest").disabled = !latest;
     status("Conflict — Review", "error");
@@ -907,7 +904,6 @@
     assertIdentity,
     saveError,
     exercise,
-    esc,
     number,
   });
   const historyView = H.create({
@@ -915,7 +911,6 @@
     state,
     workout: W,
     view,
-    esc,
     number,
     exercise,
     formatLabel,
@@ -940,7 +935,6 @@
     state,
     workout: W,
     view,
-    esc,
     openDetail: historyView.openDetail,
     recover,
   });
@@ -949,7 +943,6 @@
     state,
     request: (path) => client.request(path),
     core: globalThis.StrataDevicesCore,
-    esc,
     renderHistory: () => historyView.render(),
   });
   async function initialize() {
@@ -993,7 +986,7 @@
       document.body.classList.add("has-workout-access");
       StrataHtml.setHtml(
         $("modeNotice"),
-        StrataHtml.html`<strong>${state.user.name || "Your account"} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Profile</a>`,
+        html`<strong>${state.user.name || "Your account"} · Strata+ active.</strong> Workouts sync securely and can recover on this device. <a href='/account.html'>Profile</a>`,
       );
       $("trainingRoom").hidden = false;
       $("historySection").hidden = false;

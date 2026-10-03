@@ -8,6 +8,7 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function (StrataHtml) {
   "use strict";
 
+  const { html } = StrataHtml;
   function createSession({
     state,
     core,
@@ -15,7 +16,6 @@
     labels,
     element,
     window,
-    escapeHtml,
     titleCase,
     api,
     saveRetryMessage,
@@ -58,14 +58,12 @@
         select,
         core.WEEKDAYS.filter(
           (day) => !(state.weeklyPlan?.restDays || [state.weeklyPlan?.restDay]).includes(day),
-        )
-          .map((day) => {
-            const count = Array.isArray(state.weeklyPlan?.days?.[day])
-              ? state.weeklyPlan.days[day].length
-              : 0;
-            return `<option value="${day}" ${day === selected ? "selected" : ""}>${day}${count ? ` · ${count} scheduled` : ""}</option>`;
-          })
-          .join(""),
+        ).map((day) => {
+          const count = Array.isArray(state.weeklyPlan?.days?.[day])
+            ? state.weeklyPlan.days[day].length
+            : 0;
+          return html`<option value="${day}" ${day === selected ? "selected" : ""}>${day}${count ? ` · ${count} scheduled` : ""}</option>`;
+        }),
       );
       select.value = selected;
       state.sessionDayInitialized = true;
@@ -80,21 +78,17 @@
           : 35;
       StrataHtml.setHtml(
         element("sessionGroup"),
-        Object.entries(core.SESSION_FOCUSES)
-          .map(
-            ([value, config]) =>
-              `<option value="${value}" ${value === focus ? "selected" : ""}>${escapeHtml(config.label)}</option>`,
-          )
-          .join(""),
+        Object.entries(core.SESSION_FOCUSES).map(
+          ([value, config]) =>
+            html`<option value="${value}" ${value === focus ? "selected" : ""}>${config.label}</option>`,
+        ),
       );
       StrataHtml.setHtml(
         element("sessionLength"),
-        Object.values(core.SESSION_LENGTHS)
-          .map(
-            (config) =>
-              `<option value="${config.minutes}" ${config.minutes === minutes ? "selected" : ""}>${escapeHtml(config.label)} · ${config.minutes} min</option>`,
-          )
-          .join(""),
+        Object.values(core.SESSION_LENGTHS).map(
+          (config) =>
+            html`<option value="${config.minutes}" ${config.minutes === minutes ? "selected" : ""}>${config.label} · ${config.minutes} min</option>`,
+        ),
       );
       element("sessionGroup").value = focus;
       element("sessionLength").value = String(minutes);
@@ -121,10 +115,9 @@
         group = groups.includes(groupSelect.value) ? groupSelect.value : "all";
       StrataHtml.setHtml(
         groupSelect,
-        '<option value="all">All muscles in this focus</option>' +
-          groups
-            .map((value) => `<option value="${value}">${escapeHtml(labels[value])}</option>`)
-            .join(""),
+        html`<option value="all">All muscles in this focus</option>${groups.map(
+          (value) => html`<option value="${value}">${labels[value]}</option>`,
+        )}`,
       );
       groupSelect.value = group;
       const targets =
@@ -132,10 +125,9 @@
         target = targets.includes(targetSelect.value) ? targetSelect.value : "all";
       StrataHtml.setHtml(
         targetSelect,
-        `<option value="all">${group === "all" ? "Choose a muscle group first" : "All muscles in this group"}</option>` +
-          targets
-            .map((value) => StrataHtml.html`<option value="${value}">${titleCase(value)}</option>`)
-            .join(""),
+        html`<option value="all">${group === "all" ? "Choose a muscle group first" : "All muscles in this group"}</option>${targets.map(
+          (value) => html`<option value="${value}">${titleCase(value)}</option>`,
+        )}`,
       );
       targetSelect.value = target;
       targetSelect.disabled = state.sessionSaving || group === "all";
@@ -156,9 +148,9 @@
     }
     function cardMarkup(item, index) {
       const exercise = item.exercise,
-        name = escapeHtml(exercise.name),
-        reason = item.reasons.map(escapeHtml).join(" · ");
-      return `<li class="session-result-card"><span class="session-result-index" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span><div class="session-result-copy"><p>${escapeHtml(item.roleLabel)}</p><h4>${name}</h4><span>${escapeHtml(labels[exercise.group] || titleCase(exercise.group))} / ${escapeHtml(exercise.sub)} · ${escapeHtml(exercise.equipment)}</span><p class="session-result-reason">${reason}.</p></div><div class="session-result-prescription"><strong>${item.sets} sets × ${escapeHtml(item.reps)}</strong><span>${escapeHtml(item.rest)} rest</span><span class="session-match">${item.match}% personal match</span><button class="small-button" data-open-detail="${escapeHtml(exercise.id)}" type="button" aria-label="Inspect why ${name} fits this session">Why this move</button></div></li>`;
+        name = exercise.name,
+        reason = item.reasons.join(" · ");
+      return html`<li class="session-result-card"><span class="session-result-index" aria-hidden="true">${String(index + 1).padStart(2, "0")}</span><div class="session-result-copy"><p>${item.roleLabel}</p><h4>${name}</h4><span>${labels[exercise.group] || titleCase(exercise.group)} / ${exercise.sub} · ${exercise.equipment}</span><p class="session-result-reason">${reason}.</p></div><div class="session-result-prescription"><strong>${item.sets} sets × ${item.reps}</strong><span>${item.rest} rest</span><span class="session-match">${item.match}% personal match</span><button class="small-button" data-open-detail="${exercise.id}" type="button" aria-label="Inspect why ${name} fits this session">Why this move</button></div></li>`;
     }
     function mergePreview() {
       const day = element("sessionDay").value;
@@ -195,8 +187,8 @@
         StrataHtml.setHtml(
           button,
           preview.changed
-            ? `Add ${preview.added} movement${preview.added === 1 ? "" : "s"} to ${escapeHtml(dayLabel)} <span aria-hidden="true">→</span>`
-            : StrataHtml.html`Already in ${dayLabel} <span aria-hidden="true">✓</span>`,
+            ? html`Add ${preview.added} movement${preview.added === 1 ? "" : "s"} to ${dayLabel} <span aria-hidden="true">→</span>`
+            : html`Already in ${dayLabel} <span aria-hidden="true">✓</span>`,
         );
         return null;
       } catch (error) {
@@ -211,7 +203,7 @@
       state.session = session;
       StrataHtml.setHtml(
         element("sessionResults"),
-        `<div class="session-result-summary"><div><p>${escapeHtml(session.selectionLabel || "Personalized")} · ${escapeHtml(session.timeLabel)} session</p><h3 id="sessionResultsTitle">${escapeHtml(session.focusLabel)} · ${session.minutes} min</h3></div><strong>${escapeHtml(session.summary)}</strong></div>${session.selectionNote ? StrataHtml.html`<p class="session-selection-note">${session.selectionNote}</p>` : ""}<ol class="session-result-list">${session.items.map(cardMarkup).join("")}</ol><p class="session-time-note">Time is an estimate; actual duration changes with setup, rest, and training pace.</p>`,
+        html`<div class="session-result-summary"><div><p>${session.selectionLabel || "Personalized"} · ${session.timeLabel} session</p><h3 id="sessionResultsTitle">${session.focusLabel} · ${session.minutes} min</h3></div><strong>${session.summary}</strong></div>${session.selectionNote ? html`<p class="session-selection-note">${session.selectionNote}</p>` : ""}<ol class="session-result-list">${session.items.map(cardMarkup)}</ol><p class="session-time-note">Time is an estimate; actual duration changes with setup, rest, and training pace.</p>`,
       );
       element("sessionStatus").textContent =
         `${session.selectionLabel || "Personalized"} · ${session.focusLabel} session ready · ${session.summary}. Review every movement before adding it.`;
@@ -233,7 +225,7 @@
       state.session = null;
       StrataHtml.setHtml(
         element("sessionResults"),
-        StrataHtml.html`<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Session needs an adjustment.</h3><p>${error.message}</p></div></div>`,
+        html`<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Session needs an adjustment.</h3><p>${error.message}</p></div></div>`,
       );
       element("sessionStatus").textContent = error.message;
       element("sessionAddAll").hidden = true;
@@ -285,7 +277,10 @@
       if (element("sessionAddAll")) {
         element("sessionAddAll").disabled = busy;
         if (busy)
-          StrataHtml.setHtml(element("sessionAddAll"), 'Saving… <span aria-hidden="true">→</span>');
+          StrataHtml.setHtml(
+            element("sessionAddAll"),
+            html`Saving… <span aria-hidden="true">→</span>`,
+          );
       }
       if (!busy) {
         populateMuscles();
@@ -298,7 +293,7 @@
       element("sessionResults").setAttribute("aria-busy", "false");
       StrataHtml.setHtml(
         element("sessionResults"),
-        '<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Your session will appear here.</h3><p>Choose Random, Not in my week, Needs focus, or My preferences. Every method respects your equipment and movement limits.</p></div></div>',
+        html`<div class="session-empty-state"><div><h3 id="sessionResultsTitle">Your session will appear here.</h3><p>Choose Random, Not in my week, Needs focus, or My preferences. Every method respects your equipment and movement limits.</p></div></div>`,
       );
       element("sessionStatus").textContent = message;
       element("sessionAddAll").hidden = true;

@@ -47,12 +47,10 @@
         items = Array.isArray(brief.planAdjustments) ? brief.planAdjustments : [];
       StrataHtml.setHtml(
         list,
-        items
-          .map(
-            (item) =>
-              StrataHtml.html`<li><strong>${item.day}</strong> ${item.change}<small>${item.reason}</small></li>`,
-          )
-          .join(""),
+        items.map(
+          (item) =>
+            StrataHtml.html`<li><strong>${item.day}</strong> ${item.change}<small>${item.reason}</small></li>`,
+        ),
       );
       list.hidden = !items.length;
       card.dataset.level = String(brief.readiness?.level || "unknown");

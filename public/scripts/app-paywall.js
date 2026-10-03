@@ -171,6 +171,23 @@
       else emit();
     }
 
+    // STRATA kept the purchase but it does not unlock Strata+: a TestFlight or App Review purchase on an account
+    // that is not on the review list, or one STRATA cannot match to an active period yet.
+    // A test purchase still inside its period that STRATA keeps locked, as opposed to one that ran out or was refunded.
+    function lockedTestPurchase(apple) {
+      return (
+        apple?.environment === "Sandbox" &&
+        !apple.revoked &&
+        !(Number(apple.expiresAt) <= Date.now())
+      );
+    }
+    function lockedMessage(discovery) {
+      return lockedTestPurchase(discovery?.apple)
+        ? "This was an App Store test purchase. Test purchases do not unlock Strata+."
+        : "STRATA saved your purchase, but Strata+ is not on yet. Reopen this screen in a minute, or contact support if it stays locked.";
+    }
+
+    /** Welcomes the member only once STRATA says Strata+ is on for this account. */
     async function confirm({ transactionId, signedTransaction }) {
       say("Confirming your subscription with STRATA…");
       try {
@@ -183,14 +200,19 @@
         } catch {
           /* StoreKit redelivers it; STRATA accepts it again. */
         }
+        if (!ownership(model.user)) {
+          say(lockedMessage(discovery), "warn");
+          await refreshAccount();
+          return "locked";
+        }
         model.success = true;
         haptic("success");
         say("Welcome to Strata+. Your subscription is active.", "good");
         await refreshAccount();
-        return true;
+        return "purchased";
       } catch (error) {
         say(serverMessage(error, { purchased: true }), "error");
-        return false;
+        return "unconfirmed";
       }
     }
 
@@ -233,7 +255,7 @@
           say(storeMessage(null), "error");
           return "failed";
         }
-        return (await confirm(result)) ? "purchased" : "unconfirmed";
+        return await confirm(result);
       } finally {
         model.busy = false;
         emit();
@@ -273,7 +295,12 @@
           await refreshAccount();
           return "restored";
         }
-        say("No active Strata+ subscription was found on this Apple Account.", "warn");
+        say(
+          lockedTestPurchase(model.user?.discovery?.apple)
+            ? lockedMessage(model.user.discovery)
+            : "No active Strata+ subscription was found on this Apple Account.",
+          "warn",
+        );
         return "inactive";
       } finally {
         model.busy = false;
@@ -303,13 +330,14 @@
       owned = view.owned,
       apple = view.apple,
       signedIn = Boolean(view.user?.id);
+    const { html } = StrataHtml;
     const price = product
-      ? StrataHtml.html`<p class="app-paywall-price"><strong>${product.displayPrice}</strong><span>${periodLabel(product.period)}</span></p>`
+      ? html`<p class="app-paywall-price"><strong>${product.displayPrice}</strong><span>${periodLabel(product.period)}</span></p>`
       : "";
     const open =
       view.reason === "ai"
-        ? '<a class="app-button app-button-primary" href="/ai">Open Strata AI</a>'
-        : '<a class="app-button app-button-primary" href="/discover.html">Open Strata+</a>';
+        ? html`<a class="app-button app-button-primary" href="/ai">Open Strata AI</a>`
+        : html`<a class="app-button app-button-primary" href="/discover.html">Open Strata+</a>`;
     let detail = "",
       actions = "";
     if (owned) {
@@ -322,7 +350,7 @@
               ? `Your App Store subscription ends ${date} and will not renew.`
               : `Your App Store subscription renews ${date}.`
             : "Your App Store subscription is active.";
-        actions = `${open}<button class="app-button" type="button" data-paywall-action="manage">Manage subscription</button>`;
+        actions = html`${open}<button class="app-button" type="button" data-paywall-action="manage">Manage subscription</button>`;
       } else {
         detail =
           owned === "paddle"
@@ -333,19 +361,19 @@
         actions = open;
       }
     } else if (!signedIn && view.phase === "ready") {
-      actions =
-        '<a class="app-button app-button-primary" href="/account.html?mode=signup&amp;next=pricing">Create a free account</a><a class="app-button" href="/account.html?mode=login&amp;next=pricing">Sign in to subscribe</a>';
+      actions = html`<a class="app-button app-button-primary" href="/account.html?mode=signup&amp;next=pricing">Create a free account</a><a class="app-button" href="/account.html?mode=login&amp;next=pricing">Sign in to subscribe</a>`;
     } else if (view.nativeAvailable) {
-      actions = `<button class="app-button app-button-primary" type="button" data-paywall-action="subscribe"${!product || view.busy || view.phase !== "ready" ? " disabled" : ""}>Subscribe</button>`;
+      actions = html`<button class="app-button app-button-primary" type="button" data-paywall-action="subscribe"${!product || view.busy || view.phase !== "ready" ? " disabled" : ""}>Subscribe</button>`;
     }
     const restore =
       !owned && view.nativeAvailable
-        ? `<button class="app-paywall-restore" type="button" data-paywall-action="restore"${view.busy ? " disabled" : ""}>Restore Purchases</button>`
+        ? html`<button class="app-paywall-restore" type="button" data-paywall-action="restore"${view.busy ? " disabled" : ""}>Restore Purchases</button>`
         : "";
-    return `${view.note ? StrataHtml.html`<p class="app-paywall-note">${view.note}</p>` : ""}<p class="app-paywall-kicker">Strata+</p><h2 id="appPaywallTitle">${owned ? "You have Strata+" : "Unlock Strata+"}</h2>${owned ? "" : price}${detail ? StrataHtml.html`<p class="app-paywall-detail">${detail}</p>` : ""}<div class="app-paywall-actions">${actions}${restore}</div>`;
+    return html`${view.note ? html`<p class="app-paywall-note">${view.note}</p>` : ""}<p class="app-paywall-kicker">Strata+</p><h2 id="appPaywallTitle">${owned ? "You have Strata+" : "Unlock Strata+"}</h2>${owned ? "" : price}${detail ? html`<p class="app-paywall-detail">${detail}</p>` : ""}<div class="app-paywall-actions">${actions}${restore}</div>`;
   }
+  // Each benefit is markup read back from the page's own list.
   const benefitsHtml = (benefits) =>
-    `<ul class="app-paywall-benefits">${benefits.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+    StrataHtml.html`<ul class="app-paywall-benefits">${benefits.map((item) => StrataHtml.html`<li>${StrataHtml.raw(item)}</li>`)}</ul>`;
 
   function mount({
     documentImpl = root.document,
@@ -363,7 +391,7 @@
     // The price, Subscribe, and Restore come first; what Strata+ includes, the renewal terms, and the legal links follow.
     StrataHtml.setHtml(
       section,
-      `<div data-paywall-body></div><p class="app-paywall-status" role="status" aria-live="polite" data-paywall-status></p><div data-paywall-benefits>${benefitsHtml(benefits)}</div><p class="app-paywall-terms" data-paywall-terms></p><p class="app-paywall-links"><a href="/terms">Terms of Use</a><a href="/privacy">Privacy Policy</a></p>`,
+      StrataHtml.html`<div data-paywall-body></div><p class="app-paywall-status" role="status" aria-live="polite" data-paywall-status></p><div data-paywall-benefits>${benefitsHtml(benefits)}</div><p class="app-paywall-terms" data-paywall-terms></p><p class="app-paywall-links"><a href="/terms">Terms of Use</a><a href="/privacy">Privacy Policy</a></p>`,
     );
     panel.before(section);
     const body = section.querySelector("[data-paywall-body]"),

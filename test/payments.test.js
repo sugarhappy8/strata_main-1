@@ -14,7 +14,6 @@ const {
   retirePaddleDraftTransaction,
   validateRetiredPaddleCheckoutTransaction,
   validateCheckoutTransactionForRetirement,
-  replacePaddleTransactionItems,
   validateCheckoutTransaction,
   validateCheckoutRecoveryTransaction,
   exactCurrentCheckoutPrice,
@@ -26,13 +25,11 @@ const {
   createCustomerPortalSession,
   fullRevocationFromAdjustment,
 } = require("../src/payments");
-const { createLegacyCheckoutPolicy } = require("../src/legacy-checkout");
 
 const API_KEY = "pdl_live_apikey_01fixture0000000000000000_fixture_secret_123";
 const WEBHOOK_SECRET = "pdl_ntfset_server_only_fixture";
 const CLIENT_TOKEN = "live_client_side_fixture_123456";
 const RECURRING_PRICE_ID = "pri_01monthlyfixture00000000000000";
-const LEGACY_RECURRING_PRICE_ID = "pri_01legacymonthly0000000000000";
 const PREVIOUS_PRODUCT_ID = "pro_01previousmonthly000000000000";
 const PREVIOUS_PRICE_ID = "pri_01previousmonthly0000000000000";
 const SUBSCRIPTION_ID = "sub_01m1ky8j916ybyacs836dxbz8x";
@@ -195,7 +192,6 @@ test("live configuration is fail-closed and serializes browser-safe fields only"
   assert.equal(configured.clientToken, CLIENT_TOKEN);
   assert.equal(configured.productId, DEFAULT_PRODUCT_ID);
   assert.equal(configured.priceId, RECURRING_PRICE_ID);
-  assert.deepEqual(configured.legacyRecurringPriceIds, []);
   assert.deepEqual(configured.price, {
     amount: "2.99",
     currency: "USD",
@@ -213,31 +209,6 @@ test("live configuration is fail-closed and serializes browser-safe fields only"
   assert.ok(!serialized.includes(WEBHOOK_SECRET), "The webhook secret must stay server-only");
   assert.doesNotMatch(serialized, /pdl_(?:live|sandbox|sdbx)_apikey_/i);
   assert.doesNotMatch(serialized, /pdl_ntfset_/i);
-
-  const grandfathered = getPaymentConfig(
-    liveEnv({ PADDLE_LEGACY_RECURRING_PRICE_IDS: LEGACY_RECURRING_PRICE_ID }),
-  );
-  assert.deepEqual(grandfathered.legacyRecurringPriceIds, [LEGACY_RECURRING_PRICE_ID]);
-  assert.equal(
-    JSON.stringify(require("../src/payments").publicPaymentConfig(grandfathered)).includes(
-      LEGACY_RECURRING_PRICE_ID,
-    ),
-    false,
-    "legacy catalog IDs stay server-side",
-  );
-
-  for (const value of [
-    RECURRING_PRICE_ID,
-    DEFAULT_PRICE_ID,
-    "pri_invalid",
-    `${LEGACY_RECURRING_PRICE_ID},${LEGACY_RECURRING_PRICE_ID}`,
-    `${LEGACY_RECURRING_PRICE_ID},`,
-  ]) {
-    const invalidLegacy = getPaymentConfig(liveEnv({ PADDLE_LEGACY_RECURRING_PRICE_IDS: value }));
-    assert.equal(invalidLegacy.configured, false, value);
-    assert.equal(invalidLegacy.enabled, false, value);
-    assert.deepEqual(invalidLegacy.legacyRecurringPriceIds, [], value);
-  }
 });
 
 test("Paddle signatures cover the exact raw body and accept any valid h1", () => {
@@ -492,84 +463,6 @@ test("checkout transaction recovery validates the durable account and checkout r
   }
 });
 
-test("checkout cancellation recognizes only the retired 7.4 one-time catalog", () => {
-  const config = getPaymentConfig(liveEnv());
-  const currentIdentity = { userId: "user-1", checkoutId: "checkout-1" };
-  assert.deepEqual(
-    validateCheckoutTransaction(checkoutTransaction(), config, {
-      ...currentIdentity,
-      retiredOneTimeCancellation: true,
-    }),
-    { ok: true },
-    "current monthly checkouts remain cancelable",
-  );
-
-  const legacyIdentity = {
-    ...currentIdentity,
-    priceId: DEFAULT_PRICE_ID,
-    productId: DEFAULT_PRODUCT_ID,
-  };
-  const legacyTransaction = checkoutTransaction({
-    items: [
-      {
-        quantity: 1,
-        price: { id: DEFAULT_PRICE_ID, product_id: DEFAULT_PRODUCT_ID, billing_cycle: null },
-      },
-    ],
-  });
-  assert.deepEqual(
-    validateCheckoutTransaction(legacyTransaction, config, {
-      ...legacyIdentity,
-      retiredOneTimeCancellation: true,
-    }),
-    { ok: true },
-    "the exact retired one-time checkout can be closed during migration",
-  );
-  assert.deepEqual(
-    validateCheckoutTransaction(legacyTransaction, config, legacyIdentity),
-    { ok: false, reason: "billing_cycle" },
-    "legacy cadence stays forbidden for new checkout validation",
-  );
-
-  const unknownPrice = "pri_01unknownlegacy000000000000";
-  const unknownOneTime = checkoutTransaction({
-    items: [
-      {
-        quantity: 1,
-        price: { id: unknownPrice, product_id: DEFAULT_PRODUCT_ID, billing_cycle: null },
-      },
-    ],
-  });
-  assert.deepEqual(
-    validateCheckoutTransaction(unknownOneTime, config, {
-      ...currentIdentity,
-      priceId: unknownPrice,
-      productId: DEFAULT_PRODUCT_ID,
-      retiredOneTimeCancellation: true,
-    }),
-    { ok: false, reason: "billing_cycle" },
-    "unknown one-time prices are not treated as grandfathered catalog state",
-  );
-  const wrongProduct = "pro_01wrong00000000000000000000";
-  const wrongLegacyProduct = checkoutTransaction({
-    items: [
-      {
-        quantity: 1,
-        price: { id: DEFAULT_PRICE_ID, product_id: wrongProduct, billing_cycle: null },
-      },
-    ],
-  });
-  assert.deepEqual(
-    validateCheckoutTransaction(wrongLegacyProduct, config, {
-      ...legacyIdentity,
-      productId: wrongProduct,
-      retiredOneTimeCancellation: true,
-    }),
-    { ok: false, reason: "billing_cycle" },
-    "the retired price is one-time only for its exact historic product",
-  );
-});
-
 test("checkout recovery accepts a completed transaction only with its original durable identity", () => {
   const config = getPaymentConfig(liveEnv()),
     identity = { userId: "user-1", checkoutId: "checkout-1" };
@@ -600,53 +493,6 @@ test("checkout recovery accepts a completed transaction only with its original d
       identity,
     ),
     { ok: false, reason: "checkout" },
-  );
-  const legacy = {
-    ...completed,
-    subscription_id: null,
-    items: [
-      {
-        quantity: 1,
-        price: { id: DEFAULT_PRICE_ID, product_id: DEFAULT_PRODUCT_ID, billing_cycle: null },
-      },
-    ],
-  };
-  const legacyIdentity = {
-    ...identity,
-    priceId: DEFAULT_PRICE_ID,
-    productId: DEFAULT_PRODUCT_ID,
-    retiredOneTimeCancellation: true,
-  };
-  assert.deepEqual(
-    validateCheckoutRecoveryTransaction(legacy, config, legacyIdentity),
-    { ok: true },
-    "the exact delayed 7.4 payment remains discoverable",
-  );
-  assert.deepEqual(
-    validateCheckoutRecoveryTransaction(
-      { ...legacy, customer_id: "ctm_too_short" },
-      config,
-      legacyIdentity,
-    ),
-    { ok: false, reason: "customer" },
-  );
-  const unknownPrice = "pri_01unknownlegacy000000000000";
-  assert.deepEqual(
-    validateCheckoutRecoveryTransaction(
-      {
-        ...legacy,
-        items: [
-          {
-            quantity: 1,
-            price: { id: unknownPrice, product_id: DEFAULT_PRODUCT_ID, billing_cycle: null },
-          },
-        ],
-      },
-      config,
-      { ...legacyIdentity, priceId: unknownPrice },
-    ),
-    { ok: false, reason: "billing_cycle" },
-    "the opt-in cannot broaden to an unknown one-time price",
   );
 });
 
@@ -768,57 +614,6 @@ test("current checkout recovery requires the exact public amount and currency", 
       "a wrong or missing current price must not be returned to checkout",
     );
   }
-});
-
-test("legacy draft migration preserves the exact allowlisted price identity", async () => {
-  const secondLegacyPrice = "pri_01secondlegacyprice00000000000";
-  const config = getPaymentConfig(
-    liveEnv({
-      PADDLE_LEGACY_RECURRING_PRICE_IDS: `${LEGACY_RECURRING_PRICE_ID},${secondLegacyPrice}`,
-    }),
-  );
-  const policy = createLegacyCheckoutPolicy({
-    store: /** @type {any} */ ({}),
-    paymentConfig: config,
-    now: () => 1,
-    reconciliationError: (message, code) =>
-      Object.assign(new Error(message), { status: 503, code }),
-  });
-  const remote = {
-    transactionId: "txn_01m1kz00000000000000000000",
-    status: "draft",
-    data: checkoutTransaction({
-      status: "draft",
-      items: [
-        {
-          quantity: 1,
-          price: {
-            id: secondLegacyPrice,
-            product_id: DEFAULT_PRODUCT_ID,
-            billing_cycle: { interval: "month", frequency: 1 },
-          },
-        },
-      ],
-    }),
-  };
-  const purchase = {
-    transaction_id: remote.transactionId,
-    user_id: "user-1",
-    price_id: LEGACY_RECURRING_PRICE_ID,
-    product_id: DEFAULT_PRODUCT_ID,
-    customer_id: null,
-    subscription_id: null,
-    paddle_status: "draft",
-    completed_at: null,
-    access_revoked_at: null,
-    revocation_reason: null,
-    created_at: 1,
-    updated_at: 1,
-  };
-  await assert.rejects(
-    policy.migrateReusableDraft(remote, purchase),
-    (error) => error.code === "PURCHASE_RECONCILIATION_INVALID",
-  );
 });
 
 test("checkout transaction recovery rejects malformed lists and unsafe pagination", async (t) => {
@@ -1187,12 +982,6 @@ test("transaction reconciliation reads and cancels only a specific live transact
   const calls = [];
   const fetchImpl = async (url, options) => {
     calls.push({ url, options });
-    const body = options.body ? JSON.parse(options.body) : null;
-    if (body?.items)
-      return {
-        ok: true,
-        json: async () => ({ data: checkoutTransaction({ id: transactionId, status: "draft" }) }),
-      };
     const status = options.method === "PATCH" ? "canceled" : "ready";
     return { ok: true, json: async () => ({ data: { id: transactionId, status } }) };
   };
@@ -1205,17 +994,10 @@ test("transaction reconciliation reads and cancels only a specific live transact
     transactionId,
     status: "canceled",
   });
-  assert.equal(
-    (await replacePaddleTransactionItems(config, transactionId, fetchImpl)).transactionId,
-    transactionId,
-  );
   assert.equal(calls[0].url, `https://api.paddle.com/transactions/${transactionId}`);
   assert.equal(calls[0].options.method, "GET");
   assert.equal(calls[1].options.method, "PATCH");
   assert.deepEqual(JSON.parse(calls[1].options.body), { status: "canceled" });
-  assert.deepEqual(JSON.parse(calls[2].options.body), {
-    items: [{ price_id: RECURRING_PRICE_ID, quantity: 1 }],
-  });
   for (const call of calls) assert.equal(call.options.headers.Authorization, `Bearer ${API_KEY}`);
 });
 
@@ -1485,69 +1267,6 @@ test("completed initial subscription transactions validate against the recurring
     },
   });
   assert.deepEqual(validateCompletedTransaction(promoted, config), { ok: true });
-
-  const grandfathered = getPaymentConfig(
-    liveEnv({ PADDLE_LEGACY_RECURRING_PRICE_IDS: LEGACY_RECURRING_PRICE_ID }),
-  );
-  const legacy = completedTransaction({
-    items: [
-      {
-        quantity: 1,
-        price: {
-          id: LEGACY_RECURRING_PRICE_ID,
-          product_id: DEFAULT_PRODUCT_ID,
-          billing_cycle: { interval: "month", frequency: 1 },
-        },
-      },
-    ],
-  });
-  assert.deepEqual(
-    validateCompletedTransaction(legacy, grandfathered, {
-      priceId: LEGACY_RECURRING_PRICE_ID,
-      productId: DEFAULT_PRODUCT_ID,
-    }),
-    { ok: true },
-  );
-  assert.deepEqual(
-    validateCompletedTransaction(
-      {
-        ...legacy,
-        items: [
-          {
-            quantity: 1,
-            price: {
-              id: LEGACY_RECURRING_PRICE_ID,
-              product_id: PREVIOUS_PRODUCT_ID,
-              billing_cycle: { interval: "month", frequency: 1 },
-            },
-          },
-        ],
-      },
-      grandfathered,
-      { priceId: LEGACY_RECURRING_PRICE_ID, productId: DEFAULT_PRODUCT_ID },
-    ),
-    { ok: false, reason: "product" },
-  );
-  assert.deepEqual(
-    validateCompletedTransaction(
-      {
-        ...legacy,
-        items: [
-          {
-            quantity: 1,
-            price: {
-              id: LEGACY_RECURRING_PRICE_ID,
-              product_id: DEFAULT_PRODUCT_ID,
-              billing_cycle: { interval: "year", frequency: 1 },
-            },
-          },
-        ],
-      },
-      grandfathered,
-      { priceId: LEGACY_RECURRING_PRICE_ID, productId: DEFAULT_PRODUCT_ID },
-    ),
-    { ok: false, reason: "billing_cycle" },
-  );
 });
 
 test("subscription snapshots enforce ownership, monthly cadence, catalog, and lifecycle", async (t) => {
@@ -1606,34 +1325,13 @@ test("subscription snapshots enforce ownership, monthly cadence, catalog, and li
     scheduledChangeAt: null,
     currentPeriodEndsAt: Date.parse("2026-10-01T00:00:00Z"),
   });
-  const grandfathered = getPaymentConfig(
-    liveEnv({ PADDLE_LEGACY_RECURRING_PRICE_IDS: LEGACY_RECURRING_PRICE_ID }),
-  );
-  const legacySubscription = subscription({
+  const wrongProduct = subscription({
     items: [
       {
         quantity: 1,
         recurring: true,
         price: {
-          id: LEGACY_RECURRING_PRICE_ID,
-          product_id: DEFAULT_PRODUCT_ID,
-          billing_cycle: { interval: "month", frequency: 1 },
-        },
-      },
-    ],
-  });
-  assert.equal(
-    validateSubscription(legacySubscription, grandfathered, identity).entitled,
-    true,
-    "an explicitly allowlisted monthly price on the configured product remains entitled",
-  );
-  const legacyWrongProduct = subscription({
-    items: [
-      {
-        quantity: 1,
-        recurring: true,
-        price: {
-          id: LEGACY_RECURRING_PRICE_ID,
+          id: RECURRING_PRICE_ID,
           product_id: PREVIOUS_PRODUCT_ID,
           billing_cycle: { interval: "month", frequency: 1 },
         },
@@ -1641,14 +1339,9 @@ test("subscription snapshots enforce ownership, monthly cadence, catalog, and li
     ],
   });
   assert.equal(
-    validateSubscription(legacyWrongProduct, grandfathered, identity).entitled,
+    validateSubscription(wrongProduct, config, identity).entitled,
     false,
-    "the legacy price allowlist cannot broaden the product boundary",
-  );
-  assert.equal(
-    validateSubscription(changedCatalog, grandfathered, identity).entitled,
-    false,
-    "an unlisted monthly price remains unentitled",
+    "the configured price ID on another product is not entitled",
   );
   const cases = [
     [

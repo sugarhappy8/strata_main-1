@@ -254,64 +254,6 @@ async function parityScenario(store) {
     updatedAt: 2_000,
   });
   const accountExport = await store.accountExport(user.id);
-  const parityDraft = await store.insertPendingPurchase({
-    transactionId: "txn_parity_draft",
-    userId: user.id,
-    priceId: "pri_parity_legacy",
-    productId: "pro_parity",
-    paddleStatus: "draft",
-    createdAt: 2_010,
-    updatedAt: 2_010,
-  });
-  const migratedDraft = await store.replacePendingPurchaseCatalog(parityDraft, {
-    priceId: "pri_parity_monthly",
-    productId: "pro_parity",
-    paddleStatus: "draft",
-    updatedAt: 2_020,
-  });
-  const replayedDraftMigration = await store.replacePendingPurchaseCatalog(parityDraft, {
-    priceId: "pri_parity_other",
-    productId: "pro_parity",
-    paddleStatus: "draft",
-    updatedAt: 2_030,
-  });
-  await store.insertUser({
-    id: "parity-catalog-complete",
-    name: "Catalog Complete",
-    email: "catalog-complete@example.test",
-    passwordHash: "catalog-complete-hash",
-    passwordSalt: "catalog-complete-salt",
-    createdAt: 2_031,
-    emailVerifiedAt: 2_031,
-  });
-  const completionDraft = await store.insertPendingPurchase({
-    transactionId: "txn_parity_catalog_complete",
-    userId: "parity-catalog-complete",
-    priceId: "pri_parity_legacy",
-    productId: "pro_parity",
-    paddleStatus: "draft",
-    createdAt: 2_032,
-    updatedAt: 2_032,
-  });
-  const completedCatalogMigration = await store.completePurchaseCatalogMigration(completionDraft, {
-    priceId: "pri_parity_monthly",
-    productId: "pro_parity",
-    customerId: "ctm_parity_catalog",
-    subscriptionId: "sub_parity_catalog",
-    completedAt: 2_040,
-    updatedAt: 2_040,
-  });
-  const replayedCompletedCatalogMigration = await store.completePurchaseCatalogMigration(
-    completionDraft,
-    {
-      priceId: "pri_parity_monthly",
-      productId: "pro_parity",
-      customerId: "ctm_parity_other",
-      subscriptionId: "sub_parity_other",
-      completedAt: 2_050,
-      updatedAt: 2_050,
-    },
-  );
   await store.insertUser({
     id: "parity-subscription",
     name: "Subscription Parity",
@@ -324,7 +266,7 @@ async function parityScenario(store) {
   const subscriptionPurchase = await store.insertPendingPurchase({
     transactionId: "txn_parity_subscription",
     userId: "parity-subscription",
-    priceId: "pri_parity_earlier",
+    priceId: "pri_parity_monthly",
     productId: "pro_parity",
     paddleStatus: "ready",
     createdAt: 2_052,
@@ -336,13 +278,13 @@ async function parityScenario(store) {
     completedAt: 2_053,
     updatedAt: 2_053,
   });
-  const earlierSubscription = await store.createPaddleSubscription({
+  const createdSubscription = await store.createPaddleSubscription({
     subscriptionId: "sub_parity_subscription",
     userId: "parity-subscription",
     transactionId: "txn_parity_subscription",
     customerId: "ctm_parity_subscription",
     status: "active",
-    priceId: "pri_parity_earlier",
+    priceId: "pri_parity_monthly",
     productId: "pro_parity",
     scheduledChangeAction: null,
     scheduledChangeAt: null,
@@ -351,34 +293,23 @@ async function parityScenario(store) {
     createdAt: 2_054,
     updatedAt: 2_054,
   });
-  const migratedSubscription = await store.updatePaddleSubscriptionCatalog(
-    earlierSubscription,
-    await store.purchaseByTransaction("txn_parity_subscription"),
-    {
-      subscriptionId: "sub_parity_subscription",
-      userId: "parity-subscription",
-      customerId: "ctm_parity_subscription",
-      status: "active",
-      priceId: "pri_parity_monthly",
-      productId: "pro_parity",
-      scheduledChangeAction: null,
-      scheduledChangeAt: null,
-      currentPeriodEndsAt: 10_000,
-      eventOccurredAt: 2_055,
-      updatedAt: 2_055,
-    },
-  );
   const entitledCatalogAccess = await store.hasEntitledPaidDiscoveryAccess(
     "parity-subscription",
-    ["pri_parity_monthly", "pri_parity_earlier"],
+    "pri_parity_monthly",
     "pro_parity",
-    9_999,
+    8_999,
   );
   const entitledCatalogSummary = await store.entitledDiscoveryAccessSummary(
     "parity-subscription",
-    ["pri_parity_monthly", "pri_parity_earlier"],
+    "pri_parity_monthly",
     "pro_parity",
-    9_999,
+    8_999,
+  );
+  const otherCatalogAccess = await store.hasEntitledPaidDiscoveryAccess(
+    "parity-subscription",
+    "pri_parity_other",
+    "pro_parity",
+    8_999,
   );
 
   const revoked = await store.revokeUserSessions(user.id);
@@ -609,14 +540,10 @@ async function parityScenario(store) {
     completed,
     replayed,
     accountExport,
-    migratedDraft,
-    replayedDraftMigration,
-    completedCatalogMigration,
-    replayedCompletedCatalogMigration,
-    migratedSubscription,
-    migratedSubscriptionPurchase: await store.purchaseByTransaction("txn_parity_subscription"),
+    createdSubscription,
     entitledCatalogAccess,
     entitledCatalogSummary,
+    otherCatalogAccess,
     paidAccess: await store.hasPaidDiscoveryAccess(user.id),
     revoked,
     staleSessionAccepted,
@@ -699,22 +626,10 @@ test(
       );
       assert.equal(localResult.completed.customer_id, "ctm_original");
       assert.equal(localResult.completed.completed_at, 1_900);
-      assert.equal(localResult.migratedDraft.price_id, "pri_parity_monthly");
-      assert.equal(
-        localResult.replayedDraftMigration,
-        null,
-        "catalog migration must compare the exact prior draft snapshot",
-      );
-      assert.equal(localResult.completedCatalogMigration.subscription_id, "sub_parity_catalog");
-      assert.equal(
-        localResult.replayedCompletedCatalogMigration,
-        null,
-        "completed catalog migration must compare the exact prior ledger snapshot",
-      );
-      assert.equal(localResult.migratedSubscription.price_id, "pri_parity_monthly");
-      assert.equal(localResult.migratedSubscriptionPurchase.price_id, "pri_parity_monthly");
+      assert.equal(localResult.createdSubscription.price_id, "pri_parity_monthly");
       assert.equal(localResult.entitledCatalogAccess, true);
       assert.equal(localResult.entitledCatalogSummary.activePurchaseCount, 1);
+      assert.equal(localResult.otherCatalogAccess, false, "only the configured price is entitled");
       assert.equal(localResult.activeSession.expires_at, 10_000);
       assert.equal(
         localResult.sessionAtExpiry,

@@ -78,7 +78,6 @@ function redirectedOrChangedAccount(error) {
   return false;
 }
 
-const escapeHtml = StrataHtml.escape;
 function exerciseById(id) {
   return state.exercises.find((exercise) => exercise.id === id);
 }
@@ -221,7 +220,6 @@ const catalog = CatalogCore.createCatalog({
   document,
   window,
   element: el,
-  escapeHtml,
   exerciseById,
   titleCase,
   personalResult,
@@ -260,7 +258,6 @@ const detail = DetailCore.createDetail({
   core: Core,
   labels: GROUP_LABELS,
   element: el,
-  escapeHtml,
   exerciseById,
   titleCase,
   round,
@@ -497,8 +494,8 @@ function renderPlanOverview(pulse) {
     StrataHtml.setHtml(
       action,
       hasWeek
-        ? 'Edit weekly plan <span aria-hidden="true">→</span>'
-        : 'Build your first week <span aria-hidden="true">→</span>',
+        ? StrataHtml.html`Edit weekly plan <span aria-hidden="true">→</span>`
+        : StrataHtml.html`Build your first week <span aria-hidden="true">→</span>`,
     );
   }
 }
@@ -515,7 +512,10 @@ function showTodayAlternative(show) {
     action = el("todayAlternativeAction");
   if (panel) panel.hidden = !show;
   if (action) {
-    StrataHtml.setHtml(action, 'Create a different workout <span aria-hidden="true">→</span>');
+    StrataHtml.setHtml(
+      action,
+      StrataHtml.html`Create a different workout <span aria-hidden="true">→</span>`,
+    );
     action.href = "#sessionBuilder";
   }
 }
@@ -572,7 +572,7 @@ function renderWeeklyPulse() {
   if (planAction) {
     planAction.hidden = !hasWeek;
     planAction.href = "#planWorkspace";
-    StrataHtml.setHtml(planAction, 'Review plan <span aria-hidden="true">→</span>');
+    StrataHtml.setHtml(planAction, StrataHtml.html`Review plan <span aria-hidden="true">→</span>`);
   }
   if (footer) footer.hidden = !hasWeek;
   if (metrics) metrics.hidden = false;
@@ -595,7 +595,7 @@ function renderWeeklyPulse() {
       "See workout";
     renderPreviousComparable(summaries);
     start.href = `/workout.html#resume=${encodeURIComponent(active.id)}`;
-    StrataHtml.setHtml(start, 'Resume workout <span aria-hidden="true">↗</span>');
+    StrataHtml.setHtml(start, StrataHtml.html`Resume workout <span aria-hidden="true">↗</span>`);
     el("todayIntro").textContent = "Your open workout is the only action that matters right now.";
     pulseRoot.dataset.sessionDay = active.planDay || "active";
   } else if (!hasWeek) {
@@ -610,7 +610,10 @@ function renderWeeklyPulse() {
     el("todayPreviousValue").textContent = "";
     el("todayPreviousDetail").textContent = "";
     start.href = "/planner.html";
-    StrataHtml.setHtml(start, 'Build your first week <span aria-hidden="true">→</span>');
+    StrataHtml.setHtml(
+      start,
+      StrataHtml.html`Build your first week <span aria-hidden="true">→</span>`,
+    );
     el("todayIntro").textContent =
       "Choose your days and equipment once, and your next session is always ready.";
     pulseRoot.dataset.sessionDay = "empty";
@@ -663,7 +666,7 @@ function renderWeeklyPulse() {
       equipmentSummary(equipment) || (items.length ? "No equipment" : "—");
     renderPreviousComparable(items);
     start.href = `/workout.html?day=${encodeURIComponent(next.day)}`;
-    StrataHtml.setHtml(start, 'Start workout <span aria-hidden="true">↗</span>');
+    StrataHtml.setHtml(start, StrataHtml.html`Start workout <span aria-hidden="true">↗</span>`);
     el("todayIntro").textContent =
       `Your next planned action is ${next.day}'s workout. The time is an estimate based on movements and working sets.`;
     pulseRoot.dataset.sessionDay = next.day;
@@ -672,7 +675,6 @@ function renderWeeklyPulse() {
 }
 const progressRenderer = RenderCore.createProgressRenderer({
   element: el,
-  escapeHtml,
   exerciseName,
   readableDate,
   days: Monthly.DAYS,
@@ -742,21 +744,19 @@ function renderTrainingBlockEvidence(review) {
   StrataHtml.setHtml(
     node,
     items.length
-      ? items
-          .map(
-            (item) =>
-              StrataHtml.html`<article><strong>${item.type} · ${exerciseName(item.exerciseId)}</strong><p>${item.before} → ${item.after} · ${readableDate(item.date)}</p></article>`,
-          )
-          .join("")
-      : `<p class="training-block-empty">No comparable improvement or new logged high is supported by the loaded workouts for this block week.</p>`,
+      ? items.map(
+          (item) =>
+            StrataHtml.html`<article><strong>${item.type} · ${exerciseName(item.exerciseId)}</strong><p>${item.before} → ${item.after} · ${readableDate(item.date)}</p></article>`,
+        )
+      : StrataHtml.html`<p class="training-block-empty">No comparable improvement or new logged high is supported by the loaded workouts for this block week.</p>`,
   );
   const signals = el("trainingBlockSignals"),
     parts = [];
   if (review.skipped.available)
-    parts.push(`<span>${review.skipped.count} explicitly skipped</span>`);
+    parts.push(StrataHtml.html`<span>${review.skipped.count} explicitly skipped</span>`);
   if (review.replaced.available)
-    parts.push(`<span>${review.replaced.count} explicitly replaced</span>`);
-  StrataHtml.setHtml(signals, parts.join(""));
+    parts.push(StrataHtml.html`<span>${review.replaced.count} explicitly replaced</span>`);
+  StrataHtml.setHtml(signals, parts);
   signals.hidden = !parts.length;
   el("trainingBlockSignalNote").textContent = parts.length
     ? "Counts come only from explicit fields in saved workout records."
@@ -791,19 +791,17 @@ function renderTrainingBlockReview() {
   StrataHtml.setHtml(
     el("trainingBlockMuscles"),
     review.muscles.length
-      ? review.muscles
-          .map(
-            (muscle) =>
-              `<div class="training-block-muscle"><strong>${escapeHtml(muscle.label)}</strong><span>${muscle.planned}<small>planned</small></span><span>${historyReady ? muscle.completed : "—"}<small>logged</small></span></div>`,
-          )
-          .join("")
-      : '<p class="training-block-empty">No working sets are in the saved weekly Plan yet.</p>',
+      ? review.muscles.map(
+          (muscle) =>
+            StrataHtml.html`<div class="training-block-muscle"><strong>${muscle.label}</strong><span>${muscle.planned}<small>planned</small></span><span>${historyReady ? muscle.completed : "—"}<small>logged</small></span></div>`,
+        )
+      : StrataHtml.html`<p class="training-block-empty">No working sets are in the saved weekly Plan yet.</p>`,
   );
   if (historyReady) renderTrainingBlockEvidence(review);
   else {
     StrataHtml.setHtml(
       el("trainingBlockEvidence"),
-      '<p class="training-block-empty">Workout history is unavailable, so Strata+ is not making progress, skip, or replacement claims.</p>',
+      StrataHtml.html`<p class="training-block-empty">Workout history is unavailable, so Strata+ is not making progress, skip, or replacement claims.</p>`,
     );
     el("trainingBlockSignals").hidden = true;
     el("trainingBlockSignalNote").textContent =
@@ -867,17 +865,16 @@ function renderTrainingBlockWeekOptions(
     select,
     Array.from(
       { length: weeks },
-      (_, index) => `<option value="${index + 1}">Week ${index + 1}</option>`,
-    ).join(""),
+      (_, index) => StrataHtml.html`<option value="${index + 1}">Week ${index + 1}</option>`,
+    ),
   );
   select.value = String(current);
   StrataHtml.setHtml(
     lighter,
-    '<option value="">No lighter week</option>' +
-      Array.from(
-        { length: Math.max(0, weeks - 1) },
-        (_, index) => `<option value="${index + 2}">Week ${index + 2}</option>`,
-      ).join(""),
+    StrataHtml.html`<option value="">No lighter week</option>${Array.from(
+      { length: Math.max(0, weeks - 1) },
+      (_, index) => StrataHtml.html`<option value="${index + 2}">Week ${index + 2}</option>`,
+    )}`,
   );
   lighter.value = Number.isInteger(light) && light >= 2 && light <= weeks ? String(light) : "";
   const start = el("trainingBlockStartDate").value,
@@ -1430,7 +1427,6 @@ const session = SessionCore.createSession({
   labels: GROUP_LABELS,
   element: el,
   window,
-  escapeHtml,
   titleCase,
   api,
   saveRetryMessage,
@@ -1492,7 +1488,7 @@ function setMonthlyValidation(message = "") {
 }
 function monthlyTargetMarkup(day, target, selected, disabled) {
   const id = `monthly-${day.toLowerCase()}-${target.key}`;
-  return `<label class="monthly-target-chip" for="${id}"><input id="${id}" type="checkbox" value="${escapeHtml(target.key)}" data-monthly-target ${selected ? "checked" : ""} ${disabled ? "disabled" : ""}/><span>${escapeHtml(target.label)}</span></label>`;
+  return StrataHtml.html`<label class="monthly-target-chip" for="${id}"><input id="${id}" type="checkbox" value="${target.key}" data-monthly-target ${selected ? "checked" : ""} ${disabled ? "disabled" : ""}/><span>${target.label}</span></label>`;
 }
 function renderMonthlySchedule(schedule = state.monthlySchedule) {
   state.monthlySchedule = copyMonthlyValue(schedule || blankMonthlySchedule());
@@ -1502,8 +1498,8 @@ function renderMonthlySchedule(schedule = state.monthlySchedule) {
       const config = state.monthlySchedule[day] || { rest: true, targets: [], sourceItems: [] },
         rest = Boolean(config.rest),
         sourceCount = Array.isArray(config.sourceItems) ? config.sourceItems.length : 0;
-      return `<fieldset class="monthly-weekday-card ${rest ? "is-rest" : ""}" data-monthly-day="${day}"><legend class="sr-only">${day} schedule</legend><div class="monthly-weekday-head"><h3>${String(index + 1).padStart(2, "0")} / ${day}</h3><label class="monthly-rest-toggle"><input type="checkbox" data-monthly-rest ${rest ? "checked" : ""}/><span>${rest ? "Rest day" : "Training day"}</span></label></div><div class="monthly-target-grid" aria-label="Muscle groups for ${day}">${Monthly.TARGETS.map((target) => monthlyTargetMarkup(day, target, config.targets.includes(target.key), rest)).join("")}</div><p class="monthly-day-note">${sourceCount ? `${sourceCount} exercise${sourceCount === 1 ? "" : "s"} copied from your week. Editing this day lets Strata+ choose new exercises.` : rest ? "Recovery day · no exercises will be scheduled." : "Choose up to four muscle groups."}</p></fieldset>`;
-    }).join(""),
+      return StrataHtml.html`<fieldset class="monthly-weekday-card ${rest ? "is-rest" : ""}" data-monthly-day="${day}"><legend class="sr-only">${day} schedule</legend><div class="monthly-weekday-head"><h3>${String(index + 1).padStart(2, "0")} / ${day}</h3><label class="monthly-rest-toggle"><input type="checkbox" data-monthly-rest ${rest ? "checked" : ""}/><span>${rest ? "Rest day" : "Training day"}</span></label></div><div class="monthly-target-grid" aria-label="Muscle groups for ${day}">${Monthly.TARGETS.map((target) => monthlyTargetMarkup(day, target, config.targets.includes(target.key), rest))}</div><p class="monthly-day-note">${sourceCount ? `${sourceCount} exercise${sourceCount === 1 ? "" : "s"} copied from your week. Editing this day lets Strata+ choose new exercises.` : rest ? "Recovery day · no exercises will be scheduled." : "Choose up to four muscle groups."}</p></fieldset>`;
+    }),
   );
 }
 function readMonthlySchedule() {
@@ -1591,7 +1587,7 @@ function updateMonthlySourceButtons() {
 }
 function monthlyExerciseMarkup(item) {
   const exercise = exerciseById(item.exerciseId);
-  if (!exercise) return "";
+  if (!exercise) return StrataHtml.html``;
   const target = Monthly.inferTarget(exercise),
     label =
       Monthly.TARGET_LABELS[target] || GROUP_LABELS[exercise.group] || titleCase(exercise.group);
@@ -1610,16 +1606,14 @@ function renderMonthlyPlan(plan, { announce = false } = {}) {
   el("monthlyResultsTitle").textContent = plan.title;
   StrataHtml.setHtml(
     el("monthlySummary"),
-    `<div><span>Plan</span><strong>31 days</strong></div><div><span>Training</span><strong>${workoutDays}</strong></div><div><span>Rest</span><strong>${restDays}</strong></div><div><span>Exercises</span><strong>${totalExercises}</strong></div>`,
+    StrataHtml.html`<div><span>Plan</span><strong>31 days</strong></div><div><span>Training</span><strong>${workoutDays}</strong></div><div><span>Rest</span><strong>${restDays}</strong></div><div><span>Exercises</span><strong>${totalExercises}</strong></div>`,
   );
   StrataHtml.setHtml(
     el("monthlyDays"),
-    plan.days
-      .map(
-        (day) =>
-          `<article class="monthly-day-card ${day.rest ? "is-rest" : ""}" data-rest="${day.rest}"><header class="monthly-day-head"><span class="monthly-day-number">Day ${String(day.dayNumber).padStart(2, "0")}</span><time datetime="${escapeHtml(day.date)}">${escapeHtml(friendlyMonthlyDate(day.date))}</time></header><h4>${escapeHtml(day.weekday)}</h4>${day.rest ? '<p class="monthly-rest-copy"><strong>Rest and recovery</strong><br />Keep the day clear or use gentle movement.</p>' : `<p class="monthly-day-targets">${day.targets.map((target) => escapeHtml(Monthly.TARGET_LABELS[target] || titleCase(target))).join(" + ")}</p><ol class="monthly-exercise-list">${day.exercises.map(monthlyExerciseMarkup).join("")}</ol>`}</article>`,
-      )
-      .join(""),
+    plan.days.map(
+      (day) =>
+        StrataHtml.html`<article class="monthly-day-card ${day.rest ? "is-rest" : ""}" data-rest="${day.rest}"><header class="monthly-day-head"><span class="monthly-day-number">Day ${String(day.dayNumber).padStart(2, "0")}</span><time datetime="${day.date}">${friendlyMonthlyDate(day.date)}</time></header><h4>${day.weekday}</h4>${day.rest ? StrataHtml.html`<p class="monthly-rest-copy"><strong>Rest and recovery</strong><br />Keep the day clear or use gentle movement.</p>` : StrataHtml.html`<p class="monthly-day-targets">${day.targets.map((target) => Monthly.TARGET_LABELS[target] || titleCase(target)).join(" + ")}</p><ol class="monthly-exercise-list">${day.exercises.map(monthlyExerciseMarkup)}</ol>`}</article>`,
+    ),
   );
   el("monthlyResults").hidden = false;
   if (announce) {
@@ -2004,7 +1998,8 @@ document.addEventListener("submit", async (event) => {
     rating = Object.fromEntries(Object.entries(data).map(([key, value]) => [key, Number(value)]));
   const button = form.querySelector("button"),
     status = form.querySelector("[data-rating-status]"),
-    originalHtml = button.innerHTML;
+    // raw(): the button's own markup, read back from the page, is restored unchanged after saving.
+    originalHtml = StrataHtml.raw(button.innerHTML);
   state.ratingSaving.add(id);
   form.setAttribute("aria-busy", "true");
   const unlockControls = lockFormControls(form);
@@ -2114,10 +2109,10 @@ function showInitialLoadProgress() {
     el("sessionStatus").textContent = "Loading your profile and weekly plan…";
   StrataHtml.setHtml(
     el("recommendationGrid"),
-    '<div class="loading-card">Building your ranking…</div>',
+    StrataHtml.html`<div class="loading-card">Building your ranking…</div>`,
   );
   if (el("rankingLensItems"))
-    StrataHtml.setHtml(el("rankingLensItems"), "<li>Loading preferences…</li>");
+    StrataHtml.setHtml(el("rankingLensItems"), StrataHtml.html`<li>Loading preferences…</li>`);
   if (el("movementBoardStatus"))
     el("movementBoardStatus").textContent = "Loading your decision board…";
   if (el("trainingBlockStatus"))
@@ -2127,7 +2122,7 @@ function showInitialLoadProgress() {
   el("exerciseGrid").hidden = false;
   StrataHtml.setHtml(
     el("exerciseGrid"),
-    '<div class="loading-card">Loading exercise intelligence…</div>',
+    StrataHtml.html`<div class="loading-card">Loading exercise intelligence…</div>`,
   );
   el("emptyState").hidden = true;
 }

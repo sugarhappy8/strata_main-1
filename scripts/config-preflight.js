@@ -7,7 +7,6 @@ const {
   validPaddleApiKey,
   validPaddleClientToken,
   validPaddleEnvironment,
-  validPaddleLegacyRecurringPriceIds,
   validPaddlePriceId,
   validPaddleProductId,
   validPaddleWebhookSecret,
@@ -192,15 +191,6 @@ function validateDeploymentEnvironment(
       "payments.price",
       validPaddlePriceId(environment.PADDLE_PRICE_ID),
       "PADDLE_PRICE_ID must identify the recurring Paddle price.",
-    );
-    addCheck(
-      checks,
-      "payments.legacy-prices",
-      validPaddleLegacyRecurringPriceIds(
-        environment.PADDLE_LEGACY_RECURRING_PRICE_IDS,
-        environment.PADDLE_PRICE_ID,
-      ),
-      "PADDLE_LEGACY_RECURRING_PRICE_IDS must contain only distinct earlier recurring price IDs.",
     );
     addCheck(
       checks,
