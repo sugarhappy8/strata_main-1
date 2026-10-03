@@ -2026,7 +2026,7 @@ dialog::backdrop {
     border-left: 1px solid rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.68);
     text-decoration: none;
-    font: 600 12px var(--body, "Manrope", Arial, sans-serif);
+    font: 600 11px var(--body, "Manrope", Arial, sans-serif);
     letter-spacing: 0;
   }
   .mobile-public-nav a:first-child {
