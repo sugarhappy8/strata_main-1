@@ -1,5 +1,18 @@
 # Changelog
 
+## 9.6.0 — Fix list
+
+- The App Store paywall says "Welcome to Strata+" only when STRATA reports that the purchase unlocked it. A purchase STRATA saved but did not unlock gets a plain warning instead, and an App Store test (Sandbox) purchase is told that test purchases do not unlock Strata+.
+- An `APPLE_SANDBOX_ACCOUNTS` address unlocks Strata+ with a Sandbox purchase only once that STRATA account has verified its email, so nobody can sign up with the review address and inherit its access.
+- `html` (in `public/scripts/html.js`) returns trusted markup instead of a string, so a template nested inside another is escaped exactly once, and `setHtml`, `insertHtml`, and `replaceHtml` refuse plain strings. Every hand-built template in 37 browser modules now uses `html`, and the hand-written `esc()` calls are gone; links, IDs in `data-*` attributes, class names, and chart attributes that were never escaped now are. ESLint rejects markup in plain strings, hand escaping, and joining or concatenating `html` results.
+- The old Paddle checkout code is removed: `src/legacy-checkout.js`, the earlier-monthly-price allowlist (`PADDLE_LEGACY_RECURRING_PRICE_IDS`), the Build 7.4 one-time draft migration and late completion, and catalog migration of subscriptions. STRATA entitles only `PADDLE_PRICE_ID`. Switching off abandoned drafts at Paddle, account-deletion checks, and access from completed one-time purchases are unchanged. An abandoned checkout on any other price is now switched off when the member starts a new checkout, instead of blocking it.
+- `POST /api/discovery/trial` (answering `410` since 8.9.0) is removed and returns `404`.
+- Migration `011-drop-build9-archives` drops `archive_discovery_trials` and `archive_community_weekly_plans`; migration `012-close-build7-checkouts` closes any unfinished checkout on the retired Build 7.4 one-time price.
+- API path IDs must be letters, digits, `_`, and `-` (up to 200). They are matched against the raw path and never decoded, so an encoded `/` (`%2F`), `..`, or a control character can no longer reach a handler inside an ID; such a path answers `404`.
+- Advance every asset version and the offline cache to 9.6.0.
+
+See the [9.6.0 release guide](docs/release-9.6.0.md).
+
 ## 9.5.0 — Structure and maintainability
 
 - Every API route is declared in one table (`src/router.js`): `{ method, path, feature, handler }`. One dispatcher applies the checks to every route the same way: a trusted STRATA origin on each write, the session (or the Strata+ feature, or the bound owner), the session's CSRF token on each signed-in write, and a JSON body. A write is protected unless its route opts out by name with `public: true`, `auth: "optional"`, or `webhook: true`; a test lists the 14 writes that run without a session, so adding one is a reviewed change. `handleApi` no longer walks 15 modules, and the services no longer check CSRF or origin themselves.

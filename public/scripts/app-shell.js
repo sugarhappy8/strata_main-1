@@ -19,7 +19,7 @@
   document.write(
     // A constant written while the page parses (see above), not markup built from data.
     // eslint-disable-next-line no-restricted-syntax
-    '<link rel="stylesheet" href="/app-mode.css?v=9.5.0" /><script src="/app-mode.js?v=9.5.0"></script>',
+    '<link rel="stylesheet" href="/app-mode.css?v=9.6.0" /><script src="/app-mode.js?v=9.6.0"></script>',
   );
 
   function removeInstallLinks() {
