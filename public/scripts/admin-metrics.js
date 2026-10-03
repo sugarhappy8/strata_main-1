@@ -98,6 +98,7 @@
             ["Paying members", count(revenue.payingMembers)],
             ["Paddle subscriptions", count(revenue.paddleSubscriptions)],
             ["App Store subscriptions", count(revenue.appStoreSubscriptions)],
+            ["Google Play subscriptions", count(revenue.googlePlaySubscriptions)],
             ["Yearly subscriptions", count(revenue.yearlySubscriptions)],
             ["Lifetime access (no recurring charge)", count(revenue.lifetimeMembers)],
             ["MRR at list price", usd(revenue.mrr?.list)],

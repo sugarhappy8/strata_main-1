@@ -1,15 +1,17 @@
 /* global module, require */
-/* The STRATA iOS app's chrome. Only the app loads this file (app-shell.js writes it into <head> when the user agent
-   carries "StrataApp/<n>"), so browsers never see any of it. It runs before the body exists and:
+/* The STRATA app's chrome, on iPhone and Android. Only the app loads this file (app-shell.js writes it into <head> when
+   the user agent carries "StrataApp/<n>"), so browsers never see any of it. It runs before the body exists and:
    - draws one persistent top bar (title, Back on child screens) and bottom tab bar the moment <body> appears, so they
      are part of the first frame and of every view transition snapshot; website headers, footers, and navs are hidden
      by app-mode.css;
    - turns the homepage into Rankings / a free-week preview / a welcome screen, and sends signed-in members to Dashboard;
    - marks each navigation as a tab switch, a push, or Back so app-mode.css can pick the matching transition;
-   - talks to the native StrataNative plugin (haptics, printing, screen awake, rest alerts, Calendar, App Store
-     transactions) when the app build has it, and keeps Strata+ in sync: every StoreKit transaction update and, once
-     per launch, the current entitlements are sent to STRATA, and a transaction is finished only after STRATA accepted
-     it. */
+   - talks to the native StrataNative plugin (haptics, printing, screen awake, rest alerts, Calendar, purchases) when
+     the app build has it, and keeps Strata+ in sync: every store update and, once per launch, the current purchases
+     are sent to STRATA. On iPhone they are App Store transactions, finished only after STRATA accepted them; on
+     Android they are Google Play purchase tokens, which STRATA checks with Google and acknowledges itself;
+   - on Android, hands the site's file downloads (exports, plans, calendar files) to the share sheet, which Android's
+     web view cannot do on its own. */
 (function (root, factory) {
   const StrataHtml =
     typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
@@ -350,6 +352,7 @@
     fetchImpl = (...args) => root.fetch(...args),
     dispatch = (name, detail) => root.dispatchEvent?.(new root.CustomEvent(name, { detail })),
     storage = () => root.sessionStorage,
+    platform = () => root.StrataApp?.platform || "ios",
   } = {}) {
     let accountRequest = null;
     async function requestJson(path, options = {}) {
@@ -396,7 +399,7 @@
       }
       return accountRequest;
     }
-    async function post(chunk, retried = false) {
+    async function post(path, payload, retried = false) {
       const { user, csrfToken } = await account({ fresh: retried });
       if (!user?.id)
         throw Object.assign(new Error("Sign in to STRATA first."), {
@@ -404,39 +407,67 @@
           code: "SIGN_IN_REQUIRED",
         });
       try {
-        return await requestJson("/api/billing/apple/transactions", {
+        return await requestJson(path, {
           method: "POST",
           headers: { "X-CSRF-Token": csrfToken, "X-Strata-User": String(user.id) },
-          body: JSON.stringify({ signedTransactions: chunk }),
+          body: JSON.stringify(payload),
         });
       } catch (error) {
-        if (!retried && error.code === "INVALID_CSRF") return post(chunk, true);
+        if (!retried && error.code === "INVALID_CSRF") return post(path, payload, true);
         throw error;
       }
     }
-    // Sends App Store signed transactions to STRATA in batches the server accepts. Returns the newest discovery
-    // state and every transaction id STRATA accepted; throws (and finishes nothing) when STRATA rejects them.
-    async function submit(signedTransactions) {
-      const list = [
-        ...new Set(
-          (signedTransactions || []).filter((value) => typeof value === "string" && value),
-        ),
-      ];
+    // Sends batches the server accepts and gathers what it accepted and the newest discovery state.
+    async function send(list, path, wrap) {
       const accepted = [];
       let discovery = null;
       for (let index = 0; index < list.length; index += MAX_TRANSACTIONS) {
-        const result = await post(list.slice(index, index + MAX_TRANSACTIONS));
+        const result = await post(path, wrap(list.slice(index, index + MAX_TRANSACTIONS)));
         if (result.discovery && typeof result.discovery === "object") discovery = result.discovery;
         if (Array.isArray(result.accepted)) accepted.push(...result.accepted.map(String));
       }
       if (discovery) dispatch("strata:app-billing", { discovery });
       return { discovery, accepted };
     }
+    // Sends App Store signed transactions to STRATA in batches the server accepts. Returns the newest discovery
+    // state and every transaction id STRATA accepted; throws (and finishes nothing) when STRATA rejects them.
+    function submit(signedTransactions) {
+      const list = [
+        ...new Set(
+          (signedTransactions || []).filter((value) => typeof value === "string" && value),
+        ),
+      ];
+      return send(list, "/api/billing/apple/transactions", (chunk) => ({
+        signedTransactions: chunk,
+      }));
+    }
+    // Sends Google Play purchases (purchase token and product) to STRATA, which reads each one from Google Play and
+    // acknowledges it. Returns the newest discovery state and every purchase token STRATA accepted.
+    function submitPlay(purchases) {
+      const seen = new Set(),
+        list = [];
+      for (const purchase of purchases || []) {
+        const token = purchase?.purchaseToken;
+        if (typeof token !== "string" || !token || seen.has(token)) continue;
+        seen.add(token);
+        list.push({ purchaseToken: token, productId: String(purchase.productId || "") });
+      }
+      return send(list, "/api/billing/google/purchases", (chunk) => ({ purchases: chunk }));
+    }
     // A StoreKit update (renewal, Ask to Buy approval, refund, purchase made elsewhere) is finished only once STRATA
     // accepted it. Anything else stays unfinished, so StoreKit delivers it again on the next launch.
+    // On Android the update is a Google Play purchase: STRATA acknowledges it, so there is nothing to finish here.
     async function handleUpdate(event) {
-      const native = plugin(),
-        transactionId = String(event?.transactionId || ""),
+      const native = plugin();
+      if (native && typeof event?.purchaseToken === "string" && event.purchaseToken) {
+        try {
+          const { accepted } = await submitPlay([event]);
+          return accepted.includes(event.purchaseToken);
+        } catch {
+          return false;
+        }
+      }
+      const transactionId = String(event?.transactionId || ""),
         signed = event?.signedTransaction;
       if (!native || !transactionId || typeof signed !== "string") return false;
       try {
@@ -463,8 +494,9 @@
       }
     }
     let syncing = null;
-    // Once per app launch (sessionStorage lives as long as the web view), a signed-in member's current App Store
-    // entitlements are sent so renewals and restores made outside the app reach STRATA.
+    // Once per app launch (sessionStorage lives as long as the web view), a signed-in member's current store
+    // purchases (App Store entitlements, or Google Play purchases) are sent so renewals and purchases made outside the
+    // app reach STRATA.
     function syncEntitlements() {
       if (syncing) return syncing;
       syncing = (async () => {
@@ -472,13 +504,15 @@
         if (flag() || typeof native?.currentEntitlements !== "function") return "skipped";
         const { user } = await account();
         if (!user?.id) return "signed-out";
-        const { signedTransactions = [] } = (await native.currentEntitlements()) || {};
-        if (!signedTransactions.length) {
+        const play = platform() === "android";
+        const current = (await native.currentEntitlements()) || {};
+        const owned = play ? current.purchases || [] : current.signedTransactions || [];
+        if (!owned.length) {
           setFlag();
           return "empty";
         }
         try {
-          await submit(signedTransactions);
+          await (play ? submitPlay(owned) : submit(owned));
           setFlag();
           return "synced";
         } catch (error) {
@@ -492,7 +526,7 @@
         });
       return syncing;
     }
-    return { account, requestJson, submit, handleUpdate, syncEntitlements };
+    return { account, requestJson, submit, submitPlay, handleUpdate, syncEntitlements };
   }
 
   const billing = createBilling();
@@ -514,11 +548,45 @@
     }
   }
 
+  // Android's web view drops downloads of files a page made itself (blob: and data: links), so on Android the app hands
+  // them to the share sheet instead: Drive, Files, email, or a calendar app for a calendar file. A link whose page
+  // handles it (the click's default is prevented, as for Add to Calendar) is left alone.
+  function readBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new root.FileReader();
+      reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ""));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+  async function shareDownload(href, filename) {
+    const blob = await (await root.fetch(href)).blob();
+    return call(
+      "shareFile",
+      {
+        filename: String(filename || "").trim() || "STRATA",
+        mimeType: blob.type || "application/octet-stream",
+        base64: await readBase64(blob),
+      },
+      { quiet: false },
+    );
+  }
+  function handOffDownloads(document) {
+    document.addEventListener("click", (event) => {
+      const link = event.target?.closest?.("a[download]");
+      if (!link || event.defaultPrevented || !has("shareFile")) return;
+      if (!/^(?:blob|data):/i.test(link.getAttribute("href") || "")) return;
+      event.preventDefault();
+      void shareDownload(link.href, link.getAttribute("download")).catch(() => {});
+    });
+  }
+
   function start() {
     const document = root.document,
       html = document.documentElement,
       location = root.location,
       audience = audienceOf(html.dataset.audience);
+    if (root.StrataApp?.platform === "android") handOffDownloads(document);
     let screen = resolveScreen(location, audience);
     html.dataset.appChrome = screen.chrome;
     html.dataset.appScreen = screen.id;
@@ -694,6 +762,7 @@
     info,
     createWorkoutBridge,
     createBilling,
+    shareDownload,
     billing,
     start,
     NAV_KEY,

@@ -84,6 +84,18 @@
           ? 0
           : timestamp(apple.expiresAt) || -1;
     }
+    // Google Play the same way; a renewing subscription is rechecked two hours after its expiry (the renewal margin).
+    if (discovery.accessType === "google") {
+      const play = discovery.googlePlay,
+        expiry = timestamp(play?.expiresAt);
+      return play?.active !== true
+        ? -1
+        : play.inGracePeriod === true
+          ? 0
+          : expiry
+            ? expiry + (play.state === "ACTIVE" && play.autoRenew === true ? 2 * 60 * 60 * 1000 : 0)
+            : -1;
+    }
     const subscription = discovery.subscription;
     if (!subscription || subscription.active === false) return 0;
     const periodEnd = timestamp(subscription.currentPeriodEndsAt);

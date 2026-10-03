@@ -102,8 +102,10 @@
         "accountUpdatePayment",
         "accountCancelSubscription",
         "accountManageApple",
+        "accountManageGooglePlay",
         "accountBillingWebNote",
         "accountSecurityAppleLink",
+        "accountSecurityPlayLink",
       ])
         el(id).hidden = true;
       for (const id of [
@@ -169,15 +171,49 @@
       el("accountManageApple").hidden = false;
     }
 
+    // A Google Play subscription (bought in the Android app) is managed by Google the same way: the app opens Google
+    // Play's subscriptions page, and the website links to it.
+    function renderGooglePlayBilling(play) {
+      const date = Number(play.expiresAt) > 0 ? logic.billingDate(play.expiresAt) : "";
+      el("accountBillingTitle").textContent = "Strata+ through Google Play";
+      el("accountBillingBadge").textContent =
+        play.active !== true
+          ? play.onHold === true
+            ? "On hold"
+            : play.paused === true
+              ? "Paused"
+              : play.pending === true
+                ? "Pending"
+                : "Ended"
+          : play.inGracePeriod === true
+            ? "Billing issue"
+            : play.autoRenew === false
+              ? "Canceling"
+              : "Active";
+      el("accountBillingDetail").textContent =
+        play.active !== true
+          ? play.onHold === true
+            ? "Google Play could not collect the latest payment, so this subscription is on hold. Update your payment method in Google Play to restore Strata+."
+            : play.paused === true
+              ? "This Google Play subscription is paused. Resume it in Google Play to use Strata+ again."
+              : play.pending === true
+                ? "Google Play is still processing the payment. Strata+ unlocks on its own once it goes through."
+                : "This Google Play subscription no longer provides Strata+. You can subscribe again in the STRATA app."
+          : `Billed to your Google Account through Google Play. ${play.inGracePeriod === true ? "Google could not collect the latest payment; update your payment method to keep Strata+." : play.autoRenew === false ? (date ? `It ends ${date} and will not renew.` : "It will not renew.") : date ? `It renews ${date} unless cancelled before then.` : `It renews ${play.plan === "yearly" ? "yearly" : "monthly"} until cancelled.`}${app ? "" : " Manage it in Google Play › Payments & subscriptions › Subscriptions."}`;
+      el("accountManageGooglePlay").hidden = false;
+    }
+
     function renderAccountBilling(user) {
       const section = el("accountBilling"),
         subscription = logic.subscriptionFor(user),
         grandfathered = logic.grandfatheredAccess(user),
-        apple = logic.appleSubscriptionFor(user);
-      section.hidden = !subscription && !grandfathered && !apple;
+        apple = logic.appleSubscriptionFor(user),
+        play = logic.googlePlaySubscriptionFor(user);
+      section.hidden = !subscription && !grandfathered && !apple && !play;
       el("accountBillingStatus").textContent = "";
       el("accountBillingStatus").classList.remove("bad");
       el("accountManageApple").hidden = true;
+      el("accountManageGooglePlay").hidden = true;
       el("accountBillingWebNote").hidden = true;
       if (section.hidden) return;
       const manage = el("accountManageSubscription"),
@@ -186,9 +222,22 @@
       manage.hidden = grandfathered || Boolean(app);
       update.hidden = true;
       cancel.hidden = true;
-      if (apple && (!subscription || (apple.active === true && subscription.active !== true))) {
+      // An app-store subscription that gives access wins over an inactive one from elsewhere; the App Store first.
+      const paddleActive = subscription?.active === true;
+      const store =
+        apple?.active === true && !paddleActive
+          ? "apple"
+          : play?.active === true && !paddleActive
+            ? "google"
+            : !subscription && apple
+              ? "apple"
+              : !subscription && play
+                ? "google"
+                : "";
+      if (store) {
         manage.hidden = true;
-        renderAppleBilling(apple);
+        if (store === "apple") renderAppleBilling(apple);
+        else renderGooglePlayBilling(play);
         return;
       }
       if (grandfathered) {
@@ -250,15 +299,20 @@
       cancel.hidden = status === "canceled" || scheduled?.action === "cancel";
     }
 
-    // A deletion notice from the server (an App Store subscription keeps billing) carries Apple's subscriptions link.
-    function showSecurityStatus(message, { error = false, appleLink = "" } = {}) {
+    // A deletion notice from the server (an app-store subscription keeps billing) carries the store's subscriptions link.
+    function showSecurityStatus(message, { error = false, appleLink = "", playLink = "" } = {}) {
       const status = el("accountSecurityStatus"),
-        link = el("accountSecurityAppleLink");
+        link = el("accountSecurityAppleLink"),
+        play = el("accountSecurityPlayLink");
       status.textContent = message;
       status.classList.remove("bad");
       if (error) status.classList.add("bad");
       link.hidden = !appleLink;
       if (appleLink) link.href = appleLink;
+      if (play) {
+        play.hidden = !playLink;
+        if (playLink) play.href = playLink;
+      }
     }
 
     function showSignedIn(user) {

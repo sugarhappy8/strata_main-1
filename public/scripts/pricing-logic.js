@@ -66,6 +66,33 @@
     };
   }
 
+  // Strata+ bought in the Android app is billed and managed by Google Play in the same way.
+  const PLAY_MANAGE_URL = "https://play.google.com/store/account/subscriptions";
+  function googlePlayAccess(user) {
+    const play = user?.discovery?.googlePlay;
+    return user?.discovery?.accessType === "google" && play && typeof play === "object"
+      ? play
+      : null;
+  }
+  function googlePlayStatus(play) {
+    const date = Number(play?.expiresAt) > 0 ? billingDate(play.expiresAt) : "";
+    if (play?.inGracePeriod === true)
+      return {
+        tone: "warn",
+        message:
+          "Your Strata+ is through Google Play. Google could not collect the latest payment; update your Google Account’s payment method to keep it.",
+      };
+    if (play?.autoRenew === false)
+      return {
+        tone: "warn",
+        message: `Your Strata+ is through Google Play and ends${date ? ` on ${date}` : ""}. It will not renew unless you resubscribe in Google Play.`,
+      };
+    return {
+      tone: "good",
+      message: `Your Strata+ is through Google Play${date ? ` and renews on ${date}` : ""}. Google bills it, so manage or cancel it in your Google Play subscriptions.`,
+    };
+  }
+
   function normalizedConfig(data) {
     const config = data?.billing && typeof data.billing === "object" ? data.billing : data;
     return {
@@ -160,6 +187,9 @@
     APPLE_MANAGE_URL,
     appleAccess,
     appleStatus,
+    PLAY_MANAGE_URL,
+    googlePlayAccess,
+    googlePlayStatus,
     billingDate,
     checkoutTransactionId,
     discoveryIsActive,

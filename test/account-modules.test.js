@@ -121,6 +121,89 @@ test("account pure logic explains every grant, subscription, and legacy access s
   assert.equal(logic.accountAccessSummary(discovery({ active: false }), true).state, "Pending");
 });
 
+test("account pure logic explains Google Play subscriptions and how to manage them", () => {
+  const expiresAt = Date.parse("2027-10-01T12:00:00Z"),
+    play = (value) => ({
+      discovery: {
+        active: value.active === true,
+        accessType: value.active ? "google" : null,
+        googlePlay: {
+          productId: "online.stratafitness.app.plus",
+          plan: "yearly",
+          expiresAt,
+          autoRenew: true,
+          state: "ACTIVE",
+          inGracePeriod: false,
+          onHold: false,
+          paused: false,
+          pending: false,
+          testPurchase: false,
+          ...value,
+        },
+      },
+    });
+  assert.equal(logic.googlePlaySubscriptionFor({ discovery: {} }), null);
+  for (const unsafe of [
+    "javascript:alert(1)",
+    "http://play.google.com/store/account/subscriptions",
+    "https://play.google.com.evil.test/",
+    "https://user:pass@play.google.com/",
+    "",
+  ])
+    assert.equal(logic.safePlayManageUrl(unsafe), logic.PLAY_MANAGE_URL, unsafe);
+  assert.deepEqual(
+    logic.googlePlayDeletionNotice({
+      googlePlayBilling: { message: " Google keeps billing. ", manageUrl: "https://evil.test/" },
+    }),
+    {
+      message: "Google keeps billing.",
+      manageUrl: "https://play.google.com/store/account/subscriptions",
+    },
+  );
+  assert.equal(logic.googlePlayDeletionNotice({ appleBilling: { message: "Apple" } }), null);
+  assert.deepEqual(logic.accountAccessSummary(play({ active: true })), {
+    state: "Active",
+    detail: "Yearly · Google Play · renews Oct 1, 2027",
+    message:
+      "Your yearly Strata+ subscription is billed to your Google Account and renews on Oct 1, 2027. Manage or cancel it in Google Play › Payments & subscriptions › Subscriptions on your Android phone.",
+  });
+  assert.match(
+    logic.accountAccessSummary(play({ active: true }), false, { app: true }).message,
+    /Subscriptions\.$/,
+    "in the app it does not say which phone",
+  );
+  assert.equal(
+    logic.accountAccessSummary(play({ active: true, inGracePeriod: true })).state,
+    "Billing issue",
+  );
+  assert.equal(
+    logic.accountAccessSummary(play({ active: true, autoRenew: false })).state,
+    "Canceling",
+  );
+  assert.equal(
+    logic.accountAccessSummary(play({ active: false, onHold: true, state: "ON_HOLD" })).state,
+    "On hold",
+  );
+  assert.equal(
+    logic.accountAccessSummary(play({ active: false, paused: true, state: "PAUSED" })).state,
+    "Paused",
+  );
+  assert.equal(
+    logic.accountAccessSummary(play({ active: false, pending: true, state: "PENDING" })).state,
+    "Pending",
+  );
+  assert.equal(
+    logic.accountAccessSummary(play({ active: false, state: "EXPIRED" })).state,
+    "Ended",
+  );
+  assert.equal(logic.googlePlayMayBill(play({ active: true })), true);
+  assert.equal(
+    logic.googlePlayMayBill(play({ active: false, autoRenew: false, state: "EXPIRED" })),
+    false,
+  );
+  assert.equal(logic.googlePlayMayBill({ discovery: {} }), false);
+});
+
 test("account pure logic explains App Store subscriptions and keeps Paddle read-only inside the app", () => {
   const expiresAt = Date.parse("2026-11-01T12:00:00Z"),
     apple = (value, extra = {}) => ({

@@ -210,6 +210,84 @@
     };
   }
 
+  // The Google Play subscription STRATA checked for this account (bought in the Android app), or null.
+  function googlePlaySubscriptionFor(user) {
+    const play = user?.discovery?.googlePlay;
+    return play && typeof play === "object" ? play : null;
+  }
+  const PLAY_SETTINGS = "Google Play › Payments & subscriptions › Subscriptions",
+    PLAY_MANAGE_URL = "https://play.google.com/store/account/subscriptions";
+  // Google Play's subscription page from a server notice, or Google's standard one; never another site or scheme.
+  function safePlayManageUrl(value) {
+    try {
+      const url = new URL(String(value || ""));
+      return url.protocol === "https:" &&
+        url.hostname === "play.google.com" &&
+        !url.username &&
+        !url.password
+        ? url.href
+        : PLAY_MANAGE_URL;
+    } catch {
+      return PLAY_MANAGE_URL;
+    }
+  }
+  // The account-deletion notice the server sends while a Google Play subscription is live or set to renew.
+  function googlePlayDeletionNotice(result) {
+    const notice = result?.googlePlayBilling,
+      message = typeof notice?.message === "string" ? notice.message.trim() : "";
+    return message ? { message, manageUrl: safePlayManageUrl(notice.manageUrl) } : null;
+  }
+  function googlePlayAccessSummary(play, app) {
+    const date = billingDate(play.expiresAt),
+      known = Number(play.expiresAt) > 0,
+      plan = play.plan === "yearly" ? "Yearly" : "Monthly";
+    if (play.active !== true)
+      return play.onHold === true
+        ? {
+            state: "On hold",
+            detail: "Update payment in Google Play",
+            message: `Google Play could not collect the latest payment, so Strata+ is on hold. Update your payment method in ${PLAY_SETTINGS} to restore it.`,
+          }
+        : play.paused === true
+          ? {
+              state: "Paused",
+              detail: "Resume in Google Play",
+              message: `Your Google Play subscription is paused, so Strata+ is off until it resumes. Resume it in ${PLAY_SETTINGS}.`,
+            }
+          : play.pending === true
+            ? {
+                state: "Pending",
+                detail: "Payment processing",
+                message:
+                  "Google Play is still processing your payment. Strata+ unlocks on its own once it goes through.",
+              }
+            : {
+                state: "Ended",
+                detail: "Google Play · no renewal",
+                message:
+                  "Your Google Play subscription has ended. Your free Rankings and weekly Plan remain available.",
+              };
+    if (play.inGracePeriod === true)
+      return {
+        state: "Billing issue",
+        detail: "Update payment in Google Play",
+        message: `Google Play could not collect the latest payment. Update your Google Account’s payment method in ${PLAY_SETTINGS} to keep Strata+.`,
+      };
+    if (play.autoRenew === false && known)
+      return {
+        state: "Canceling",
+        detail: `Access through ${date}`,
+        message: `Your Google Play subscription is cancelled and ends on ${date}. Strata+ stays active until then.`,
+      };
+    return {
+      state: "Active",
+      detail: known
+        ? `${plan} · Google Play · renews ${date}`
+        : `${plan} · Google Play subscription`,
+      message: `Your ${plan.toLowerCase()} Strata+ subscription is billed to your Google Account${known ? ` and renews on ${date}` : ""}. Manage or cancel it in ${PLAY_SETTINGS}${app ? "" : " on your Android phone"}.`,
+    };
+  }
+
   // Subscriptions on an earlier price were monthly too.
   function planName(subscription) {
     return subscription?.plan === "yearly" ? "yearly" : "monthly";
@@ -219,16 +297,19 @@
     const discovery = user?.discovery || {},
       subscription = subscriptionFor(user),
       status = String(subscription?.status || ""),
-      apple = appleSubscriptionFor(user);
+      apple = appleSubscriptionFor(user),
+      play = googlePlaySubscriptionFor(user);
     if (discovery.adminGrant?.active === true) {
       const grant = discovery.adminGrant;
       const coexistence = subscription
         ? `Your existing ${planName(subscription)} subscription remains separate and is not canceled by this grant; review its billing state below.`
         : apple?.active === true
           ? `Your App Store subscription remains separate and is not cancelled by this grant; manage it in ${APPLE_SETTINGS}.`
-          : grandfatheredAccess(user)
-            ? "Your grandfathered lifetime access remains separate and does not renew."
-            : "It did not create a paid subscription.";
+          : play?.active === true
+            ? `Your Google Play subscription remains separate and is not cancelled by this grant; manage it in ${PLAY_SETTINGS}.`
+            : grandfatheredAccess(user)
+              ? "Your grandfathered lifetime access remains separate and does not renew."
+              : "It did not create a paid subscription.";
       return {
         state: "Complimentary",
         detail: grant.expiresAt == null ? "Until revoked" : `Until ${billingDate(grant.expiresAt)}`,
@@ -237,6 +318,8 @@
     }
     if (apple?.active === true && subscription?.active !== true)
       return appleAccessSummary(apple, app);
+    if (play?.active === true && subscription?.active !== true)
+      return googlePlayAccessSummary(play, app);
     if (subscription) {
       const web = "It is billed on stratafitness.online.",
         plan = planName(subscription);
@@ -289,6 +372,7 @@
       };
     }
     if (apple) return appleAccessSummary(apple, app);
+    if (play) return googlePlayAccessSummary(play, app);
     if (grandfatheredAccess(user))
       return {
         state: "Lifetime",
@@ -309,7 +393,7 @@
             message:
               "A Strata+ subscription checkout is pending. Open Pricing to finish checkout or check confirmation.",
           };
-    // The app shows the App Store's price for the viewer's storefront on the paywall, never a fixed USD amount.
+    // The app shows its store's price for the viewer's storefront on the paywall, never a fixed USD amount.
     return {
       state: "Free",
       detail: "Rankings and Plan included",
@@ -352,6 +436,12 @@
     const discovery = user?.discovery || {},
       apple = appleSubscriptionFor(user);
     return discovery.accessType === "apple" || apple?.active === true || apple?.autoRenew === true;
+  }
+  // The same for Google Play: it bills until the member cancels with Google.
+  function googlePlayMayBill(user) {
+    const discovery = user?.discovery || {},
+      play = googlePlaySubscriptionFor(user);
+    return discovery.accessType === "google" || play?.active === true || play?.autoRenew === true;
   }
   /** How this account signs in, e.g. "Signs in with a password and Google", or "" when it is password-only. */
   function signInMethodsText(user) {
@@ -442,6 +532,10 @@
     APPLE_MANAGE_URL,
     safeAppleManageUrl,
     appleDeletionNotice,
+    googlePlaySubscriptionFor,
+    PLAY_MANAGE_URL,
+    safePlayManageUrl,
+    googlePlayDeletionNotice,
     grandfatheredAccess,
     billingDate,
     accountAccessSummary,
@@ -449,6 +543,7 @@
     sessionDate,
     securityError,
     appleMayBill,
+    googlePlayMayBill,
     deleteNowError,
     signInMethodsText,
     hasPassword,

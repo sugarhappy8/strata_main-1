@@ -92,6 +92,32 @@ test("pricing API normalizes transport failures and rejects malformed success bo
   await assert.rejects(denied("/api/me"), (error) => error.status === 403 && error.code === "CSRF");
 });
 
+test("pricing names Google Play access only for a member whose Strata+ comes from Google Play", () => {
+  const play = {
+    active: true,
+    expiresAt: Date.parse("2027-10-01T12:00:00Z"),
+    autoRenew: true,
+    inGracePeriod: false,
+  };
+  assert.equal(
+    Logic.googlePlayAccess({ discovery: { active: true, accessType: "google", googlePlay: play } }),
+    play,
+  );
+  for (const user of [
+    { discovery: { active: true, accessType: "apple", googlePlay: play } },
+    { discovery: { active: true, accessType: "google", googlePlay: null } },
+    null,
+  ])
+    assert.equal(Logic.googlePlayAccess(user), null);
+  assert.match(
+    Logic.googlePlayStatus(play).message,
+    /through Google Play and renews on Oct 1, 2027/,
+  );
+  assert.equal(Logic.googlePlayStatus({ ...play, autoRenew: false }).tone, "warn");
+  assert.equal(Logic.googlePlayStatus({ ...play, inGracePeriod: true }).tone, "warn");
+  assert.equal(Logic.PLAY_MANAGE_URL, "https://play.google.com/store/account/subscriptions");
+});
+
 test("pricing names App Store access only for a member whose Strata+ comes from Apple", () => {
   const apple = {
     active: true,

@@ -57,6 +57,7 @@
             <button id="accountUpdatePayment" type="button" hidden>Update payment method <span aria-hidden="true">↗</span></button>
             <button id="accountCancelSubscription" type="button" hidden>Cancel subscription <span aria-hidden="true">↗</span></button>
             <a id="accountManageApple" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage subscription <span aria-hidden="true">↗</span></a>
+            <a id="accountManageGooglePlay" href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage subscription <span aria-hidden="true">↗</span></a>
           </div>
           <p class="account-billing-web" id="accountBillingWebNote" hidden>Billed on stratafitness.online.</p>
           <p class="account-billing-status" id="accountBillingStatus" role="status" aria-live="polite" tabindex="-1"></p>
@@ -110,7 +111,7 @@
         <section class="account-security" aria-labelledby="accountSecurityTitle">
           <p class="panel-index">Account controls</p>
           <h3 id="accountSecurityTitle">Account security</h3>
-          <p>Reset your password through a secure link sent to your registered email. Completing a reset signs out every device. <span class="web-only">Account deletion does not cancel a Paddle subscription or refund a charge; manage those billing actions above before deleting your account.</span><span class="app-only" hidden>Deleting your account does not cancel a subscription or refund a charge. An App Store subscription keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions.</span></p>
+          <p>Reset your password through a secure link sent to your registered email. Completing a reset signs out every device. <span class="web-only">Account deletion does not cancel a Paddle subscription or refund a charge; manage those billing actions above before deleting your account.</span><span class="app-only" hidden>Deleting your account does not cancel a subscription or refund a charge. A subscription bought in the app keeps billing until you cancel it: on iPhone in Settings › Apple Account › Subscriptions, on Android in Google Play › Payments &amp; subscriptions › Subscriptions.</span></p>
           <div class="security-actions">
             <button id="accountPasswordReset" type="button"><span class="button-idle">Email password-reset link</span><span class="button-busy">Sending reset link…</span><span aria-hidden="true">→</span></button>
             <button class="danger-action" id="accountDeleteRequest" type="button"><span class="button-idle">Delete account</span><span class="button-busy">Sending deletion link…</span><span aria-hidden="true">→</span></button>
@@ -119,6 +120,7 @@
           <p class="account-sign-in-methods" id="accountSignInMethods" hidden></p>
           <p class="security-status" id="accountSecurityStatus" role="status" aria-live="polite"></p>
           <a class="security-apple-link" id="accountSecurityAppleLink" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage your App Store subscription <span aria-hidden="true">↗</span></a>
+          <a class="security-apple-link" id="accountSecurityPlayLink" href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noopener noreferrer" hidden>Manage your Google Play subscription <span aria-hidden="true">↗</span></a>
         </section>
       </section>
 
@@ -195,6 +197,10 @@
         <div class="account-delete-apple" id="accountDeleteApple" hidden>
           <p><strong>Deleting your account does not cancel your App Store subscription.</strong> Apple keeps billing your Apple Account until you cancel it.</p>
           <a class="account-delete-manage" id="accountDeleteManage" href="https://apps.apple.com/account/subscriptions" target="_blank" rel="noopener noreferrer">Manage subscription</a>
+        </div>
+        <div class="account-delete-apple" id="accountDeleteGooglePlay" hidden>
+          <p><strong>Deleting your account does not cancel your Google Play subscription.</strong> Google keeps billing your Google Account until you cancel it.</p>
+          <a class="account-delete-manage" id="accountDeletePlayManage" href="https://play.google.com/store/account/subscriptions" target="_blank" rel="noopener noreferrer">Manage subscription</a>
         </div>
         <p class="account-delete-note">Deleting is not cancellation and is not a refund.</p>
         <p class="account-delete-note" id="accountDeleteRecentNote" hidden>You sign in with Google, so there is no STRATA password to enter. If you signed in more than 15 minutes ago, sign out and sign in again first.</p>

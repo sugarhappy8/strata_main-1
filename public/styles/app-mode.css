@@ -1,9 +1,9 @@
-/* The STRATA iOS app's look. Only the app loads this stylesheet (app-shell.js writes it into <head>), so nothing here
-   reaches a browser. app-mode.js sets the attributes it keys on before the body exists:
+/* The STRATA app's look, on iPhone and Android. Only the app loads this stylesheet (app-shell.js writes it into
+   <head>), so nothing here reaches a browser. app-mode.js sets the attributes it keys on before the body exists:
    data-app-chrome="tabs" pages get the app's top bar and tab bar, data-app-screen names the screen, data-app-home the
    homepage view, and data-app-nav how the page arrived (tab, push, back) for its view transition.
    Motion uses transform and opacity only, no blur behind anything, and stops for Reduce Motion. */
-:root[data-app="ios"] {
+:root[data-app] {
   --app-tabbar-h: 56px;
   --app-topbar-h: 44px;
   --app-top: calc(var(--app-topbar-h) + env(safe-area-inset-top));
@@ -22,10 +22,10 @@
 @view-transition {
   navigation: auto;
 }
-:root[data-app="ios"] .app-topbar {
+:root[data-app] .app-topbar {
   view-transition-name: app-topbar;
 }
-:root[data-app="ios"] .app-tabbar {
+:root[data-app] .app-tabbar {
   view-transition-name: app-tabbar;
 }
 ::view-transition-group(app-tabbar) {
@@ -122,20 +122,20 @@
 /* Website chrome the app replaces: headers, footers, skip links, the homepage's phone nav, and scroll progress. */
 :root[data-app-chrome="tabs"] body > header:not(.app-topbar),
 :root[data-app-chrome="tabs"] body > nav.mobile-public-nav,
-:root[data-app="ios"] body > footer,
-:root[data-app="ios"] .skip-link,
-:root[data-app="ios"] .strata-scroll-progress {
+:root[data-app] body > footer,
+:root[data-app] .skip-link,
+:root[data-app] .strata-scroll-progress {
   display: none !important;
 }
 /* In-app copy variants: a web-only sentence and its app twin (marked hidden, so browsers never show it) sit side by
    side in the page source. */
-:root[data-app="ios"] .web-only {
+:root[data-app] .web-only {
   display: none !important;
 }
-:root[data-app="ios"] span.app-only[hidden] {
+:root[data-app] span.app-only[hidden] {
   display: inline !important;
 }
-:root[data-app="ios"] :not(span).app-only[hidden] {
+:root[data-app] :not(span).app-only[hidden] {
   display: block !important;
 }
 
@@ -893,17 +893,17 @@ body:has(.account-delete-dialog[open]) {
 }
 
 /* Touch: instant press feedback, no grey tap flash, no link previews or text selection on controls. */
-:root[data-app="ios"]
+:root[data-app]
   :is(a, button, summary, label, input, select, textarea, [role="button"], [role="tab"]) {
   -webkit-tap-highlight-color: transparent;
 }
-:root[data-app="ios"] :is(a, img) {
+:root[data-app] :is(a, img) {
   -webkit-touch-callout: none;
 }
-:root[data-app="ios"] img {
+:root[data-app] img {
   -webkit-user-drag: none;
 }
-:root[data-app="ios"]
+:root[data-app]
   :is(
     button,
     summary,
@@ -925,7 +925,7 @@ body:has(.account-delete-dialog[open]) {
   -webkit-user-select: none;
   user-select: none;
 }
-:root[data-app="ios"]
+:root[data-app]
   :is(
     button,
     .button,
@@ -953,7 +953,7 @@ body:has(.account-delete-dialog[open]) {
     color 0.2s ease,
     border-color 0.2s ease;
 }
-:root[data-app="ios"]
+:root[data-app]
   :is(
     button,
     .button,
@@ -975,28 +975,28 @@ body:has(.account-delete-dialog[open]) {
   opacity: 0.86;
   transition-duration: 0.07s;
 }
-:root[data-app="ios"] :is(.app-list a, .app-welcome-explore a, .exercise-row):active {
+:root[data-app] :is(.app-list a, .app-welcome-explore a, .exercise-row):active {
   background-color: rgba(127, 135, 120, 0.14);
   transition-duration: 0.05s;
 }
-:root[data-app="ios"]
+:root[data-app]
   :is(dialog, .destination-nav, .group-tabs, .submuscle-row, .ai-panel, .policy-nav, .week-strip) {
   overscroll-behavior: contain;
 }
 
 /* No blur behind anything while scrolling, no scroll-triggered reveals, and page-load entrances leave the motion to
    the view transition. */
-:root[data-app="ios"] *,
-:root[data-app="ios"] *::before,
-:root[data-app="ios"] *::after {
+:root[data-app] *,
+:root[data-app] *::before,
+:root[data-app] *::after {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
-:root[data-app="ios"] ::backdrop {
+:root[data-app] ::backdrop {
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
 }
-:root[data-app="ios"]
+:root[data-app]
   :is(
     .motion-enter,
     .hero-layout > div,
@@ -1010,17 +1010,17 @@ body:has(.account-delete-dialog[open]) {
   animation: none !important;
 }
 @media (prefers-reduced-motion: no-preference) {
-  :root[data-app="ios"] .feature-panel:not([hidden]) > .studio-container {
+  :root[data-app] .feature-panel:not([hidden]) > .studio-container {
     animation: app-rise 0.3s var(--app-spring) both;
   }
-  :root[data-app="ios"] dialog[open] {
+  :root[data-app] dialog[open] {
     animation: app-sheet 0.36s var(--app-spring);
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  :root[data-app="ios"] *,
-  :root[data-app="ios"] *::before,
-  :root[data-app="ios"] *::after {
+  :root[data-app] *,
+  :root[data-app] *::before,
+  :root[data-app] *::after {
     transition-duration: 0.01ms !important;
   }
   .app-paywall {
@@ -1039,6 +1039,6 @@ body:has(.account-delete-dialog[open]) {
 }
 
 /* Google refuses sign-in inside an embedded web view, so the app keeps email sign-in only. */
-:root[data-app="ios"] .social-sign-in {
+:root[data-app] .social-sign-in {
   display: none !important;
 }

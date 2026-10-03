@@ -68,16 +68,18 @@
       const checkoutAccountChanged =
         Boolean(state.currentCheckoutUserId) &&
         String(state.user?.id || "") !== state.currentCheckoutUserId;
-      // An App Store member manages Strata+ on Apple's page, never with Paddle (and is active, so no checkout shows).
-      const apple = active ? logic.appleAccess(state.user) : null;
+      // An App Store or Google Play member manages Strata+ on that store's page, never with Paddle (and is active, so no
+      // checkout shows).
+      const apple = active ? logic.appleAccess(state.user) : null,
+        play = active && !apple ? logic.googlePlayAccess(state.user) : null;
 
       signupLink.hidden = signedIn;
       loginLink.hidden = signedIn;
       buyButton.hidden = !canSubscribe;
       openLink.hidden = !signedIn || !active;
-      manageLink.hidden = !signedIn || (!subscription && !apple);
-      if (apple) {
-        manageLink.href = logic.APPLE_MANAGE_URL;
+      manageLink.hidden = !signedIn || (!subscription && !apple && !play);
+      if (apple || play) {
+        manageLink.href = apple ? logic.APPLE_MANAGE_URL : logic.PLAY_MANAGE_URL;
         manageLink.target = "_blank";
         manageLink.rel = "noopener noreferrer";
       } else if (manageLink.target) {
@@ -165,17 +167,19 @@
             ? `Your existing ${plan} subscription remains separate and is not canceled by this grant; manage it from Profile.`
             : apple
               ? "Your App Store subscription remains separate and is not canceled by this grant; manage it with your App Store subscriptions."
-              : grandfathered
-                ? "Your grandfathered lifetime access remains separate and does not renew."
-                : "It did not create a paid subscription.";
+              : play
+                ? "Your Google Play subscription remains separate and is not canceled by this grant; manage it in your Google Play subscriptions."
+                : grandfathered
+                  ? "Your grandfathered lifetime access remains separate and does not renew."
+                  : "It did not create a paid subscription.";
           setStatus(
             `You have complimentary Strata+ ${grant?.expiresAt == null ? "until an administrator revokes it" : `until ${new Date(grant.expiresAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`}. This grant never charges you. ${coexistence}`,
             "good",
           );
           return;
         }
-        if (apple) {
-          const status = logic.appleStatus(apple);
+        if (apple || play) {
+          const status = apple ? logic.appleStatus(apple) : logic.googlePlayStatus(play);
           setStatus(status.message, status.tone);
         } else if (grandfathered)
           setStatus(

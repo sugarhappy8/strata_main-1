@@ -63,6 +63,16 @@ services:
         value: online.stratafitness.app.plus.monthly,online.stratafitness.app.plus.yearly
       - key: APPLE_SANDBOX_ACCOUNTS
         sync: false
+      - key: GOOGLE_PLAY_PACKAGE_NAME
+        value: online.stratafitness.app
+      - key: GOOGLE_PLAY_PRODUCT_IDS
+        value: online.stratafitness.app.plus
+      - key: GOOGLE_PLAY_SERVICE_ACCOUNT
+        sync: false
+      - key: GOOGLE_PLAY_NOTIFICATION_TOKEN
+        sync: false
+      - key: GOOGLE_PLAY_TEST_ACCOUNTS
+        sync: false
       - key: STRATA_INTERNAL_ACCOUNTS
         sync: false
       - key: STRATA_AI_USD_PER_MILLION_TOKENS

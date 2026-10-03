@@ -1,10 +1,12 @@
 /* global module, require */
-/* Strata+ in the iOS app is sold through the App Store, never Paddle. On /pricing inside the app, app-mode.js loads
-   this file and pricing.js stands down. The paywall shows what Strata+ includes (the page's own copy), the website's
-   two plans (monthly and yearly) at the prices and periods StoreKit reports for this storefront, and the auto-renewal
-   terms. A purchase carries the signed-in STRATA
-   user id as its appAccountToken; the signed transaction goes to STRATA, and the app finishes it only after STRATA
-   accepted it, so a rejected or unreachable confirmation is retried by StoreKit instead of being lost. */
+/* Strata+ in the STRATA app is sold through the app's store, never Paddle: the App Store on iPhone and Google Play on
+   Android. On /pricing inside the app, app-mode.js loads this file and pricing.js stands down. The paywall shows what
+   Strata+ includes (the page's own copy), the website's two plans (monthly and yearly) at the prices and periods the
+   store reports for this storefront, and the auto-renewal terms. A purchase carries the signed-in STRATA user id (the
+   App Store's appAccountToken, Google Play's obfuscated account id). On iPhone the signed transaction goes to STRATA
+   and the app finishes it only after STRATA accepted it, so a rejected or unreachable confirmation is retried by
+   StoreKit instead of being lost; on Android the purchase token goes to STRATA, which checks it with Google Play and
+   acknowledges it there. */
 (function (root, factory) {
   const StrataHtml =
     typeof module === "object" && module.exports ? require("./html") : root.StrataHtml;
@@ -21,7 +23,11 @@
     yearly: "online.stratafitness.app.plus.yearly",
   });
   const PRODUCT_ID = PRODUCT_IDS.monthly;
+  // On Android: one Google Play subscription, with a base plan for each of the website's plans.
+  const PLAY_PRODUCT_ID = "online.stratafitness.app.plus";
+  const PLAY_BASE_PLANS = Object.freeze({ monthly: "monthly", yearly: "yearly" });
   const MANAGE_PATH = "Settings › Apple Account › Subscriptions";
+  const PLAY_MANAGE_PATH = "Google Play › Payments & subscriptions › Subscriptions";
   const UNITS = Object.freeze({
     day: ["day", "days"],
     week: ["week", "weeks"],
@@ -54,6 +60,7 @@
         : globalThis.StrataEntitlements?.hasPlus?.(user) === true;
     if (!active) return null;
     if (discovery.accessType === "apple") return "apple";
+    if (discovery.accessType === "google") return "google";
     if (discovery.accessType === "paid") return "paddle";
     if (discovery.accessType === "grant" || discovery.adminGrant?.active === true) return "grant";
     return "plus";
@@ -80,25 +87,131 @@
     return "";
   }
 
-  function disclosure(product) {
+  // How each store sells Strata+: what to ask it for, what STRATA needs to see a purchase, and what to call things.
+  const STORES = Object.freeze({
+    apple: Object.freeze({
+      accessType: "apple",
+      name: "the App Store",
+      label: "App Store",
+      account: "Apple Account",
+      managePath: MANAGE_PATH,
+      request: () => ({ productIds: Object.values(PRODUCT_IDS) }),
+      plans: (found) =>
+        Object.entries(PRODUCT_IDS).flatMap(([plan, id]) => {
+          const product = found.find((item) => item?.id === id);
+          return product ? [{ ...product, plan }] : [];
+        }),
+      purchaseOptions: (product, user) => ({
+        productId: product.id,
+        appAccountToken: String(user.id),
+      }),
+      summary: (discovery) => discovery?.apple || null,
+      // A test purchase still inside its period that STRATA keeps locked, not one that ran out or was refunded.
+      lockedTest: (apple) =>
+        apple?.environment === "Sandbox" &&
+        !apple.revoked &&
+        !(Number(apple.expiresAt) <= Date.now()),
+      testText: "This was an App Store test purchase. Test purchases do not unlock Strata+.",
+      ended: (apple) =>
+        apple.revoked
+          ? "Your App Store subscription was refunded or revoked, so Strata+ is off."
+          : "Your App Store subscription has ended. Subscribe again whenever you like.",
+      pending:
+        "Your purchase is waiting for approval. Strata+ unlocks on its own once it is approved.",
+      // StoreKit's proof of a purchase: the signed transaction, finished once STRATA accepted it.
+      proof: (result) =>
+        result?.transactionId && typeof result.signedTransaction === "string"
+          ? { items: [result.signedTransaction], id: String(result.transactionId) }
+          : null,
+      send: (billing, items) => billing.submit(items),
+      found: async (native) => (await native.restore())?.signedTransactions || [],
+      async finish(native, result) {
+        try {
+          await native.finishTransaction({ transactionId: String(result.transactionId) });
+        } catch {
+          /* StoreKit redelivers it; STRATA accepts it again. */
+        }
+      },
+      terms: (lead) =>
+        `${lead} Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period, and your Apple Account is charged for the renewal within 24 hours before the period ends. Manage or cancel it anytime in ${MANAGE_PATH}.`,
+    }),
+    google: Object.freeze({
+      accessType: "google",
+      name: "Google Play",
+      label: "Google Play",
+      account: "Google Account",
+      managePath: PLAY_MANAGE_PATH,
+      request: () => ({ productIds: [PLAY_PRODUCT_ID] }),
+      plans: (found) =>
+        Object.entries(PLAY_BASE_PLANS).flatMap(([plan, basePlanId]) => {
+          const product = found.find(
+            (item) => item?.id === PLAY_PRODUCT_ID && item?.basePlanId === basePlanId,
+          );
+          return product ? [{ ...product, plan }] : [];
+        }),
+      purchaseOptions: (product, user) => ({
+        productId: product.id,
+        basePlanId: product.basePlanId,
+        accountId: String(user.id),
+      }),
+      summary: (discovery) => discovery?.googlePlay || null,
+      lockedTest: (play) =>
+        play?.testPurchase === true &&
+        ["ACTIVE", "IN_GRACE_PERIOD", "CANCELED"].includes(play.state) &&
+        !(Number(play.expiresAt) <= Date.now()),
+      testText: "This was a Google Play test purchase. Test purchases do not unlock Strata+.",
+      ended: (play) =>
+        play.onHold
+          ? "Google Play could not collect your payment, so Strata+ is on hold. Update your payment method in Google Play to restore it."
+          : play.paused
+            ? "Your Google Play subscription is paused. Resume it in Google Play to use Strata+ again."
+            : play.pending
+              ? "Your Google Play payment is still being processed. Strata+ unlocks on its own once it goes through."
+              : "Your Google Play subscription has ended. Subscribe again whenever you like.",
+      pending:
+        "Your payment is still being processed by Google Play. Strata+ unlocks on its own once it goes through.",
+      // Google Play's proof of a purchase: its token, which STRATA checks with Google and acknowledges itself.
+      proof: (result) =>
+        typeof result?.purchaseToken === "string" && result.purchaseToken
+          ? {
+              items: [{ purchaseToken: result.purchaseToken, productId: result.productId }],
+              id: result.purchaseToken,
+            }
+          : null,
+      send: (billing, items) => billing.submitPlay(items),
+      found: async (native) => (await native.restore())?.purchases || [],
+      finish: async () => {},
+      terms: (lead) =>
+        `${lead} Payment is charged to your Google Play account when you confirm the purchase. The subscription renews automatically unless you cancel it before the end of the current period. Manage or cancel it anytime in ${PLAY_MANAGE_PATH}.`,
+    }),
+  });
+  /** The store this app sells through: Google Play on Android, the App Store on iPhone. */
+  const storeFor = (platform) => (platform === "android" ? STORES.google : STORES.apple);
+
+  function disclosure(product, store = STORES.apple) {
     const price = product ? `${product.displayPrice} ${periodLabel(product.period)}` : "";
     const every =
       Number(product?.period?.value || 1) === 1 ? RENEWAL[product?.period?.unit] || "" : "";
-    return `Strata+ is an auto-renewing ${every ? `${every} ` : ""}subscription${price ? ` at ${price}` : ""}. Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period, and your Apple Account is charged for the renewal within 24 hours before the period ends. Manage or cancel it anytime in ${MANAGE_PATH}.`;
+    return store.terms(
+      `Strata+ is an auto-renewing ${every ? `${every} ` : ""}subscription${price ? ` at ${price}` : ""}.`,
+    );
   }
 
-  function serverMessage(error, { purchased = false } = {}) {
+  function serverMessage(error, { purchased = false, store = STORES.apple } = {}) {
     const safe = purchased ? " Your payment is safe and you will not be charged twice." : "";
-    if (error?.code === "SIGN_IN_REQUIRED" || error?.status === 401)
+    const code = String(error?.code || "");
+    if (code === "SIGN_IN_REQUIRED" || error?.status === 401)
       return `Your STRATA session ended. Sign in again, then choose Restore Purchases.${safe}`;
-    if (error?.code === "APPLE_ACCOUNT_MISMATCH")
-      return `This App Store purchase belongs to a different STRATA account. Sign in to the account that bought it, then choose Restore Purchases.${safe}`;
-    if (error?.code === "APPLE_PURCHASE_OTHER_ACCOUNT")
-      return "This Apple Account’s Strata+ subscription is already linked to another STRATA account. Sign in to that account to use it.";
-    if (error?.code === "APPLE_FAMILY_SHARED")
+    if (code === "APPLE_ACCOUNT_MISMATCH" || code === "GOOGLE_PLAY_ACCOUNT_MISMATCH")
+      return `This ${store.label} purchase belongs to a different STRATA account. Sign in to the account that bought it, then choose Restore Purchases.${safe}`;
+    if (code === "APPLE_PURCHASE_OTHER_ACCOUNT" || code === "GOOGLE_PLAY_PURCHASE_OTHER_ACCOUNT")
+      return `This ${store.account}’s Strata+ subscription is already linked to another STRATA account. Sign in to that account to use it.`;
+    if (code === "APPLE_FAMILY_SHARED")
       return "Strata+ isn’t shared through Family Sharing. Subscribe with your own Apple Account to unlock it.";
-    if (String(error?.code || "").startsWith("APPLE_"))
-      return `STRATA could not verify this App Store purchase. Contact STRATA from Profile so we can help.${safe}`;
+    if (code === "GOOGLE_PLAY_NOT_CONFIGURED" || code === "GOOGLE_PLAY_UNAVAILABLE")
+      return `STRATA could not reach Google Play to check this purchase. Choose Restore Purchases in a moment.${safe}`;
+    if (code.startsWith("APPLE_") || code.startsWith("GOOGLE_PLAY_"))
+      return `STRATA could not verify this ${store.label} purchase. Contact STRATA from Profile so we can help.${safe}`;
     if (error?.code === "NETWORK_ERROR")
       return `Could not reach STRATA. Reconnect, then choose Restore Purchases.${safe}`;
     if (error?.status === 403)
@@ -106,12 +219,17 @@
     return `STRATA could not confirm the purchase yet. Try Restore Purchases in a moment.${safe}`;
   }
 
-  function storeMessage(error) {
+  function storeMessage(error, store = STORES.apple) {
+    const name = store.name.replace(/^the /, "The ");
     if (error?.code === "PRODUCT_NOT_FOUND")
-      return "Strata+ is not available from the App Store right now. Try again later.";
+      return `Strata+ is not available from ${store.name} right now. Try again later.`;
     if (error?.code === "VERIFICATION_FAILED")
-      return "The App Store could not verify this purchase, so nothing was unlocked. Try again, or contact STRATA from Profile.";
-    return "The App Store could not complete the purchase. Try again.";
+      return `${name} could not verify this purchase, so nothing was unlocked. Try again, or contact STRATA from Profile.`;
+    if (error?.code === "BILLING_UNAVAILABLE")
+      return "Google Play can’t take payments on this device right now. Check that the Play Store is installed and signed in, then try again.";
+    if (error?.code === "ALREADY_OWNED")
+      return "This Google Account already has Strata+. Choose Restore Purchases to unlock it here.";
+    return `${name} could not complete the purchase. Try again.`;
   }
 
   // The paywall's behavior without the DOM: every change calls onChange(model) with what to show.
@@ -122,6 +240,7 @@
     haptic = () => {},
     onChange = () => {},
     upsell = (value) => globalThis.StrataEntitlements?.upsell?.(value) || "",
+    store = storeFor(root.StrataApp?.platform),
   }) {
     const model = {
       phase: "loading",
@@ -144,6 +263,8 @@
       onChange({
         ...model,
         owned: ownership(model.user),
+        store,
+        summary: store.summary(model.user?.discovery),
         apple: model.user?.discovery?.apple || null,
         blocked: purchaseBlocked(model.user),
         savings: yearlySavings(model.products),
@@ -179,16 +300,11 @@
       emit();
       const [account, products] = await Promise.allSettled([
         billing.account({ fresh: true }),
-        native?.getProducts
-          ? native.getProducts({ productIds: Object.values(PRODUCT_IDS) })
-          : Promise.resolve(null),
+        native?.getProducts ? native.getProducts(store.request()) : Promise.resolve(null),
       ]);
       if (account.status === "fulfilled") model.user = account.value.user;
       const found = products.status === "fulfilled" ? products.value?.products || [] : [];
-      model.products = Object.entries(PRODUCT_IDS).flatMap(([plan, id]) => {
-        const product = found.find((item) => item?.id === id);
-        return product ? [{ ...product, plan }] : [];
-      });
+      model.products = store.plans(found);
       select(model.plan);
       model.phase = "ready";
       if (account.status === "rejected")
@@ -197,48 +313,36 @@
           "error",
         );
       else if (!native && !ownership(model.user))
-        say("Update STRATA from the App Store to subscribe.", "warn");
+        say(`Update STRATA from ${store.name} to subscribe.`, "warn");
       else if (native && !model.product && !ownership(model.user))
-        say("Strata+ is not available from the App Store right now. Try again later.", "warn");
-      else if (model.user?.discovery?.apple && !ownership(model.user))
-        say(
-          model.user.discovery.apple.revoked
-            ? "Your App Store subscription was refunded or revoked, so Strata+ is off."
-            : "Your App Store subscription has ended. Subscribe again whenever you like.",
-          "warn",
-        );
+        say(`Strata+ is not available from ${store.name} right now. Try again later.`, "warn");
+      else if (store.summary(model.user?.discovery) && !ownership(model.user))
+        say(store.ended(store.summary(model.user.discovery)), "warn");
       else emit();
     }
 
-    // STRATA kept the purchase but it does not unlock Strata+: a TestFlight or App Review purchase on an account
-    // that is not on the review list, or one STRATA cannot match to an active period yet.
-    // A test purchase still inside its period that STRATA keeps locked, as opposed to one that ran out or was refunded.
-    function lockedTestPurchase(apple) {
-      return (
-        apple?.environment === "Sandbox" &&
-        !apple.revoked &&
-        !(Number(apple.expiresAt) <= Date.now())
-      );
-    }
+    // STRATA kept the purchase but it does not unlock Strata+: a TestFlight, App Review, or Play license-tester
+    // purchase on an account that is not on the test list, or one STRATA cannot match to an active period yet.
     function lockedMessage(discovery) {
-      return lockedTestPurchase(discovery?.apple)
-        ? "This was an App Store test purchase. Test purchases do not unlock Strata+."
+      return store.lockedTest(store.summary(discovery))
+        ? store.testText
         : "STRATA saved your purchase, but Strata+ is not on yet. Reopen this screen in a minute, or contact support if it stays locked.";
     }
 
     /** Welcomes the member only once STRATA says Strata+ is on for this account. */
-    async function confirm({ transactionId, signedTransaction }) {
+    async function confirm(result) {
+      const proof = store.proof(result);
+      if (!proof) {
+        say(storeMessage(null, store), "error");
+        return "failed";
+      }
       say("Confirming your subscription with STRATA…");
       try {
-        const { discovery, accepted } = await billing.submit([signedTransaction]);
-        if (!accepted.includes(String(transactionId)))
+        const { discovery, accepted } = await store.send(billing, proof.items);
+        if (!accepted.includes(proof.id))
           throw Object.assign(new Error("Not accepted"), { code: "NOT_ACCEPTED" });
         setDiscovery(discovery);
-        try {
-          await native.finishTransaction({ transactionId: String(transactionId) });
-        } catch {
-          /* StoreKit redelivers it; STRATA accepts it again. */
-        }
+        await store.finish(native, result);
         if (!ownership(model.user)) {
           say(lockedMessage(discovery), "warn");
           await refreshAccount();
@@ -250,7 +354,7 @@
         await refreshAccount();
         return "purchased";
       } catch (error) {
-        say(serverMessage(error, { purchased: true }), "error");
+        say(serverMessage(error, { purchased: true, store }), "error");
         return "unconfirmed";
       }
     }
@@ -274,16 +378,13 @@
       }
       model.busy = true;
       model.success = false;
-      say("Opening the App Store…");
+      say(`Opening ${store.name}…`);
       try {
         let result;
         try {
-          result = await native.purchase({
-            productId: model.product.id,
-            appAccountToken: String(model.user.id),
-          });
+          result = await native.purchase(store.purchaseOptions(model.product, model.user));
         } catch (error) {
-          say(storeMessage(error), "error");
+          say(storeMessage(error, store), "error");
           return "failed";
         }
         if (result?.status === "cancelled") {
@@ -291,18 +392,11 @@
           return "cancelled";
         }
         if (result?.status === "pending") {
-          say(
-            "Your purchase is waiting for approval. Strata+ unlocks on its own once it is approved.",
-            "warn",
-          );
+          say(store.pending, "warn");
           return "pending";
         }
-        if (
-          result?.status !== "purchased" ||
-          !result.transactionId ||
-          typeof result.signedTransaction !== "string"
-        ) {
-          say(storeMessage(null), "error");
+        if (result?.status !== "purchased") {
+          say(storeMessage(null, store), "error");
           return "failed";
         }
         return await confirm(result);
@@ -319,24 +413,24 @@
         return "signed-out";
       }
       model.busy = true;
-      say("Restoring your App Store purchases…");
+      say(`Restoring your ${store.label} purchases…`);
       try {
-        let signedTransactions;
+        let found;
         try {
-          ({ signedTransactions = [] } = (await native.restore()) || {});
+          found = await store.found(native);
         } catch {
           say("Restoring did not finish. Try again.", "error");
           return "failed";
         }
-        if (!signedTransactions.length) {
-          say("No App Store purchases were found for this Apple Account.", "warn");
+        if (!found.length) {
+          say(`No ${store.label} purchases were found for this ${store.account}.`, "warn");
           return "empty";
         }
         try {
-          const { discovery } = await billing.submit(signedTransactions);
+          const { discovery } = await store.send(billing, found);
           setDiscovery(discovery);
         } catch (error) {
-          say(serverMessage(error), "error");
+          say(serverMessage(error, { store }), "error");
           return "rejected";
         }
         if (ownership(model.user)) {
@@ -346,9 +440,9 @@
           return "restored";
         }
         say(
-          lockedTestPurchase(model.user?.discovery?.apple)
+          store.lockedTest(store.summary(model.user?.discovery))
             ? lockedMessage(model.user.discovery)
-            : "No active Strata+ subscription was found on this Apple Account.",
+            : `No active Strata+ subscription was found on this ${store.account}.`,
           "warn",
         );
         return "inactive";
@@ -362,7 +456,7 @@
       try {
         await native?.manageSubscriptions?.();
       } catch {
-        say(`Open ${MANAGE_PATH} to manage Strata+.`, "warn");
+        say(`Open ${store.managePath} to manage Strata+.`, "warn");
       }
     }
 
@@ -390,7 +484,8 @@
   function bodyHtml(view) {
     const product = view.product,
       owned = view.owned,
-      apple = view.apple,
+      store = view.store || STORES.apple,
+      summary = view.summary,
       signedIn = Boolean(view.user?.id);
     const { html } = StrataHtml;
     const price =
@@ -406,23 +501,28 @@
     let detail = "",
       actions = "";
     if (owned) {
-      if (owned === "apple") {
-        const date = formatDate(apple?.expiresAt);
-        detail = apple?.inGracePeriod
-          ? `There is a billing problem with your Apple Account. Update your payment method in ${MANAGE_PATH} to keep Strata+.`
+      if (owned === store.accessType) {
+        const date = formatDate(summary?.expiresAt);
+        detail = summary?.inGracePeriod
+          ? `There is a billing problem with your ${store.account}. Update your payment method in ${store.managePath} to keep Strata+.`
           : date
-            ? apple?.autoRenew === false
-              ? `Your App Store subscription ends ${date} and will not renew.`
-              : `Your App Store subscription renews ${date}.`
-            : "Your App Store subscription is active.";
+            ? summary?.autoRenew === false
+              ? `Your ${store.label} subscription ends ${date} and will not renew.`
+              : `Your ${store.label} subscription renews ${date}.`
+            : `Your ${store.label} subscription is active.`;
         actions = html`${open}<button class="app-button" type="button" data-paywall-action="manage">Manage subscription</button>`;
       } else {
+        // Bought elsewhere: it is managed where it was bought.
         detail =
           owned === "paddle"
             ? "Your Strata+ subscription is billed on stratafitness.online."
-            : owned === "grant"
-              ? "You have complimentary Strata+ access. It never charges you."
-              : "Strata+ is active on this account.";
+            : owned === "apple"
+              ? "Your Strata+ subscription is billed by the App Store. Manage it on the iPhone or iPad you bought it on."
+              : owned === "google"
+                ? "Your Strata+ subscription is billed by Google Play. Manage it in the Play Store on your Android phone."
+                : owned === "grant"
+                  ? "You have complimentary Strata+ access. It never charges you."
+                  : "Strata+ is active on this account.";
         actions = open;
       }
     } else if (!signedIn && view.phase === "ready") {
@@ -473,7 +573,8 @@
       status.textContent = view.status;
       status.dataset.tone = view.tone;
       included.hidden = Boolean(view.owned);
-      terms.textContent = view.owned || !view.nativeAvailable ? "" : disclosure(view.product);
+      terms.textContent =
+        view.owned || !view.nativeAvailable ? "" : disclosure(view.product, view.store);
       if (focused)
         body.querySelector(`[data-paywall-action="${focused}"]`)?.focus({ preventScroll: true });
       else if (focusedPlan)
@@ -511,6 +612,10 @@
   return Object.freeze({
     PRODUCT_ID,
     PRODUCT_IDS,
+    PLAY_PRODUCT_ID,
+    PLAY_BASE_PLANS,
+    STORES,
+    storeFor,
     periodLabel,
     yearlySavings,
     purchaseBlocked,

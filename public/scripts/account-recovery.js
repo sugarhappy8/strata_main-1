@@ -117,15 +117,54 @@ function showAppleBilling(response) {
   el("deleteAppleBillingLink").href = safeAppleUrl(response.appleBilling.manageUrl);
   notice.hidden = false;
 }
-// Inside the iOS app the link opens Apple's own subscriptions sheet when the app build has it.
+// The same for Google Play, while a subscription bought in the Android app is live or set to renew.
+const PLAY_MANAGE_URL = "https://play.google.com/store/account/subscriptions";
+function safePlayUrl(value) {
+  try {
+    const url = new URL(String(value || ""));
+    return url.protocol === "https:" &&
+      url.hostname === "play.google.com" &&
+      !url.username &&
+      !url.password
+      ? url.href
+      : PLAY_MANAGE_URL;
+  } catch {
+    return PLAY_MANAGE_URL;
+  }
+}
+function showGooglePlayBilling(response) {
+  const notice = el("deleteGooglePlayBilling"),
+    message =
+      typeof response?.googlePlayBilling?.message === "string"
+        ? response.googlePlayBilling.message.trim()
+        : "";
+  if (!notice || !message) return;
+  el("deleteGooglePlayBillingMessage").textContent = message;
+  el("deleteGooglePlayBillingLink").href = safePlayUrl(response.googlePlayBilling.manageUrl);
+  notice.hidden = false;
+}
+// Inside the iPhone app the link opens Apple's own subscriptions sheet when the app build has it.
 async function openAppleSubscriptions(event) {
-  const native = globalThis.StrataApp ? globalThis.StrataAppMode?.plugin?.() : null;
+  const native =
+    globalThis.StrataApp?.platform === "ios" ? globalThis.StrataAppMode?.plugin?.() : null;
   if (typeof native?.manageSubscriptions !== "function") return;
   event.preventDefault();
   try {
     await native.manageSubscriptions();
   } catch {
     location.assign(safeAppleUrl(el("deleteAppleBillingLink").href));
+  }
+}
+// Inside the Android app the link opens Google Play's subscriptions page through the app.
+async function openPlaySubscriptions(event) {
+  const native =
+    globalThis.StrataApp?.platform === "android" ? globalThis.StrataAppMode?.plugin?.() : null;
+  if (typeof native?.manageSubscriptions !== "function") return;
+  event.preventDefault();
+  try {
+    await native.manageSubscriptions();
+  } catch {
+    location.assign(safePlayUrl(el("deleteGooglePlayBillingLink").href));
   }
 }
 
@@ -307,6 +346,10 @@ async function setupDeleteAccount() {
     "click",
     (event) => void openAppleSubscriptions(event),
   );
+  el("deleteGooglePlayBillingLink")?.addEventListener(
+    "click",
+    (event) => void openPlaySubscriptions(event),
+  );
   try {
     const status = await readJson("/api/account/delete/status", {
       method: "POST",
@@ -318,6 +361,7 @@ async function setupDeleteAccount() {
       return;
     }
     showAppleBilling(status);
+    showGooglePlayBilling(status);
     form.hidden = false;
     state.classList.add("warn");
     state.querySelector("span").textContent =
@@ -357,6 +401,7 @@ async function setupDeleteAccount() {
         body: JSON.stringify({ token, confirmation: "DELETE" }),
       });
       showAppleBilling(result);
+      showGooglePlayBilling(result);
       confirmation.value = "";
       el("deleteToken").value = "";
       form.hidden = true;
