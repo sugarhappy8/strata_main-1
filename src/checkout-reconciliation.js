@@ -10,11 +10,14 @@ const {
   validateCheckoutRecoveryTransaction,
   validateCompletedTransaction,
   exactCurrentCheckoutPrice,
+  planForPrice,
 } = require("./payments");
 const { cleanText } = require("./plans");
 const ABANDONED_CHECKOUT_MS = 30 * 60 * 1000,
   MAX_DELETION_RECONCILIATIONS = 8;
 const PADDLE_CANCELABLE_STALE_STATUSES = new Set(["ready", "billed"]);
+// A fresh checkout on the other plan is switched off only before payment starts.
+const PLAN_SWITCH_STATUSES = new Set(["draft", "ready"]);
 /** @param {unknown} value @param {number} fallback */
 const eventTime = (value, fallback) => {
   const parsed = Date.parse(String(value || ""));
@@ -22,18 +25,20 @@ const eventTime = (value, fallback) => {
 };
 /** @param {{store:import("./domain-types").BillingStore;paymentConfig:import("./domain-types").PaymentConfig;now:()=>number;authService:()=>import("./domain-types").AuthService}} dependencies */
 function createCheckoutReconciliation({ store, paymentConfig, now, authService }) {
-  /** @param {{price_id:string;product_id:string}} purchase */
+  /** A checkout for one of the plans this deployment sells. @param {{price_id:string;product_id:string}} purchase */
   function currentPurchase(purchase) {
     return (
-      purchase.product_id === paymentConfig.productId && purchase.price_id === paymentConfig.priceId
+      purchase.product_id === paymentConfig.productId &&
+      Boolean(planForPrice(paymentConfig, purchase.price_id))
     );
   }
-  // A draft or ready checkout must also carry the exact public price, not only the price ID.
+  // A draft or ready checkout must also carry its plan's exact public price, not only the price ID.
   /** @param {import("./domain-types").PaddleFetchedTransactionResult} remote @param {string} userId @param {string} checkoutId */
   function currentCheckout(remote, userId, checkoutId) {
     return (
       validateCheckoutRecoveryTransaction(remote.data, paymentConfig, { userId, checkoutId }).ok &&
-      (!["draft", "ready"].includes(remote.status) || exactCurrentCheckoutPrice(remote.data))
+      (!["draft", "ready"].includes(remote.status) ||
+        exactCurrentCheckoutPrice(remote.data, paymentConfig))
     );
   }
   /** @param {import("./domain-types").PaddleFetchedTransactionResult} remote @param {import("./domain-types").PurchaseRow} purchase */
@@ -45,10 +50,21 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
       productId: purchase.product_id,
     });
   }
-  /** @param {string} userId @param {{reuseDraft?:boolean;includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]}} [options] */
+  /**
+   * With reusePriceId, only a checkout on that plan is kept for reuse; an unpaid one on another current plan is
+   * switched off at once, even if it is fresh, so a member who changes plan is not left waiting.
+   * @param {string} userId
+   * @param {{reuseDraft?:boolean;reusePriceId?:string;includeFresh?:boolean;checkSubscription?:boolean;transactionIds?:string[]}} [options]
+   */
   async function reconcileUnsettledPurchases(
     userId,
-    { reuseDraft = false, includeFresh = false, checkSubscription = true, transactionIds } = {},
+    {
+      reuseDraft = false,
+      reusePriceId = "",
+      includeFresh = false,
+      checkSubscription = true,
+      transactionIds,
+    } = {},
   ) {
     const subscription = await store.subscriptionForUser(userId);
     if (
@@ -74,11 +90,18 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
     const purchases = await store.unsettledPurchasesForUser(userId);
     const timestamp = now();
     const staleBefore = timestamp - ABANDONED_CHECKOUT_MS;
+    /** @param {{price_id:string;product_id:string;paddle_status:string}} purchase */
+    const otherPlan = (purchase) =>
+      Boolean(reusePriceId) &&
+      purchase.price_id !== reusePriceId &&
+      currentPurchase(purchase) &&
+      PLAN_SWITCH_STATUSES.has(purchase.paddle_status);
     const stale = purchases
       .filter(
         (purchase) =>
           (!transactionIds || transactionIds.includes(purchase.transaction_id)) &&
           (includeFresh ||
+            otherPlan(purchase) ||
             purchase.paddle_status === "past_due" ||
             Number(purchase.updated_at) <= staleBefore),
       )
@@ -90,11 +113,13 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
       .slice(0, MAX_DELETION_RECONCILIATIONS);
     const reconciled = await Promise.allSettled(
       stale.map(async (purchase) => {
-        // Only a checkout on the current catalog can be reused. One on any other price (an earlier
-        // monthly price, the retired one-time price) is switched off like an abandoned one, after it is
-        // checked against the price and product STRATA recorded for it.
+        // Only a checkout on a current plan can be reused, and with reusePriceId only one on that plan. One on
+        // any other price (the other plan, an earlier price, the retired one-time price) is switched off like an
+        // abandoned one, after it is checked against the price and product STRATA recorded for it.
         const current = currentPurchase(purchase),
-          reuse = reuseDraft && current;
+          reuse = reuseDraft && current && (!reusePriceId || purchase.price_id === reusePriceId),
+          // Fresh only because the member switched plan: never touch it once payment has started.
+          switching = !reuse && otherPlan(purchase) && Number(purchase.updated_at) > staleBefore;
         let remote;
         try {
           remote = await fetchPaddleTransaction(paymentConfig, purchase.transaction_id);
@@ -105,6 +130,8 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
             "PURCHASE_RECONCILIATION_UNAVAILABLE",
           );
         }
+        // A billed checkout is being paid: leave it, and the member waits for that payment instead.
+        if (switching && remote.status === "billed") return;
         const reconciledAt = Math.max(now(), Number(purchase.updated_at) + 1);
         const checkoutId = cleanText(remote.data.custom_data?.strata_checkout_id, 100);
         const retirementValidation = validateCheckoutTransactionForRetirement(
@@ -141,7 +168,7 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
         }
         if (remote.status === "draft") {
           if (reuse) {
-            if (!exactCurrentCheckoutPrice(remote.data))
+            if (!exactCurrentCheckoutPrice(remote.data, paymentConfig))
               throw authService().accountActionError(
                 "STRATA could not safely validate the current checkout price. Please contact support.",
                 503,
@@ -201,7 +228,10 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
               503,
               "PURCHASE_RECONCILIATION_INVALID",
             );
-          const validation = validateCompletedTransaction(remote.data, paymentConfig);
+          const validation = validateCompletedTransaction(remote.data, paymentConfig, {
+            priceId: purchase.price_id,
+            productId: purchase.product_id,
+          });
           const claimedUser = cleanText(remote.data.custom_data?.strata_user_id, 100);
           if (!validation.ok || claimedUser !== purchase.user_id) {
             throw authService().accountActionError(

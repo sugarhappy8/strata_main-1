@@ -25,8 +25,14 @@ const {
   validPaddleClientToken,
   validPaddleApiKey,
   validPaddleWebhookSecret,
+  configuredPlans,
   currentPublicPrice,
+  cycleMatches,
   exactCurrentCheckoutPrice,
+  knownCycle,
+  planForKey,
+  planForPrice,
+  publicPrice,
 } = require("./paddle-catalog");
 
 const LIVE_API_BASE = "https://api.paddle.com";
@@ -72,6 +78,10 @@ function getPaymentConfig(env = process.env) {
   // A recurring price has a different Paddle catalog ID from the retired
   // one-time price. Require the deployment to supply that ID explicitly.
   const priceId = clean(env.PADDLE_PRICE_ID);
+  // The yearly plan is optional: unset, STRATA sells the monthly plan only. Set but invalid, checkout stays off.
+  const yearlyPriceId = clean(env.PADDLE_YEARLY_PRICE_ID);
+  const validYearly =
+    !yearlyPriceId || (validPaddlePriceId(yearlyPriceId) && yearlyPriceId !== priceId);
   const clientToken = clean(env.PADDLE_CLIENT_TOKEN);
   const apiKey = clean(env.PADDLE_API_KEY);
   const webhookSecret = clean(env.PADDLE_WEBHOOK_SECRET);
@@ -81,7 +91,8 @@ function getPaymentConfig(env = process.env) {
   const validWebhookSecret = validPaddleWebhookSecret(webhookSecret);
   // The previous live price is a one-time catalog item. It must never be
   // accepted for new recurring checkouts, even when supplied explicitly.
-  const validCatalog = validPaddleProductId(productId, sandbox) && validPaddlePriceId(priceId);
+  const validCatalog =
+    validPaddleProductId(productId, sandbox) && validPaddlePriceId(priceId) && validYearly;
   const configured =
     environmentAllowed && validClientToken && validApiKey && validWebhookSecret && validCatalog;
   /** @type {string[]} */
@@ -92,14 +103,19 @@ function getPaymentConfig(env = process.env) {
   if (!validApiKey) missing.push(`${environment} API key`);
   if (!validWebhookSecret) missing.push("webhook signing secret");
   if (!validCatalog) missing.push(`valid ${environment} catalog IDs`);
+  if (!validYearly) missing.push(`a valid ${environment} yearly price ID, or none`);
 
   // Deliberately contains browser-safe fields only. Server credentials live in
   // a private WeakMap so they cannot be serialized into a response by mistake.
+  const plans = configuredPlans(priceId, validYearly ? yearlyPriceId : "");
   /** @type {import("./domain-types").PaymentConfig} */
   const config = {
     environment,
     productId,
     priceId,
+    yearlyPriceId: validYearly ? yearlyPriceId : "",
+    plans,
+    priceIds: Object.freeze(plans.map((plan) => plan.priceId)),
     clientToken: environmentAllowed && validClientToken ? clientToken : "",
     price: currentPublicPrice(),
     requestedEnabled,
@@ -130,6 +146,11 @@ function publicPaymentConfig(config) {
     priceId: config.priceId,
     clientToken: config.clientToken,
     price: { ...config.price },
+    plans: config.plans.map((plan) => ({
+      key: plan.key,
+      priceId: plan.priceId,
+      ...publicPrice(plan),
+    })),
   };
 }
 
@@ -146,7 +167,7 @@ function webhookSecretFor(config) {
  */
 async function createPaddleTransaction(
   config,
-  { userId, checkoutId } = {},
+  { userId, checkoutId, plan: planKey = "monthly" } = {},
   fetchImpl = globalThis.fetch,
 ) {
   const secrets = secretsByConfig.get(config);
@@ -159,6 +180,9 @@ async function createPaddleTransaction(
   if (!userId)
     throw Object.assign(new Error("Sign in required."), { status: 401, code: "SIGN_IN_REQUIRED" });
   if (!clean(checkoutId)) throw new TypeError("A checkout reference is required.");
+  // The caller names a plan; the Paddle price ID always comes from this deployment's configuration.
+  const plan = planForKey(config, planKey);
+  if (!plan) throw new TypeError("A current Strata+ plan is required.");
   let response;
   try {
     response = await fetchImpl(`${secrets.apiBase}/transactions`, {
@@ -170,7 +194,7 @@ async function createPaddleTransaction(
       },
       ...requestSignal(10_000),
       body: JSON.stringify({
-        items: [{ price_id: config.priceId, quantity: 1 }],
+        items: [{ price_id: plan.priceId, quantity: 1 }],
         collection_mode: "automatic",
         custom_data: {
           strata_user_id: userId,
@@ -200,12 +224,16 @@ async function createPaddleTransaction(
   }
   const transactionId = validTransactionId(payload?.data?.id);
   const status = clean(payload?.data?.status);
-  const validation = validateCheckoutTransaction(payload?.data, config, { userId, checkoutId });
+  const validation = validateCheckoutTransaction(payload?.data, config, {
+    userId,
+    checkoutId,
+    priceId: plan.priceId,
+  });
   if (
     !transactionId ||
     !CREATED_TRANSACTION_STATUSES.has(status) ||
     !validation.ok ||
-    !exactCurrentCheckoutPrice(payload?.data)
+    !exactCurrentCheckoutPrice(payload?.data, config)
   ) {
     throw Object.assign(new Error("Checkout could not be prepared. Please try again."), {
       status: 502,
@@ -219,13 +247,6 @@ async function createPaddleTransaction(
 function validTransactionId(value) {
   const id = clean(value);
   return /^txn_[a-z0-9]{26}$/.test(id) ? id : "";
-}
-
-/** @param {unknown} value */
-function monthlyCycle(value) {
-  if (!value || typeof value !== "object") return false;
-  const cycle = /** @type {{interval?:unknown;frequency?:unknown}} */ (value);
-  return cycle.interval === "month" && Number(cycle.frequency) === 1;
 }
 
 /** @param {string} message @param {string} code */
@@ -351,14 +372,17 @@ function validateCheckoutTransaction(
   if (Number(item.quantity) !== 1) return { ok: false, reason: "quantity" };
   if (price.id !== priceId) return { ok: false, reason: "price" };
   if (price.product_id !== productId) return { ok: false, reason: "product" };
-  return monthlyCycle(price.billing_cycle) ? { ok: true } : { ok: false, reason: "billing_cycle" };
+  // A current plan must bill at its own cadence; an earlier price only has to be monthly or yearly to be checked.
+  const plan = planForPrice(config, priceId);
+  return (plan ? cycleMatches(price.billing_cycle, plan) : knownCycle(price.billing_cycle))
+    ? { ok: true }
+    : { ok: false, reason: "billing_cycle" };
 }
 
 /** @param {import("./domain-types").PaddleTransactionData|null|undefined} data @param {import("./domain-types").PaymentConfig} config @param {import("./domain-types").CheckoutIdentity} identity */
 function validateCheckoutRecoveryTransaction(data, config, identity = {}) {
   if (data?.status !== "completed") return validateCheckoutTransaction(data, config, identity);
-  const completed = validateCompletedTransaction(data, {
-    ...config,
+  const completed = validateCompletedTransaction(data, config, {
     priceId: String(identity.priceId || config?.priceId || ""),
     productId: String(identity.productId || config?.productId || ""),
   });
@@ -480,7 +504,7 @@ async function findPaddleCheckoutTransaction(
             })
           : standard;
       const currentUnfinished =
-        priceId === config.priceId &&
+        Boolean(planForPrice(config, priceId)) &&
         productId === config.productId &&
         ["draft", "ready"].includes(clean(transaction?.status));
       return (
@@ -488,7 +512,7 @@ async function findPaddleCheckoutTransaction(
         transactionTime >= windowStart &&
         transactionTime <= windowEnd &&
         validation.ok &&
-        (!currentUnfinished || exactCurrentCheckoutPrice(transaction))
+        (!currentUnfinished || exactCurrentCheckoutPrice(transaction, config))
       );
     });
     if (match)
@@ -589,6 +613,8 @@ module.exports = {
   validPaddleApiKey,
   validPaddleWebhookSecret,
   exactCurrentCheckoutPrice,
+  planForKey,
+  planForPrice,
   publicPaymentConfig,
   webhookSecretFor,
   verifyPaddleSignature,

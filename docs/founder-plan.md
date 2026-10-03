@@ -4,6 +4,8 @@
 
 > **Build 8.9.0 note:** the free seven-day trial described below has been retired. Strata+ is now offered only as the $2.99 USD monthly subscription; the trial sections remain as a record of the original plan.
 
+> **Build 9.8.0 note:** Strata+ moved to $4.99 USD a month or $29.99 USD a year. The $2.99 figures below are the plan as written; `docs/investor/metrics.md` has the current pricing maths.
+
 This plan is grounded in the supplied 7.5.1 source and the changes delivered in 7.6.0. It is a product hypothesis to validate with customers, not a forecast of demand or revenue.
 
 ## The customer and the promise

@@ -17,6 +17,8 @@
     openLink: el("openDiscovery"),
     manageLink: el("manageSubscription"),
     checkButton: el("checkAccess"),
+    planChoice: el("planChoice"),
+    yearlyOption: el("planYearlyOption"),
   };
   const signal = (name) => globalThis.StrataSignals?.record?.(name);
   const { renderPurchaseState, setStatus } = globalThis.StrataPricingRender.createRenderer({
@@ -199,7 +201,7 @@
       const result = await requestJson("/api/billing/checkout", {
         method: "POST",
         headers: { "X-CSRF-Token": state.csrfToken },
-        body: "{}",
+        body: JSON.stringify({ plan: state.plan }),
       });
       const transactionId = logic.checkoutTransactionId(result);
       if (!/^txn_[a-z0-9]{26}$/.test(transactionId))
@@ -388,9 +390,15 @@
       );
   }
 
+  function choosePlan(value) {
+    state.plan =
+      value === "yearly" && logic.planAvailable(state.config, "yearly") ? "yearly" : "monthly";
+    renderPurchaseState();
+  }
+
   globalThis.StrataPricingEvents.bind({
     ...nodes,
-    actions: { openCheckout, refreshAccess, recheckAccount, renderPurchaseState },
+    actions: { openCheckout, refreshAccess, recheckAccount, renderPurchaseState, choosePlan },
   });
   signal("upgrade_viewed");
   void loadPageState();

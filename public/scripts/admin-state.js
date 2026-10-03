@@ -8,7 +8,7 @@
 
   const USER_LIMIT = 20;
   const SUPPORT_LIMIT = 20;
-  const SECTION_NAMES = new Set(["overview", "people", "support", "activity"]);
+  const SECTION_NAMES = new Set(["overview", "metrics", "people", "support", "activity"]);
   const SUPPORT_STATES = new Set(["new", "open", "waiting", "resolved"]);
   const PRODUCT_SIGNAL_LABELS = Object.freeze({
     preview_generated: "Preview generated",
@@ -34,6 +34,8 @@
       activeSection: "overview",
       loaded: new Set(),
       productSignalRequest: 0,
+      metricsRequest: 0,
+      metricsCsv: null,
       users: { query: "", offset: 0, total: 0, items: [], request: 0 },
       support: { status: "", offset: 0, total: 0, items: [], request: 0 },
       selectedUser: null,

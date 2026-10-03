@@ -208,6 +208,11 @@
     };
   }
 
+  // Subscriptions on an earlier price were monthly too.
+  function planName(subscription) {
+    return subscription?.plan === "yearly" ? "yearly" : "monthly";
+  }
+
   function accountAccessSummary(user, pending = false, { app = false } = {}) {
     const discovery = user?.discovery || {},
       subscription = subscriptionFor(user),
@@ -216,7 +221,7 @@
     if (discovery.adminGrant?.active === true) {
       const grant = discovery.adminGrant;
       const coexistence = subscription
-        ? "Your existing monthly subscription remains separate and is not canceled by this grant; review its billing state below."
+        ? `Your existing ${planName(subscription)} subscription remains separate and is not canceled by this grant; review its billing state below.`
         : apple?.active === true
           ? `Your App Store subscription remains separate and is not cancelled by this grant; manage it in ${APPLE_SETTINGS}.`
           : grandfatheredAccess(user)
@@ -231,19 +236,19 @@
     if (apple?.active === true && subscription?.active !== true)
       return appleAccessSummary(apple, app);
     if (subscription) {
-      const web = "It is billed on stratafitness.online.";
+      const web = "It is billed on stratafitness.online.",
+        plan = planName(subscription);
       if (status === "paused")
         return {
           state: "Paused",
           detail: "Paid access inactive",
-          message: `Your monthly subscription is paused and Strata+ paid access is inactive. ${app ? web : "Manage it in Paddle to review the available next steps."}`,
+          message: `Your ${plan} subscription is paused and Strata+ paid access is inactive. ${app ? web : "Manage it in Paddle to review the available next steps."}`,
         };
       if (status === "canceled")
         return {
           state: "Canceled",
           detail: "No future renewals",
-          message:
-            "Your monthly subscription is canceled and will not renew. Your free Rankings and weekly Plan remain available.",
+          message: `Your ${plan} subscription is canceled and will not renew. Your free Rankings and weekly Plan remain available.`,
         };
       if (subscription.active !== true)
         return {
@@ -255,30 +260,30 @@
         return {
           state: "Canceling",
           detail: `Access through ${billingDate(subscription.scheduledChange.effectiveAt)}`,
-          message: `Your monthly subscription is scheduled to cancel on ${billingDate(subscription.scheduledChange.effectiveAt)}. Access remains active until then and will not renew afterward.`,
+          message: `Your ${plan} subscription is scheduled to cancel on ${billingDate(subscription.scheduledChange.effectiveAt)}. Access remains active until then and will not renew afterward.`,
         };
       if (subscription.scheduledChange?.action === "pause")
         return {
           state: "Pausing",
           detail: `Access through ${billingDate(subscription.scheduledChange.effectiveAt)}`,
-          message: `Your monthly subscription is scheduled to pause on ${billingDate(subscription.scheduledChange.effectiveAt)}. Access remains active until then and stops when the pause takes effect.`,
+          message: `Your ${plan} subscription is scheduled to pause on ${billingDate(subscription.scheduledChange.effectiveAt)}. Access remains active until then and stops when the pause takes effect.`,
         };
       if (subscription.pastDue === true || status === "past_due")
         return {
           state: "Past due",
           detail: app ? "Billed on the website" : "Update payment method",
-          message: `Your monthly payment is past due. Strata+ remains available for now; ${app ? "this subscription is billed on stratafitness.online." : "update payment in Paddle to avoid interruption."}`,
+          message: `Your ${plan} payment is past due. Strata+ remains available for now; ${app ? "this subscription is billed on stratafitness.online." : "update payment in Paddle to avoid interruption."}`,
         };
       if (subscription.active === true)
         return {
           state: "Active",
-          detail: `Monthly · renews ${billingDate(subscription.currentPeriodEndsAt)}`,
-          message: `Your monthly subscription is active and renews on ${billingDate(subscription.currentPeriodEndsAt)} unless canceled.`,
+          detail: `${plan === "yearly" ? "Yearly" : "Monthly"} · renews ${billingDate(subscription.currentPeriodEndsAt)}`,
+          message: `Your ${plan} subscription is active and renews on ${billingDate(subscription.currentPeriodEndsAt)} unless canceled.`,
         };
       return {
         state: "Inactive",
         detail: "Review billing status",
-        message: `Your monthly subscription is not providing paid access. ${app ? web : "Open Paddle to review its current state."}`,
+        message: `Your ${plan} subscription is not providing paid access. ${app ? web : "Open Paddle to review its current state."}`,
       };
     }
     if (apple) return appleAccessSummary(apple, app);
@@ -287,7 +292,7 @@
         state: "Lifetime",
         detail: "Grandfathered · no renewal",
         message:
-          "Your prior lifetime Strata+ purchase is grandfathered. It stays active without a monthly subscription or recurring charge.",
+          "Your prior lifetime Strata+ purchase is grandfathered. It stays active without a subscription or recurring charge.",
       };
     if (pending)
       return app
@@ -308,7 +313,7 @@
       detail: "Rankings and Plan included",
       message: app
         ? "The exercise index and weekly planner are free. Strata+ is available as a monthly subscription."
-        : "The exercise index and weekly planner are free. Strata+ is available as a $2.99 USD monthly subscription.",
+        : "The exercise index and weekly planner are free. Strata+ is $4.99 USD a month or $29.99 USD a year.",
     };
   }
 
@@ -408,7 +413,7 @@
     if (error?.code === "network")
       return "Could not reach STRATA. Check your connection and try again.";
     if (error?.code === "SUBSCRIPTION_NOT_FOUND" || error?.status === 404)
-      return "No monthly subscription was found for this account. Refresh to check the latest billing state.";
+      return "No subscription was found for this account. Refresh to check the latest billing state.";
     if (error?.status === 429)
       return "Too many billing requests were made. Wait a moment and try again.";
     if (error?.status === 401)

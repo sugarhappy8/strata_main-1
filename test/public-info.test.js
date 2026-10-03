@@ -80,7 +80,7 @@ test("homepage exposes pricing, contact, and the public policy directory without
     "the policy hub replaces redundant legal links in the homepage footer",
   );
   assert.match(home, /mailto:stratafitness\.official@gmail\.com/i);
-  assert.match(text("index.html"), /\$2\.99 USD/i);
+  assert.match(text("index.html"), /\$4\.99 USD/i);
   assert.doesNotMatch(
     text("index.html"),
     /trial|7\s*days|no\s*card/i,
@@ -91,8 +91,9 @@ test("homepage exposes pricing, contact, and the public policy directory without
     /Strata\s*AI/,
     "Strata AI lives inside Strata+, not on the homepage",
   );
-  assert.match(text("index.html"), /\$2\.99 USD per month/i);
-  assert.match(text("index.html"), /renews monthly until canceled/i);
+  assert.match(text("index.html"), /\$4\.99 USD per month or \$29\.99 USD per year/i);
+  assert.match(text("index.html"), /renews until canceled/i);
+  assert.doesNotMatch(read("index.html"), /\$2\.99/, "the retired $2.99 price is gone");
   assert.doesNotMatch(text("index.html"), /lifetime|one[- ]time|never\s*a\s*subscription/i);
 });
 
@@ -248,13 +249,22 @@ test("core footers use the policy directory instead of repeating every legal pag
 });
 
 test("published Strata+ price and refund promise are exact and consistent", () => {
-  assert.equal(BUILD, "9.7.0");
+  assert.equal(BUILD, "9.8.0");
   const pricingHtml = read("pricing.html"),
     pricing = text("pricing.html"),
     refunds = text("refunds.html"),
     terms = text("terms.html");
   assert.match(pricing, /Strata\+/);
-  assert.match(pricing, /\$2\.99 USD/i);
+  assert.match(pricing, /\$4\.99 USD/i);
+  assert.match(pricing, /\$29\.99 USD/i);
+  assert.doesNotMatch(pricingHtml, /\$2\.99/, "the retired $2.99 price is gone");
+  assert.match(
+    pricingHtml,
+    /id="planChoice"[^>]*hidden/,
+    "the plan choice waits for checkout to be ready",
+  );
+  assert.match(pricingHtml, /name="plan" value="monthly" checked/);
+  assert.match(pricingHtml, /id="planYearlyOption"[\s\S]*name="plan" value="yearly"/);
   assert.doesNotMatch(pricing, /trial|no\s*card/i, "the free trial is retired");
   assert.match(pricing, /Renews until canceled/i);
   assert.match(pricing, /session building/i);
@@ -283,14 +293,19 @@ test("published Strata+ price and refund promise are exact and consistent", () =
     const count = pricing.toLowerCase().split(phrase).length - 1;
     assert.ok(count <= 1, `Pricing repeats “${phrase}” ${count} times`);
   }
-  assert.match(refunds, /14 calendar days after an eligible Strata\+ monthly charge/i);
+  assert.match(refunds, /14 calendar days after an eligible Strata\+ charge, monthly or yearly/i);
   assert.match(refunds, /original payment method/i);
   assert.match(refunds, /Cancellation does not automatically refund/i);
   assert.match(refunds, /Deleting a STRATA account is not cancellation and is not a refund/i);
-  assert.match(terms, /\$2\.99 USD/i);
+  assert.match(terms, /\$4\.99 USD per month/i);
+  assert.match(terms, /\$29\.99 USD per year/i);
+  assert.doesNotMatch(terms, /\$2\.99/, "the retired $2.99 price is gone");
   assert.match(terms, /no longer offers a free Strata\+ trial/i);
   assert.match(terms, /recurring subscription/i);
-  assert.match(terms, /renews monthly at \$2\.99 USD until canceled/i);
+  assert.match(
+    terms,
+    /monthly subscription renews monthly at \$4\.99 USD and a yearly subscription renews yearly at \$29\.99 USD until canceled/i,
+  );
   assert.match(terms, /never converts into a subscription/i);
   assert.match(text("privacy.html"), /no longer offers a free Strata\+ trial/i);
   assert.match(terms, /Paddle acts as merchant of record/i);
@@ -393,8 +408,10 @@ test("public copy describes recurring checkout, cancellation, and grandfathered 
   const publicCopy = ["pricing.html", "terms.html", "privacy.html", "refunds.html"]
     .map(text)
     .join(" ");
-  assert.match(publicCopy, /\$2\.99 USD per month/i);
+  assert.match(publicCopy, /\$4\.99 USD per month/i);
+  assert.match(publicCopy, /\$29\.99 USD per year/i);
   assert.match(publicCopy, /renews monthly/i);
+  assert.match(publicCopy, /renews yearly/i);
   assert.match(publicCopy, /grandfathered/i);
   assert.doesNotMatch(publicCopy, /permanent\s*access/i);
   assert.doesNotMatch(
@@ -414,8 +431,8 @@ test("public copy describes recurring checkout, cancellation, and grandfathered 
     "pricing never starts the retired trial",
   );
   assert.match(pricingClient, /buyButton\s*\.hidden\s*=\s*!\s*canSubscribe\s*;/);
-  assert.match(pricingClient, /monthly subscription is active and renews on/);
-  assert.match(pricingClient, /previous monthly subscription is canceled and will not renew/);
+  assert.match(pricingClient, /Your \$\{plan\} subscription is active and renews on/);
+  assert.match(pricingClient, /previous \$\{plan\} subscription is canceled and will not renew/);
   assert.match(pricingClient, /error\s*\.code\s*===\s*"CHECKOUT_PREPARING"/);
   assert.doesNotMatch(
     pricingClient,

@@ -458,6 +458,82 @@ button:disabled {
   font-size: 12px;
   line-height: 1.7;
 }
+.metrics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.metrics-tables {
+  display: grid;
+  gap: 14px;
+  margin: 22px 0 0;
+}
+.metrics-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--white);
+}
+.metrics-table-wrap:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.metrics-table caption {
+  padding: 16px 18px 10px;
+  caption-side: top;
+  text-align: left;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.metrics-table th,
+.metrics-table td {
+  padding: 9px 18px;
+  border-top: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+.metrics-table th[scope="row"],
+.metrics-table thead th:first-child {
+  text-align: left;
+}
+.metrics-table thead th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.metrics-table tbody th {
+  font-weight: 600;
+}
+.metrics-definitions {
+  margin: 22px 0 0;
+  padding: 18px 22px;
+}
+.metrics-definitions summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+.metrics-definitions dl {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+}
+.metrics-definitions dt {
+  font-size: 13px;
+  font-weight: 700;
+}
+.metrics-definitions dd {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
 .product-signal-grid {
   display: grid;
   grid-template-columns: 1fr;

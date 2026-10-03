@@ -11,6 +11,7 @@
     documentImpl = globalThis.document,
     buyButton,
     checkButton,
+    planChoice,
     actions,
   }) {
     const recheckAccount = () => {
@@ -23,6 +24,7 @@
     checkButton.addEventListener("click", () => {
       void actions.refreshAccess({ focus: true });
     });
+    planChoice?.addEventListener("change", (event) => actions.choosePlan?.(event.target?.value));
     windowImpl?.addEventListener?.("online", actions.renderPurchaseState);
     windowImpl?.addEventListener?.("offline", actions.renderPurchaseState);
     documentImpl?.addEventListener?.("visibilitychange", recheckAccount);

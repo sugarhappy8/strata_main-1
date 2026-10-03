@@ -1,6 +1,6 @@
 {
   "name": "strata-workout-index",
-  "version": "9.7.0",
+  "version": "9.8.0",
   "private": true,
   "description": "Evidence-informed exercise rankings with Strata+ personalization, session building, community weekly plans, ratings, and 31-day planning.",
   "scripts": {
@@ -29,7 +29,8 @@
     "release:check": "node scripts/release-version.js --check",
     "release:version": "node scripts/release-version.js",
     "load:100": "node scripts/load-100-users.js --json",
-    "load:100:shared": "node scripts/load-100-users.js --json --shared-ip"
+    "load:100:shared": "node scripts/load-100-users.js --json --shared-ip",
+    "demo:account": "node --env-file-if-exists=.env scripts/demo-account.js"
   },
   "dependencies": {
     "@tursodatabase/serverless": "1.4.0"

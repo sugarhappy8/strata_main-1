@@ -1,6 +1,8 @@
 // @ts-check
 "use strict";
 
+const { cycleMatches, knownCycle, planForPrice } = require("./paddle-catalog");
+
 /** @param {unknown} value */
 function clean(value) {
   return String(value || "").trim();
@@ -24,12 +26,6 @@ function validCustomerId(value) {
   const id = clean(value);
   return /^ctm_[a-z0-9]{26}$/.test(id) ? id : "";
 }
-/** @param {unknown} value */
-function monthlyCycle(value) {
-  if (!value || typeof value !== "object") return false;
-  const cycle = /** @type {{interval?:unknown;frequency?:unknown}} */ (value);
-  return cycle.interval === "month" && Number(cycle.frequency) === 1;
-}
 
 /** @param {number} milliseconds */
 function requestSignal(milliseconds) {
@@ -45,8 +41,9 @@ function providerError(message, code) {
 }
 
 /**
- * Validate the completed initial transaction that Paddle links to a monthly
- * subscription. Ownership is checked separately against the local purchase.
+ * Validate the completed initial transaction that Paddle links to a Strata+ subscription. With a price ID, the
+ * transaction must be for that price (the one STRATA recorded at checkout); without one, for any current plan.
+ * Ownership is checked separately against the local purchase.
  * @param {import("./domain-types").PaddleTransactionData|null|undefined} data
  * @param {import("./domain-types").PaymentConfig} config
  * @param {{priceId?:unknown,productId?:unknown}} [identity]
@@ -55,7 +52,7 @@ function providerError(message, code) {
 function validateCompletedTransaction(
   data,
   config,
-  { priceId = config?.priceId, productId = config?.productId } = {},
+  { priceId, productId = config?.productId } = {},
 ) {
   if (!data || data.status !== "completed") return { ok: false, reason: "status" };
   if (!validTransactionId(data.id)) return { ok: false, reason: "transaction" };
@@ -68,9 +65,12 @@ function validateCompletedTransaction(
   const item = /** @type {import("./domain-types").PaddleItemData} */ (data.items[0] || {}),
     price = item.price || {};
   if (Number(item.quantity) !== 1) return { ok: false, reason: "quantity" };
-  if (price.id !== priceId) return { ok: false, reason: "price" };
+  const plan = planForPrice(config, price.id);
+  if (priceId === undefined || priceId === null || priceId === "" ? !plan : price.id !== priceId)
+    return { ok: false, reason: "price" };
   if (price.product_id !== productId) return { ok: false, reason: "product" };
-  if (!monthlyCycle(price.billing_cycle)) return { ok: false, reason: "billing_cycle" };
+  if (plan ? !cycleMatches(price.billing_cycle, plan) : !knownCycle(price.billing_cycle))
+    return { ok: false, reason: "billing_cycle" };
   return { ok: true };
 }
 
@@ -96,7 +96,7 @@ function validateSubscription(
   if (clean(data.custom_data?.strata_user_id) !== clean(userId))
     return { ok: false, reason: "account" };
   if (data.custom_data?.strata_version !== 1) return { ok: false, reason: "metadata" };
-  if (!monthlyCycle(data.billing_cycle)) return { ok: false, reason: "billing_cycle" };
+  if (!knownCycle(data.billing_cycle)) return { ok: false, reason: "billing_cycle" };
   if (requireTransaction && validTransactionId(data.transaction_id) !== clean(transactionId))
     return { ok: false, reason: "transaction" };
   if (!Array.isArray(data.items) || data.items.length !== 1) return { ok: false, reason: "items" };
@@ -108,7 +108,15 @@ function validateSubscription(
     return { ok: false, reason: "quantity" };
   if (!validId(clean(price.id), "pri") || !validId(clean(price.product_id), "pro"))
     return { ok: false, reason: "catalog" };
-  if (!monthlyCycle(price.billing_cycle)) return { ok: false, reason: "billing_cycle" };
+  if (!knownCycle(price.billing_cycle)) return { ok: false, reason: "billing_cycle" };
+  const billing = /** @type {{interval:string,frequency:number}} */ (data.billing_cycle);
+  if (
+    !cycleMatches(price.billing_cycle, {
+      interval: billing.interval,
+      frequency: Number(billing.frequency),
+    })
+  )
+    return { ok: false, reason: "billing_cycle" };
   const scheduled = data.scheduled_change;
   if (
     scheduled !== null &&
@@ -125,9 +133,11 @@ function validateSubscription(
     !Number.isFinite(Date.parse(clean(periodEnd)))
   )
     return { ok: false, reason: "billing_period" };
+  // Only a current plan, billing at that plan's cadence, unlocks Strata+.
+  const plan = price.product_id === config.productId ? planForPrice(config, price.id) : null;
   return {
     ok: true,
-    entitled: price.product_id === config.productId && clean(price.id) === config.priceId,
+    entitled: Boolean(plan && cycleMatches(price.billing_cycle, plan)),
     subscriptionId: clean(data.id),
     customerId: clean(data.customer_id),
     status: /** @type {import("./domain-types").SubscriptionStatus} */ (status),

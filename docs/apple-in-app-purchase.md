@@ -1,6 +1,6 @@
 # Apple In-App Purchase for Strata+
 
-Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase as an auto-renewable subscription at $2.99 USD per month. The website keeps Paddle exactly as it is. Strata+ is one entitlement however it was paid for: Paddle, Apple, or an owner's complimentary grant.
+Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase as an auto-renewable monthly subscription at $4.99 USD per month. The website's $29.99 yearly plan has no App Store product yet. The website keeps Paddle exactly as it is. Strata+ is one entitlement however it was paid for: Paddle, Apple, or an owner's complimentary grant.
 
 ## How it works
 
@@ -58,7 +58,7 @@ There is no shared secret or API key. Purchases from both the Production and San
 ## App Store Connect steps
 
 1. **Agreements, Tax, and Banking:** accept the Paid Apps agreement and complete the bank and tax forms. Purchases do not work until it is active.
-2. **Subscriptions:** create a subscription group named `Strata+`. In it, create an auto-renewable subscription with product id `online.stratafitness.app.plus.monthly`, duration 1 month, price $2.99 USD (let Apple fill other storefronts), and a display name and description. Leave **Family Sharing** off: the server never grants Strata+ to a family member's shared copy. Add the review screenshot of the in-app purchase screen.
+2. **Subscriptions:** create a subscription group named `Strata+`. In it, create an auto-renewable subscription with product id `online.stratafitness.app.plus.monthly`, duration 1 month, price $4.99 USD (let Apple fill other storefronts), and a display name and description. Leave **Family Sharing** off: the server never grants Strata+ to a family member's shared copy. Add the review screenshot of the in-app purchase screen.
 3. **App Store Server Notifications:** under App Information, set Version 2 notifications with the URL `https://stratafitness.online/api/billing/apple/notifications` for both the Production and the Sandbox server. Use **Request a Test Notification** (or the App Store Server API) and expect a `200`; the server logs `apple.notification` with outcome `test`.
 4. **Submit the subscription with the app version** the first time; later changes can be submitted on their own.
 

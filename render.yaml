@@ -45,6 +45,8 @@ services:
         sync: false
       - key: PADDLE_PRICE_ID
         sync: false
+      - key: PADDLE_YEARLY_PRICE_ID
+        sync: false
       - key: PADDLE_CLIENT_TOKEN
         sync: false
       - key: PADDLE_API_KEY
@@ -60,6 +62,10 @@ services:
       - key: APPLE_IAP_PRODUCT_IDS
         value: online.stratafitness.app.plus.monthly
       - key: APPLE_SANDBOX_ACCOUNTS
+        sync: false
+      - key: STRATA_INTERNAL_ACCOUNTS
+        sync: false
+      - key: STRATA_AI_USD_PER_MILLION_TOKENS
         sync: false
       - key: GROQ_API_KEY
         sync: false

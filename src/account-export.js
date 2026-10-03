@@ -285,6 +285,7 @@ function exportPayload(rows, now) {
         method: String(row.method),
         linkedAt: Number(row.linked_at),
       })),
+      firstFullWeekAt: optionalNumber(rows.milestones?.first_full_week_at),
     },
     strataAi: {
       settings: rows.aiSettings

@@ -2,6 +2,7 @@
 
 const { BILLING_SUBSCRIPTION_TABLE } = require("./billing-schema");
 const { PRODUCT_SIGNAL_TRIGGER } = require("./product-signals-schema");
+const { ACCOUNT_MILESTONES_SCHEMA, ACTIVATION_MIGRATION_ID } = require("./metrics-schema");
 
 const MIGRATION_LEDGER_SCHEMA = `CREATE TABLE IF NOT EXISTS schema_migrations (
   migration_id TEXT PRIMARY KEY,
@@ -61,6 +62,11 @@ const MIGRATIONS = Object.freeze([
   {
     id: "012-close-build7-checkouts",
     description: "Close unfinished checkouts on the retired Build 7.4 one-time price.",
+  },
+  {
+    id: ACTIVATION_MIGRATION_ID,
+    description:
+      "Record each account's first full week; this migration's time is when recording began.",
   },
 ]);
 const SIGNAL_AUDIENCE_COLUMNS = Object.freeze([
@@ -353,6 +359,17 @@ function migrateLocalSchema(
     )
   )
     applied.push(MIGRATIONS[11].id);
+  if (
+    runLocalMigration(
+      database,
+      MIGRATIONS[12].id,
+      () => {
+        for (const sql of ACCOUNT_MILESTONES_SCHEMA) database.exec(sql);
+      },
+      now(),
+    )
+  )
+    applied.push(MIGRATIONS[12].id);
   return { latest: LATEST_MIGRATION_ID, applied };
 }
 
@@ -553,6 +570,19 @@ async function migrateTursoSchema(
       "write",
     );
     applied.push(MIGRATIONS[11].id);
+  }
+  if (!completed.has(MIGRATIONS[12].id)) {
+    await client.batch(
+      [
+        ...ACCOUNT_MILESTONES_SCHEMA,
+        {
+          sql: "INSERT OR IGNORE INTO schema_migrations(migration_id,applied_at) VALUES(?,?)",
+          args: [MIGRATIONS[12].id, now()],
+        },
+      ],
+      "write",
+    );
+    applied.push(MIGRATIONS[12].id);
   }
   return { latest: LATEST_MIGRATION_ID, applied };
 }

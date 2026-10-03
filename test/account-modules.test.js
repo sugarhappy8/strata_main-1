@@ -24,7 +24,7 @@ test("account pure logic constrains redirects and derives access state", () => {
       state: "Free",
       detail: "Rankings and Plan included",
       message:
-        "The exercise index and weekly planner are free. Strata+ is available as a $2.99 USD monthly subscription.",
+        "The exercise index and weekly planner are free. Strata+ is $4.99 USD a month or $29.99 USD a year.",
     },
   );
   assert.equal(
@@ -217,6 +217,20 @@ test("account pure logic explains App Store subscriptions and keeps Paddle read-
     ).detail,
     "Monthly · renews Nov 1, 2026",
   );
+  const yearly = logic.accountAccessSummary({
+    discovery: {
+      active: true,
+      subscription: {
+        id: "sub_1",
+        plan: "yearly",
+        status: "active",
+        active: true,
+        currentPeriodEndsAt: expiresAt,
+      },
+    },
+  });
+  assert.equal(yearly.detail, "Yearly · renews Nov 1, 2026");
+  assert.match(yearly.message, /^Your yearly subscription is active/);
   assert.equal(
     logic.accountAccessSummary(
       apple({ active: true }, { subscription: { id: "sub_1", status: "canceled", active: false } }),
@@ -294,7 +308,7 @@ test("account pure logic covers safe handoffs, useful errors, plan timing, and c
   assert.equal(logic.accountBoundaryChanged({ code: "account-changed" }), true);
   assert.match(logic.securityError({ status: 409, message: "Pending" }), /Pending/);
   assert.match(logic.selfServiceError({ status: 429 }, "session"), /Too many session/);
-  assert.match(logic.billingError({ code: "SUBSCRIPTION_NOT_FOUND" }), /No monthly subscription/);
+  assert.match(logic.billingError({ code: "SUBSCRIPTION_NOT_FOUND" }), /No subscription was found/);
 });
 
 test("account state invalidates stale private requests and clears CSRF", () => {

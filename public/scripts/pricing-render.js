@@ -23,6 +23,8 @@
       openLink,
       manageLink,
       checkButton,
+      planChoice,
+      yearlyOption,
     } = nodes;
     const pageReason = new URLSearchParams(locationImpl.search).get("reason"),
       featureReason = pageReason === "ai" || pageReason === "recovery";
@@ -52,6 +54,7 @@
       const signedIn = Boolean(state.user?.id);
       const active = logic.discoveryIsActive(state.user);
       const subscription = logic.subscriptionFor(state.user),
+        plan = subscription?.plan === "yearly" ? "yearly" : "monthly",
         subscriptionStatus = String(subscription?.status || "");
       const grandfathered = active && !subscription && state.user?.discovery?.accessType === "paid";
       const online = navigatorImpl.onLine !== false;
@@ -90,6 +93,17 @@
         !checkoutReady ||
         checkoutBlocked;
       checkButton.disabled = state.busy;
+      // The plan choice shows with the subscribe button; yearly only when this server sells it.
+      if (planChoice) {
+        const yearly = logic.planAvailable(state.config, "yearly");
+        if (!yearly) state.plan = "monthly";
+        planChoice.hidden = buyButton.hidden;
+        if (yearlyOption) yearlyOption.hidden = !yearly;
+        for (const input of planChoice.querySelectorAll?.('input[name="plan"]') || []) {
+          input.checked = input.value === state.plan;
+          input.disabled = buyButton.disabled;
+        }
+      }
       buyButton.textContent = canceled ? "Restart Strata+ →" : "Subscribe to Strata+ →";
       panel.setAttribute("aria-busy", String(state.busy || state.awaitingAccess));
 
@@ -148,7 +162,7 @@
         if (state.user?.discovery?.adminGrant?.active === true) {
           const grant = state.user.discovery.adminGrant;
           const coexistence = subscription
-            ? "Your existing monthly subscription remains separate and is not canceled by this grant; manage it from Profile."
+            ? `Your existing ${plan} subscription remains separate and is not canceled by this grant; manage it from Profile.`
             : apple
               ? "Your App Store subscription remains separate and is not canceled by this grant; manage it with your App Store subscriptions."
               : grandfathered
@@ -165,27 +179,27 @@
           setStatus(status.message, status.tone);
         } else if (grandfathered)
           setStatus(
-            "Your prior lifetime Strata+ purchase is grandfathered. It stays active with no monthly renewal or recurring charge.",
+            "Your prior lifetime Strata+ purchase is grandfathered. It stays active and never renews or charges you.",
             "good",
           );
         else if (subscription?.scheduledChange?.action === "cancel")
           setStatus(
-            `Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its cancellation takes effect. It will not renew after that date.`,
+            `Your ${plan} subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its cancellation takes effect. It will not renew after that date.`,
             "warn",
           );
         else if (subscription?.scheduledChange?.action === "pause")
           setStatus(
-            `Your monthly subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its scheduled pause takes effect and paid access stops.`,
+            `Your ${plan} subscription remains active until ${logic.billingDate(subscription.scheduledChange.effectiveAt)}, when its scheduled pause takes effect and paid access stops.`,
             "warn",
           );
         else if (subscription?.pastDue || subscriptionStatus === "past_due")
           setStatus(
-            "Your monthly subscription is past due. Strata+ remains available for now; update your payment method from Profile to avoid interruption.",
+            `Your ${plan} subscription is past due. Strata+ remains available for now; update your payment method from Profile to avoid interruption.`,
             "warn",
           );
         else if (subscription)
           setStatus(
-            `Your monthly subscription is active and renews on ${logic.billingDate(subscription.currentPeriodEndsAt)} unless canceled.`,
+            `Your ${plan} subscription is active and renews on ${logic.billingDate(subscription.currentPeriodEndsAt)} unless canceled.`,
             "good",
           );
         else setStatus("Strata+ access is active on this account.", "good");
@@ -201,14 +215,14 @@
       }
       if (paused) {
         setStatus(
-          "Your monthly subscription is paused and paid access is inactive. Open Profile to manage it in Paddle.",
+          `Your ${plan} subscription is paused and paid access is inactive. Open Profile to manage it in Paddle.`,
           "warn",
         );
         return;
       }
       if (canceled) {
         setStatus(
-          "Your previous monthly subscription is canceled and will not renew. You can explicitly start a new subscription whenever you choose.",
+          `Your previous ${plan} subscription is canceled and will not renew. You can explicitly start a new subscription whenever you choose.`,
           "warn",
         );
         return;

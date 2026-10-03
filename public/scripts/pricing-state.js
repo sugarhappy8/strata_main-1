@@ -21,6 +21,7 @@
       actionError: "",
       currentTransactionId: "",
       currentCheckoutUserId: "",
+      plan: "monthly",
     };
   }
 

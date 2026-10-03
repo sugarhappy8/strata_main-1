@@ -85,7 +85,25 @@
         interval: String(config?.price?.interval || "").toLowerCase(),
         frequency: Number(config?.price?.frequency),
       },
+      plans: (Array.isArray(config?.plans) ? config.plans : []).map((plan) => ({
+        key: String(plan?.key || ""),
+        priceId: String(plan?.priceId || ""),
+        amount: String(plan?.amount || ""),
+        currency: String(plan?.currency || "").toUpperCase(),
+        interval: String(plan?.interval || "").toLowerCase(),
+        frequency: Number(plan?.frequency),
+      })),
     };
+  }
+
+  // What each plan must cost, matching the terms. A server that sends a different price never opens checkout.
+  const PLAN_PRICES = Object.freeze({
+    monthly: Object.freeze({ amount: "4.99", interval: "month" }),
+    yearly: Object.freeze({ amount: "29.99", interval: "year" }),
+  });
+
+  function planAvailable(config, key) {
+    return key === "monthly" || Boolean(config?.plans?.some((plan) => plan.key === key));
   }
 
   function validateConfig(config) {
@@ -113,12 +131,26 @@
         throw new Error("The configured Strata+ price is not the current recurring price.");
     }
     if (
-      config.price.amount !== "2.99" ||
+      config.price.amount !== PLAN_PRICES.monthly.amount ||
       config.price.currency !== "USD" ||
       config.price.interval !== "month" ||
       config.price.frequency !== 1
     )
-      throw new Error("Checkout pricing does not match $2.99 USD per month.");
+      throw new Error("Checkout pricing does not match $4.99 USD per month.");
+    for (const plan of config.plans || []) {
+      const expected = PLAN_PRICES[plan.key];
+      if (
+        !expected ||
+        plan.amount !== expected.amount ||
+        plan.currency !== "USD" ||
+        plan.interval !== expected.interval ||
+        plan.frequency !== 1 ||
+        !/^pri_[a-z0-9]{20,}$/.test(plan.priceId) ||
+        plan.priceId === RETIRED_ONE_TIME_PRICE_ID ||
+        (plan.key === "monthly" && plan.priceId !== config.priceId)
+      )
+        throw new Error("Checkout pricing does not match $4.99 USD a month or $29.99 USD a year.");
+    }
     return config;
   }
 
@@ -133,6 +165,7 @@
     discoveryIsActive,
     normalizedConfig,
     paidAccessReady,
+    planAvailable,
     paidAccessType,
     subscriptionFor,
     validateConfig,

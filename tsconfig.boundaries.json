@@ -16,6 +16,10 @@
   },
   "include": [
     "src/domain-types.d.ts",
+    "src/admin-metrics.js",
+    "src/metrics.js",
+    "src/metrics-schema.js",
+    "src/metrics-store.js",
     "src/account-deletion.js",
     "src/social-auth.js",
     "src/social-auth-client.js",

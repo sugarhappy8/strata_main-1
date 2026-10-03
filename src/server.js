@@ -24,6 +24,7 @@ const { createDailyBriefJob } = require("./ai-daily-brief");
 const { createSetupService } = require("./setup");
 const { createSupportService } = require("./support");
 const { createProductSignalsService } = require("./product-signals");
+const { createAdminMetricsService } = require("./admin-metrics");
 const { adminGrantState } = require("./access-controls");
 const { entitlementSettings, tierFor, capabilitiesFor } = require("./entitlements");
 const { createEventBus } = require("./events");
@@ -219,6 +220,7 @@ const STATIC_FILES = new Map([
   ["admin-logic.js", "scripts/admin-logic.js"],
   ["admin-api.js", "scripts/admin-api.js"],
   ["admin-render.js", "scripts/admin-render.js"],
+  ["admin-metrics.js", "scripts/admin-metrics.js"],
   ["admin-session.js", "scripts/admin-session.js"],
   ["admin-events.js", "scripts/admin-events.js"],
   ["admin.js", "scripts/admin.js"],
@@ -322,7 +324,7 @@ let coaching;
 let devices;
 let ai, aiSettingsService, briefJob;
 let setup;
-let productSignals;
+let productSignals, adminMetrics;
 let billing, appleBilling, social;
 let router;
 
@@ -1028,6 +1030,13 @@ async function start() {
     rateKeyAllowed,
     http: { json, bodyJson },
   });
+  adminMetrics = createAdminMetricsService({
+    store,
+    http: { json },
+    adminEmail: ADMIN_EMAIL,
+    paymentConfig: PAYMENT_CONFIG,
+  });
+  adminMetrics.subscribe(events);
   workouts = createWorkoutService({
     store,
     rateAllowed,
@@ -1129,6 +1138,7 @@ async function start() {
     workouts.routes,
     setup.routes,
     productSignals.routes,
+    adminMetrics.routes,
     support.routes,
     aiSettingsService.routes,
     ai.routes,

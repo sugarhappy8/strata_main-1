@@ -1,4 +1,5 @@
-/* global StrataAdminApi, StrataAdminEvents, StrataAdminLogic, StrataAdminRender, StrataAdminSession, StrataAdminState */
+/* global StrataAdminApi, StrataAdminEvents, StrataAdminLogic, StrataAdminMetrics */
+/* global StrataAdminRender, StrataAdminSession, StrataAdminState */
 (function () {
   "use strict";
 
@@ -36,6 +37,7 @@
     supportStates: SUPPORT_STATES,
     requestFrame: requestAnimationFrame,
   });
+  const metricsView = StrataAdminMetrics.createMetricsView({ document });
   const {
     clearPrivateData,
     closeDialog,
@@ -71,13 +73,17 @@
     state.actionTrigger = null;
     state.userDialogTrigger = null;
     state.supportDialogTrigger = null;
+    state.metricsCsv = null;
     for (const dialog of document.querySelectorAll("dialog[open]")) dialog.close();
     syncDialogLock();
     clearPrivateData();
+    metricsView.clear();
+    el("downloadMetrics").disabled = true;
     el("grantFields").hidden = true;
     updateGrantFields();
     for (const id of [
       "refreshOverview",
+      "refreshMetrics",
       "userSearchButton",
       "refreshSupport",
       "refreshAudit",
@@ -229,6 +235,59 @@
     } finally {
       if (privateOperationIsCurrent(operation)) button.disabled = false;
     }
+  }
+
+  async function loadMetrics() {
+    if (!state.authorized) return;
+    const operation = state.capturePrivateOperation(),
+      request = ++state.metricsRequest;
+    const button = el("refreshMetrics"),
+      tables = el("metricsTables");
+    button.disabled = true;
+    setBusy(tables, true);
+    setSectionStatus("metricsStatus", "Counting usage, retention, and revenue…");
+    try {
+      const data = await client.metrics();
+      if (
+        !privateOperationIsCurrent(operation) ||
+        request !== state.metricsRequest ||
+        !state.authorized
+      )
+        return;
+      metricsView.render(data.metrics);
+      state.metricsCsv = data.csv?.text ? data.csv : null;
+      el("downloadMetrics").disabled = !state.metricsCsv;
+      state.loaded.add("metrics");
+      setLastUpdated();
+      setSectionStatus("metricsStatus", "Metrics are current.");
+    } catch (error) {
+      if (
+        privateOperationIsCurrent(operation) &&
+        request === state.metricsRequest &&
+        !handleAuthorizationFailure(error)
+      )
+        setSectionStatus("metricsStatus", friendlyError(error), { error: true });
+    } finally {
+      if (privateOperationIsCurrent(operation) && request === state.metricsRequest) {
+        button.disabled = false;
+        setBusy(tables, false);
+      }
+    }
+  }
+
+  // The CSV the server built with the figures on screen, saved without another request.
+  function downloadMetrics() {
+    const csv = state.metricsCsv;
+    if (!state.authorized || !csv?.text) return;
+    const url = URL.createObjectURL(new Blob([csv.text], { type: "text/csv;charset=utf-8" })),
+      link = document.createElement("a");
+    link.href = url;
+    link.download = cleanString(csv.filename, "strata-metrics.csv");
+    link.hidden = true;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
 
   async function loadUsers() {
@@ -566,13 +625,15 @@
     if (!force && state.loaded.has(name)) return Promise.resolve();
     return name === "overview"
       ? loadOverview()
-      : name === "people"
-        ? loadUsers()
-        : name === "support"
-          ? loadSupport()
-          : name === "activity"
-            ? loadAudit()
-            : Promise.resolve();
+      : name === "metrics"
+        ? loadMetrics()
+        : name === "people"
+          ? loadUsers()
+          : name === "support"
+            ? loadSupport()
+            : name === "activity"
+              ? loadAudit()
+              : Promise.resolve();
   }
   function activateSection(name, { focus = false, replaceHash = true } = {}) {
     if (!SECTION_NAMES.has(name)) name = "overview";
@@ -662,7 +723,9 @@
       closeDialog,
       handlePageShow,
       handleVisibilityChange,
+      downloadMetrics,
       loadAudit,
+      loadMetrics,
       loadOverview,
       loadProductSignals,
       loadSupport,

@@ -39,6 +39,10 @@
     el("productSignalDays").addEventListener("change", () => {
       void handlers.loadProductSignals();
     });
+    el("refreshMetrics").addEventListener("click", () => {
+      void handlers.loadMetrics();
+    });
+    el("downloadMetrics").addEventListener("click", () => handlers.downloadMetrics());
     el("userSearchForm").addEventListener("submit", (event) => {
       event.preventDefault();
       state.users.query = el("userQuery").value.trim();
