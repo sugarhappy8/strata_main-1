@@ -612,3 +612,21 @@ test("the ranking shows the ten best matches first and the rest on request", asy
     "nothing to expand when every match is shown",
   );
 });
+
+test("the ranking says what it is sorted by and links to how FitScore works", async () => {
+  const { elements } = createRuntime({ meResponse: jsonResponse(401, { error: "Sign in" }) });
+  await settle();
+  assert.equal(elements.get("rankSortLabel").textContent, "FitScore");
+  const sort = elements.get("sortSelect");
+  sort.value = "stability";
+  sort.selectedOptions = [{ textContent: "Stability" }];
+  for (const handler of sort.listeners.change) handler({ target: sort });
+  assert.equal(elements.get("rankSortLabel").textContent, "Stability");
+  const home = fs.readFileSync(require.resolve("../public/pages/index.html"), "utf8"),
+    planner = fs.readFileSync(require.resolve("../public/pages/planner.html"), "utf8");
+  assert.match(
+    home,
+    /id="rankNote">Ranked by <strong id="rankSortLabel">FitScore<\/strong>, highest first\.[^<]*<a href="#method">How FitScore works<\/a> · <a href="#sources">Sources<\/a>/,
+  );
+  assert.match(planner, /Highest FitScore first · <a href="\/#method">How FitScore works<\/a>/);
+});

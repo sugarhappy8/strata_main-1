@@ -335,7 +335,7 @@ function clickSelectDay(day) {
   );
   assert.match(
     html,
-    /<a href="\/account\.html">Profile<\/a>/,
+    /<a href="\/account\.html" data-nav="profile" data-audience="member plus">Profile<\/a>/,
     "Signed-in planners reach their account through Profile in the site navigation",
   );
   assert.match(

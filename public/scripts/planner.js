@@ -972,7 +972,7 @@ function setSaveStatus(message, error = false) {
   const status = el("saveStatus"),
     retry = el("retryPlanSave");
   status.textContent = message;
-  document.documentElement.classList.toggle("planner-status-active", Boolean(message));
+  document.documentElement?.classList.toggle("planner-status-active", Boolean(message));
   status.parentElement.classList.toggle("error", error);
   retry.removeAttribute("title");
   if (state.conflictDraft) {

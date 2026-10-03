@@ -416,6 +416,10 @@ button:disabled {
   font: 600 11px var(--body, "Manrope", Arial, sans-serif);
   letter-spacing: 0;
 }
+.library-heading span a {
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
 .library-heading strong {
   min-width: 0;
   font: 600 34px/1 var(--display);
