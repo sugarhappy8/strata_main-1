@@ -639,7 +639,7 @@ test("password recovery is private, preserves account data, and revokes every se
 
   for (const cookie of [account.cookie, secondCookie]) {
     const revoked = await request("/api/me", { headers: { Cookie: cookie } });
-    assert.equal(revoked.response.status, 401, "password reset must revoke every existing session");
+    assert.equal(revoked.data.user, null, "password reset must revoke every existing session");
   }
   const oldLogin = await login(email, originalPassword);
   assert.equal(oldLogin.response.status, 401);
@@ -740,10 +740,7 @@ test("password recovery is private, preserves account data, and revokes every se
     confirmation: signedInPassword,
   });
   assert.equal(signedInReset.response.status, 200);
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: resetCookie } })).response.status,
-    401,
-  );
+  assert.equal((await request("/api/me", { headers: { Cookie: resetCookie } })).data.user, null);
   assert.equal((await login(email, resetPassword)).response.status, 401);
   const finalLogin = await login(email, signedInPassword);
   assert.equal(finalLogin.response.status, 200);
@@ -966,9 +963,8 @@ test("account deletion requires email confirmation, supports cancel, blocks pend
     "an active checkout-creation claim must block account deletion",
   );
   assert.equal(claimBlocked.data.code, "CHECKOUT_PREPARING");
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: claimed.cookie } })).response.status,
-    200,
+  assert.ok(
+    (await request("/api/me", { headers: { Cookie: claimed.cookie } })).data.user,
     "the blocked account must remain signed in",
   );
   {
@@ -1394,10 +1390,7 @@ test("account deletion requires email confirmation, supports cancel, blocks pend
   });
   assert.equal(canceledCompletion.response.status, 400);
   assert.equal(canceledCompletion.data.code, "INVALID_DELETE_LINK");
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: account.cookie } })).response.status,
-    200,
-  );
+  assert.ok((await request("/api/me", { headers: { Cookie: account.cookie } })).data.user);
 
   const pending = await checkout(account);
   assert.equal(pending.response.status, 201);
@@ -1479,10 +1472,7 @@ test("account deletion requires email confirmation, supports cancel, blocks pend
   });
   assert.equal(wrongConfirmation.response.status, 400);
   assert.equal(wrongConfirmation.data.code, "DELETE_CONFIRMATION_REQUIRED");
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: account.cookie } })).response.status,
-    200,
-  );
+  assert.ok((await request("/api/me", { headers: { Cookie: account.cookie } })).data.user);
 
   const activeSubscriptionDeletion = await jsonRequest("/api/account/delete/complete", {
     token: deleteToken,
@@ -1510,10 +1500,7 @@ test("account deletion requires email confirmation, supports cancel, blocks pend
   assert.equal(deleted.response.status, 200);
   assert.equal(deleted.data.ok, true);
   assert.match(deleted.setCookie, /strata_session=;.*Max-Age=0/i);
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: account.cookie } })).response.status,
-    401,
-  );
+  assert.equal((await request("/api/me", { headers: { Cookie: account.cookie } })).data.user, null);
   assert.equal((await login(email, "deletion-password-123")).response.status, 401);
 
   {

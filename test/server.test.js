@@ -169,7 +169,8 @@ test("serves rankings and gates private account pages", async () => {
     );
   }
   const malformedCookie = await request("/api/me", { headers: { Cookie: "broken=%E0%A4%A" } });
-  assert.equal(malformedCookie.response.status, 401);
+  assert.equal(malformedCookie.response.status, 200);
+  assert.deepEqual(malformedCookie.data, { user: null });
   const planner = await request("/planner.html", { redirect: "manual" });
   assert.equal(planner.response.status, 200);
   assert.match(planner.data, /Free device plan[\s\S]*No account required[\s\S]*Use a synced plan/);
@@ -269,6 +270,10 @@ test("creates an account with a private default plan", async () => {
     headers: { Cookie: `broken=%E0%A4%A; ${signup.cookie}` },
   });
   assert.equal(malformedAlongsideSession.response.status, 200);
+  assert.ok(
+    malformedAlongsideSession.data.user,
+    "a malformed cookie must not hide a valid session",
+  );
 
   const signedInHome = await request("/", { headers: { Cookie: signup.cookie } });
   assert.equal(signedInHome.response.status, 200);
@@ -741,7 +746,8 @@ test("logs out and signs back into the same account with the original password",
     /strata_session=;.*Max-Age=0/i,
   );
   const afterLogout = await request("/api/me", { headers: { Cookie: signup.cookie } });
-  assert.equal(afterLogout.response.status, 401);
+  assert.equal(afterLogout.response.status, 200);
+  assert.deepEqual(afterLogout.data, { user: null });
   const login = await request("/api/login", {
     method: "POST",
     headers: { Origin: BASE, "Content-Type": "application/json" },
@@ -753,6 +759,56 @@ test("logs out and signs back into the same account with the original password",
   const restored = await request("/api/me", { headers: { Cookie: login.cookie } });
   assert.equal(restored.response.status, 200);
   assert.equal(restored.data.user.name, credentials.name);
+});
+
+// Every page asks /api/me who is signed in, so a visitor's answer is a 200 no browser console logs as an error.
+test("a visitor's /api/me answers 200 { user: null } while member routes still answer 401", async () => {
+  const visitor = await request("/api/me");
+  assert.equal(visitor.response.status, 200);
+  assert.deepEqual(visitor.data, { user: null });
+  assert.equal(visitor.response.headers.get("set-cookie"), null);
+  for (const path of ["/api/plan", "/api/workouts?limit=1&offset=0", "/api/discovery"]) {
+    const member = await request(path);
+    assert.equal(member.response.status, 401, `${path} stays member-only`);
+  }
+
+  const unknown = await request("/api/me", {
+    headers: { Cookie: "strata_session=not-a-real-session-token" },
+  });
+  assert.equal(unknown.response.status, 200);
+  assert.deepEqual(unknown.data, { user: null });
+
+  const signup = await request("/api/signup", {
+    method: "POST",
+    headers: { Origin: BASE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Visitor Check",
+      email: "visitor-check@example.test",
+      password: "visitor-check-password-123",
+    }),
+  });
+  assert.equal(signup.response.status, 201);
+  const signedIn = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.equal(signedIn.response.status, 200);
+  assert.deepEqual(Object.keys(signedIn.data).sort(), ["csrfToken", "user"]);
+  assert.equal(signedIn.data.user.email, "visitor-check@example.test");
+  assert.ok(signedIn.data.csrfToken);
+
+  const database = new DatabaseSync(join(runtimeDir, "strata.sqlite"));
+  try {
+    database
+      .prepare("UPDATE sessions SET expires_at=? WHERE user_id=?")
+      .run(Date.now() - 1000, signedIn.data.user.id);
+  } finally {
+    database.close();
+  }
+  const expired = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.equal(expired.response.status, 200);
+  assert.deepEqual(expired.data, { user: null }, "an expired session reads as signed out");
+  assert.equal(
+    (await request("/api/plan", { headers: { Cookie: signup.cookie } })).response.status,
+    401,
+  );
 });
 
 test("native account forms create and restore an account without modal JavaScript", async () => {
@@ -774,6 +830,7 @@ test("native account forms create and restore an account without modal JavaScrip
   assert.ok(signup.cookie.startsWith("strata_session="));
   const me = await request("/api/me", { headers: { Cookie: signup.cookie } });
   assert.equal(me.response.status, 200);
+  assert.equal(me.data.user.email, email);
   const logout = await request("/api/logout", {
     method: "POST",
     headers: { Cookie: signup.cookie, Origin: BASE },

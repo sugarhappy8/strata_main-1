@@ -53,8 +53,20 @@
         });
       return data;
     }
+    // /api/me answers a visitor with 200 { user: null }. Strata AI is for members, so that answer fails exactly as
+    // the 401 a signed-out request gets, and the page sends the visitor to sign in.
+    async function me() {
+      const data = await request("/api/me");
+      if (data.user === null)
+        throw Object.assign(new Error("Not signed in."), {
+          status: 401,
+          code: "REQUEST_FAILED",
+          payload: { error: "Not signed in." },
+        });
+      return data;
+    }
     return Object.freeze({
-      me: () => request("/api/me"),
+      me,
       status: () => request("/api/ai/status"),
       ask: ({ kind, message, history, draftPlan = null, draftPlanUpdatedAt = null }) =>
         request("/api/ai/requests", {

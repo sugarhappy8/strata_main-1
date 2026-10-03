@@ -1756,9 +1756,11 @@ function createAuthService({
     }
   }
 
+  // Every page asks who is signed in, so a visitor's answer is a normal 200 { user: null }, not a 401 error in
+  // their browser console. Member routes still answer a signed-out request with 401.
   async function me({ req, res }) {
     const session = await sessionFor(req, res);
-    if (!session) json(res, 401, { error: "Not signed in." });
+    if (!session) json(res, 200, { user: null });
     else json(res, 200, { user: await getUserPayload(session), csrfToken: session.csrf_token });
   }
 

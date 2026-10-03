@@ -181,7 +181,7 @@ test("account self-service enforces session ownership, current-session safety, C
     body: JSON.stringify({ sessionId: outsiderId }),
   });
   assert.equal(foreign.response.status, 404);
-  assert.equal((await me(outsider.cookie)).response.status, 200);
+  assert.ok((await me(outsider.cookie)).data.user);
   assert.equal(outsiderMe.response.status, 200);
 
   const revokedOne = await request("/api/account/sessions/revoke", {
@@ -191,8 +191,8 @@ test("account self-service enforces session ownership, current-session safety, C
   });
   assert.equal(revokedOne.response.status, 200);
   assert.equal(revokedOne.data.revoked, 1);
-  assert.equal((await me(first.cookie)).response.status, 401);
-  assert.equal((await me(second.cookie)).response.status, 200);
+  assert.equal((await me(first.cookie)).data.user, null);
+  assert.ok((await me(second.cookie)).data.user);
 
   const third = await login("sessions@example.test", password);
   assert.equal(third.response.status, 200);
@@ -202,7 +202,7 @@ test("account self-service enforces session ownership, current-session safety, C
     body: "{}",
   });
   assert.equal(invalidBulkCsrf.response.status, 403);
-  assert.equal((await me(third.cookie)).response.status, 200);
+  assert.ok((await me(third.cookie)).data.user);
   const revokedOthers = await request("/api/account/sessions/revoke-others", {
     method: "POST",
     headers: mutationHeaders(second.cookie, csrf),
@@ -211,6 +211,6 @@ test("account self-service enforces session ownership, current-session safety, C
   assert.equal(revokedOthers.response.status, 200);
   assert.equal(revokedOthers.data.revoked, 1);
   assert.equal(revokedOthers.data.otherCount, 0);
-  assert.equal((await me(third.cookie)).response.status, 401);
-  assert.equal((await me(second.cookie)).response.status, 200);
+  assert.equal((await me(third.cookie)).data.user, null);
+  assert.ok((await me(second.cookie)).data.user);
 });

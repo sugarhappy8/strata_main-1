@@ -97,7 +97,7 @@ function paywall({
       if (url === "/api/me")
         return currentUser
           ? jsonResponse(200, { user: currentUser, csrfToken: "csrf-pay" })
-          : jsonResponse(401, { error: "Not signed in." });
+          : jsonResponse(200, { user: null });
       assert.equal(url, "/api/billing/apple/transactions");
       assert.equal(options.headers["X-CSRF-Token"], "csrf-pay");
       const body = JSON.parse(options.body);

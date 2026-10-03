@@ -103,6 +103,42 @@ test("Discover API attaches account CSRF state and rejects stale responses", asy
   );
 });
 
+test("Discover API sends a signed-out /api/me answer, 200 { user: null } or 401, to sign in", async () => {
+  const answers = [],
+    redirects = [];
+  const client = Api.createClient({
+    fetchImpl: async () => {
+      const [status, body] = answers.shift();
+      return { ok: status >= 200 && status < 300, status, json: async () => body };
+    },
+    getCsrfToken: () => "",
+    getGeneration: () => 1,
+    redirect: (path) => redirects.push(path),
+  });
+  for (const answer of [
+    [200, { user: null }],
+    [401, { error: "Not signed in." }],
+  ]) {
+    answers.push(answer);
+    await assert.rejects(
+      client("/api/me"),
+      (error) =>
+        error.status === 401 && error.redirecting === true && error.message === "Not signed in.",
+    );
+  }
+  assert.deepEqual(redirects, [
+    "/account.html?mode=login&next=discover",
+    "/account.html?mode=login&next=discover",
+  ]);
+  const member = { user: { id: "member-1" }, csrfToken: "csrf-1" };
+  answers.push([200, member], [200, { user: null, note: "not an identity read" }]);
+  assert.deepEqual(await client("/api/me"), member);
+  assert.deepEqual(await client("/api/discovery"), { user: null, note: "not an identity read" });
+  answers.push([200, "not json"]);
+  assert.equal(await client("/api/me"), "not json", "an unexpected body is not read as signed out");
+  assert.equal(redirects.length, 2);
+});
+
 test("Discover navigation owns one visible destination and dismisses transient status", () => {
   const panels = new Map(
       Object.values(State.FEATURE_CONFIG).map(({ panelId }) => [panelId, element(panelId)]),

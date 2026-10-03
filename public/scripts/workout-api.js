@@ -34,14 +34,19 @@
           },
         });
         const data = await response.json().catch(() => ({}));
-        if (response.status === 401) onSessionBlocked();
-        if (response.status === 402) onAccessBlocked();
-        if (!response.ok)
-          throw Object.assign(new Error(data.error || "STRATA could not complete this request."), {
-            status: response.status,
-            code: data.code,
-            data,
-          });
+        // A visitor's /api/me is 200 { user: null }. The workout room is for members, so it is the same as a 401.
+        const signedOut = response.ok && path === "/api/me" && data?.user === null,
+          status = signedOut ? 401 : response.status;
+        if (status === 401) onSessionBlocked();
+        if (status === 402) onAccessBlocked();
+        if (!response.ok || signedOut)
+          throw Object.assign(
+            new Error(
+              data.error ||
+                (signedOut ? "Not signed in." : "STRATA could not complete this request."),
+            ),
+            { status, code: data.code, data },
+          );
         return data;
       } catch (error) {
         if (error.status) throw error;

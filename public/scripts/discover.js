@@ -2152,8 +2152,9 @@ async function init() {
   discoveryLoading = true;
   showInitialLoadProgress();
   try {
-    const data = await api("/api/discovery"),
-      identity = await api("/api/me");
+    // Who is signed in comes first, so a session that has ended never requests the member-only workspace.
+    const identity = await api("/api/me"),
+      data = await api("/api/discovery");
     if (generation !== workspaceGeneration) return;
     if (
       String(data.user?.id || "") !== String(identity.user?.id || "") ||

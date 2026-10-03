@@ -1791,10 +1791,7 @@ test("admin retires an interrupted Paddle draft, revokes sessions, and permanent
   const revoked = await controlPaymentAccount(account, "revoke-sessions", 1);
   assert.equal(revoked.response.status, 200, JSON.stringify(revoked.data));
   assert.match(revoked.data.message, /Signed the account out/);
-  assert.equal(
-    (await request("/api/me", { headers: { Cookie: account.cookie } })).response.status,
-    401,
-  );
+  assert.equal((await request("/api/me", { headers: { Cookie: account.cookie } })).data.user, null);
   const providerAfterClosure = paddleRequests.length;
   const deleted = await controlPaymentAccount(account, "delete-account", 1);
   assert.equal(deleted.response.status, 200, JSON.stringify(deleted.data));
@@ -2109,8 +2106,8 @@ test("a failed Paddle draft retirement keeps Admin deletion blocked after sessio
     const revoked = await controlPaymentAccount(account, "revoke-sessions", 1);
     assert.equal(revoked.response.status, 200, JSON.stringify(revoked.data));
     assert.equal(
-      (await request("/api/me", { headers: { Cookie: account.cookie } })).response.status,
-      401,
+      (await request("/api/me", { headers: { Cookie: account.cookie } })).data.user,
+      null,
     );
     const deleted = await controlPaymentAccount(account, "delete-account", 1);
     assert.notEqual(

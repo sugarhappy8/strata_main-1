@@ -229,7 +229,7 @@ test("new accounts require one delivered code while existing accounts remain saf
   assert.equal(pending.delivery_state, "sent");
 
   const beforeVerification = await request("/api/me", { headers: { Cookie: signupCookie } });
-  assert.equal(beforeVerification.response.status, 401);
+  assert.equal(beforeVerification.data.user, null);
   const verificationStatus = await request("/api/verification-status", {
     headers: { Cookie: signupCookie },
   });
@@ -313,8 +313,8 @@ test("new accounts require one delivered code while existing accounts remain saf
   db.prepare("UPDATE users SET email_verified_at=NULL WHERE email=?").run("verified@example.test");
   const blockedExistingSession = await request("/api/me", { headers: { Cookie: sessionCookie } });
   assert.equal(
-    blockedExistingSession.response.status,
-    401,
+    blockedExistingSession.data.user,
+    null,
     "an existing session must stop working when its account is unverified",
   );
   const guestPlannerPage = await request("/planner.html", {
@@ -367,8 +367,8 @@ test("new accounts require one delivered code while existing accounts remain saf
     ) > 0,
   );
   assert.equal(
-    (await request("/api/me", { headers: { Cookie: sessionCookie } })).response.status,
-    401,
+    (await request("/api/me", { headers: { Cookie: sessionCookie } })).data.user,
+    null,
     "the pre-verification session must stay revoked",
   );
   assert.equal(
@@ -376,8 +376,8 @@ test("new accounts require one delivered code while existing accounts remain saf
       await request("/api/me", {
         headers: { Cookie: cookieValue(secondDevice.setCookie, "strata_session") },
       })
-    ).response.status,
-    401,
+    ).data.user,
+    null,
     "all other pre-verification sessions must be revoked",
   );
 

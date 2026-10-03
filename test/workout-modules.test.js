@@ -315,6 +315,39 @@ test("workout API module owns security headers and identity checks", async () =>
   assert.equal(identityUpdates, 1);
 });
 
+test("workout API blocks the session alike for a visitor's 200 { user: null } and an older 401", async () => {
+  for (const [status, body] of [
+    [200, { user: null }],
+    [401, { error: "Not signed in." }],
+  ]) {
+    let blocked = 0,
+      accessBlocked = 0;
+    const state = {
+      mode: "account",
+      user: { id: "member-1", discovery: { active: true } },
+      csrfToken: "csrf-1",
+    };
+    const client = Api.create({
+      state,
+      fetchImpl: async () => ({ ok: status === 200, status, json: async () => body }),
+      onSessionBlocked: () => blocked++,
+      onAccessBlocked: () => accessBlocked++,
+    });
+    await assert.rejects(client.request("/api/me"), { status: 401, message: "Not signed in." });
+    assert.equal(blocked, 1, `a ${status} blocks the session`);
+    await assert.rejects(client.assertIdentity(), { status: 401 });
+    assert.ok(blocked >= 2);
+    assert.equal(accessBlocked, 0);
+    assert.equal(state.csrfToken, "csrf-1", "a signed-out answer leaves the session untouched");
+  }
+  const reads = Api.create({
+    state: { mode: "account", user: { id: "member-1" } },
+    fetchImpl: async () => ({ ok: true, status: 200, json: async () => ({ user: null }) }),
+    onSessionBlocked: () => assert.fail("only /api/me answers who is signed in"),
+  });
+  assert.deepEqual(await reads.request("/api/workouts/w1"), { user: null });
+});
+
 test("training guidance keeps labels and explicit targets predictable", () => {
   assert.equal(Guidance.actionLabel("hold_steady"), "Hold Steady");
   assert.equal(Guidance.actionLabel("reduce-load"), "Reduce Load");

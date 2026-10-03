@@ -99,6 +99,11 @@ async function handleForeground() {
     try {
       const result = await api.identity({ cache: "no-store" });
       if (!state.isCurrentIdentity(request)) return;
+      // A visitor's /api/me is 200 { user: null }: signed out, exactly as a 401 is below.
+      if (result.user === null) {
+        showAccess();
+        return;
+      }
       if (previous.userId && String(result.user?.id || "") !== previous.userId) {
         showChangedAccount();
         return;
@@ -123,7 +128,7 @@ async function handleForeground() {
 
 async function confirmPrivateOperation(operation) {
   if (!state.isCurrentPrivateOperation(operation)) return false;
-  const identity = await api.identity({ cache: "no-store" });
+  const identity = await api.memberIdentity({ cache: "no-store" });
   if (!state.isCurrentPrivateOperation(operation)) return false;
   if (String(identity.user?.id || "") !== operation.userId)
     throw Object.assign(new Error("The signed-in account changed."), { code: "account-changed" });
@@ -166,6 +171,10 @@ async function initialize() {
   try {
     const result = await api.identity();
     if (!state.isCurrentIdentity(request)) return;
+    if (result.user === null) {
+      showAccess();
+      return;
+    }
     showSignedIn(result.user, result.csrfToken);
   } catch (error) {
     if (!state.isCurrentIdentity(request)) return;

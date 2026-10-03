@@ -177,7 +177,7 @@ async function fixture(
     if (url.pathname === "/api/me")
       return state.user
         ? json({ user: state.user, csrfToken: "journey-csrf" })
-        : json({ error: "Not signed in." }, 401);
+        : json({ user: null });
     if (url.pathname === "/api/billing/apple/transactions") {
       state.posts.push({
         body: request.postDataJSON(),

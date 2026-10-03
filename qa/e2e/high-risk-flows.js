@@ -418,11 +418,14 @@ async function loginAccount({ email, password, errors }) {
   return { context, page };
 }
 
-async function responseStatus(page, path) {
-  return page.evaluate(
-    async (requestPath) => (await fetch(requestPath, { credentials: "same-origin" })).status,
-    path,
-  );
+// /api/me answers 200 with the signed-in user, or with { user: null } once the session is gone.
+async function signedInUser(page) {
+  const { status, body } = await page.evaluate(async () => {
+    const response = await fetch("/api/me", { credentials: "same-origin" });
+    return { status: response.status, body: await response.json() };
+  });
+  assert.equal(status, 200, "/api/me answers every page");
+  return body.user;
 }
 
 function completedEvent(transaction, userId) {
@@ -547,8 +550,8 @@ test("security-sensitive browser journeys", { timeout: 120_000 }, async (t) => {
       assert.equal((await resetComplete).status(), 200);
       await primary.page.locator("#resetSuccess").waitFor({ state: "visible" });
       assert.equal(
-        await responseStatus(second.page, "/api/me"),
-        401,
+        await signedInUser(second.page),
+        null,
         "Password reset must revoke a second browser session.",
       );
 
@@ -584,11 +587,7 @@ test("security-sensitive browser journeys", { timeout: 120_000 }, async (t) => {
       ]);
       assert.equal((await acceptedLogin).status(), 200);
       await plannerReady(reloginPage);
-      assert.equal(
-        await responseStatus(reloginPage, "/api/me"),
-        200,
-        "The new password must restore access.",
-      );
+      assert.ok(await signedInUser(reloginPage), "The new password must restore access.");
 
       await Promise.all([primary.context.close(), second.context.close(), reloginContext.close()]);
     },
@@ -861,8 +860,8 @@ test("security-sensitive browser journeys", { timeout: 120_000 }, async (t) => {
       assert.equal((await deletePromise).status(), 200);
       await account.page.locator("#deleteSuccess").waitFor({ state: "visible" });
       assert.equal(
-        await responseStatus(account.page, "/api/me"),
-        401,
+        await signedInUser(account.page),
+        null,
         "Deleting an account must revoke its browser session.",
       );
 

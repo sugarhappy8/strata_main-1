@@ -6,6 +6,19 @@
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   "use strict";
 
+  function requestError(status, data) {
+    return Object.assign(new Error(data?.error || "Request failed."), {
+      status,
+      code: data?.code,
+      verificationRequired: data?.verificationRequired === true,
+      maskedEmail: data?.maskedEmail,
+      purpose: data?.purpose === "login" ? "login" : "signup",
+      deliveryState: ["sent", "failed", "pending"].includes(data?.deliveryState)
+        ? data.deliveryState
+        : "",
+    });
+  }
+
   function createClient({ fetchImpl, getCsrfToken = () => "" }) {
     if (typeof fetchImpl !== "function") throw new TypeError("A fetch implementation is required.");
 
@@ -25,17 +38,7 @@
       }
       const contentType = String(response.headers?.get?.("content-type") || "").toLowerCase();
       const data = contentType.includes("json") ? await response.json().catch(() => null) : null;
-      if (!response.ok)
-        throw Object.assign(new Error(data?.error || "Request failed."), {
-          status: response.status,
-          code: data?.code,
-          verificationRequired: data?.verificationRequired === true,
-          maskedEmail: data?.maskedEmail,
-          purpose: data?.purpose === "login" ? "login" : "signup",
-          deliveryState: ["sent", "failed", "pending"].includes(data?.deliveryState)
-            ? data.deliveryState
-            : "",
-        });
+      if (!response.ok) throw requestError(response.status, data);
       if (!data || typeof data !== "object")
         throw Object.assign(new Error("The account service returned an unexpected response."), {
           code: "invalid-response",
@@ -90,8 +93,17 @@
       };
     }
 
+    // /api/me answers a visitor with 200 { user: null }. A private operation needs the member, so there that
+    // answer fails exactly as the 401 a signed-out /api/me used to return.
+    async function memberIdentity(options = {}) {
+      const data = await requestJson("/api/me", options);
+      if (data.user === null) throw requestError(401, { error: "Not signed in." });
+      return data;
+    }
+
     return {
       identity: (options = {}) => requestJson("/api/me", options),
+      memberIdentity,
       plan: () => requestJson("/api/plan", { cache: "no-store" }),
       workouts: () => requestJson("/api/workouts?limit=100&offset=0", { cache: "no-store" }),
       sessions: () => requestJson("/api/account/sessions", { cache: "no-store" }),

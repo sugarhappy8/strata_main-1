@@ -121,6 +121,8 @@ Every request field is untrusted, including JSON, form values, headers, URL para
 
 Session tokens are random and stored only as hashes in the database. Cookies are HttpOnly, SameSite=Strict, scoped to `/`, and Secure in production. A session lookup also checks expiry, credential version, suspension, and required verification state. Password reset increments the credential version and revokes all sessions.
 
+`GET /api/me` is how every page asks who is signed in. Without a valid session (no cookie, or an expired, revoked, or unknown one) it answers `200 { user: null }`; with one, `200 { user, csrfToken }`. Member routes such as `/api/plan` and `/api/workouts` still answer a signed-out request with `401`. Pages ask `/api/me` first and request member data only when it names a user, so a visitor's browser console shows no `401` errors. The browser treats a `401` from `/api/me` (an older server, or a session that ends between requests) exactly like `user: null`.
+
 State-changing authenticated routes require the session's CSRF value and a trusted same-origin request. Public recovery endpoints use origin checks, generic responses where account enumeration is a concern, durable quotas (the database-backed `rate_buckets` and email-send counts), expiry, attempt caps, and one-time tokens.
 
 ### Data ownership boundary

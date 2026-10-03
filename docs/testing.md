@@ -17,6 +17,8 @@ STRATA uses four test layers. Each layer owns a different kind of confidence; a 
 
 The E2E suite owns a deliberately small set of costly journeys. Its security-critical core covers login and recovery, plan conflict resolution, payment entitlement, and account deletion; focused browser journeys also cover activation continuity, account boundaries, training, coaching, setup, planner recovery, offline-workout continuation, weekly review, accessibility, and responsive navigation where browser behavior matters. It starts an isolated application plus local provider fakes, so it never contacts production services or modifies developer data.
 
+A signed-out visitor's console stays clean. `qa/e2e/navigation-layout.js` opens the home page, Plan, Dashboard, pricing, Profile, contact, policies, install, and a member page's sign-in redirect at 390 px, and fails on any `/api/` error response, any request for member data, or any console error. `/api/me` answers a visitor `200 { user: null }` (`test/server.test.js`), and the client tests and runtime smokes check that each page treats that answer exactly as it treats a `401` from an older server.
+
 ### Strata+ access in tests
 
 Strata+ has no free trial, so tests no longer unlock it through `POST /api/discovery/trial`. `test/support/strata-plus-access.js` gives an account a complimentary grant, the same access the owner can give from Admin, by writing straight to the test server's local SQLite database. Server tests, the E2E journeys, and `npm run load:100` use it. The optional `npm run qa:ui` audit needs `STRATA_QA_DATA_DIR` set to the running server's `STRATA_DATA_DIR` for the same reason.

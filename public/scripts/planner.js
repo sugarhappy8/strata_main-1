@@ -32,6 +32,15 @@ const apiClient = API.createClient({
 async function api(path, options = {}) {
   return apiClient.request(path, options);
 }
+// /api/me answers a signed-out request with 200 { user: null }. Where this tab holds a member's week, that answer
+// is handled exactly as the 401 it used to be.
+function signedOutError() {
+  return Object.assign(new Error("Not signed in."), {
+    status: 401,
+    code: "REQUEST_FAILED",
+    data: { error: "Not signed in." },
+  });
+}
 
 function lockChangedAccount() {
   persistAccountDraft();
@@ -59,6 +68,7 @@ async function verifyPlannerIdentity() {
       code: "ACCOUNT_CHANGED",
     });
   const identity = await api("/api/me", { cache: "no-store" });
+  if (identity?.user === null) throw signedOutError();
   if (!identity.user?.id || String(identity.user.id) !== String(state.user?.id)) {
     lockChangedAccount();
     throw Object.assign(
@@ -639,6 +649,7 @@ function refreshEntitlement({ force = false } = {}) {
     try {
       const result = await api("/api/me", { cache: "no-store" });
       if (requestId !== state.entitlementRequest) return false;
+      if (result?.user === null) throw signedOutError();
       if (!result.user?.id || String(result.user.id) !== expectedUserId) {
         lockChangedAccount();
         return false;
@@ -1356,13 +1367,19 @@ async function init({ guestOnly = false } = {}) {
     const exercises = LOGIC.libraryExercises(await api("/exercise-library.json?v=9.6.0"));
     if (!exercises) throw new Error("STRATA returned an incomplete exercise library.");
     state.exercises = exercises;
-    let result;
+    let result = null;
     try {
-      result = guestOnly ? { plan: guestPlan(), user: null } : await api("/api/plan");
+      // Who is signed in comes first: a visitor's /api/me is 200 { user: null }, so the free device week opens
+      // without requesting the member-only /api/plan. A 401 from either request (a session that just ended) is
+      // signed out too.
+      if (!guestOnly) {
+        const identity = await api("/api/me", { cache: "no-store" });
+        if (identity?.user !== null) result = await api("/api/plan");
+      }
     } catch (error) {
       if (error.status !== 401) throw error;
-      result = { plan: guestPlan(), user: null };
     }
+    result ||= { plan: guestPlan(), user: null };
     if (!result.plan?.days) throw new Error("STRATA returned an incomplete plan.");
     state.plan = result.plan;
     state.user = result.user;

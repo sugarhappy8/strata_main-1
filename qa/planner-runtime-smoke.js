@@ -836,24 +836,42 @@ function clickSelectDay(day) {
   );
   assert.match(elements.get("weekSummary").innerHTML, /class="week-readiness ready"/);
 
-  context.fetch = async (path) => {
-    if (path === CATALOG_URL) return { ok: true, json: async () => exercises };
-    if (path === "/api/plan")
-      return { ok: false, status: 401, json: async () => ({ error: "Not signed in." }) };
-    return { ok: false, status: 404, json: async () => ({ error: "Not found" }) };
-  };
-  await vm.runInContext("init()", context);
-  assert.equal(
-    vm.runInContext("state.entitlementTimer", context),
-    null,
-    "guest fallback must cancel account entitlement timers",
-  );
-  assert.doesNotMatch(
-    elements.get("weekSummary").innerHTML,
-    /class="week-readiness/,
-    "Free and guest planners must not receive Strata+ plan-guidance cards",
-  );
-  assert.equal(elements.get("plannerSignIn").hidden, false, "Guest planners see a sign-in link");
+  // A visitor's /api/me is 200 { user: null }, so the free device week opens without requesting the member-only
+  // /api/plan. An older server's 401, or a session that ends between /api/me and /api/plan, is signed out too.
+  const notSignedIn = [401, { error: "Not signed in." }];
+  for (const [label, answers, planReads] of [
+    ["visitor", { "/api/me": [200, { user: null }] }, 0],
+    ["older server", { "/api/me": notSignedIn }, 0],
+    ["ended session", { "/api/me": [200, { user: { id: "u1" } }], "/api/plan": notSignedIn }, 1],
+  ]) {
+    const apiReads = [];
+    context.fetch = async (path) => {
+      if (path === CATALOG_URL) return { ok: true, json: async () => exercises };
+      apiReads.push(path);
+      const [status, body] = answers[path] || [404, { error: "Not found" }];
+      return { ok: status >= 200 && status < 300, status, json: async () => body };
+    };
+    vm.runInContext("state.entitlementTimer||=setTimeout(()=>{},60000)", context);
+    await vm.runInContext("init()", context);
+    assert.equal(apiReads[0], "/api/me", `${label}: who is signed in is asked first`);
+    assert.equal(
+      apiReads.filter((path) => path === "/api/plan").length,
+      planReads,
+      `${label}: /api/plan is requested only for a signed-in answer`,
+    );
+    assert.equal(vm.runInContext("state.ready&&state.guest&&!state.user", context), true, label);
+    assert.equal(
+      vm.runInContext("state.entitlementTimer", context),
+      null,
+      `${label}: guest fallback must cancel account entitlement timers`,
+    );
+    assert.doesNotMatch(
+      elements.get("weekSummary").innerHTML,
+      /class="week-readiness/,
+      `${label}: Free and guest planners must not receive Strata+ plan-guidance cards`,
+    );
+    assert.equal(elements.get("plannerSignIn").hidden, false, "Guest planners see a sign-in link");
+  }
   assert.match(
     elements.get("plannerModeNotice").innerHTML,
     /Free device plan[\s\S]*No account required[\s\S]*stays in this browser[\s\S]*Use a synced plan/i,
@@ -1617,6 +1635,32 @@ function clickSelectDay(day) {
     /user-u1:/,
     "Account-change recovery stays scoped to the original owner",
   );
+
+  // A member's session that ends while Plan is open: /api/me answers 200 { user: null } (an older server, 401).
+  // Saving reports the ended session, and the entitlement check locks the week, exactly as for the 401.
+  for (const signedOut of [
+    { ok: true, status: 200, json: async () => ({ user: null }) },
+    { ok: false, status: 401, json: async () => ({ error: "Not signed in." }) },
+  ]) {
+    storedValues.clear();
+    reset({ guest: false });
+    context.fetch = async (path) =>
+      path === "/api/me"
+        ? signedOut
+        : { ok: false, status: 404, json: async () => ({ error: "Not found" }) };
+    const saveCheck = await run(
+      "verifyPlannerIdentity().then(()=>'verified',(error)=>[error.status,error.message,planSaveError(error),state.accountChanged].join('|'))",
+    );
+    assert.equal(
+      saveCheck,
+      "401|Not signed in.|Your session ended before the plan was saved. Sign in again, then retry.|false",
+      `a ${signedOut.status} identity check reports an ended session before saving`,
+    );
+    assert.equal(await run("refreshEntitlement({force:true})"), false);
+    assert.equal(run("state.accountChanged"), true, `a ${signedOut.status} locks the week`);
+    assert.equal(run("state.entitlementStatus"), "unavailable");
+    assert.equal(run("state.entitlementTimer"), null, "an ended session schedules no retry");
+  }
   run(`renderLoadError(new Error('Plan <b> & "x" failed'))`);
   assert.equal(
     elements.get("libraryList").innerHTML,

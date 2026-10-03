@@ -927,14 +927,24 @@ test("a stale CSRF token is refreshed once, and a signed-out page sends nothing"
     ],
   });
   assert.deepEqual([...(await stale.billing.submit(["jws"])).accepted], ["9"]);
-  const signedOut = billingRealm({
-    routes: [async () => jsonResponse(401, { error: "Not signed in." })],
-  });
-  await assert.rejects(
-    signedOut.billing.submit(["jws"]),
-    (error) => error.code === "SIGN_IN_REQUIRED" && error.status === 401,
-  );
-  assert.equal(signedOut.requests.length, 1);
+  // A visitor's /api/me is 200 { user: null }; an older server answered 401. Both are signed out, and neither is
+  // kept, so the next read asks STRATA again and sees a sign-in.
+  for (const answer of [
+    async () => jsonResponse(200, { user: null }),
+    async () => jsonResponse(401, { error: "Not signed in." }),
+  ]) {
+    const signedOut = billingRealm({ routes: [answer, answer] });
+    await assert.rejects(
+      signedOut.billing.submit(["jws"]),
+      (error) => error.code === "SIGN_IN_REQUIRED" && error.status === 401,
+    );
+    assert.equal(signedOut.requests.length, 1);
+    assert.equal(
+      JSON.stringify(await signedOut.billing.account()),
+      JSON.stringify({ user: null, csrfToken: "" }),
+    );
+    assert.equal(signedOut.requests.length, 2);
+  }
 });
 
 test("a StoreKit update is finished only after STRATA accepted it; anything else stays for StoreKit to redeliver", async () => {

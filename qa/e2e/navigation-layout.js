@@ -2,7 +2,8 @@
 /* global document, getComputedStyle, innerWidth, NodeFilter */
 
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { spawn } = require("node:child_process");
+const { mkdirSync, mkdtempSync, readFileSync, rmSync } = require("node:fs");
 const { join, resolve } = require("node:path");
 const test = require("node:test");
 const { chromium } = require("playwright");
@@ -456,6 +457,133 @@ test(
       await page.close();
     } finally {
       await browser.close();
+    }
+  },
+);
+
+function startVisitorServer(dataDirectory) {
+  const child = spawn(process.execPath, ["server.js"], {
+    cwd: ROOT,
+    env: {
+      PATH: process.env.PATH,
+      PORT: "0",
+      HOST: "127.0.0.1",
+      NODE_ENV: "test",
+      TZ: "UTC",
+      STRATA_DATA_DIR: dataDirectory,
+      TURSO_DATABASE_URL: "",
+      TURSO_AUTH_TOKEN: "",
+      TRUST_PROXY: "false",
+      APP_BASE_URL: "",
+      SECURE_COOKIES: "false",
+      ADMIN_EMAIL: "",
+      EMAIL_VERIFICATION_ENABLED: "false",
+      PADDLE_CHECKOUT_ENABLED: "false",
+    },
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return new Promise((resolveStart, reject) => {
+    let output = "";
+    const timer = setTimeout(
+      () => reject(new Error(`The visitor server did not start.\n${output}`)),
+      8_000,
+    );
+    const collect = (chunk) => {
+      output = (output + chunk.toString()).slice(-4096);
+      const match = output.match(/Strata running at http:\/\/127\.0\.0\.1:(\d+)/);
+      if (!match) return;
+      clearTimeout(timer);
+      resolveStart({ child, baseUrl: `http://127.0.0.1:${match[1]}` });
+    };
+    child.stdout.on("data", collect);
+    child.stderr.on("data", collect);
+    child.once("exit", (code) => {
+      clearTimeout(timer);
+      reject(new Error(`The visitor server exited (${code}).\n${output}`));
+    });
+  });
+}
+
+// A visitor's pages ask /api/me (200 { user: null }) and request nothing a member owns, so a reviewer who opens
+// developer tools on a public page sees a clean console.
+test(
+  "a signed-out visitor's public pages request no member data and log no console errors",
+  { timeout: 60_000 },
+  async () => {
+    mkdirSync(join(ROOT, "test-runtime"), { recursive: true });
+    const dataDirectory = mkdtempSync(join(ROOT, "test-runtime", "visitor-console-"));
+    const options = { headless: true };
+    if (process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH)
+      options.executablePath = resolve(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH);
+    let server, browser;
+    try {
+      server = await startVisitorServer(dataDirectory);
+      browser = await chromium.launch(options);
+      const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      // Third-party fonts and Paddle.js answer empty: they are not STRATA's to test, and offline they log errors.
+      await context.route(
+        /^https:\/\/(?:cdn\.paddle\.com|fonts\.googleapis\.com|fonts\.gstatic\.com)\//,
+        (route) =>
+          route.fulfill({
+            status: 200,
+            contentType: route.request().url().includes(".js") ? "text/javascript" : "text/css",
+            body: "",
+          }),
+      );
+      const page = await context.newPage();
+      let api = [],
+        errors = [];
+      page.on("response", (response) => {
+        const url = new URL(response.url());
+        if (url.origin === server.baseUrl && url.pathname.startsWith("/api/"))
+          api.push({ path: url.pathname, status: response.status() });
+      });
+      page.on("console", (message) => {
+        if (message.type() === "error") errors.push(message.text());
+      });
+      page.on("pageerror", (error) => errors.push(error.message));
+      for (const path of [
+        "/",
+        "/planner.html",
+        "/dashboard",
+        "/pricing",
+        "/account.html",
+        "/contact",
+        "/policies",
+        "/install.html",
+        "/discover.html",
+      ]) {
+        api = [];
+        errors = [];
+        await page.goto(`${server.baseUrl}${path}`, { waitUntil: "load" });
+        await page.waitForLoadState("networkidle");
+        const calls = api.map((call) => `${call.path} ${call.status}`).join(", ");
+        assert.deepEqual(
+          api.filter(({ status }) => status >= 400),
+          [],
+          `${path} must not get an error from STRATA's API: ${calls}`,
+        );
+        assert.deepEqual(
+          api.filter((call) => !["/api/me", "/api/billing/config"].includes(call.path)),
+          [],
+          `${path} must not request member data for a visitor: ${calls}`,
+        );
+        assert.deepEqual(errors, [], `${path} must not log console errors`);
+        if (["/", "/planner.html", "/account.html"].includes(path))
+          assert.ok(
+            api.some((call) => call.path === "/api/me" && call.status === 200),
+            `${path} asks who is signed in: ${calls}`,
+          );
+      }
+      await context.close();
+    } finally {
+      await browser?.close();
+      if (server && server.child.exitCode === null) {
+        const exited = new Promise((resolveExit) => server.child.once("exit", resolveExit));
+        server.child.kill("SIGTERM");
+        await exited;
+      }
+      rmSync(dataDirectory, { recursive: true, force: true });
     }
   },
 );

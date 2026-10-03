@@ -183,9 +183,14 @@ async function main() {
     assert.match(page.response.headers.get("cache-control"), /no-store/, route);
   }
 
+  // A visitor's identity read is a 200 { user: null }, and like every account answer it is never cached.
   const privateApi = await get("/api/me");
-  assert.equal(privateApi.response.status, 401);
+  assert.equal(privateApi.response.status, 200);
+  assert.deepEqual(JSON.parse(Buffer.from(privateApi.body).toString("utf8")), { user: null });
   assert.equal(privateApi.response.headers.get("cache-control"), "no-store");
+  const memberApi = await get("/api/plan");
+  assert.equal(memberApi.response.status, 401, "member reads still refuse a visitor");
+  assert.equal(memberApi.response.headers.get("cache-control"), "no-store");
 
   const statusResponse = await fetch(`${base}/api/status`);
   assert.equal(statusResponse.headers.get("cache-control"), "no-store");

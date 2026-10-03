@@ -15,7 +15,8 @@ The script lives outside the repository; it follows this route:
 
 No page threw a script error. The console showed only the expected signed-out identity checks
 (401 on `/api/me` and `/api/plan`) and Paddle's checkout script, which the build environment
-blocks.
+blocks. (Since 9.7, a visitor's `/api/me` answers `200 { user: null }` and pages no longer request
+`/api/plan` for a visitor, so those 401s are gone; see "Browser to server" in `architecture.md`.)
 
 ## What a stranger would trip over, and what changed
 
