@@ -101,6 +101,7 @@ function createAuthService({
   reconcileCheckoutCreationBeforeDeletion = async () => 0,
   reconcileUnsettledPurchases = async () => 0,
   appleDeletionNotice = async () => null,
+  googlePlayDeletionNotice = async () => null,
   logger = console,
 }) {
   if (
@@ -312,6 +313,7 @@ function createAuthService({
     reconcileCheckoutCreationBeforeDeletion,
     reconcileUnsettledPurchases,
     appleDeletionNotice,
+    googlePlayDeletionNotice,
   });
 
   function validateRegistration(input) {
@@ -910,7 +912,12 @@ function createAuthService({
     return { claimed, emailHash };
   }
 
-  async function createAndDeliverAccountAction(user, purpose, appleBilling = null) {
+  async function createAndDeliverAccountAction(
+    user,
+    purpose,
+    appleBilling = null,
+    googlePlayBilling = null,
+  ) {
     const token = randomBytes(32).toString("base64url"),
       now = Date.now();
     const staged = await store.stageAccountAction({
@@ -931,6 +938,7 @@ function createAuthService({
         purpose,
         expiresInMinutes: Math.ceil(ACCOUNT_ACTION_MS / 60000),
         appleSubscription: Boolean(appleBilling),
+        googlePlaySubscription: Boolean(googlePlayBilling),
       });
       const action = await store.activateAccountAction(
         staged.request_id,
@@ -943,6 +951,7 @@ function createAuthService({
         expiresAt: Number(action.expires_at),
         maskedEmail: maskEmail(user.email),
         ...(appleBilling ? { appleBilling } : {}),
+        ...(googlePlayBilling ? { googlePlayBilling } : {}),
       };
     } catch (error) {
       try {
@@ -1001,10 +1010,12 @@ function createAuthService({
           429,
           "ACCOUNT_EMAIL_LIMIT",
         );
+      const deletion = purpose === "account_delete";
       return await createAndDeliverAccountAction(
         session,
         purpose,
-        purpose === "account_delete" ? await appleDeletionNotice(session.id) : null,
+        deletion ? await appleDeletionNotice(session.id) : null,
+        deletion ? await googlePlayDeletionNotice(session.id) : null,
       );
     } catch (error) {
       if (error.status) throw error;
@@ -1025,13 +1036,15 @@ function createAuthService({
         Number(row.expires_at) > Date.now(),
       );
       if (!active) return { active: false };
-      const appleBilling =
-        expectedPurpose === "account_delete" ? await appleDeletionNotice(row.user_id) : null;
+      const deletion = expectedPurpose === "account_delete";
+      const appleBilling = deletion ? await appleDeletionNotice(row.user_id) : null;
+      const googlePlayBilling = deletion ? await googlePlayDeletionNotice(row.user_id) : null;
       return {
         active: true,
         expiresAt: Number(row.expires_at),
         maskedEmail: maskEmail(row.email),
         ...(appleBilling ? { appleBilling } : {}),
+        ...(googlePlayBilling ? { googlePlayBilling } : {}),
       };
     } catch (error) {
       throw accountStorageUnavailable(error);
@@ -1761,14 +1774,15 @@ function createAuthService({
       return;
     }
     try {
-      const { appleBilling } = await deleteAccountWithToken(await bodyJson(req));
+      const { appleBilling, googlePlayBilling } = await deleteAccountWithToken(await bodyJson(req));
       json(
         res,
         200,
         {
           ok: true,
-          message: deletedMessage(appleBilling),
+          message: deletedMessage(appleBilling, googlePlayBilling),
           ...(appleBilling ? { appleBilling } : {}),
+          ...(googlePlayBilling ? { googlePlayBilling } : {}),
         },
         { "Set-Cookie": [...sessionCookies("", 0), signupCookie("", 0)] },
       );

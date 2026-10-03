@@ -25,6 +25,7 @@ function composeServices({
   reconcileUnsettledPurchases,
   isUniqueViolation,
   appleDeletionNotice,
+  googlePlayDeletionNotice,
   serviceStatus,
   createAuthService,
   createAdminService,
@@ -51,6 +52,7 @@ function composeServices({
     reconcileCheckoutCreationBeforeDeletion,
     reconcileUnsettledPurchases,
     ...(appleDeletionNotice ? { appleDeletionNotice } : {}),
+    ...(googlePlayDeletionNotice ? { googlePlayDeletionNotice } : {}),
   });
   admin = createAdminService({
     store,

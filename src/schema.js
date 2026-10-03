@@ -23,6 +23,11 @@ const {
   APPLE_BILLING_SQL,
   activeAppleSubscription,
 } = require("./apple-billing-schema");
+const {
+  GOOGLE_PLAY_BILLING_SCHEMA,
+  GOOGLE_PLAY_BILLING_SQL,
+  activeGooglePlaySubscription,
+} = require("./google-play-billing-schema");
 const { SOCIAL_AUTH_SCHEMA, SOCIAL_AUTH_SQL } = require("./social-auth-schema");
 const { SERVER_STATE_SCHEMA, SERVER_STATE_SQL } = require("./server-state-schema");
 const { METRICS_SQL } = require("./metrics-schema");
@@ -181,6 +186,7 @@ const SCHEMA = [
   "CREATE INDEX IF NOT EXISTS ratings_exercise_id ON ratings(exercise_id)",
   ...BILLING_SCHEMA,
   ...APPLE_BILLING_SCHEMA,
+  ...GOOGLE_PLAY_BILLING_SCHEMA,
   ADMIN_CONTROLS_TABLE,
   `CREATE TABLE IF NOT EXISTS support_tickets (
     id TEXT PRIMARY KEY,
@@ -561,6 +567,7 @@ const SQL = {
         WHERE u.suspended_at IS NULL
           AND (EXISTS(SELECT 1 FROM paddle_purchases pp WHERE pp.user_id=u.id AND ${activeEntitlement("pp")})
               OR EXISTS(SELECT 1 FROM apple_subscriptions aps WHERE aps.user_id=u.id AND ${activeAppleSubscription("aps")})
+              OR EXISTS(SELECT 1 FROM google_play_subscriptions gps WHERE gps.user_id=u.id AND ${activeGooglePlaySubscription("gps")})
               OR EXISTS(SELECT 1 FROM admin_account_controls ac WHERE ac.user_id=u.id AND ${activeGrant("ac")}))) AS discovery_users,
       (SELECT COUNT(*)
         FROM paddle_purchases
@@ -610,6 +617,8 @@ const SQL = {
         LIMIT 1) AS transaction_status,
       (SELECT COUNT(*) FROM apple_subscriptions aps WHERE aps.user_id=u.id AND ${activeAppleSubscription("aps")}) AS active_apple_count,
       (SELECT aps.expires_at FROM apple_subscriptions aps WHERE aps.user_id=u.id ORDER BY aps.expires_at DESC LIMIT 1) AS apple_expires_at,
+      (SELECT COUNT(*) FROM google_play_subscriptions gps WHERE gps.user_id=u.id AND ${activeGooglePlaySubscription("gps")}) AS active_google_play_count,
+      (SELECT gps.expires_at FROM google_play_subscriptions gps WHERE gps.user_id=u.id ORDER BY gps.expires_at DESC LIMIT 1) AS google_play_expires_at,
       (SELECT request_id
         FROM account_action_requests a
         WHERE a.user_id=u.id AND a.purpose='account_delete' AND a.delivery_state='sent'
@@ -647,6 +656,8 @@ const SQL = {
         LIMIT 1) AS transaction_status,
       (SELECT COUNT(*) FROM apple_subscriptions aps WHERE aps.user_id=u.id AND ${activeAppleSubscription("aps")}) AS active_apple_count,
       (SELECT aps.expires_at FROM apple_subscriptions aps WHERE aps.user_id=u.id ORDER BY aps.expires_at DESC LIMIT 1) AS apple_expires_at,
+      (SELECT COUNT(*) FROM google_play_subscriptions gps WHERE gps.user_id=u.id AND ${activeGooglePlaySubscription("gps")}) AS active_google_play_count,
+      (SELECT gps.expires_at FROM google_play_subscriptions gps WHERE gps.user_id=u.id ORDER BY gps.expires_at DESC LIMIT 1) AS google_play_expires_at,
       (SELECT expires_at
         FROM account_action_requests a
         WHERE a.user_id=u.id AND a.purpose='account_delete' AND a.delivery_state='sent'
@@ -756,6 +767,7 @@ const SQL = {
   ...DATA_LAYER_SQL,
   ...AI_SQL,
   ...APPLE_BILLING_SQL,
+  ...GOOGLE_PLAY_BILLING_SQL,
   ...SOCIAL_AUTH_SQL,
   ...SERVER_STATE_SQL,
 };

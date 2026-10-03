@@ -4,6 +4,7 @@
 const { cleanText, defaultPreferences, planStats } = require("./plans");
 const { planForPrice } = require("./paddle-catalog");
 const { appleProductPlan } = require("./apple-billing");
+const { googlePlayPlan } = require("./google-play-billing");
 const { buildInvestorMetrics, metricsCsv, metricsSince } = require("./metrics");
 
 /** Comma-separated addresses, normalized as sign-in normalizes an email. @param {unknown} value */
@@ -55,11 +56,13 @@ function createAdminMetricsService({
     !http?.json
   )
     throw new TypeError("Metrics service dependencies are incomplete.");
-  // The owner, App Store review accounts, and the demo or test accounts the owner lists are not customers.
+  // The owner, App Store review and Google Play test accounts, and the demo or test accounts the owner lists are not
+  // customers.
   const internalEmails = [
     ...new Set([
       ...emailList(adminEmail),
       ...emailList(environment.APPLE_SANDBOX_ACCOUNTS),
+      ...emailList(environment.GOOGLE_PLAY_TEST_ACCOUNTS),
       ...emailList(environment.STRATA_INTERNAL_ACCOUNTS),
     ]),
   ];
@@ -125,6 +128,13 @@ function createAdminMetricsService({
           startedAt: Number(row.started_at),
           endsAt: Number(row.ends_at),
           revokedAt: row.revoked_at === null ? null : Number(row.revoked_at),
+        })),
+        googlePlay: (rows.googlePlay || []).filter(customer).map((row) => ({
+          userId: String(row.user_id),
+          plan: googlePlayPlan(row.base_plan_id),
+          startedAt: Number(row.started_at),
+          endsAt: Number(row.ends_at),
+          revokedAt: null,
         })),
         lifetimeUserIds: rows.lifetime.filter(customer).map((row) => String(row.user_id)),
         aiUsage: rows.aiUsage.filter(customer).map((row) => ({

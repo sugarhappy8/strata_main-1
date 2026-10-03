@@ -17,15 +17,15 @@ const ACTIVATION_DAYS = 7;
 const RETENTION_WEEKS = Object.freeze([4, 8]);
 /**
  * What one subscription brings in per month at list price, and after the provider's fee per charge: Paddle 5% +
- * $0.50, Apple 15% (Small Business Program). A yearly plan is spread over twelve months. App Store subscriptions are
- * valued at their plan's US price.
- * @param {"monthly"|"yearly"} planKey @param {"paddle"|"apple"} provider
+ * $0.50, Apple 15% (Small Business Program), Google Play 15% (every subscription). A yearly plan is spread over twelve
+ * months. App Store and Google Play subscriptions are valued at their plan's US price.
+ * @param {"monthly"|"yearly"} planKey @param {"paddle"|"apple"|"google"} provider
  */
 function monthlyValue(planKey, provider) {
   const plan = planKey === "yearly" ? PLANS.yearly : PLANS.monthly,
     amount = Number(plan.amount),
     months = plan.interval === "year" ? 12 : 1,
-    net = provider === "apple" ? amount * 0.85 : amount - (amount * 0.05 + 0.5);
+    net = provider === "paddle" ? amount - (amount * 0.05 + 0.5) : amount * 0.85;
   return { list: amount / months, net: net / months };
 }
 const ENDED_PADDLE_STATUSES = Object.freeze(["canceled", "paused"]);
@@ -37,9 +37,9 @@ const ENDED_PADDLE_STATUSES = Object.freeze(["canceled", "paused"]);
  * @typedef {{userId:string,plan?:"monthly"|"yearly",startedAt:number,endsAt:number,revokedAt:number|null}} MetricsAppleSubscription
  * @typedef {{userId:string,month:string,requests:number,tokens:number}} MetricsAiUsage
  * @typedef {{accounts:MetricsAccount[],activeDays:MetricsActiveDay[],paddle:MetricsPaddleSubscription[],
- *   apple:MetricsAppleSubscription[],lifetimeUserIds:string[],aiUsage:MetricsAiUsage[],activationSince:number|null,
- *   internalAccounts:number}} MetricsSource
- * @typedef {{provider:"paddle"|"apple",plan:"monthly"|"yearly",userId:string,start:number,end:number|null}} PaidInterval
+ *   apple:MetricsAppleSubscription[],googlePlay?:MetricsAppleSubscription[],lifetimeUserIds:string[],
+ *   aiUsage:MetricsAiUsage[],activationSince:number|null,internalAccounts:number}} MetricsSource
+ * @typedef {{provider:"paddle"|"apple"|"google",plan:"monthly"|"yearly",userId:string,start:number,end:number|null}} PaidInterval
  */
 
 /** @param {number} ms */
@@ -192,17 +192,24 @@ function paidIntervals(source, now) {
       start: row.startedAt,
       end: ENDED_PADDLE_STATUSES.includes(row.status) ? row.changedAt : null,
     })),
-    ...source.apple.map((row) => ({
-      provider: /** @type {"apple"} */ ("apple"),
-      plan:
-        row.plan === "yearly"
-          ? /** @type {"yearly"} */ ("yearly")
-          : /** @type {"monthly"} */ ("monthly"),
-      userId: row.userId,
-      start: row.startedAt,
-      end: row.revokedAt ?? (row.endsAt <= now ? row.endsAt : null),
-    })),
+    ...storeIntervals(source.apple, "apple", now),
+    ...storeIntervals(source.googlePlay || [], "google", now),
   ];
+}
+
+/**
+ * App-store subscriptions end when revoked, or at an expiry that has passed.
+ * @param {MetricsAppleSubscription[]} rows @param {"apple"|"google"} provider @param {number} now
+ * @returns {PaidInterval[]}
+ */
+function storeIntervals(rows, provider, now) {
+  return rows.map((row) => ({
+    provider,
+    plan: row.plan === "yearly" ? "yearly" : "monthly",
+    userId: row.userId,
+    start: row.startedAt,
+    end: row.revokedAt ?? (row.endsAt <= now ? row.endsAt : null),
+  }));
 }
 
 /** @param {PaidInterval[]} intervals @param {number} at */
@@ -302,6 +309,7 @@ function buildInvestorMetrics(source, { now, usdPerMillionTokens = null }) {
       paddleSubscriptions: paying.filter((item) => item.provider === "paddle").length,
       yearlySubscriptions: paying.filter((item) => item.plan === "yearly").length,
       appStoreSubscriptions: paying.filter((item) => item.provider === "apple").length,
+      googlePlaySubscriptions: paying.filter((item) => item.provider === "google").length,
       lifetimeMembers: new Set(source.lifetimeUserIds.filter((id) => !payingUsers.has(id))).size,
       mrr: recurringRevenue(paying),
     },
@@ -342,13 +350,15 @@ function metricsCsv(metrics) {
     ].concat([
       "Yearly subscriptions",
       "App Store subscriptions",
+      "Google Play subscriptions",
       "Lifetime members",
       "MRR (USD list)",
       "MRR after fees (USD est.)",
     ]),
     [revenue.accounts, revenue.everPaid, percent(revenue.conversionRate), revenue.payingMembers]
       .concat([revenue.paddleSubscriptions, revenue.yearlySubscriptions])
-      .concat([revenue.appStoreSubscriptions, revenue.lifetimeMembers])
+      .concat([revenue.appStoreSubscriptions, revenue.googlePlaySubscriptions])
+      .concat([revenue.lifetimeMembers])
       .concat([revenue.mrr.list.toFixed(2), revenue.mrr.afterFees.toFixed(2)]),
     [],
     [

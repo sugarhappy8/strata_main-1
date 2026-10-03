@@ -48,6 +48,12 @@ const ACCOUNT_EXPORT_QUERIES = Object.freeze({
     FROM apple_subscriptions
     WHERE user_id=?
     ORDER BY created_at,original_transaction_id`,
+  // The purchase token stays with STRATA (it is a credential for Google's API); the Google Play order id identifies it.
+  googlePlaySubscriptions: `SELECT product_id,base_plan_id,state,test_purchase,latest_order_id,started_at,expires_at,
+      auto_renew,created_at,updated_at
+    FROM google_play_subscriptions
+    WHERE user_id=?
+    ORDER BY created_at,latest_order_id`,
   adjustments: `SELECT a.adjustment_id,a.transaction_id,a.action,a.type,a.status,a.occurred_at,a.updated_at
     FROM paddle_adjustments a
     JOIN paddle_purchases p ON p.transaction_id=a.transaction_id

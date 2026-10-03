@@ -56,6 +56,11 @@ const METRICS_SQL = Object.freeze({
       MAX(COALESCE(expires_at,0),COALESCE(grace_period_expires_at,0)) AS ends_at,revoked_at
     FROM apple_subscriptions
     WHERE environment='Production'`,
+  // Google Play test purchases are tests, and a purchase still waiting for payment never paid.
+  metricsGooglePlaySubscriptions: `SELECT user_id,base_plan_id,COALESCE(started_at,created_at) AS started_at,
+      COALESCE(expires_at,0) AS ends_at
+    FROM google_play_subscriptions
+    WHERE test_purchase=0 AND state NOT IN ('PENDING','PENDING_PURCHASE_CANCELED')`,
   metricsLifetimePurchases: `SELECT DISTINCT user_id FROM paddle_purchases
     WHERE subscription_id IS NULL AND paddle_status='completed' AND completed_at IS NOT NULL
       AND access_revoked_at IS NULL AND user_id IS NOT NULL`,

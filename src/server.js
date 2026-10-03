@@ -32,6 +32,11 @@ const { createDataService } = require("./data-service");
 const { profilePayload: coachingProfilePayload } = require("./coaching");
 const { createBillingService } = require("./billing");
 const { appleBillingSettings, createAppleBillingService } = require("./apple-billing");
+const { createGooglePlayApi } = require("./google-play-api");
+const {
+  createGooglePlayBillingService,
+  googlePlayBillingSettings,
+} = require("./google-play-billing");
 const { withAppendedCookies } = require("./session-renewal");
 const { createSingleInstanceGuard } = require("./single-instance");
 const { createRouter } = require("./router");
@@ -77,6 +82,9 @@ const ENFORCE_PADDLE_IPS =
   String(process.env.PADDLE_ENFORCE_IP_ALLOWLIST || "").toLowerCase() === "true";
 const AI_SETTINGS = aiSettings(process.env);
 const APPLE_SETTINGS = appleBillingSettings(process.env);
+const GOOGLE_PLAY_SETTINGS = googlePlayBillingSettings(process.env);
+// How often Google Play subscriptions near their expiry (or not acknowledged yet) are read again.
+const GOOGLE_PLAY_REFRESH_MS = 10 * 60 * 1000;
 const ENTITLEMENTS = entitlementSettings(process.env);
 const SOCIAL_SETTINGS = socialAuthSettings(process.env);
 const LOGGER = createLogger();
@@ -328,7 +336,7 @@ let devices;
 let ai, aiSettingsService, briefJob;
 let setup;
 let productSignals, adminMetrics;
-let billing, appleBilling, social;
+let billing, appleBilling, googlePlayBilling, social;
 let router;
 
 function escapeHtml(value) {
@@ -390,35 +398,53 @@ async function hasCurrentDiscoveryAccess(userId, now = Date.now()) {
 
 async function userPayload(session) {
   const now = Date.now();
-  const [plan, paidDiscovery, subscription, apple, deletion, adminState, controls, signIn] =
-    await Promise.all([
-      planFor(session.id),
-      billing.accessSummaryForUser(session.id),
-      billing.subscriptionForUser(session.id),
-      appleBilling.subscriptionForUser(session.id, session),
-      store.activeAccountDeletion(session.id, now),
-      admin.adminIdentity(session),
-      store.adminControls(session.id),
-      store.accountSignInMethods(session.id),
-    ]);
+  const [
+    plan,
+    paidDiscovery,
+    subscription,
+    apple,
+    googlePlay,
+    deletion,
+    adminState,
+    controls,
+    signIn,
+  ] = await Promise.all([
+    planFor(session.id),
+    billing.accessSummaryForUser(session.id),
+    billing.subscriptionForUser(session.id),
+    appleBilling.subscriptionForUser(session.id, session),
+    googlePlayBilling.subscriptionForUser(session.id, session),
+    store.activeAccountDeletion(session.id, now),
+    admin.adminIdentity(session),
+    store.adminControls(session.id),
+    store.accountSignInMethods(session.id),
+  ]);
   const adminGrant = adminGrantState(controls, now);
   const discovery = {
     ...paidDiscovery,
-    active: paidDiscovery.active || Boolean(apple?.active) || adminGrant.active,
+    active:
+      paidDiscovery.active ||
+      Boolean(apple?.active) ||
+      Boolean(googlePlay?.active) ||
+      adminGrant.active,
     // "paid" covers a Paddle subscription or a legacy lifetime purchase; the
     // nullable subscription snapshot tells the two apart for the client.
-    // "apple" is Strata+ bought in the iOS app; precedence is paid > apple > grant.
+    // "apple" is Strata+ bought in the iOS app and "google" in the Android app;
+    // precedence is paid > apple > google > grant.
     accessType: paidDiscovery.active
       ? "paid"
       : apple?.active
         ? "apple"
-        : adminGrant.active
-          ? "grant"
-          : null,
+        : googlePlay?.active
+          ? "google"
+          : adminGrant.active
+            ? "grant"
+            : null,
     adminGrant,
     checkoutBlocked: Boolean(controls?.checkout_blocked_at),
     subscription,
     apple,
+    googlePlay,
   };
   return {
     id: session.id,
@@ -967,6 +993,7 @@ const server = http.createServer(
 server.setTimeout(60_000, (socket) => socket.destroy());
 
 let cleanup,
+  googlePlayRefresh,
   shuttingDown = false,
   events,
   dataService,
@@ -998,10 +1025,22 @@ async function start() {
     http: { json, bodyJson },
     logger: LOGGER,
     appleSandbox: APPLE_SETTINGS,
+    googlePlayTest: GOOGLE_PLAY_SETTINGS,
   });
   appleBilling = createAppleBillingService({
     store,
     settings: APPLE_SETTINGS,
+    getUserPayload: userPayload,
+    rateAllowed,
+    http: { json },
+    logger: LOGGER,
+  });
+  googlePlayBilling = createGooglePlayBillingService({
+    store,
+    settings: GOOGLE_PLAY_SETTINGS,
+    api: GOOGLE_PLAY_SETTINGS.serviceAccount
+      ? createGooglePlayApi({ serviceAccount: GOOGLE_PLAY_SETTINGS.serviceAccount })
+      : null,
     getUserPayload: userPayload,
     rateAllowed,
     http: { json },
@@ -1023,8 +1062,10 @@ async function start() {
     reconcileUnsettledPurchases: billing.reconcileUnsettledPurchases,
     isUniqueViolation,
     appleDeletionNotice: appleBilling.deletionNotice,
+    googlePlayDeletionNotice: googlePlayBilling.deletionNotice,
     serviceStatus: () => ({
       appStore: APPLE_SETTINGS.configured,
+      googlePlay: GOOGLE_PLAY_SETTINGS.configured,
       signInProviders: social ? social.enabledProviders() : [],
     }),
     createAuthService,
@@ -1173,6 +1214,7 @@ async function start() {
     coaching.routes,
     training.routes,
     appleBilling.routes,
+    googlePlayBilling.routes,
     billing.routes,
     admin.routes,
     auth.routes,
@@ -1224,6 +1266,13 @@ async function start() {
     60 * 60 * 1000,
   );
   cleanup.unref();
+  const refreshGooglePlay = () =>
+    void googlePlayBilling
+      .refreshDue()
+      .catch((error) => LOGGER.error("google_play.refresh_run_failed", { error }));
+  refreshGooglePlay();
+  googlePlayRefresh = setInterval(refreshGooglePlay, GOOGLE_PLAY_REFRESH_MS);
+  googlePlayRefresh.unref();
   server.listen(PORT, HOST, () => {
     const address = server.address(),
       listeningPort = typeof address === "object" && address ? address.port : PORT;
@@ -1242,6 +1291,7 @@ function shutdown() {
   if (shuttingDown) return;
   shuttingDown = true;
   if (cleanup) clearInterval(cleanup);
+  if (googlePlayRefresh) clearInterval(googlePlayRefresh);
   devices?.stop();
   briefJob?.stop();
   events?.stop();

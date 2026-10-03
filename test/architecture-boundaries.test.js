@@ -58,6 +58,7 @@ test("domain services do not reach into the composition root or database adapter
     "src/coaching-store.js",
     "src/data-layer-store.js",
     "src/devices-store.js",
+    "src/google-play-billing-store.js",
     "src/metrics-store.js",
     "src/migrations.js",
     "src/schema.js",

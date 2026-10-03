@@ -12,20 +12,23 @@ const { METRICS_SQL, ACTIVATION_MIGRATION_ID } = require("./metrics-schema");
  */
 async function readMetricsRows(query, since, internalEmails) {
   const sinceDate = new Date(since).toISOString().slice(0, 10);
-  const [accounts, activeDays, paddle, apple, lifetime, aiUsage, ledger] = await Promise.all([
-    query("metricsAccounts", [JSON.stringify(internalEmails)]),
-    query("metricsActiveDays", [since, since, since, sinceDate, since, sinceDate]),
-    query("metricsPaddleSubscriptions", []),
-    query("metricsAppleSubscriptions", []),
-    query("metricsLifetimePurchases", []),
-    query("metricsAiUsage", [sinceDate]),
-    query("metricsActivationSince", [ACTIVATION_MIGRATION_ID]),
-  ]);
+  const [accounts, activeDays, paddle, apple, googlePlay, lifetime, aiUsage, ledger] =
+    await Promise.all([
+      query("metricsAccounts", [JSON.stringify(internalEmails)]),
+      query("metricsActiveDays", [since, since, since, sinceDate, since, sinceDate]),
+      query("metricsPaddleSubscriptions", []),
+      query("metricsAppleSubscriptions", []),
+      query("metricsGooglePlaySubscriptions", []),
+      query("metricsLifetimePurchases", []),
+      query("metricsAiUsage", [sinceDate]),
+      query("metricsActivationSince", [ACTIVATION_MIGRATION_ID]),
+    ]);
   return {
     accounts,
     activeDays,
     paddle,
     apple,
+    googlePlay,
     lifetime,
     aiUsage,
     activationSince: ledger[0]?.applied_at ?? null,

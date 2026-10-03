@@ -291,6 +291,7 @@ test("every write in src/ is protected unless it is one of the reviewed public o
     "public POST /api/support",
     "public POST /api/verify-email",
     "webhook POST /api/billing/apple/notifications",
+    "webhook POST /api/billing/google/notifications",
     "webhook POST /api/paddle/webhook",
   ]);
   const keys = routes.map((route) => `${route.method} ${route.path}`);

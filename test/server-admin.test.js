@@ -647,6 +647,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
     webhookProtection: false,
     adminConfigured: true,
     appStore: true,
+    googlePlay: false,
     signInProviders: [],
   });
   assert.ok(overview.data.overview.accounts.total >= 3);

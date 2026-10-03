@@ -26,6 +26,7 @@ const {
   planForPrice,
 } = require("./payments");
 const { MANAGE_SUBSCRIPTIONS_URL } = require("./apple-billing");
+const { MANAGE_SUBSCRIPTIONS_URL: GOOGLE_PLAY_MANAGE_URL } = require("./google-play-billing");
 const { cleanText } = require("./plans");
 
 const ABANDONED_CHECKOUT_MS = 30 * 60 * 1000;
@@ -54,6 +55,11 @@ const PADDLE_STATUS_EVENTS = new Set([
 const PADDLE_CANCELABLE_STALE_STATUSES = new Set(["ready", "billed"]);
 /** @type {import("./domain-types").AppleSandboxPolicy} */
 const PRODUCTION_ONLY_APPLE = Object.freeze({ allowSandbox: false, sandboxAccounts: new Set() });
+/** @type {import("./domain-types").GooglePlayTestPolicy} */
+const PRODUCTION_ONLY_GOOGLE_PLAY = Object.freeze({
+  allowTestPurchases: false,
+  testAccounts: new Set(),
+});
 /** @param {unknown} value @param {number} [fallback] */
 const eventTime = (value, fallback = Date.now()) => {
   const parsed = Date.parse(String(value || ""));
@@ -79,6 +85,7 @@ function createBillingService({
   http,
   logger,
   appleSandbox = PRODUCTION_ONLY_APPLE,
+  googlePlayTest = PRODUCTION_ONLY_GOOGLE_PLAY,
   now = Date.now,
   makeId = randomUUID,
 }) {
@@ -117,15 +124,17 @@ function createBillingService({
     );
   }
 
-  // Strata+ is one entitlement however it was paid for: Paddle, Apple In-App Purchase, or an owner's grant.
+  // Strata+ is one entitlement however it was paid for: Paddle, Apple In-App Purchase, Google Play Billing, or an
+  // owner's grant.
   /** @param {string} userId @param {number} [timestamp] @param {import("./domain-types").AdminControlsRow|null} [knownControls] */
   async function hasCurrentAccess(userId, timestamp = now(), knownControls) {
-    const [paid, apple, controls] = await Promise.all([
+    const [paid, apple, googlePlay, controls] = await Promise.all([
       hasCurrentPaidAccess(userId, timestamp),
       store.hasActiveAppleSubscription(userId, timestamp, appleSandbox),
+      store.hasActiveGooglePlaySubscription(userId, timestamp, googlePlayTest),
       knownControls === undefined ? store.adminControls(userId) : knownControls,
     ]);
-    return Boolean(paid || apple || adminGrantState(controls, timestamp).active);
+    return Boolean(paid || apple || googlePlay || adminGrantState(controls, timestamp).active);
   }
 
   /** @param {string} userId @param {number} [timestamp] */
@@ -758,13 +767,18 @@ function createBillingService({
     json(res, 200, { ok: true, outcome });
   }
 
-  // Never take a second payment: a member whose Strata+ comes from the App Store is told so.
+  // Never take a second payment: a member whose Strata+ comes from an app store is told which one.
   /** @param {import("./domain-types").HttpResponse} res @param {string} userId */
   async function alreadyEntitled(res, userId) {
     if (await store.hasActiveAppleSubscription(userId, now(), appleSandbox))
       json(res, 409, {
         error: "You already have Strata+ through the App Store.",
         code: "ALREADY_ENTITLED_APP_STORE",
+      });
+    else if (await store.hasActiveGooglePlaySubscription(userId, now(), googlePlayTest))
+      json(res, 409, {
+        error: "You already have Strata+ through Google Play.",
+        code: "ALREADY_ENTITLED_GOOGLE_PLAY",
       });
     else
       json(res, 409, {
@@ -1070,6 +1084,16 @@ function createBillingService({
             "Your Strata+ subscription is managed by the App Store. Manage it in Settings on your iPhone.",
           code: "APP_STORE_MANAGED",
           manageUrl: MANAGE_SUBSCRIPTIONS_URL,
+        });
+        return;
+      }
+      // Strata+ bought in the Android app is managed by Google Play.
+      if ((await store.googlePlaySubscriptionsForUser(session.id)).length) {
+        json(res, 409, {
+          error:
+            "Your Strata+ subscription is managed by Google Play. Manage it in the Play Store on your Android phone.",
+          code: "GOOGLE_PLAY_MANAGED",
+          manageUrl: GOOGLE_PLAY_MANAGE_URL,
         });
         return;
       }
