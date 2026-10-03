@@ -18,6 +18,7 @@
       throw new TypeError("Admin rendering requires document, state, and logic dependencies.");
     const {
       appleFacts,
+      googlePlayFacts,
       booleanValue,
       cleanString,
       deletionPending,
@@ -149,6 +150,16 @@
             ? "Not configured"
             : "Status unavailable",
         appStore === true ? "good" : "warn",
+      );
+      const googlePlay = booleanValue(system, ["googlePlay"]);
+      setService(
+        "googlePlayStatus",
+        googlePlay === true
+          ? "Purchases verified"
+          : googlePlay === false
+            ? "Not configured"
+            : "Status unavailable",
+        googlePlay === true ? "good" : "warn",
       );
       setService(
         "signInStatus",
@@ -391,6 +402,7 @@
         ),
       );
       for (const [label, value] of appleFacts(user)) addFact(facts, label, value);
+      for (const [label, value] of googlePlayFacts(user)) addFact(facts, label, value);
       addFact(facts, "Weekly plan", planSummary(user));
       addFact(
         facts,

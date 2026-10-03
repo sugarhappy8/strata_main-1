@@ -10,40 +10,42 @@
       "maxLines": 1410,
       "allowedDependencies": [
         "src/access-controls.js",
+        "src/admin-metrics.js",
         "src/admin.js",
+        "src/ai-daily-brief.js",
         "src/ai-provider.js",
+        "src/ai-quota.js",
+        "src/ai-settings.js",
         "src/ai.js",
+        "src/apple-billing.js",
         "src/athlete-profile.js",
         "src/auth.js",
         "src/billing.js",
         "src/coaching.js",
+        "src/data-service.js",
         "src/database.js",
         "src/devices.js",
         "src/email.js",
         "src/entitlements.js",
         "src/events.js",
+        "src/google-play-api.js",
+        "src/google-play-billing.js",
         "src/http.js",
         "src/observability.js",
         "src/payments.js",
         "src/plans.js",
         "src/product-signals.js",
+        "src/router.js",
         "src/service-composition.js",
+        "src/session-renewal.js",
         "src/setup.js",
+        "src/single-instance.js",
+        "src/social-auth-config.js",
+        "src/social-auth.js",
         "src/static-assets.js",
         "src/support.js",
         "src/training.js",
-        "src/workouts.js",
-        "src/data-service.js",
-        "src/ai-quota.js",
-        "src/ai-settings.js",
-        "src/ai-daily-brief.js",
-        "src/apple-billing.js",
-        "src/session-renewal.js",
-        "src/social-auth.js",
-        "src/social-auth-config.js",
-        "src/single-instance.js",
-        "src/router.js",
-        "src/admin-metrics.js"
+        "src/workouts.js"
       ]
     },
     "src/service-composition.js": {
@@ -120,9 +122,10 @@
       "allowedDependencies": [
         "src/access-controls.js",
         "src/admin-user-actions.js",
+        "src/apple-billing.js",
         "src/email.js",
-        "src/plans.js",
-        "src/apple-billing.js"
+        "src/google-play-billing.js",
+        "src/plans.js"
       ]
     },
     "src/support.js": {
@@ -161,19 +164,20 @@
       "allowedDependencies": [
         "src/access-controls-store.js",
         "src/account-self-service-store.js",
-        "src/billing-store.js",
-        "src/coaching-store.js",
-        "src/devices-store.js",
-        "src/migrations.js",
-        "src/schema.js",
-        "src/store-contract.js",
-        "src/training-loop-store.js",
-        "src/data-layer-store.js",
         "src/ai-store.js",
         "src/apple-billing-store.js",
-        "src/social-auth-store.js",
+        "src/billing-store.js",
+        "src/coaching-store.js",
+        "src/data-layer-store.js",
+        "src/devices-store.js",
+        "src/google-play-billing-store.js",
+        "src/metrics-store.js",
+        "src/migrations.js",
+        "src/schema.js",
         "src/server-state-store.js",
-        "src/metrics-store.js"
+        "src/social-auth-store.js",
+        "src/store-contract.js",
+        "src/training-loop-store.js"
       ]
     },
     "src/store-contract.js": {
@@ -196,17 +200,18 @@
       "allowedDependencies": [
         "src/access-controls-schema.js",
         "src/account-self-service-schema.js",
-        "src/billing-schema.js",
-        "src/coaching-schema.js",
-        "src/devices-schema.js",
-        "src/product-signals-schema.js",
-        "src/training-loop-schema.js",
-        "src/data-layer-schema.js",
         "src/ai-schema.js",
         "src/apple-billing-schema.js",
-        "src/social-auth-schema.js",
+        "src/billing-schema.js",
+        "src/coaching-schema.js",
+        "src/data-layer-schema.js",
+        "src/devices-schema.js",
+        "src/google-play-billing-schema.js",
+        "src/metrics-schema.js",
+        "src/product-signals-schema.js",
         "src/server-state-schema.js",
-        "src/metrics-schema.js"
+        "src/social-auth-schema.js",
+        "src/training-loop-schema.js"
       ]
     },
     "src/product-signals-schema.js": {
@@ -219,6 +224,7 @@
       "maxLines": 180,
       "allowedDependencies": [
         "src/apple-billing.js",
+        "src/google-play-billing.js",
         "src/metrics.js",
         "src/paddle-catalog.js",
         "src/plans.js"
@@ -226,7 +232,7 @@
     },
     "src/metrics.js": {
       "role": "Pure investor-metrics figures and CSV from account-scoped rows",
-      "maxLines": 440,
+      "maxLines": 470,
       "allowedDependencies": ["src/paddle-catalog.js"]
     },
     "src/metrics-schema.js": {
@@ -271,6 +277,7 @@
         "src/access-controls.js",
         "src/apple-billing.js",
         "src/checkout-reconciliation.js",
+        "src/google-play-billing.js",
         "src/http.js",
         "src/payments.js",
         "src/plans.js"
@@ -596,6 +603,26 @@
       "role": "SQLite and Turso Apple subscription storage parity",
       "maxLines": 160,
       "allowedDependencies": ["src/apple-billing-schema.js"]
+    },
+    "src/google-play-api.js": {
+      "role": "Google Play Developer API: service-account OAuth (RS256 JWT), subscriptionsv2 reads, acknowledgements",
+      "maxLines": 240,
+      "allowedDependencies": []
+    },
+    "src/google-play-billing.js": {
+      "role": "Google Play Billing: purchase tokens from the Android app, Real-time developer notifications, background refresh, Strata+ state",
+      "maxLines": 620,
+      "allowedDependencies": ["src/google-play-api.js", "src/http.js"]
+    },
+    "src/google-play-billing-schema.js": {
+      "role": "Google Play subscription schema and access predicate",
+      "maxLines": 110,
+      "allowedDependencies": []
+    },
+    "src/google-play-billing-store.js": {
+      "role": "SQLite and Turso Google Play subscription storage parity",
+      "maxLines": 150,
+      "allowedDependencies": ["src/google-play-billing-schema.js"]
     },
     "src/session-renewal.js": {
       "role": "Sliding session renewal and adding its cookie to the response",

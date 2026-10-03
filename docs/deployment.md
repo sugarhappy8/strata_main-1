@@ -202,6 +202,14 @@ Inside the STRATA iOS app, Strata+ is sold through Apple In-App Purchase with th
 - Production and Sandbox purchases are both accepted, because App Review and TestFlight buy in Sandbox. A TestFlight tester's free sandbox purchase therefore unlocks Strata+ on that tester's STRATA account.
 - Sessions slide: a session past half of its seven days is extended with the same token on the next request, never beyond 60 days after sign-in, so app members stay signed in.
 
+## Google Play Billing (Android app)
+
+Inside the STRATA Android app, Strata+ is sold through Google Play Billing with the same two plans: the subscription `online.stratafitness.app.plus` with base plans `monthly` ($4.99 USD) and `yearly` ($29.99 USD), set in the Play Console. [google-play-billing.md](google-play-billing.md) covers how it works and the Play Console, Google Cloud, and Pub/Sub steps.
+
+- `GOOGLE_PLAY_PACKAGE_NAME` and `GOOGLE_PLAY_PRODUCT_IDS` are plain settings in `render.yaml`. `GOOGLE_PLAY_SERVICE_ACCOUNT` (the service account's JSON key) and `GOOGLE_PLAY_NOTIFICATION_TOKEN` are secrets: set them in Render's dashboard, never in the repository. Set `GOOGLE_PLAY_TEST_ACCOUNTS` to the Play review demo account's email.
+- In Pub/Sub, push the Play Console's notification topic to `https://stratafitness.online/api/billing/google/notifications?token=<GOOGLE_PLAY_NOTIFICATION_TOKEN>`.
+- The admin Overview shows Google Play billing as set up once the service account parses. A wrong key shows up as `503 GOOGLE_PLAY_NOT_CONFIGURED` on the first purchase and as `google_play.refresh_failed` in the logs.
+
 ## Release verification
 
 Before deployment:

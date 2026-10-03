@@ -1,5 +1,16 @@
 # Changelog
 
+## 10.1.0 — Android
+
+- Strata+ in the STRATA Android app (repository `sugarhappy8/strata-fitness-ios`, folder `android/`) is sold through Google Play Billing: the subscription `online.stratafitness.app.plus` with base plans `monthly` ($4.99) and `yearly` ($29.99). The app sends each purchase token to `POST /api/billing/google/purchases`; the server reads the subscription from the Google Play Developer API as a service account (`GOOGLE_PLAY_SERVICE_ACCOUNT`), checks the product and that the purchase carries the signed-in STRATA account, stores it in `google_play_subscriptions`, and acknowledges it. Real-time developer notifications arrive through Pub/Sub at `POST /api/billing/google/notifications?token=…` (`GOOGLE_PLAY_NOTIFICATION_TOKEN`) and are answered by reading the token from Google again; every 10 minutes the server also re-reads subscriptions near their expiry, not yet acknowledged, or not checked for a day.
+- Strata+ is one entitlement across Paddle, Apple, Google Play, and owner grants. `/api/me` reports `discovery.accessType` `google` and `discovery.googlePlay` (plan, state, expiry, grace period, hold, pause, test purchase). An active, auto-renewing subscription keeps access two hours past the expiry STRATA last saw, so a renewal never shows as a lapse. Paddle checkout answers `ALREADY_ENTITLED_GOOGLE_PLAY`, and the portal points to Google Play. Test purchases unlock Strata+ in production only for `GOOGLE_PLAY_TEST_ACCOUNTS`.
+- The website recognizes the Android app by the same `StrataApp/1` user-agent token and marks the page `data-app="android"`; app mode, its tabs, and its styles apply to both apps. In the Android app the paywall offers the base plans Google Play returns, restores and syncs Google Play purchases, and says what Google Play said (pending, on hold, paused, billing problem, test purchase). Downloads a page makes itself (export, plan, workout, and calendar files) go to the Android share sheet.
+- Account shows a Google Play subscription's plan, state, and dates with **Manage subscription**; the export lists Google Play subscriptions without their purchase tokens; deleting an account removes them, and the confirmation, its email, and the delete-account page say that Google keeps billing until the member cancels in Google Play. The admin desk shows Google Play billing's status and each member's Google Play subscription, and Metrics counts Google Play subscriptions after Google's 15% fee.
+- Privacy, Terms, and Refunds describe Google Play purchases, renewals, refunds, and deletion. [google-play-billing.md](docs/google-play-billing.md) covers how it works and the Play Console, Google Cloud, and Pub/Sub setup.
+- Advance every asset version and the offline cache to 10.1.0.
+
+See the [10.1.0 release guide](docs/release-10.1.0.md).
+
 ## 10.0.0 — V1
 
 - The App Store sells the website's two plans: Strata+ Monthly at $4.99 a month and Strata+ Yearly at $29.99 a year (`online.stratafitness.app.plus.yearly`). The app's paywall asks "Choose a plan" and shows the yearly saving from the storefront's own prices; with one plan on sale, it shows that plan as before. A product ending in `.yearly` is the yearly plan: Account names it, the account summary carries `plan`, and Admin → Metrics counts it at $29.99 ÷ 12. `APPLE_IAP_PRODUCT_IDS` accepts both products by default.

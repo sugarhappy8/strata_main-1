@@ -647,6 +647,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
     webhookProtection: false,
     adminConfigured: true,
     appStore: true,
+    googlePlay: false,
     signInProviders: [],
   });
   assert.ok(overview.data.overview.accounts.total >= 3);
@@ -750,6 +751,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
       transactionId: "txn_admin_visible_member",
       transactionStatus: "completed",
       apple: { activeCount: 0, expiresAt: null },
+      googlePlay: { activeCount: 0, expiresAt: null },
     },
     "account search must expose the selected account's complete entitlement state",
   );
@@ -772,6 +774,7 @@ test("admin reads require the bound owner session and return bounded, explicitly
     transactionId: "txn_admin_visible_member",
     transactionStatus: "completed",
     apple: { activeCount: 0, expiresAt: null, subscription: null },
+    googlePlay: { activeCount: 0, expiresAt: null, subscription: null },
   });
   assertPrivateJson(detail.response);
   assertAdminResponseRedacted(detail.data, secrets);

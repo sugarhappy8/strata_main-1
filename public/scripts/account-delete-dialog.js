@@ -1,9 +1,10 @@
 /* global module */
-/* In the iOS app, Delete account deletes the account right here (App Review Guideline 5.1.1(v): App Review cannot open
-   an email). The member re-enters the account password and types DELETE in a modal dialog; showModal keeps focus
-   inside it and Escape closes it. Browsers never open it and keep the emailed deletion link, which the dialog still
-   offers as "Email me a deletion link instead". An account made with Google has no password: it
-   types DELETE only, and the server accepts that within 15 minutes of signing in. */
+/* In the app (iPhone and Android), Delete account deletes the account right here (App Review Guideline 5.1.1(v): App
+   Review cannot open an email; Google Play asks for in-app deletion too). The member re-enters the account password
+   and types DELETE in a modal dialog; showModal keeps focus inside it and Escape closes it. Browsers never open it and
+   keep the emailed deletion link, which the dialog still offers as "Email me a deletion link instead". An account
+   made with Google has no password: it types DELETE only, and the server accepts that within 15 minutes of signing
+   in. */
 (function (root, factory) {
   const api = factory();
   if (typeof module === "object" && module.exports) module.exports = api;
@@ -22,6 +23,7 @@
     getUser = () => null,
     emailInstead = () => {},
     manageApple = () => {},
+    manageGooglePlay = () => {},
     onDeleted = () => {},
     navigate = (path) => globalThis.location.replace(path),
     setTimer = (callback, delay) => globalThis.setTimeout(callback, delay),
@@ -93,6 +95,8 @@
       trigger = from;
       reset();
       element("accountDeleteApple").hidden = !logic.appleMayBill(getUser());
+      const play = element("accountDeleteGooglePlay");
+      if (play) play.hidden = !logic.googlePlayMayBill?.(getUser());
       const noPassword = passwordless();
       password.hidden = noPassword;
       password.required = !noPassword;
@@ -103,9 +107,11 @@
       return true;
     }
 
-    // The account is gone: say so (with Apple's billing notice when it applies) for a moment, then leave signed out.
+    // The account is gone: say so (with the store's billing notice when it applies) for a moment, then leave signed
+    // out. Apple's notice wins if both stores bill, since Manage opens one store.
     function showDone(result) {
-      const apple = logic.appleDeletionNotice(result),
+      const notice =
+          logic.appleDeletionNotice(result) || logic.googlePlayDeletionNotice?.(result) || null,
         message =
           typeof result?.message === "string" && result.message.trim()
             ? result.message.trim()
@@ -114,13 +120,13 @@
         ? message
         : DELETED;
       const manage = element("accountDeleteDoneManage");
-      manage.hidden = !apple;
-      if (apple) manage.href = apple.manageUrl;
+      manage.hidden = !notice;
+      if (notice) manage.href = notice.manageUrl;
       form.hidden = true;
       done.hidden = false;
       done.focus();
       onDeleted();
-      setTimer(leave, apple ? APPLE_DONE_MS : DONE_MS);
+      setTimer(leave, notice ? APPLE_DONE_MS : DONE_MS);
     }
 
     async function remove(event) {
@@ -202,9 +208,15 @@
       element("accountDeleteManage").addEventListener("click", (event) =>
         manageApple(event, element("accountDeleteManage").href),
       );
-      element("accountDeleteDoneManage").addEventListener("click", (event) =>
-        manageApple(event, element("accountDeleteDoneManage").href),
+      element("accountDeletePlayManage")?.addEventListener("click", (event) =>
+        manageGooglePlay(event, element("accountDeletePlayManage").href),
       );
+      // The done screen's Manage opens whichever store's notice it shows.
+      element("accountDeleteDoneManage").addEventListener("click", (event) => {
+        const href = element("accountDeleteDoneManage").href;
+        if (/^https:\/\/play\.google\.com\//.test(String(href))) manageGooglePlay(event, href);
+        else manageApple(event, href);
+      });
       element("accountDeleteDoneContinue").addEventListener("click", leave);
     }
 

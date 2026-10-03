@@ -364,6 +364,12 @@ export interface BillingStore {
     sandbox?: AppleSandboxPolicy,
   ): Promise<boolean>;
   appleSubscriptionsForUser(userId: string): Promise<AppleSubscriptionRow[]>;
+  hasActiveGooglePlaySubscription(
+    userId: string,
+    now: number,
+    policy?: GooglePlayTestPolicy,
+  ): Promise<boolean>;
+  googlePlaySubscriptionsForUser(userId: string): Promise<GooglePlaySubscriptionRow[]>;
   hasPaidDiscoveryAccess(userId: string, priceId?: string | null, now?: number): Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(
     userId: string,
@@ -449,6 +455,8 @@ export type BillingAdapterMethods = Omit<
   | "adminControls"
   | "hasActiveAppleSubscription"
   | "appleSubscriptionsForUser"
+  | "hasActiveGooglePlaySubscription"
+  | "googlePlaySubscriptionsForUser"
 > & {
   hasDiscoveryAccess(userId: string, priceId?: string | null, now?: number): Promise<boolean>;
   discoveryAccessSummary(
@@ -483,6 +491,8 @@ export interface BillingServiceDependencies {
   logger: OperationalLogger;
   /** Which Apple Sandbox purchases unlock Strata+; production-only when left out. */
   appleSandbox?: AppleSandboxPolicy;
+  /** Which Google Play test purchases unlock Strata+; production-only when left out. */
+  googlePlayTest?: GooglePlayTestPolicy;
   now?: () => number;
   makeId?: () => string;
 }
@@ -573,7 +583,8 @@ export type AdminStoreMethod =
   | "deleteUserByAdmin"
   | "userByEmail"
   | "userById"
-  | "appleSubscriptionsForUser";
+  | "appleSubscriptionsForUser"
+  | "googlePlaySubscriptionsForUser";
 
 export type SupportStoreMethod =
   | "adminSupportTickets"
@@ -636,6 +647,7 @@ export type ApplicationStore = { readonly kind: string } & AuthStore &
   DataLayerStore &
   AiStore &
   AppleBillingStore &
+  GooglePlayBillingStore &
   SocialAuthStore &
   ServerStateStore;
 
@@ -709,6 +721,7 @@ export interface AccountExportStoreRows {
   milestones?: JsonObject | null;
   aiUsage: JsonObject[];
   appleSubscriptions?: JsonObject[];
+  googlePlaySubscriptions?: JsonObject[];
   signIns?: JsonObject[];
 }
 
@@ -1642,6 +1655,13 @@ export interface InvestorMetricsRows {
     ends_at: number;
     revoked_at: number | null;
   }>;
+  /** Optional so older fixtures without Google Play still type-check. */
+  googlePlay?: Array<{
+    user_id: string;
+    base_plan_id: string | null;
+    started_at: number;
+    ends_at: number;
+  }>;
   lifetime: Array<{ user_id: string }>;
   aiUsage: Array<{ user_id: string; month: string; requests: number; tokens: number }>;
   activationSince: number | null;
@@ -1691,6 +1711,7 @@ export interface AuthServiceDependencies {
     options?: { includeFresh?: boolean; checkSubscription?: boolean; transactionIds?: string[] },
   ) => Promise<number>;
   appleDeletionNotice?: (userId: string) => Promise<AppleDeletionNotice | null>;
+  googlePlayDeletionNotice?: (userId: string) => Promise<StoreDeletionNotice | null>;
   logger?: Pick<Console, "info" | "error">;
 }
 
@@ -1718,6 +1739,7 @@ export interface AccountDeletionResult {
 export interface DeletedAccount {
   user: AccountDeletionResult["user"];
   appleBilling: AppleDeletionNotice | null;
+  googlePlayBilling: StoreDeletionNotice | null;
 }
 
 /** One account deletion, by emailed link or in the app: who, why (for the audit log), and how the store removes it. */
@@ -1751,6 +1773,7 @@ export interface AccountDeletionDependencies {
   reconcileCheckoutCreationBeforeDeletion: (userId: string) => Promise<number>;
   reconcileUnsettledPurchases: (userId: string) => Promise<number>;
   appleDeletionNotice: (userId: string) => Promise<AppleDeletionNotice | null>;
+  googlePlayDeletionNotice?: (userId: string) => Promise<StoreDeletionNotice | null>;
   now?: () => number;
 }
 
@@ -1908,6 +1931,7 @@ export type CreateTrainingService = (dependencies: TrainingServiceDependencies) 
 
 export interface AdminServiceStatus {
   appStore: boolean;
+  googlePlay?: boolean;
   signInProviders: readonly string[];
 }
 
@@ -1938,6 +1962,7 @@ export interface ServiceCompositionDependencies {
   ) => Promise<number>;
   isUniqueViolation: (error: unknown) => boolean;
   appleDeletionNotice?: (userId: string) => Promise<AppleDeletionNotice | null>;
+  googlePlayDeletionNotice?: (userId: string) => Promise<StoreDeletionNotice | null>;
   serviceStatus?: () => AdminServiceStatus;
   createAuthService: CreateAuthService;
   createAdminService: CreateAdminService;
@@ -2077,4 +2102,148 @@ export interface AppleBillingService {
   ): Promise<AppleSubscriptionSummary | null>;
   deletionNotice(userId: string): Promise<AppleDeletionNotice | null>;
   cleanup(): Promise<void>;
+}
+
+/** Strata+ through Google Play Billing (src/google-play-billing.js). */
+export interface GooglePlayServiceAccount {
+  readonly clientEmail: string;
+  readonly privateKey: string;
+  readonly privateKeyId: string;
+  readonly tokenUri: string;
+}
+export interface GooglePlayApi {
+  subscription(packageName: string, purchaseToken: string): Promise<Record<string, any>>;
+  acknowledge(packageName: string, productId: string, purchaseToken: string): Promise<void>;
+}
+export interface GooglePlayTestPolicy {
+  readonly allowTestPurchases: boolean;
+  readonly testAccounts: ReadonlySet<string>;
+}
+export interface GooglePlayBillingSettings extends GooglePlayTestPolicy {
+  readonly packageName: string;
+  readonly productIds: readonly string[];
+  readonly serviceAccount: GooglePlayServiceAccount | null;
+  readonly configured: boolean;
+  readonly notificationToken: string;
+}
+export type GooglePlayState =
+  | "PENDING"
+  | "ACTIVE"
+  | "PAUSED"
+  | "IN_GRACE_PERIOD"
+  | "ON_HOLD"
+  | "CANCELED"
+  | "EXPIRED"
+  | "PENDING_PURCHASE_CANCELED";
+/** Google Play's answer for one purchase token, for a Strata+ product of this app. */
+export interface GooglePlayPurchase {
+  purchaseToken: string;
+  productId: string;
+  basePlanId: string | null;
+  state: string;
+  testPurchase: boolean;
+  linkedPurchaseToken: string | null;
+  latestOrderId: string | null;
+  startedAt: number | null;
+  expiresAt: number | null;
+  autoRenew: boolean | null;
+  acknowledged: boolean;
+  accountId: string | null;
+}
+export interface GooglePlaySubscriptionRow {
+  purchase_token: string;
+  user_id: string;
+  product_id: string;
+  base_plan_id: string | null;
+  state: string;
+  test_purchase: number;
+  linked_purchase_token: string | null;
+  latest_order_id: string | null;
+  started_at: number | null;
+  expires_at: number | null;
+  auto_renew: number | null;
+  acknowledged: number;
+  checked_at: number;
+  created_at: number;
+  updated_at: number;
+}
+export interface GooglePlaySubscriptionWrite {
+  purchaseToken: string;
+  userId: string;
+  productId: string;
+  basePlanId: string | null;
+  state: string;
+  testPurchase: boolean;
+  linkedPurchaseToken: string | null;
+  latestOrderId: string | null;
+  startedAt: number | null;
+  expiresAt: number | null;
+  autoRenew: boolean | null;
+  acknowledged: boolean;
+  checkedAt: number;
+  createdAt: number;
+  updatedAt: number;
+}
+export interface GooglePlayBillingStore {
+  googlePlaySubscription(purchaseToken: string): Promise<GooglePlaySubscriptionRow | null>;
+  googlePlaySubscriptionsForUser(userId: string): Promise<GooglePlaySubscriptionRow[]>;
+  upsertGooglePlaySubscription(
+    record: GooglePlaySubscriptionWrite,
+    replaceOwnerId?: string | null,
+  ): Promise<GooglePlaySubscriptionRow | null>;
+  hasActiveGooglePlaySubscription(
+    userId: string,
+    now: number,
+    policy?: GooglePlayTestPolicy,
+  ): Promise<boolean>;
+  googlePlaySubscriptionsDue(
+    expiringBefore: number,
+    checkedBefore: number,
+    limit: number,
+  ): Promise<GooglePlaySubscriptionRow[]>;
+  markGooglePlayAcknowledged(purchaseToken: string, at: number): Promise<void>;
+}
+/** /api/me "discovery.googlePlay". */
+export interface GooglePlaySubscriptionSummary {
+  active: boolean;
+  productId: string;
+  plan: "monthly" | "yearly";
+  expiresAt: number | null;
+  autoRenew: boolean | null;
+  state: GooglePlayState;
+  inGracePeriod: boolean;
+  onHold: boolean;
+  paused: boolean;
+  pending: boolean;
+  testPurchase: boolean;
+}
+/** What deleting an account cannot stop: a store subscription that keeps billing until cancelled with the store. */
+export interface StoreDeletionNotice {
+  message: string;
+  manageUrl: string;
+}
+export interface GooglePlayBillingServiceDependencies {
+  store: GooglePlayBillingStore & { userById(userId: string): Promise<JsonObject | null> };
+  settings: GooglePlayBillingSettings;
+  api: GooglePlayApi | null;
+  getUserPayload: (account: SessionRow) => Promise<JsonObject>;
+  rateAllowed: (
+    request: HttpRequest,
+    key: string,
+    limit: number,
+    windowMs?: number,
+  ) => boolean | Promise<boolean>;
+  http: Pick<HttpHelpers, "json">;
+  logger: OperationalLogger;
+  now?: () => number;
+}
+export interface GooglePlayBillingService {
+  routes: ApiRoute[];
+  refresh(purchaseToken: string): Promise<string>;
+  refreshDue(): Promise<{ checked: number; failed: number }>;
+  subscriptionForUser(
+    userId: string,
+    account?: { email?: unknown; email_verified_at?: unknown } | null,
+  ): Promise<GooglePlaySubscriptionSummary | null>;
+  deletionNotice(userId: string): Promise<StoreDeletionNotice | null>;
 }

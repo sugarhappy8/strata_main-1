@@ -212,6 +212,7 @@ test("revenue counts paying members, lifetime access, list MRR, and MRR after pr
     paddleSubscriptions: 1,
     yearlySubscriptions: 1,
     appStoreSubscriptions: 1,
+    googlePlaySubscriptions: 0,
     lifetimeMembers: 1,
     mrr: { list: 7.49, afterFees: 6.57 },
   });
@@ -349,7 +350,7 @@ test("the CSV has one table per figure and never lets a cell run as a spreadshee
   assert.equal(lines[0], "STRATA investor metrics");
   assert.ok(lines.includes("Generated,2026-10-03T12:00:00.000Z"));
   assert.ok(lines.includes("Internal accounts excluded,2"));
-  assert.ok(lines.includes("4,3,75.0%,2,1,1,1,1,7.49,6.57"));
+  assert.ok(lines.includes("4,3,75.0%,2,1,1,1,0,1,7.49,6.57"));
   assert.ok(lines.includes("2026-07-27,yes,2,2,1,1"));
   assert.ok(lines.includes("2026-07-27,2,2,1,50.0%,2,1,50.0%,2,1,50.0%"));
   assert.ok(lines.includes("2026-09,yes,2,1,1,50.0%,2,7.49"));

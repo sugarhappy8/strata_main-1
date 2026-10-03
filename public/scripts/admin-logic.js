@@ -249,6 +249,49 @@
       ["App Store revoked", summary.revoked === true ? "Yes" : "No"],
     ];
   }
+  // The member's Google Play subscription (Strata+ bought in the Android app), the same way.
+  function googlePlayFacts(user) {
+    const play = user?.discovery?.googlePlay || {},
+      summary = play.subscription;
+    if (summary === undefined)
+      return [
+        [
+          "Google Play subscription",
+          numberValue(play.activeCount) > 0
+            ? `Active · expires ${formatDate(play.expiresAt)}`
+            : play.expiresAt
+              ? `Expired ${formatDate(play.expiresAt)}`
+              : "None",
+        ],
+      ];
+    if (!summary || typeof summary !== "object") return [["Google Play subscription", "None"]];
+    const states = {
+      ACTIVE: "Active",
+      IN_GRACE_PERIOD: "Active · billing grace period",
+      CANCELED: "Active · cancelled, not renewing",
+      ON_HOLD: "On hold (payment failed)",
+      PAUSED: "Paused",
+      PENDING: "Pending payment",
+      EXPIRED: "Expired",
+      PENDING_PURCHASE_CANCELED: "Pending payment cancelled",
+    };
+    return [
+      [
+        "Google Play subscription",
+        summary.active === true ||
+        !["ACTIVE", "IN_GRACE_PERIOD", "CANCELED"].includes(summary.state)
+          ? states[summary.state] || "Unknown"
+          : "Expired",
+      ],
+      ["Google Play plan", summary.plan === "yearly" ? "Yearly" : "Monthly"],
+      ["Google Play test purchase", summary.testPurchase === true ? "Yes (license tester)" : "No"],
+      ["Google Play expiry", formatDate(summary.expiresAt)],
+      [
+        "Google Play auto-renew",
+        summary.autoRenew === true ? "On" : summary.autoRenew === false ? "Off" : "Unknown",
+      ],
+    ];
+  }
   const supportId = (ticket) =>
     cleanString(firstValue(ticket, ["id", "ticketId", "ticket_id", "reference"], ""), "");
   const supportReference = (ticket) =>
@@ -268,6 +311,7 @@
   return {
     ACTION_DETAILS,
     appleFacts,
+    googlePlayFacts,
     booleanValue,
     cleanString,
     deletionPending,

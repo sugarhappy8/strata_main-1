@@ -390,6 +390,49 @@ test("offline authorization ends at the earliest verified grant, period, cancel,
   );
 });
 
+test("offline authorization for Google Play members follows Google's expiry and the renewal margin", () => {
+  const now = Date.UTC(2026, 8, 8, 12),
+    hour = 60 * 60 * 1000,
+    play = (value) => ({
+      active: true,
+      accessType: "google",
+      subscription: null,
+      googlePlay: {
+        active: true,
+        productId: "online.stratafitness.app.plus",
+        plan: "monthly",
+        expiresAt: now + 2 * hour,
+        autoRenew: true,
+        state: "ACTIVE",
+        inGracePeriod: false,
+        ...value,
+      },
+    });
+  assert.equal(
+    W.offlineAccessUntil(play({}), now),
+    now + 4 * hour,
+    "a renewing period keeps its margin",
+  );
+  assert.equal(
+    W.offlineAccessUntil(play({ state: "CANCELED", autoRenew: false }), now),
+    now + 2 * hour,
+    "a cancelled one ends at its expiry",
+  );
+  assert.equal(
+    W.offlineAccessUntil(play({ expiresAt: now + 30 * 24 * hour }), now),
+    now + 24 * hour,
+  );
+  assert.equal(
+    W.offlineAccessUntil(play({ inGracePeriod: true, expiresAt: now - hour }), now),
+    now + 24 * hour,
+  );
+  assert.equal(W.offlineAccessUntil(play({ active: false }), now), 0);
+  assert.equal(
+    W.offlineAccessUntil(play({ state: "CANCELED", autoRenew: false, expiresAt: now - hour }), now),
+    0,
+  );
+});
+
 test("offline authorization for App Store members ends at the verified expiry, within the same device window", () => {
   const now = Date.UTC(2026, 8, 8, 12),
     hour = 60 * 60 * 1000,

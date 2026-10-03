@@ -1,10 +1,10 @@
-/* The STRATA iOS app (repository sugarhappy8/strata-fitness-ios) is a native shell around this site. Its web view
-   appends "StrataApp/<shell version>" to the user agent (its capacitor.config.json). This script runs in <head>,
-   before the page paints, so pages can adapt with `:root[data-app="ios"]` styles. Installing the site makes no
-   sense inside the installed app, so Install
-   links and the install page are removed there. Only the app loads its chrome (app-mode.css and app-mode.js: tab bar,
-   top bar, motion, and the App Store paywall); writing them here keeps them parser-inserted, so the stylesheet blocks
-   first paint and the script runs before the body exists, on every page including ones this file is the only hook in. */
+/* The STRATA app for iPhone and Android (repository sugarhappy8/strata-fitness-ios) is a native shell around this
+   site. Its web view appends "StrataApp/<shell version>" to the user agent (its capacitor.config.json). This script
+   runs in <head>, before the page paints, so pages can adapt with `:root[data-app]` styles (data-app is "ios" or
+   "android"). Installing the site makes no sense inside the installed app, so Install links and the install page are
+   removed there. Only the app loads its chrome (app-mode.css and app-mode.js: tab bar, top bar, motion, and the
+   app-store paywall); writing them here keeps them parser-inserted, so the stylesheet blocks first paint and the script
+   runs before the body exists, on every page including ones this file is the only hook in. */
 (() => {
   "use strict";
   // The navigation shows the tabs for who is here (site-experience.css). The server keeps the strata_nav cookie
@@ -13,10 +13,13 @@
   const audience = /(?:^|;\s*)strata_nav=(member|plus)(?:;|$)/.exec(document.cookie || "");
   document.documentElement.dataset.audience = audience ? audience[1] : "visitor";
 
-  const match = /\bStrataApp\/(\d+)\b/.exec(navigator.userAgent || "");
+  const agent = navigator.userAgent || "",
+    match = /\bStrataApp\/(\d+)\b/.exec(agent);
   if (!match) return;
-  document.documentElement.dataset.app = "ios";
-  window.StrataApp = Object.freeze({ platform: "ios", shellVersion: Number(match[1]) });
+  // The same shell runs on iPhone and Android; Android's web view names itself in the user agent.
+  const platform = /\bAndroid\b/.test(agent) ? "android" : "ios";
+  document.documentElement.dataset.app = platform;
+  window.StrataApp = Object.freeze({ platform, shellVersion: Number(match[1]) });
 
   if (/^\/install(?:\.html)?\/?$/.test(location.pathname)) {
     location.replace("/");
@@ -25,7 +28,7 @@
   document.write(
     // A constant written while the page parses (see above), not markup built from data.
     // eslint-disable-next-line no-restricted-syntax
-    '<link rel="stylesheet" href="/app-mode.css?v=10.0.0" /><script src="/app-mode.js?v=10.0.0"></script>',
+    '<link rel="stylesheet" href="/app-mode.css?v=10.1.0" /><script src="/app-mode.js?v=10.1.0"></script>',
   );
 
   function removeInstallLinks() {

@@ -265,6 +265,15 @@
       const expiry = timestamp(apple.expiresAt);
       return expiry > now ? Math.min(expiry, now + 24 * 60 * 60 * 1000) : 0;
     }
+    // Google Play: the same, and a renewing subscription keeps its two hours while STRATA hears of the renewal.
+    if (discovery.accessType === "google") {
+      const play = discovery.googlePlay;
+      if (play?.active !== true) return 0;
+      if (play.inGracePeriod === true) return now + 24 * 60 * 60 * 1000;
+      const renewing = play.state === "ACTIVE" && play.autoRenew === true,
+        expiry = timestamp(play.expiresAt) + (renewing ? 2 * 60 * 60 * 1000 : 0);
+      return expiry > now ? Math.min(expiry, now + 24 * 60 * 60 * 1000) : 0;
+    }
     const boundaries = [now + 24 * 60 * 60 * 1000],
       subscription = discovery.subscription;
     // No subscription row means this is grandfathered lifetime access. A

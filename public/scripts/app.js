@@ -226,7 +226,7 @@ async function initializeCatalog() {
   state.catalogStatus = "loading";
   renderAll();
   try {
-    STATE.setCatalog(state, await api("/exercises.json?v=10.0.0"));
+    STATE.setCatalog(state, await api("/exercises.json?v=10.1.0"));
     el("catalogTotal").textContent = state.exercises.length;
   } catch {
     STATE.failCatalog(state);

@@ -20,9 +20,15 @@ const CHECKOUT_PREPARING =
 const PURCHASE_PENDING =
   "A Strata+ payment is still being processed. Nothing was deleted; please try again later.";
 
-/** @param {import("./domain-types").AppleDeletionNotice|null} appleBilling */
-function deletedMessage(appleBilling) {
-  return `Your STRATA account was permanently deleted.${appleBilling ? ` ${appleBilling.message}` : ""}`;
+/**
+ * @param {import("./domain-types").AppleDeletionNotice|null} appleBilling
+ * @param {import("./domain-types").StoreDeletionNotice|null} [googlePlayBilling]
+ */
+function deletedMessage(appleBilling, googlePlayBilling = null) {
+  const notices = [appleBilling, googlePlayBilling]
+    .filter(Boolean)
+    .map((notice) => ` ${notice?.message}`);
+  return `Your STRATA account was permanently deleted.${notices.join("")}`;
 }
 
 /**
@@ -42,6 +48,7 @@ function createAccountDeletion({
   reconcileCheckoutCreationBeforeDeletion,
   reconcileUnsettledPurchases,
   appleDeletionNotice,
+  googlePlayDeletionNotice = async () => null,
   now = Date.now,
 }) {
   const { json, bodyJson } = http;
@@ -56,8 +63,12 @@ function createAccountDeletion({
     // A Paddle subscription that has not ended refuses here (409 SUBSCRIPTION_ACTIVE) on both paths.
     if ((await reconcileUnsettledPurchases(userId)) > 0)
       throw accountActionError(PURCHASE_PENDING, 409, "PURCHASE_PENDING");
-    // An Apple subscription never blocks deletion (App Review 5.1.1(v)); the member is told Apple keeps billing.
-    const appleBilling = await appleDeletionNotice(userId);
+    // An app-store subscription never blocks deletion (App Review 5.1.1(v), Google Play's account deletion policy);
+    // the member is told Apple or Google keeps billing.
+    const [appleBilling, googlePlayBilling] = await Promise.all([
+      appleDeletionNotice(userId),
+      googlePlayDeletionNotice(userId),
+    ]);
     const result = await remove(now(), accountEmailHash(email));
     if (result.status === "purchase_pending")
       throw accountActionError(PURCHASE_PENDING, 409, "PURCHASE_PENDING");
@@ -65,7 +76,7 @@ function createAccountDeletion({
       throw accountActionError(CHECKOUT_PREPARING, 409, "CHECKOUT_PREPARING");
     if (result.status !== "deleted") throw invalid();
     audit("account_deleted", { purpose, email });
-    return { user: result.user, appleBilling };
+    return { user: result.user, appleBilling, googlePlayBilling };
   }
 
   /** @param {import("./domain-types").SessionRow} session @param {unknown} input */
@@ -143,14 +154,15 @@ function createAccountDeletion({
     }
     const input = await bodyJson(req);
     try {
-      const { appleBilling } = await deleteSignedInAccount(session, input);
+      const { appleBilling, googlePlayBilling } = await deleteSignedInAccount(session, input);
       json(
         res,
         200,
         {
           ok: true,
-          message: deletedMessage(appleBilling),
+          message: deletedMessage(appleBilling, googlePlayBilling),
           ...(appleBilling ? { appleBilling } : {}),
+          ...(googlePlayBilling ? { googlePlayBilling } : {}),
         },
         { "Set-Cookie": clearCookies() },
       );

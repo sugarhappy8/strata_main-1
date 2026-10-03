@@ -248,6 +248,18 @@ function exportPayload(rows, now) {
         createdAt: Number(row.created_at),
         updatedAt: Number(row.updated_at),
       })),
+      googlePlaySubscriptions: (rows.googlePlaySubscriptions || []).map((row) => ({
+        productId: String(row.product_id),
+        basePlanId: optionalText(row.base_plan_id),
+        state: String(row.state),
+        testPurchase: Number(row.test_purchase) === 1,
+        orderId: optionalText(row.latest_order_id),
+        startedAt: optionalNumber(row.started_at),
+        expiresAt: optionalNumber(row.expires_at),
+        autoRenew: row.auto_renew == null ? null : Number(row.auto_renew) === 1,
+        createdAt: Number(row.created_at),
+        updatedAt: Number(row.updated_at),
+      })),
     },
     supportTickets: rows.supportTickets.map((row) => ({
       id: String(row.id),

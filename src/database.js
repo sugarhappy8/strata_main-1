@@ -52,6 +52,12 @@ const {
   deleteLocalAppleData,
 } = require("./apple-billing-store");
 const {
+  createLocalGooglePlayBillingMethods,
+  createTursoGooglePlayBillingMethods,
+  deleteLocalGooglePlayData,
+  googlePlayDeletionBatch,
+} = require("./google-play-billing-store");
+const {
   createLocalSocialAuthMethods,
   createTursoSocialAuthMethods,
 } = require("./social-auth-store");
@@ -309,6 +315,7 @@ function localStore(root) {
       deleteLocalDataLayerData(statements, user.id);
       deleteLocalAiData(statements, user.id);
       deleteLocalAppleData(statements, user.id);
+      deleteLocalGooglePlayData(statements, user.id);
       statements.deleteWorkoutsForDeletedUser.run(user.id, user.id);
       statements.deleteCheckoutClaimsForDeletedUser.all(user.id, user.id);
       statements.deleteVerificationSendsForDeletedUser.run(user.id, user.email, user.id);
@@ -335,6 +342,7 @@ function localStore(root) {
     ...aiMethods,
     ...createLocalMetricsMethods({ statements, plainRow }),
     ...createLocalAppleBillingMethods({ statements, plainRow }),
+    ...createLocalGooglePlayBillingMethods({ statements, plainRow }),
     ...createLocalSocialAuthMethods({ db, statements, plainRow }),
     ...createLocalServerStateMethods({ statements, plainRow }),
     ...createLocalAccessControlMethods({ db, statements, plainRow }),
@@ -1109,6 +1117,7 @@ function localStore(root) {
         deleteLocalDataLayerData(statements, user.id);
         deleteLocalAiData(statements, user.id);
         deleteLocalAppleData(statements, user.id);
+        deleteLocalGooglePlayData(statements, user.id);
         statements.deleteWorkoutsForDeletedUser.run(user.id, user.id);
         statements.deleteCheckoutClaimsForDeletedUser.all(user.id, user.id);
         statements.deleteVerificationSendsForDeletedUser.run(user.id, targetEmail, user.id);
@@ -1314,6 +1323,7 @@ async function tursoStore(url, authToken, tursoClientFactory) {
         ...dataLayerDeletionBatch(action.user_id),
         ...aiDeletionBatch(action.user_id),
         ...appleDeletionBatch(action.user_id),
+        ...googlePlayDeletionBatch(action.user_id),
         { sql: SQL.deleteWorkoutsForDeletedUser, args: [action.user_id, action.user_id] },
         { sql: SQL.deleteCheckoutClaimsForDeletedUser, args: [action.user_id, action.user_id] },
         {
@@ -1345,6 +1355,7 @@ async function tursoStore(url, authToken, tursoClientFactory) {
     ...aiMethods,
     ...createTursoMetricsMethods({ first, all, run }),
     ...createTursoAppleBillingMethods({ first, all, run }),
+    ...createTursoGooglePlayBillingMethods({ first, all, run }),
     ...createTursoSocialAuthMethods({ client, first, all, run, plainRow }),
     ...createTursoServerStateMethods({ first, all, run }),
     ...createTursoAccessControlMethods({ client, first, plainRow, SQL }),
@@ -1928,6 +1939,7 @@ async function tursoStore(url, authToken, tursoClientFactory) {
           ...dataLayerDeletionBatch(userId),
           ...aiDeletionBatch(userId),
           ...appleDeletionBatch(userId),
+          ...googlePlayDeletionBatch(userId),
           { sql: SQL.deleteWorkoutsForDeletedUser, args: [userId, userId] },
           { sql: SQL.deleteCheckoutClaimsForDeletedUser, args: [userId, userId] },
           { sql: SQL.deleteVerificationSendsForDeletedUser, args: [userId, targetEmail, userId] },

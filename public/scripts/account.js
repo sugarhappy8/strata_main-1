@@ -416,10 +416,11 @@ async function openBillingPortal(kind, event) {
   }
 }
 
-// Inside the iOS app an App Store subscription is managed on Apple's own sheet; an app build without it, or a sheet
-// that fails to open, goes to Apple's subscriptions page instead. On the website the link opens that page itself.
-async function manageAppleSubscription(event, href = logic.APPLE_MANAGE_URL) {
-  if (!globalThis.StrataApp) return;
+// Inside the iPhone app an App Store subscription is managed on Apple's own sheet, and inside the Android app a Google
+// Play subscription on Google Play's subscriptions page; an app build without that, or one that fails to open it, goes
+// to the store's subscriptions page instead. On the website (and in the other platform's app) the link opens that page.
+async function manageStoreSubscription(event, platform, href, safeUrl) {
+  if (globalThis.StrataApp?.platform !== platform) return;
   event?.preventDefault?.();
   const status = el("accountBillingStatus");
   status.textContent = "";
@@ -429,9 +430,13 @@ async function manageAppleSubscription(event, href = logic.APPLE_MANAGE_URL) {
     if (typeof native?.manageSubscriptions !== "function") throw new Error("unavailable");
     await native.manageSubscriptions();
   } catch {
-    location.assign(logic.safeAppleManageUrl(href));
+    location.assign(safeUrl(href));
   }
 }
+const manageAppleSubscription = (event, href = logic.APPLE_MANAGE_URL) =>
+  manageStoreSubscription(event, "ios", href, logic.safeAppleManageUrl);
+const manageGooglePlaySubscription = (event, href = logic.PLAY_MANAGE_URL) =>
+  manageStoreSubscription(event, "android", href, logic.safePlayManageUrl);
 
 async function requestSecurityEmail(kind, event) {
   const button = event.currentTarget;
@@ -454,12 +459,14 @@ async function requestSecurityEmail(kind, event) {
     const result =
       kind === "delete" ? await api.requestDeletion() : await api.requestPasswordReset();
     if (!(await confirmPrivateOperation(operation))) return;
-    const apple = kind === "delete" ? logic.appleDeletionNotice(result) : null;
+    const apple = kind === "delete" ? logic.appleDeletionNotice(result) : null,
+      play = kind === "delete" ? logic.googlePlayDeletionNotice(result) : null,
+      notices = [apple, play].filter(Boolean).map((notice) => notice.message);
     renderer.showSecurityStatus(
       kind === "delete"
-        ? `A deletion confirmation link was sent to ${result.maskedEmail || "your registered email"}. Nothing is deleted until you open it and type DELETE. ${apple ? `Deletion does not cancel a subscription or refund a charge. ${apple.message}` : globalThis.StrataApp ? "Deletion does not cancel a subscription or refund a charge; an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions." : "Deletion does not cancel a Paddle subscription or refund a charge."}`
+        ? `A deletion confirmation link was sent to ${result.maskedEmail || "your registered email"}. Nothing is deleted until you open it and type DELETE. ${notices.length ? `Deletion does not cancel a subscription or refund a charge. ${notices.join(" ")}` : globalThis.StrataApp ? `Deletion does not cancel a subscription or refund a charge; ${globalThis.StrataApp.platform === "android" ? "a Google Play subscription keeps billing until you cancel it in Google Play › Payments & subscriptions › Subscriptions." : "an App Store subscription keeps billing until you cancel it in Settings › Apple Account › Subscriptions."}` : "Deletion does not cancel a Paddle subscription or refund a charge."}`
         : `A password-reset link was sent to ${result.maskedEmail || "your registered email"}. The link expires after 30 minutes.`,
-      { appleLink: apple?.manageUrl || "" },
+      { appleLink: apple?.manageUrl || "", playLink: play?.manageUrl || "" },
     );
     if (kind === "delete") el("accountDeleteCancel").hidden = false;
   } catch (error) {
@@ -538,6 +545,7 @@ const deleteDialog = StrataAccountDeleteDialog.createController({
   getUser: () => signedInUser,
   emailInstead: () => requestSecurityEmail("delete", { currentTarget: el("accountDeleteRequest") }),
   manageApple: (event, href) => void manageAppleSubscription(event, href),
+  manageGooglePlay: (event, href) => void manageGooglePlaySubscription(event, href),
   onDeleted: () => {
     state.setNavigating();
     clearPrivateView();
@@ -586,5 +594,13 @@ el("accountManageApple").addEventListener("click", (event) => void manageAppleSu
 el("accountSecurityAppleLink").addEventListener(
   "click",
   (event) => void manageAppleSubscription(event, el("accountSecurityAppleLink").href),
+);
+el("accountManageGooglePlay").addEventListener(
+  "click",
+  (event) => void manageGooglePlaySubscription(event),
+);
+el("accountSecurityPlayLink").addEventListener(
+  "click",
+  (event) => void manageGooglePlaySubscription(event, el("accountSecurityPlayLink").href),
 );
 initialize();

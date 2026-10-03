@@ -316,6 +316,7 @@ test("the emailed link uses the same protections through deleteProtectedAccount"
   assert.deepEqual(result, {
     user: { id: "member-1", email: "ari@example.test" },
     appleBilling: APPLE,
+    googlePlayBilling: null,
   });
   assert.deepEqual(removals, [{ deletedAt: NOW, emailHash: "hash:ari@example.test" }]);
   assert.deepEqual(calls.audits, [

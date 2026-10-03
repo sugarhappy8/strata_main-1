@@ -1799,7 +1799,7 @@ test("in the app, Paddle billing is read-only and the deletion copy names the Ap
   );
   assert.match(
     html,
-    /<span class="web-only">Account deletion does not cancel a Paddle subscription[^<]*<\/span><span class="app-only" hidden>[^<]*App Store subscription keeps billing your Apple Account until you cancel it in Settings/,
+    /<span class="web-only">Account deletion does not cancel a Paddle subscription[^<]*<\/span><span class="app-only" hidden>[^<]*keeps billing until you cancel it: on iPhone in Settings › Apple Account › Subscriptions, on Android in Google Play › Payments &amp; subscriptions › Subscriptions/,
   );
   const free = createPage({
     route: accountRoutes(

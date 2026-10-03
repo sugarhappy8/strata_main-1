@@ -72,6 +72,7 @@ function realm({
   historyLength = 1,
   navigationType = "navigate",
   storage = memoryStorage(),
+  platform = "ios",
 } = {}) {
   const listeners = {},
     documentListeners = {},
@@ -130,7 +131,7 @@ function realm({
     URL,
     URLSearchParams,
     sessionStorage: storage,
-    StrataApp: Object.freeze({ platform: "ios", shellVersion: 1 }),
+    StrataApp: Object.freeze({ platform, shellVersion: 1 }),
     history: { length: historyLength, back: () => calls.push(["history.back"]) },
     navigation: {
       activation: { navigationType: navigationType === "back_forward" ? "traverse" : "push" },
@@ -173,6 +174,7 @@ function realm({
     scrolled,
     calls,
     listeners,
+    documentListeners,
     storage,
     insertBody() {
       const body = fakeNode("body");
@@ -414,7 +416,7 @@ test("the tab bar marks the current section, keeps studio panels in place, and h
   assert.doesNotMatch(CSS.match(/\.app-tabbar \{[^}]*\}/)[0], /backdrop-filter/);
   assert.match(
     CSS,
-    /:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*\.app-tabbar\s*\{\s*view-transition-name\s*:\s*app-tabbar\s*;\s*[;,]?\s*\}/,
+    /:\s*root\s*\[\s*data-app\s*\]\s*\.app-tabbar\s*\{\s*view-transition-name\s*:\s*app-tabbar\s*;\s*[;,]?\s*\}/,
   );
   assert.match(
     CSS,
@@ -426,13 +428,13 @@ test("the app hides website chrome, blur, and reveals, and moves with transform 
   assert.match(CSS, /@view-transition\s*\{\s*navigation\s*:\s*auto\s*;\s*[;,]?\s*\}/);
   assert.match(
     CSS,
-    /:\s*root\s*\[\s*data-app-chrome\s*=\s*"tabs"\s*,?\s*\]\s*body\s*>\s*header\s*:\s*not\s*\(\.app-topbar\s*,?\s*\)\s*,\s*\n\s*:\s*root\s*\[\s*data-app-chrome\s*=\s*"tabs"\s*,?\s*\]\s*body\s*>\s*nav\s*\.mobile-public-nav\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*body\s*>\s*footer\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*\.skip-link\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*\.strata-scroll-progress\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/,
+    /:\s*root\s*\[\s*data-app-chrome\s*=\s*"tabs"\s*,?\s*\]\s*body\s*>\s*header\s*:\s*not\s*\(\.app-topbar\s*,?\s*\)\s*,\s*\n\s*:\s*root\s*\[\s*data-app-chrome\s*=\s*"tabs"\s*,?\s*\]\s*body\s*>\s*nav\s*\.mobile-public-nav\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*\]\s*body\s*>\s*footer\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*\]\s*\.skip-link\s*,\s*\n\s*:\s*root\s*\[\s*data-app\s*\]\s*\.strata-scroll-progress\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/,
   );
   assert.match(CSS, /backdrop-filter\s*:\s*none\s*!\s*important\s*;/);
   assert.match(CSS, /-webkit-tap-highlight-color\s*:\s*transparent\s*;/);
   assert.match(
     CSS,
-    /:\s*root\s*\[\s*data-app\s*=\s*"ios"\s*,?\s*\]\s*:\s*is\s*\(\s*a\s*,\s*img\s*,?\s*\)\s*\{\s*-webkit-touch-callout\s*:\s*none\s*;\s*[;,]?\s*\}/,
+    /:\s*root\s*\[\s*data-app\s*\]\s*:\s*is\s*\(\s*a\s*,\s*img\s*,?\s*\)\s*\{\s*-webkit-touch-callout\s*:\s*none\s*;\s*[;,]?\s*\}/,
   );
   assert.match(
     CSS,
@@ -448,7 +450,7 @@ test("the app hides website chrome, blur, and reveals, and moves with transform 
     );
   // Text and form fields stay selectable; only controls and chrome opt out.
   const unselectable = CSS.match(
-    /:root\[data-app="ios"\]\s*:is\(([^)]*(?:\([^)]*\))?[^)]*)\)\s*\{\s*-webkit-user-select:\s*none;\s*user-select:\s*none;?\s*\}/,
+    /:root\[data-app\]\s*:is\(([^)]*(?:\([^)]*\))?[^)]*)\)\s*\{\s*-webkit-user-select:\s*none;\s*user-select:\s*none;?\s*\}/,
   )[1];
   assert.doesNotMatch(unselectable, /\b(?:input|textarea|select|p|main|body)\b/);
   assert.match(
@@ -602,24 +604,24 @@ test("Profile keeps Strata+, support, and legal pages one tap away", () => {
   const accountPage = fakeNode("accountPage");
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
-    selector === "body > footer > span" ? { textContent: "About STRATA · Build 10.0.0" } : null;
+    selector === "body > footer > span" ? { textContent: "About STRATA · Build 10.1.0" } : null;
   page.ready();
   const more = accountPage.html[0].html;
   for (const href of ["/pricing", "/contact", "/policies", "/terms", "/privacy"])
     assert.match(more, new RegExp(`href="${href}"`));
-  assert.match(more, /About STRATA · Build 10\.0\.0/);
+  assert.match(more, /About STRATA · Build 10\.1\.0/);
 });
 
-test("on /pricing the app loads its App Store paywall, and the website never loads Paddle there", () => {
+test("on /pricing the app loads its store's paywall, and the website never loads Paddle there", () => {
   const page = realm({ pathname: "/pricing" });
   page.insertBody();
   page.ready();
   assert.equal(page.document.head.children.length, 1);
-  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=10.0.0");
+  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=10.1.0");
   const pricing = read("public/scripts/pricing.js");
   assert.match(
     pricing,
-    /\(\s*\(\s*,?\s*\)\s*=>\s*\{\s*\n\s*\/\/\s*Inside\s*the\s*iOS\s*app[^\n]*\n\s*if\s*\(\s*globalThis\s*\.StrataApp\s*,?\s*\)\s*return\s*;/,
+    /\(\s*\(\s*,?\s*\)\s*=>\s*\{\s*\n\s*\/\/\s*Inside\s*the\s*STRATA\s*app[^\n]*\n\s*if\s*\(\s*globalThis\s*\.StrataApp\s*,?\s*\)\s*return\s*;/,
   );
   assert.match(
     pricing,
@@ -864,17 +866,17 @@ test("Profile names the app build when the app can say", async () => {
   });
   page.insertBody();
   const accountPage = fakeNode("accountPage"),
-    line = { textContent: "About STRATA · Build 10.0.0" };
+    line = { textContent: "About STRATA · Build 10.1.0" };
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
     selector === "body > footer > span"
-      ? { textContent: "About STRATA · Build 10.0.0" }
+      ? { textContent: "About STRATA · Build 10.1.0" }
       : selector === ".app-more-build"
         ? line
         : null;
   page.ready();
   for (let index = 0; index < 5; index += 1) await new Promise(setImmediate);
-  assert.equal(line.textContent, "About STRATA · Build 10.0.0 · App 1.2 (34)");
+  assert.equal(line.textContent, "About STRATA · Build 10.1.0 · App 1.2 (34)");
 });
 
 test("downloads keep their file for a minute, so the app's share sheet can still read it, and the app says where it goes", () => {
@@ -927,7 +929,7 @@ test("downloads keep their file for a minute, so the app's share sheet can still
       );
 });
 
-function billingRealm({ routes, plugin = {} }) {
+function billingRealm({ routes, plugin = {}, platform }) {
   const context = { URL, URLSearchParams, Capacitor: { Plugins: { StrataNative: plugin } } };
   context.globalThis = context;
   vm.createContext(context);
@@ -945,6 +947,7 @@ function billingRealm({ routes, plugin = {} }) {
     },
     dispatch: (name, detail) => events.push([name, detail]),
     storage: () => storage,
+    ...(platform ? { platform: () => platform } : {}),
   });
   return { billing, requests, events, storage, context };
 }
@@ -1173,4 +1176,157 @@ test("on every page in the app, transaction updates are posted and finished, and
   for (let index = 0; index < 10; index += 1) await new Promise(setImmediate);
   assert.deepEqual(posts, [{ signedTransactions: ["jws-55"] }]);
   assert.deepEqual(finished, ["55"]);
+});
+
+test("on Android, Google Play purchases go to STRATA's Google Play route in batches, once each", async () => {
+  const PLAY = "online.stratafitness.app.plus";
+  const purchases = Array.from({ length: 21 }, (_, index) => ({
+    purchaseToken: `token-${index}`,
+    productId: PLAY,
+    acknowledged: false,
+  }));
+  const { billing, requests, events } = billingRealm({
+    platform: "android",
+    routes: [
+      ME(),
+      async (url, options) => {
+        assert.equal(url, "/api/billing/google/purchases");
+        assert.deepEqual(
+          JSON.parse(options.body).purchases,
+          purchases.slice(0, 20).map(({ purchaseToken }) => ({ purchaseToken, productId: PLAY })),
+        );
+        return jsonResponse(200, {
+          discovery: { active: true, accessType: "google" },
+          accepted: ["token-0"],
+        });
+      },
+      async (url, options) => {
+        assert.deepEqual(JSON.parse(options.body).purchases, [
+          { purchaseToken: "token-20", productId: PLAY },
+        ]);
+        return jsonResponse(200, {
+          discovery: { active: true, accessType: "google" },
+          accepted: ["token-20"],
+        });
+      },
+    ],
+  });
+  const result = await billing.submitPlay([
+    ...purchases,
+    purchases[0],
+    { purchaseToken: "" },
+    null,
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(result.accepted)), ["token-0", "token-20"]);
+  assert.equal(requests[1].options.headers["X-CSRF-Token"], "csrf-1");
+  assert.equal(events.length, 1, "one discovery update");
+});
+
+test("on Android, a Google Play update is accepted without finishing, and purchases sync once per launch", async () => {
+  const PLAY = "online.stratafitness.app.plus";
+  const update = billingRealm({
+    platform: "android",
+    plugin: {
+      finishTransaction: async () => assert.fail("Google Play purchases are not finished"),
+    },
+    routes: [
+      ME(),
+      async () => jsonResponse(200, { discovery: { active: true }, accepted: ["token-9"] }),
+      ME(),
+      async () => jsonResponse(403, { error: "no", code: "GOOGLE_PLAY_ACCOUNT_MISMATCH" }),
+    ],
+  });
+  assert.equal(
+    await update.billing.handleUpdate({ purchaseToken: "token-9", productId: PLAY }),
+    true,
+  );
+  assert.equal(
+    await update.billing.handleUpdate({ purchaseToken: "token-8", productId: PLAY }),
+    false,
+  );
+  let reads = 0;
+  const sync = billingRealm({
+    platform: "android",
+    plugin: {
+      currentEntitlements: async () => {
+        reads += 1;
+        return { purchases: [{ purchaseToken: "token-1", productId: PLAY, acknowledged: true }] };
+      },
+    },
+    routes: [
+      ME(),
+      async (url, options) => {
+        assert.equal(url, "/api/billing/google/purchases");
+        assert.deepEqual(JSON.parse(options.body), {
+          purchases: [{ purchaseToken: "token-1", productId: PLAY }],
+        });
+        return jsonResponse(200, { discovery: { active: true }, accepted: ["token-1"] });
+      },
+    ],
+  });
+  assert.equal(await sync.billing.syncEntitlements(), "synced");
+  assert.equal(await sync.billing.syncEntitlements(), "skipped");
+  assert.equal(reads, 1);
+});
+
+test("on Android, a page's own downloads go to the share sheet; links a page handles, and iPhone, are left alone", async () => {
+  const shared = [];
+  const plugin = {
+    shareFile: async (options) => {
+      shared.push(options);
+      return { shared: true };
+    },
+  };
+  const android = realm({ platform: "android", plugin });
+  const fetched = [];
+  android.window.fetch = async (href) => {
+    fetched.push(href);
+    return { blob: async () => ({ type: "application/json", text: "{}" }) };
+  };
+  android.window.FileReader = class {
+    readAsDataURL(blob) {
+      this.result = `data:${blob.type};base64,${Buffer.from(blob.text).toString("base64")}`;
+      this.onload();
+    }
+  };
+  const click = (href, { download = "strata-weekly-plan.json", prevented = false } = {}) => {
+    const link = {
+      href,
+      getAttribute: (name) => (name === "href" ? href : name === "download" ? download : null),
+    };
+    const event = {
+      target: { closest: (selector) => (selector === "a[download]" ? link : null) },
+      defaultPrevented: prevented,
+      preventDefault() {
+        this.defaultPrevented = true;
+      },
+    };
+    for (const handler of android.documentListeners.click || []) handler(event);
+    return event;
+  };
+  assert.equal(click("blob:https://stratafitness.online/5d1c").defaultPrevented, true);
+  await new Promise(setImmediate);
+  await new Promise(setImmediate);
+  assert.deepEqual(JSON.parse(JSON.stringify(shared)), [
+    { filename: "strata-weekly-plan.json", mimeType: "application/json", base64: "e30=" },
+  ]);
+  assert.equal(
+    click("https://stratafitness.online/terms").defaultPrevented,
+    false,
+    "web links are links",
+  );
+  assert.equal(
+    click("data:text/calendar,BEGIN", { prevented: true }).defaultPrevented,
+    true,
+    "a page that handled the click keeps it",
+  );
+  await new Promise(setImmediate);
+  assert.equal(shared.length, 1);
+  assert.deepEqual(fetched, ["blob:https://stratafitness.online/5d1c"]);
+  const iphone = realm({ platform: "ios", plugin });
+  assert.equal(
+    (iphone.documentListeners.click || []).length,
+    0,
+    "the iPhone app saves downloads natively",
+  );
 });

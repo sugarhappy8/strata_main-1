@@ -267,6 +267,49 @@ test("admin renderer purges hidden account, support, action, and status data", (
     assert.deepEqual(node(id).children, [], id);
 });
 
+test("admin shows a member's Google Play subscription, test purchases included", () => {
+  const logic = require("../public/scripts/admin-logic");
+  const expiresAt = Date.parse("2027-10-01T12:00:00Z");
+  const facts = (googlePlay) =>
+    Object.fromEntries(logic.googlePlayFacts({ discovery: { googlePlay } }));
+  assert.deepEqual(facts({ activeCount: 0, expiresAt: null }), {
+    "Google Play subscription": "None",
+  });
+  assert.deepEqual(facts({ activeCount: 1, expiresAt }), {
+    "Google Play subscription": `Active · expires ${logic.formatDate(expiresAt)}`,
+  });
+  assert.deepEqual(
+    facts({
+      subscription: {
+        active: true,
+        state: "IN_GRACE_PERIOD",
+        plan: "yearly",
+        testPurchase: true,
+        expiresAt,
+        autoRenew: true,
+      },
+    }),
+    {
+      "Google Play subscription": "Active · billing grace period",
+      "Google Play plan": "Yearly",
+      "Google Play test purchase": "Yes (license tester)",
+      "Google Play expiry": logic.formatDate(expiresAt),
+      "Google Play auto-renew": "On",
+    },
+  );
+  assert.equal(
+    facts({ subscription: { active: false, state: "ON_HOLD" } })["Google Play subscription"],
+    "On hold (payment failed)",
+  );
+  assert.equal(
+    facts({ subscription: { active: false, state: "CANCELED", expiresAt: 1 } })[
+      "Google Play subscription"
+    ],
+    "Expired",
+  );
+  assert.deepEqual(facts({ subscription: null }), { "Google Play subscription": "None" });
+});
+
 test("admin shows a member's App Store subscription beside the Paddle facts", () => {
   const stateModule = require("../public/scripts/admin-state"),
     logic = require("../public/scripts/admin-logic"),

@@ -10,14 +10,14 @@
     <title>Admin — STRATA</title>
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=10.0.0" />
-    <link rel="stylesheet" href="/tokens.css?v=10.0.0" />
-    <link rel="stylesheet" href="/admin.css?v=10.0.0" />
-    <link rel="stylesheet" href="/experience.css?v=10.0.0" />
-    <script src="/html.js?v=10.0.0"></script>
-    <script src="/app-shell.js?v=10.0.0"></script>
-    <script src="/motion.js?v=10.0.0"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=10.0.0" />
+    <link rel="stylesheet" href="/fonts.css?v=10.1.0" />
+    <link rel="stylesheet" href="/tokens.css?v=10.1.0" />
+    <link rel="stylesheet" href="/admin.css?v=10.1.0" />
+    <link rel="stylesheet" href="/experience.css?v=10.1.0" />
+    <script src="/html.js?v=10.1.0"></script>
+    <script src="/app-shell.js?v=10.1.0"></script>
+    <script src="/motion.js?v=10.1.0"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=10.1.0" />
   </head>
   <body>
     <a class="skip-link" href="#adminMain">Skip to administration</a>
@@ -113,6 +113,7 @@
               <li><span class="status-dot" aria-hidden="true"></span><div><strong>Paddle checkout</strong><small id="paymentStatus">Checking…</small></div></li>
               <li><span class="status-dot" aria-hidden="true"></span><div><strong>Webhook protection</strong><small id="webhookStatus">Checking…</small></div></li>
               <li><span class="status-dot" aria-hidden="true"></span><div><strong>App Store billing</strong><small id="appStoreStatus">Checking…</small></div></li>
+              <li><span class="status-dot" aria-hidden="true"></span><div><strong>Google Play billing</strong><small id="googlePlayStatus">Checking…</small></div></li>
               <li><span class="status-dot" aria-hidden="true"></span><div><strong>Sign in with Google</strong><small id="signInStatus">Checking…</small></div></li>
             </ul>
             <p class="section-status" id="overviewStatus" role="status" aria-live="polite"></p>
@@ -141,7 +142,7 @@
 
           <div class="stat-grid" aria-label="Metrics summary">
             <article class="stat-card"><span>Weekly active members</span><strong id="metricsWeeklyActiveStat">—</strong><small>Last complete week</small></article>
-            <article class="stat-card"><span>Paying members</span><strong id="metricsPayingStat">—</strong><small>Paddle and App Store</small></article>
+            <article class="stat-card"><span>Paying members</span><strong id="metricsPayingStat">—</strong><small>Paddle, App Store, and Google Play</small></article>
             <article class="stat-card"><span>Monthly recurring revenue</span><strong id="metricsMrrStat">—</strong><small id="metricsMrrNote">After provider fees: —</small></article>
             <article class="stat-card"><span>Free to paid</span><strong id="metricsConversionStat">—</strong><small>Accounts that ever paid</small></article>
           </div>
@@ -153,13 +154,13 @@
             <dl>
               <div><dt>Active member</dt><dd>A customer account that saved or logged something that week: a workout, a weekly plan, a nutrition entry (on the day it is for and the day it was last changed), a workout check-in, or a Strata AI chat. Signing in alone does not count.</dd></div>
               <div><dt>Sign-ups</dt><dd>Accounts created that week. Google means the account was created with Sign in with Google. STRATA does not record where people came from before they signed up.</dd></div>
-              <div><dt>Activation</dt><dd>Of the accounts created since STRATA began recording it (10.0.0) whose first seven days are over, the share that saved a full week in those seven days: as many days with exercises as the training days they chose (four by default).</dd></div>
+              <div><dt>Activation</dt><dd>Of the accounts created since STRATA began recording it (10.1.0) whose first seven days are over, the share that saved a full week in those seven days: as many days with exercises as the training days they chose (four by default).</dd></div>
               <div><dt>Week 4 and week 8</dt><dd>Of the accounts whose week 4 (days 28–34 after signing up) or week 8 (days 56–62) is over, the share active in it.</dd></div>
-              <div><dt>Paying members</dt><dd>Accounts with a Paddle subscription that is active or past due, or an App Store subscription (not Sandbox) that has not expired or is in its grace period. Lifetime purchases and owner grants are not paying members.</dd></div>
-              <div><dt>Monthly recurring revenue</dt><dd>Paying subscriptions at list price ($4.99 a month; $29.99 a year counts as $2.50 a month), and what is left after Paddle’s 5% + $0.50 or Apple’s 15%, before tax.</dd></div>
+              <div><dt>Paying members</dt><dd>Accounts with a Paddle subscription that is active or past due, or an App Store or Google Play subscription (not a test purchase) that has not expired or is in its grace period. Lifetime purchases and owner grants are not paying members.</dd></div>
+              <div><dt>Monthly recurring revenue</dt><dd>Paying subscriptions at list price ($4.99 a month; $29.99 a year counts as $2.50 a month), and what is left after Paddle’s 5% + $0.50, Apple’s 15%, or Google Play’s 15%, before tax.</dd></div>
               <div><dt>Monthly churn</dt><dd>Subscriptions paying when the month began that ended during it, divided by those paying when it began. A paused or canceled Paddle subscription ends at its last change.</dd></div>
               <div><dt>Strata AI cost</dt><dd>Tokens used by customer accounts that month, priced at <code>STRATA_AI_USD_PER_MILLION_TOKENS</code>, divided by the members who used a Strata+ feature that month. Usage is kept 90 days, so a month is shown only while all of it is kept.</dd></div>
-              <div><dt>Left out</dt><dd>The owner, the App Store review accounts in <code>APPLE_SANDBOX_ACCOUNTS</code>, and the demo or test accounts in <code>STRATA_INTERNAL_ACCOUNTS</code>.</dd></div>
+              <div><dt>Left out</dt><dd>The owner, the App Store review accounts in <code>APPLE_SANDBOX_ACCOUNTS</code>, the Google Play test accounts in <code>GOOGLE_PLAY_TEST_ACCOUNTS</code>, and the demo or test accounts in <code>STRATA_INTERNAL_ACCOUNTS</code>.</dd></div>
             </dl>
           </details>
           <p class="section-status" id="metricsStatus" role="status" aria-live="polite"></p>
@@ -309,15 +310,15 @@
       </div>
     </dialog>
 
-    <footer class="admin-footer">STRATA · Build 10.0.0 · Private administration · <a href="/contact">Contact</a> · <a href="/policies">Policies</a></footer>
+    <footer class="admin-footer">STRATA · Build 10.1.0 · Private administration · <a href="/contact">Contact</a> · <a href="/policies">Policies</a></footer>
     <noscript><p class="noscript-message">JavaScript is required for private administration. Your public STRATA pages still work normally.</p></noscript>
-    <script src="/admin-state.js?v=10.0.0"></script>
-    <script src="/admin-logic.js?v=10.0.0"></script>
-    <script src="/admin-api.js?v=10.0.0"></script>
-    <script src="/admin-render.js?v=10.0.0"></script>
-    <script src="/admin-metrics.js?v=10.0.0"></script>
-    <script src="/admin-session.js?v=10.0.0"></script>
-    <script src="/admin-events.js?v=10.0.0"></script>
-    <script src="/admin.js?v=10.0.0"></script>
+    <script src="/admin-state.js?v=10.1.0"></script>
+    <script src="/admin-logic.js?v=10.1.0"></script>
+    <script src="/admin-api.js?v=10.1.0"></script>
+    <script src="/admin-render.js?v=10.1.0"></script>
+    <script src="/admin-metrics.js?v=10.1.0"></script>
+    <script src="/admin-session.js?v=10.1.0"></script>
+    <script src="/admin-events.js?v=10.1.0"></script>
+    <script src="/admin.js?v=10.1.0"></script>
   </body>
 </html>

@@ -128,6 +128,26 @@ test("planner guidance requires a fresh entitlement and schedules boundaries, pe
     "the client must fail closed at the known expiry even before a delayed timer runs",
   );
   assert.equal(PlannerState.entitlementBoundary(state.user), trialExpiry);
+  const play = (value) => ({
+    discovery: {
+      active: true,
+      accessType: "google",
+      googlePlay: {
+        active: true,
+        state: "ACTIVE",
+        autoRenew: true,
+        expiresAt: now + 60_000,
+        ...value,
+      },
+    },
+  });
+  assert.equal(PlannerState.entitlementBoundary(play({})), now + 60_000 + 2 * 60 * 60 * 1000);
+  assert.equal(
+    PlannerState.entitlementBoundary(play({ state: "CANCELED", autoRenew: false })),
+    now + 60_000,
+  );
+  assert.equal(PlannerState.entitlementBoundary(play({ inGracePeriod: true })), 0);
+  assert.equal(PlannerState.entitlementBoundary(play({ active: false })), -1);
   assert.equal(PlannerState.entitlementRefreshDelay(state.user, now), 10 * 60 * 1000 + 50);
   state.user.discovery.adminGrant.expiresAt = undefined;
   assert.equal(

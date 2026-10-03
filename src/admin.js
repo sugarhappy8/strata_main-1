@@ -3,6 +3,7 @@
 const { createAdminUserActions } = require("./admin-user-actions");
 const { adminGrantState } = require("./access-controls");
 const { appleSubscriptionSummary } = require("./apple-billing");
+const { googlePlaySubscriptionSummary } = require("./google-play-billing");
 const { randomUUID } = require("node:crypto");
 const { cleanText, defaultPlan, sanitizePlan, planStats } = require("./plans");
 
@@ -22,7 +23,7 @@ function createAdminService({
   http,
   reconcileCheckoutCreationBeforeDeletion,
   reconcileUnsettledPurchases,
-  serviceStatus = () => ({ appStore: false, signInProviders: [] }),
+  serviceStatus = () => ({ appStore: false, googlePlay: false, signInProviders: [] }),
   environment = process.env,
 }) {
   if (
@@ -169,6 +170,8 @@ function createAdminService({
       "latest_purchase_at",
       "active_apple_count",
       "apple_expires_at",
+      "active_google_play_count",
+      "google_play_expires_at",
       "deletion_expires_at",
       "updated_at",
       "last_response_at",
@@ -197,6 +200,7 @@ function createAdminService({
           !output.suspended_at &&
           (Number(output.active_purchase_count || 0) > 0 ||
             Number(output.active_apple_count || 0) > 0 ||
+            Number(output.active_google_play_count || 0) > 0 ||
             grant.active),
         adminGrant: grant,
         activePurchaseCount: Number(output.active_purchase_count || 0),
@@ -208,6 +212,10 @@ function createAdminService({
         apple: {
           activeCount: Number(output.active_apple_count || 0),
           expiresAt: output.apple_expires_at ?? null,
+        },
+        googlePlay: {
+          activeCount: Number(output.active_google_play_count || 0),
+          expiresAt: output.google_play_expires_at ?? null,
         },
       },
       accountDeletion: {
@@ -306,14 +314,20 @@ function createAdminService({
       user = targetId ? await store.adminUserById(targetId, Date.now()) : null;
     if (!user) json(res, 404, { error: "Account not found.", code: "ADMIN_TARGET_NOT_FOUND" });
     else {
-      // The detail view also carries the member's Apple subscription state beside the Paddle purchase state.
+      // The detail view also carries the member's Apple and Google Play subscription state beside the Paddle
+      // purchase state.
       const payload = adminUserPayload(user, { detail: true });
+      const [appleRows, googlePlayRows] = await Promise.all([
+        store.appleSubscriptionsForUser(user.id),
+        store.googlePlaySubscriptionsForUser(user.id),
+      ]);
       payload.discovery.apple = {
         ...payload.discovery.apple,
-        subscription: appleSubscriptionSummary(
-          await store.appleSubscriptionsForUser(user.id),
-          Date.now(),
-        ),
+        subscription: appleSubscriptionSummary(appleRows, Date.now()),
+      };
+      payload.discovery.googlePlay = {
+        ...payload.discovery.googlePlay,
+        subscription: googlePlaySubscriptionSummary(googlePlayRows, Date.now()),
       };
       json(res, 200, { user: payload });
     }

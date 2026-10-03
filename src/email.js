@@ -332,18 +332,24 @@ async function sendAccountActionEmail(config, message, fetchImpl = globalThis.fe
     isDeletion && message?.appleSubscription === true
       ? "Your Strata+ subscription was bought through Apple. Deleting your STRATA account does not cancel it: Apple keeps billing your Apple Account until you cancel it in Settings › Apple Account › Subscriptions (https://apps.apple.com/account/subscriptions)."
       : "";
+  // Google Play does the same for a subscription bought in the Android app.
+  const googlePlayText =
+    isDeletion && message?.googlePlaySubscription === true
+      ? "Your Strata+ subscription was bought through Google Play. Deleting your STRATA account does not cancel it: Google keeps billing your Google Account until you cancel it in Google Play › Payments & subscriptions › Subscriptions (https://play.google.com/store/account/subscriptions)."
+      : "";
   const text = [
     `Hi ${name},`,
     "",
     actionText,
     ...(appleText ? ["", appleText] : []),
+    ...(googlePlayText ? ["", googlePlayText] : []),
     `This link expires in ${expiresInMinutes} minutes and works once.`,
     "",
     actionUrl,
     "",
     ignoreText,
   ].join("\n");
-  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ec;color:#10110f;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;background:#fff;padding:32px;border:1px solid #bbb"><p>Hi ${escapeHtml(name)},</p><h1 style="font-size:24px">${heading}</h1><p>${escapeHtml(actionText)}</p>${appleText ? `<p>${escapeHtml(appleText)}</p>` : ""}<p>This link expires in ${expiresInMinutes} minutes and works once.</p><p style="margin:28px 0"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:14px 20px;background:#10110f;color:#fff;text-decoration:none;font-weight:700">${buttonText}</a></p><p>${escapeHtml(ignoreText)}</p></main></body></html>`;
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#f4f2ec;color:#10110f;font-family:Arial,sans-serif"><main style="max-width:560px;margin:auto;background:#fff;padding:32px;border:1px solid #bbb"><p>Hi ${escapeHtml(name)},</p><h1 style="font-size:24px">${heading}</h1><p>${escapeHtml(actionText)}</p>${appleText ? `<p>${escapeHtml(appleText)}</p>` : ""}${googlePlayText ? `<p>${escapeHtml(googlePlayText)}</p>` : ""}<p>This link expires in ${expiresInMinutes} minutes and works once.</p><p style="margin:28px 0"><a href="${escapeHtml(actionUrl)}" style="display:inline-block;padding:14px 20px;background:#10110f;color:#fff;text-decoration:none;font-weight:700">${buttonText}</a></p><p>${escapeHtml(ignoreText)}</p></main></body></html>`;
   const idempotencyDigest = digestParts(
     requireVerificationSecret(config),
     "account-action-delivery-v1",
