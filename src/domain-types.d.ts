@@ -1692,6 +1692,8 @@ export interface AuthService {
   sessionFor(request: HttpRequest, response?: HttpResponse | null): Promise<SessionRow | null>;
   requireSession(request: HttpRequest, response: HttpResponse): Promise<SessionRow | null>;
   sessionCookie(token: string, maxAge?: number): string;
+  /** The session cookie and the navigation-audience cookie (strata_nav) that goes with it. */
+  sessionCookies(token: string, maxAge?: number): string[];
   signupCookie(token: string, maxAge?: number): string;
   prepareSession(userId: string, now?: number, authVersion?: number): PreparedSession;
   passwordMatches(password: string, user: CredentialUserRow): Promise<boolean>;

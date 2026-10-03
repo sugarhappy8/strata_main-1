@@ -809,7 +809,7 @@ async function serveStatic(req, res, url) {
           ...securityHeaders(),
           Location: `/account.html?${params}`,
           "Cache-Control": "no-store",
-          "Set-Cookie": auth.sessionCookie("", 0),
+          "Set-Cookie": auth.sessionCookies("", 0),
         }),
       );
       res.end();

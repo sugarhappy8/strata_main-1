@@ -478,6 +478,7 @@ function startVisitorServer(dataDirectory) {
       SECURE_COOKIES: "false",
       ADMIN_EMAIL: "",
       EMAIL_VERIFICATION_ENABLED: "false",
+      ALLOW_UNVERIFIED_SIGNUP_FOR_TESTS: "true",
       PADDLE_CHECKOUT_ENABLED: "false",
     },
     stdio: ["ignore", "pipe", "pipe"],
@@ -575,6 +576,47 @@ test(
             `${path} asks who is signed in: ${calls}`,
           );
       }
+      // Signing in sends the navigation cookie that app-shell.js reads in <head>, so the very next page shows a
+      // member's tabs; signing out clears it.
+      const tabsAt = async (path) => {
+        await page.goto(`${server.baseUrl}${path}`, { waitUntil: "domcontentloaded" });
+        return page.evaluate(() => ({
+          audience: document.documentElement.dataset.audience,
+          tabs: [...document.querySelectorAll(".info-nav a")]
+            .filter((link) => getComputedStyle(link).display !== "none")
+            .map((link) => link.textContent.trim()),
+        }));
+      };
+      assert.deepEqual(await tabsAt("/pricing"), {
+        audience: "visitor",
+        tabs: ["Rankings", "Plan", "Strata+", "Sign in"],
+      });
+      const send = (path, body) =>
+        page.evaluate(
+          async ({ path, body }) =>
+            (
+              await fetch(path, {
+                method: "POST",
+                headers: body ? { "Content-Type": "application/json" } : {},
+                body: body ? JSON.stringify(body) : undefined,
+              })
+            ).status,
+          { path, body },
+        );
+      assert.equal(
+        await send("/api/signup", {
+          name: "Tab Check",
+          email: "tab-check@example.test",
+          password: "tab-check-password-123",
+        }),
+        201,
+      );
+      assert.deepEqual(await tabsAt("/pricing"), {
+        audience: "member",
+        tabs: ["Rankings", "Plan", "Train", "Recovery", "Profile"],
+      });
+      assert.equal(await send("/api/logout"), 200);
+      assert.equal((await tabsAt("/pricing")).audience, "visitor");
       await context.close();
     } finally {
       await browser?.close();

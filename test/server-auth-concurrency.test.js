@@ -124,7 +124,10 @@ async function resetPassword(store) {
 }
 
 async function sessionForResponse(store, response) {
-  const cookie = response.headers["Set-Cookie"];
+  // A sign-in sends the session cookie and the navigation cookie that goes with it.
+  const cookie = [response.headers["Set-Cookie"] || []]
+    .flat()
+    .find((item) => item.startsWith("strata_session="));
   if (!cookie) return null;
   const token = decodeURIComponent(cookie.split(";")[0].split("=")[1]);
   return store.session(createHash("sha256").update(token).digest("hex"), Date.now());

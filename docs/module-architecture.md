@@ -129,7 +129,7 @@ The command-generated table below is the current server snapshot. CI generates t
 | `src/apple-billing.js` | Apple In-App Purchase: signed transactions from the iOS app, App Store Server Notifications V2, Strata+ state | 684 | 659 | 27.7 KiB | 730 | `src/apple-jws.js`, `src/http.js` |
 | `src/apple-jws.js` | App Store JWS verification: Apple Root CA - G3 chain, marker extensions, ES256 | 135 | 124 | 6.3 KiB | 150 | — |
 | `src/athlete-profile.js` | Athlete Profile read model and the sync that keeps preferences and the coaching profile in step | 204 | 197 | 8.5 KiB | 230 | `src/plans.js` |
-| `src/auth.js` | Authentication and account lifecycle | 1861 | 1803 | 64.5 KiB | 1930 | `src/account-deletion.js`, `src/account-self-service.js`, `src/email.js`, `src/plans.js`, `src/session-renewal.js`, `src/social-auth-messages.js` |
+| `src/auth.js` | Authentication and account lifecycle | 1894 | 1836 | 65.9 KiB | 1930 | `src/account-deletion.js`, `src/account-self-service.js`, `src/email.js`, `src/plans.js`, `src/session-renewal.js`, `src/social-auth-messages.js` |
 | `src/billing-schema.js` | Commercial entitlement and recurring-subscription schema | 259 | 253 | 15.0 KiB | 330 | — |
 | `src/billing-store.js` | SQLite and Turso commercial storage parity | 571 | 564 | 21.4 KiB | 770 | `src/access-controls-schema.js`, `src/billing-schema.js` |
 | `src/billing.js` | Commercial entitlement, checkout, webhook, and reconciliation service | 1119 | 1093 | 41.8 KiB | 1400 | `src/access-controls.js`, `src/apple-billing.js`, `src/checkout-reconciliation.js`, `src/http.js`, `src/payments.js`, `src/plans.js` |

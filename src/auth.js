@@ -22,6 +22,7 @@ const scryptAsync = promisify(scrypt);
 const SESSION_SECONDS = 60 * 60 * 24 * 7;
 const SESSION_COOKIE = "strata_session";
 const SIGNUP_COOKIE = "strata_signup";
+const NAV_COOKIE = "strata_nav";
 const VERIFICATION_CODE_MS = 10 * 60 * 1000;
 const VERIFICATION_HARD_MS = 30 * 60 * 1000;
 const VERIFICATION_COOKIE_SECONDS = VERIFICATION_HARD_MS / 1000;
@@ -213,6 +214,24 @@ function createAuthService({
   function sessionCookie(token, maxAge = SESSION_SECONDS) {
     return secureCookie(SESSION_COOKIE, token, maxAge);
   }
+  // The site navigation shows a visitor's or a member's tabs from the first paint: public/scripts/app-shell.js reads
+  // this cookie before the page draws. It names only the audience (member, or plus for Strata+), never the account,
+  // so it is readable by scripts; it is set and cleared with the session, and /api/me keeps it current.
+  function navCookie(audience, maxAge) {
+    const parts = [
+      `${NAV_COOKIE}=${maxAge > 0 ? audience : ""}`,
+      "Path=/",
+      "SameSite=Lax",
+      `Max-Age=${Math.max(0, maxAge)}`,
+    ];
+    if (environment.NODE_ENV === "production" || environment.SECURE_COOKIES === "true")
+      parts.push("Secure");
+    return parts.join("; ");
+  }
+  /** The session cookie and the navigation cookie that goes with it. */
+  function sessionCookies(token, maxAge = SESSION_SECONDS) {
+    return [sessionCookie(token, maxAge), navCookie("member", token ? maxAge : 0)];
+  }
   function signupCookie(token, maxAge = VERIFICATION_COOKIE_SECONDS) {
     return secureCookie(SIGNUP_COOKIE, token, maxAge);
   }
@@ -285,7 +304,7 @@ function createAuthService({
     accountActionError,
     storageUnavailable: accountStorageUnavailable,
     audit: authAudit,
-    clearCookies: () => [sessionCookie("", 0), signupCookie("", 0)],
+    clearCookies: () => [...sessionCookies("", 0), signupCookie("", 0)],
     reconcileCheckoutCreationBeforeDeletion,
     reconcileUnsettledPurchases,
     appleDeletionNotice,
@@ -1355,7 +1374,9 @@ function createAuthService({
               "PASSWORD_RESET_RATE_LIMIT",
             );
           await resetPassword(input);
-          redirect(res, "/account.html?mode=login&reset=1", { "Set-Cookie": sessionCookie("", 0) });
+          redirect(res, "/account.html?mode=login&reset=1", {
+            "Set-Cookie": sessionCookies("", 0),
+          });
           return;
         }
         if (!(await rateAllowed(req, "account-delete-complete", 10)))
@@ -1366,7 +1387,7 @@ function createAuthService({
           );
         await deleteAccountWithToken(input);
         redirect(res, "/delete-account?deleted=1", {
-          "Set-Cookie": [sessionCookie("", 0), signupCookie("", 0)],
+          "Set-Cookie": [...sessionCookies("", 0), signupCookie("", 0)],
         });
         return;
       } catch (error) {
@@ -1438,14 +1459,14 @@ function createAuthService({
           );
         else
           redirect(res, safeAccountNext(input.next), {
-            "Set-Cookie": sessionCookie(result.session.token),
+            "Set-Cookie": sessionCookies(result.session.token),
           });
         return;
       }
       if (url.pathname === "/auth/verify-email") {
         const result = await verifyAccountEmail(req, input);
         redirect(res, safeAccountNext(input.next), {
-          "Set-Cookie": [sessionCookie(result.session.token), signupCookie("", 0)],
+          "Set-Cookie": [...sessionCookies(result.session.token), signupCookie("", 0)],
         });
         return;
       }
@@ -1519,7 +1540,7 @@ function createAuthService({
           res,
           201,
           { user: await getUserPayload(result.user) },
-          { "Set-Cookie": sessionCookie(result.session.token) },
+          { "Set-Cookie": sessionCookies(result.session.token) },
         );
     } catch (error) {
       if (!error.status) throw error;
@@ -1547,7 +1568,7 @@ function createAuthService({
           res,
           200,
           { user: await getUserPayload(result.user) },
-          { "Set-Cookie": sessionCookie(result.session.token) },
+          { "Set-Cookie": sessionCookies(result.session.token) },
         );
     } catch (error) {
       if (!error.status) throw error;
@@ -1592,7 +1613,7 @@ function createAuthService({
         res,
         result.purpose === "login" ? 200 : 201,
         { user: await getUserPayload(result.user) },
-        { "Set-Cookie": [sessionCookie(result.session.token), signupCookie("", 0)] },
+        { "Set-Cookie": [...sessionCookies(result.session.token), signupCookie("", 0)] },
       );
     } catch (error) {
       if (!error.status) throw error;
@@ -1679,7 +1700,7 @@ function createAuthService({
         res,
         200,
         { ok: true, message: "Password reset complete. Sign in with your new password." },
-        { "Set-Cookie": sessionCookie("", 0) },
+        { "Set-Cookie": sessionCookies("", 0) },
       );
     } catch (error) {
       if (!error.status) throw error;
@@ -1745,7 +1766,7 @@ function createAuthService({
           message: deletedMessage(appleBilling),
           ...(appleBilling ? { appleBilling } : {}),
         },
-        { "Set-Cookie": [sessionCookie("", 0), signupCookie("", 0)] },
+        { "Set-Cookie": [...sessionCookies("", 0), signupCookie("", 0)] },
       );
     } catch (error) {
       if (!error.status) throw error;
@@ -1760,8 +1781,19 @@ function createAuthService({
   // their browser console. Member routes still answer a signed-out request with 401.
   async function me({ req, res }) {
     const session = await sessionFor(req, res);
-    if (!session) json(res, 200, { user: null });
-    else json(res, 200, { user: await getUserPayload(session), csrfToken: session.csrf_token });
+    if (!session) {
+      if (cookieMap(req.headers.cookie)[NAV_COOKIE] !== undefined)
+        appendSetCookie(res, navCookie("", 0));
+      json(res, 200, { user: null });
+      return;
+    }
+    const user = await getUserPayload(session),
+      remaining = Math.floor((Number(session.expires_at) - Date.now()) / 1000);
+    appendSetCookie(
+      res,
+      navCookie(user?.discovery?.active === true ? "plus" : "member", remaining),
+    );
+    json(res, 200, { user, csrfToken: session.csrf_token });
   }
 
   async function logout({ req, res }) {
@@ -1775,7 +1807,7 @@ function createAuthService({
         return;
       }
     }
-    json(res, 200, { ok: true }, { "Set-Cookie": sessionCookie("", 0) });
+    json(res, 200, { ok: true }, { "Set-Cookie": sessionCookies("", 0) });
   }
 
   // Sign-up, sign-in, verification, and the emailed reset and deletion links run before there is a session, so
@@ -1844,6 +1876,7 @@ function createAuthService({
     sessionFor,
     requireSession,
     sessionCookie,
+    sessionCookies,
     signupCookie,
     prepareSession,
     passwordMatches,

@@ -811,6 +811,69 @@ test("a visitor's /api/me answers 200 { user: null } while member routes still a
   );
 });
 
+test("the navigation cookie follows the session, so a member's tabs show from the first paint", async () => {
+  const navOf = (response) =>
+    response.headers.getSetCookie().find((cookie) => cookie.startsWith("strata_nav=")) || "";
+  const signup = await request("/api/signup", {
+    method: "POST",
+    headers: { Origin: BASE, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      name: "Navigation Check",
+      email: "navigation-check@example.test",
+      password: "navigation-check-password-123",
+    }),
+  });
+  assert.equal(signup.response.status, 201);
+  const signedIn = navOf(signup.response);
+  assert.match(signedIn, /^strata_nav=member; Path=\/; SameSite=Lax; Max-Age=(\d+)/);
+  assert.ok(Number(/Max-Age=(\d+)/.exec(signedIn)[1]) > 0);
+  assert.doesNotMatch(
+    signedIn,
+    /HttpOnly/i,
+    "the page's head script reads it before the first paint",
+  );
+
+  const me = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.match(navOf(me.response), /^strata_nav=member;/);
+  const database = new DatabaseSync(join(runtimeDir, "strata.sqlite"));
+  try {
+    database
+      .prepare(
+        "INSERT INTO paddle_purchases(transaction_id,user_id,price_id,product_id,customer_id,paddle_status,completed_at,access_revoked_at,revocation_reason,created_at,updated_at) VALUES(?,?,?,?,?,'completed',?,NULL,NULL,?,?)",
+      )
+      .run(
+        "txn_navigationlifetime000000001",
+        me.data.user.id,
+        "pri_navigation",
+        "pro_navigation",
+        "ctm_navigation",
+        Date.now(),
+        Date.now(),
+        Date.now(),
+      );
+  } finally {
+    database.close();
+  }
+  const plus = await request("/api/me", { headers: { Cookie: signup.cookie } });
+  assert.equal(plus.data.user.discovery.active, true);
+  assert.match(navOf(plus.response), /^strata_nav=plus;/, "Strata+ members see Dashboard");
+
+  const logout = await request("/api/logout", {
+    method: "POST",
+    headers: { Origin: BASE, Cookie: signup.cookie },
+  });
+  assert.equal(logout.response.status, 200);
+  assert.match(navOf(logout.response), /^strata_nav=; Path=\/; SameSite=Lax; Max-Age=0/);
+
+  const stale = await request("/api/me", { headers: { Cookie: "strata_nav=member" } });
+  assert.deepEqual(stale.data, { user: null });
+  assert.match(
+    navOf(stale.response),
+    /^strata_nav=; .*Max-Age=0/,
+    "a visitor's leftover member mark is cleared",
+  );
+});
+
 test("native account forms create and restore an account without modal JavaScript", async () => {
   const password = "native-form-password-123",
     email = "native@example.test";
