@@ -266,5 +266,12 @@ EVENTS.bindHomeEvents({
   },
 });
 
-void initializeCatalog();
+renderAll();
+EVENTS.watchCatalogDemand({
+  window,
+  location,
+  sections: [el("quickPreviewForm"), el("rankings")],
+  linked: LOGIC.catalogLinked,
+  onDemand: () => void initializeCatalog(),
+});
 void initializeAccount();

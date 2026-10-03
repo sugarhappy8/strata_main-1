@@ -206,6 +206,8 @@ test(
           reducedMotion: "reduce",
         });
         await goto(page, "/");
+        // The exercise library loads once the visitor heads for the preview, as a scroll does.
+        await page.locator("#quickPreviewForm").scrollIntoViewIfNeeded();
         const submit = page.locator("#quickPreviewSubmit");
         await submit.waitFor({ state: "visible" });
         await page.waitForFunction(
@@ -1493,7 +1495,8 @@ test(
         await goto(page, "/workout.html?guest=1");
         assert.match(page.url(), /account.html/);
         await signup(context, "setup");
-        await goto(page, "/");
+        await goto(page, "/#rankings");
+        await page.locator("#exerciseList [data-detail]").first().waitFor();
         await page.waitForFunction(
           () =>
             globalThis.document.querySelector("#catalogTotal")?.textContent === "320" &&
@@ -1507,7 +1510,8 @@ test(
         await goto(page, "/onboarding.html");
         assert.match(page.url(), /pricing/);
         await activatePlus(context);
-        await goto(page, "/");
+        await goto(page, "/#rankings");
+        await page.locator("#exerciseList [data-detail]").first().waitFor();
         await page.waitForFunction(
           () => globalThis.document.querySelector("#catalogTotal")?.textContent === "320",
         );

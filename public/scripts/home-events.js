@@ -125,5 +125,32 @@
     });
   }
 
-  return { bindHomeEvents };
+  // The exercise catalog is the homepage's largest download and only the free-week preview and the rankings use
+  // it, so it waits until one of them is needed: a link names one (linked), one is on screen, or the visitor
+  // starts scrolling down from the hero. Without IntersectionObserver it loads straight away.
+  function watchCatalogDemand({ window, location, sections, linked, onDemand }) {
+    let demanded = false,
+      observer = null;
+    const demand = () => {
+      if (demanded) return;
+      demanded = true;
+      observer?.disconnect();
+      onDemand();
+    };
+    if (linked(location?.hash) || typeof window?.IntersectionObserver !== "function") {
+      demand();
+      return demand;
+    }
+    observer = new window.IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) demand();
+    });
+    for (const section of sections) if (section) observer.observe(section);
+    window.addEventListener("hashchange", () => {
+      if (linked(location?.hash)) demand();
+    });
+    window.addEventListener("scroll", demand, { once: true, passive: true });
+    return demand;
+  }
+
+  return { bindHomeEvents, watchCatalogDemand };
 });

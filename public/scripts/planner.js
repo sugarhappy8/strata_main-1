@@ -462,10 +462,46 @@ function renderLibrary() {
   renderMobileHandoff();
 }
 
-let exerciseGuideTrigger = null;
-function openExerciseGuide(id, trigger = null) {
+let exerciseGuideTrigger = null,
+  guidanceRequest = null;
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("The exercise guide could not load."));
+    document.head.append(script);
+  });
+}
+// Plan starts from the library, which leaves out setup notes and cues. The first guide fetches them with the full
+// catalog, and the guide builder (discovery-core.js) with them; offline, both come from the service worker cache.
+function loadGuidance() {
+  guidanceRequest ||= Promise.all([
+    api("/exercises.json?v=9.6.0"),
+    globalThis.StrataDiscovery?.exerciseGuidance ? null : loadScript("/discovery-core.js?v=9.6.0"),
+  ]).then(
+    ([catalog]) => catalog,
+    (error) => {
+      guidanceRequest = null;
+      throw error;
+    },
+  );
+  return guidanceRequest;
+}
+async function openExerciseGuide(id, trigger = null) {
+  const listed = exerciseById(id);
+  if (listed && !LOGIC.hasGuidance(listed))
+    try {
+      const catalog = await loadGuidance();
+      // Read the library after the wait: a reload may have replaced it meanwhile.
+      state.exercises = LOGIC.withGuidance(state.exercises, catalog);
+    } catch {
+      /* The guide below reports itself unavailable. */
+    }
   const exercise = exerciseById(id),
-    guidance = globalThis.StrataDiscovery?.exerciseGuidance?.(exercise, state.exercises);
+    guidance =
+      LOGIC.hasGuidance(exercise) &&
+      globalThis.StrataDiscovery?.exerciseGuidance?.(exercise, state.exercises);
   if (!exercise || !guidance) {
     showToast("This exercise guide is unavailable. Try reloading Plan.");
     return;
@@ -1317,9 +1353,8 @@ async function init({ guestOnly = false } = {}) {
     html`<div class="planner-load-state">Loading your weekly plan…</div>`,
   );
   try {
-    const exercises = await api("/exercises.json?v=9.6.0");
-    if (!Array.isArray(exercises))
-      throw new Error("STRATA returned an incomplete exercise library.");
+    const exercises = LOGIC.libraryExercises(await api("/exercise-library.json?v=9.6.0"));
+    if (!exercises) throw new Error("STRATA returned an incomplete exercise library.");
     state.exercises = exercises;
     let result;
     try {

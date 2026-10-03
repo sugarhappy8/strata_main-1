@@ -32,6 +32,17 @@ The command reports median and p95 latency and exits nonzero when either exceeds
 
 `/livez` is intentionally absent because it performs no storage work and is not a useful proxy for application readiness. The benchmark also does not exercise account email, Paddle checkout/subscription/portal calls, Turso network latency, image transfer, browser rendering, or service-worker installation. Build 7.5.0's request logger is quiet in the isolated test environment, so console transport does not distort these application-path samples. Capture separate hosted evidence before using the result for capacity or provider decisions.
 
+### Page weight
+
+The same server also answers what a signed-out visitor on a phone downloads before touching the homepage and Plan: the HTML, every stylesheet and script the page names, and the first-paint assets the markup does not name — the phone frame of the homepage photo (`hero-training-960.avif`), the body font, and Plan's exercise library (`exercise-library.json`). Each response is fetched with `Accept-Encoding: gzip`; the check sums the bytes the server sends and their decoded size and fails above these budgets:
+
+| Page | Sent (gzip) budget | Decoded budget | 9.6 | Now |
+| --- | ---: | ---: | ---: | ---: |
+| Homepage `/` | 180,000 B | 385,000 B | 692,887 / 1,156,535 B | 164,352 / 350,767 B |
+| Plan `/planner.html` | 123,000 B | 460,000 B | 165,068 / 681,254 B | 111,839 / 417,145 B |
+
+The homepage's exercise catalog (`exercises.json`, 335 KB, 57 KB gzipped) is not part of its first paint: it loads when the free-week preview or the rankings come into view, on the first scroll, or at once for a link to `#preview` or `#rankings` (and `/rankings`, which redirects there). Plan loads the library — the catalog without its setup notes, cues and tutorial links — and fetches the full catalog and `discovery-core.js` the first time a setup guide opens. The check does not run page scripts, so it cannot see a script that starts fetching early; `test/homepage-client.test.js` and `qa/planner-runtime-smoke.js` hold those rules. It also leaves out the service worker's install-time precache, which a first visit starts after the page loads.
+
 ## Recorded baseline
 
 The Build 7.8.0 source candidate passed every checked-in budget on the local Darwin arm64 host under Node 25.8.2. Each path used eight warm-ups followed by 40 measured samples:

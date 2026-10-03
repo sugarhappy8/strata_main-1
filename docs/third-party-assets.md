@@ -2,7 +2,7 @@
 
 ## Photographs
 
-- `public/images/hero-training.jpg` — photo by [Corey Young](https://unsplash.com/photos/a-man-doing-a-pull-up-on-a-bar-in-a-gym-ThLzcgVeU5I) on Unsplash. The homepage retains visible attribution.
+- `public/images/hero-training-960.{avif,webp,jpg}` and `public/images/hero-training-1600.{avif,webp,jpg}` — photo by [Corey Young](https://unsplash.com/photos/a-man-doing-a-pull-up-on-a-bar-in-a-gym-ThLzcgVeU5I) on Unsplash, re-encoded from the 2200 × 1467 original: a 960 × 1467 phone crop (taken 65% across, where phones position the photo) and the full frame at 1600 × 1067. The homepage retains visible attribution.
 
 The two Unsplash files are self-hosted so rendering the homepage does not send a visitor's request metadata to Unsplash. Review the current [Unsplash license](https://unsplash.com/license) before redistributing the photos separately from this application.
 

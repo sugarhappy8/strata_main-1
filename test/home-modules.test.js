@@ -200,3 +200,85 @@ test("homepage rankings and details escape a catalog name exactly once", () => {
     "detail values are escaped exactly once",
   );
 });
+
+test("homepage links to the preview or rankings ask for the catalog; other sections do not", () => {
+  for (const hash of ["#preview", "#rankings", "rankings"])
+    assert.equal(Logic.catalogLinked(hash), true, hash);
+  for (const hash of ["", "#", "#top", "#method", "#sources", "#rankings-title", null, undefined])
+    assert.equal(Logic.catalogLinked(hash), false, String(hash));
+});
+
+test("homepage catalog demand fires once, from a link, a section in view, or the first scroll", () => {
+  function harness({ hash = "", observer = true } = {}) {
+    const listeners = {},
+      observers = [],
+      location = { hash };
+    let demands = 0;
+    const window = {
+      addEventListener(type, handler, options) {
+        (listeners[type] ||= []).push({ handler, options });
+      },
+    };
+    if (observer)
+      window.IntersectionObserver = class {
+        constructor(callback) {
+          this.callback = callback;
+          this.targets = [];
+          this.disconnected = false;
+          observers.push(this);
+        }
+        observe(target) {
+          this.targets.push(target);
+        }
+        disconnect() {
+          this.disconnected = true;
+        }
+      };
+    Events.watchCatalogDemand({
+      window,
+      location,
+      sections: [{ id: "quickPreviewForm" }, null, { id: "rankings" }],
+      linked: Logic.catalogLinked,
+      onDemand: () => {
+        demands += 1;
+      },
+    });
+    const emit = (type) => (listeners[type] || []).forEach(({ handler }) => handler());
+    return { emit, listeners, location, observers, demands: () => demands };
+  }
+
+  const idle = harness();
+  assert.equal(idle.demands(), 0, "a visitor reading the hero downloads no catalog");
+  assert.deepEqual(
+    idle.observers[0].targets.map((target) => target.id),
+    ["quickPreviewForm", "rankings"],
+  );
+  assert.equal(idle.listeners.scroll[0].options.passive, true);
+  idle.observers[0].callback([{ isIntersecting: false }]);
+  idle.location.hash = "#method";
+  idle.emit("hashchange");
+  assert.equal(idle.demands(), 0);
+  idle.observers[0].callback([{ isIntersecting: false }, { isIntersecting: true }]);
+  assert.equal(idle.demands(), 1, "a section coming into view loads it");
+  assert.equal(idle.observers[0].disconnected, true);
+  idle.emit("scroll");
+  idle.location.hash = "#rankings";
+  idle.emit("hashchange");
+  assert.equal(idle.demands(), 1, "the catalog is requested once");
+
+  const scrolled = harness();
+  scrolled.emit("scroll");
+  assert.equal(scrolled.demands(), 1, "the first scroll down from the hero loads it");
+
+  const navigated = harness();
+  navigated.location.hash = "#preview";
+  navigated.emit("hashchange");
+  assert.equal(navigated.demands(), 1, "following a link to the preview loads it");
+
+  for (const hash of ["#rankings", "#preview"]) {
+    const linked = harness({ hash });
+    assert.equal(linked.demands(), 1, `${hash} needs the catalog at first paint`);
+    assert.equal(linked.observers.length, 0);
+  }
+  assert.equal(harness({ observer: false }).demands(), 1, "older browsers load it at once");
+});

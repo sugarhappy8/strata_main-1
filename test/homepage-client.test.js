@@ -117,8 +117,12 @@ function createRuntime({
   guestPlan = null,
   serverUser = null,
   activation = false,
+  hash = "",
+  observe = false,
 } = {}) {
   const elements = new Map(ids.map((id) => [id, new Element(id)]));
+  const fetches = [],
+    observers = [];
   const starters = ["dumbbells", "bodyweight", "barbell"].map((name) => {
     const button = new Element(name);
     button.dataset.previewStarter = name;
@@ -157,7 +161,7 @@ function createRuntime({
   const context = {
     console,
     document,
-    location: { search: "" },
+    location: { search: "", hash },
     history: { replaceState() {} },
     requestAnimationFrame: (callback) => callback(),
     setTimeout,
@@ -185,12 +189,29 @@ function createRuntime({
       },
     },
     fetch: async (pathname) => {
+      fetches.push(pathname);
       if (pathname === "/api/me")
         return typeof meResponse === "function" ? meResponse() : meResponse;
       if (pathname === `/exercises.json?v=${BUILD}`) return jsonResponse(200, catalog);
       return jsonResponse(404, { error: "Not found." });
     },
   };
+  // Browsers have IntersectionObserver; leaving it out of a runtime models one that loads the catalog at once.
+  if (observe)
+    context.window.IntersectionObserver = class {
+      constructor(callback) {
+        this.callback = callback;
+        this.targets = [];
+        this.disconnected = false;
+        observers.push(this);
+      }
+      observe(target) {
+        this.targets.push(target);
+      }
+      disconnect() {
+        this.disconnected = true;
+      }
+    };
   context.globalThis = context;
   vm.createContext(context);
   loadHtml(context);
@@ -213,6 +234,8 @@ function createRuntime({
     context,
     elements,
     starters,
+    fetches,
+    observers,
     emitVisibility(value) {
       document.visibilityState = value;
       for (const handler of documentListeners.visibilitychange || []) handler();
@@ -629,4 +652,63 @@ test("the ranking says what it is sorted by and links to how FitScore works", as
     /id="rankNote">Ranked by <strong id="rankSortLabel">FitScore<\/strong>, highest first\.[^<]*<a href="#method">How FitScore works<\/a> · <a href="#sources">Sources<\/a>/,
   );
   assert.match(planner, /Highest FitScore first · <a href="\/#method">How FitScore works<\/a>/);
+});
+
+test("the homepage leaves the exercise catalog for later until the preview or rankings are needed", async () => {
+  const CATALOG = `/exercises.json?v=${BUILD}`;
+  const r = createRuntime({
+    meResponse: jsonResponse(401, { error: "Not signed in." }),
+    observe: true,
+  });
+  await settle();
+  assert.deepEqual(r.fetches, ["/api/me"], "first paint downloads no exercise catalog");
+  assert.equal(vm.runInContext("state.catalogStatus", r.context), "loading");
+  assert.equal(
+    r.elements.get("quickPreviewEquipment").innerHTML,
+    "",
+    "no equipment before the catalog",
+  );
+  assert.match(r.elements.get("groupTabs").innerHTML, /data-group="chest"/);
+  assert.equal(r.elements.get("exerciseList").textContent, "");
+  assert.deepEqual(
+    r.observers[0].targets.map((target) => target.id),
+    ["quickPreviewForm", "rankings"],
+  );
+
+  r.observers[0].callback([{ target: r.elements.get("rankings"), isIntersecting: true }]);
+  await settle();
+  assert.deepEqual(r.fetches, ["/api/me", CATALOG], "the rankings coming into view load it once");
+  assert.equal(vm.runInContext("state.catalogStatus", r.context), "ready");
+  assert.equal(
+    (r.elements.get("exerciseList").innerHTML.match(/class="exercise-row"/g) || []).length,
+    10,
+  );
+  assert.match(r.elements.get("quickPreviewEquipment").innerHTML, /<option value="Dumbbells">/);
+  r.emitWindow("scroll");
+  await settle();
+  assert.equal(r.fetches.filter((path) => path === CATALOG).length, 1);
+
+  const scrolled = createRuntime({ meResponse: jsonResponse(401, {}), observe: true });
+  await settle();
+  assert.equal(scrolled.fetches.includes(CATALOG), false);
+  scrolled.emitWindow("scroll");
+  await settle();
+  assert.equal(scrolled.fetches.filter((path) => path === CATALOG).length, 1);
+
+  const linkedLater = createRuntime({ meResponse: jsonResponse(401, {}), observe: true });
+  linkedLater.context.location.hash = "#preview";
+  linkedLater.emitWindow("hashchange");
+  await settle();
+  assert.equal(linkedLater.fetches.filter((path) => path === CATALOG).length, 1);
+});
+
+test("a link to the rankings or the preview loads the exercise catalog at first paint", async () => {
+  for (const hash of ["#rankings", "#preview"]) {
+    const r = createRuntime({ meResponse: jsonResponse(401, {}), observe: true, hash });
+    assert.equal(r.fetches.includes(`/exercises.json?v=${BUILD}`), true, hash);
+    assert.equal(r.observers.length, 0);
+    await settle();
+    assert.equal(vm.runInContext("state.catalogStatus", r.context), "ready");
+    assert.match(r.elements.get("exerciseList").innerHTML, /data-detail=/);
+  }
 });

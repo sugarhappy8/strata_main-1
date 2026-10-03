@@ -268,10 +268,18 @@ select:focus-visible,
   mask-image: linear-gradient(90deg, #000, transparent 70%);
   pointer-events: none;
 }
+/* The photo comes in two frames: the full 1600px frame here, and a 960px phone crop under
+   (max-width: 560px). Each lists AVIF, WebP, then JPEG; the plain url() before it is for browsers
+   without image-set() type(). Only the frame the media query picks is downloaded. */
 .hero-media {
   position: absolute;
   inset: 0;
-  background-image: url("/images/hero-training.jpg");
+  background-image: url("/images/hero-training-1600.jpg");
+  background-image: image-set(
+    url("/images/hero-training-1600.avif") type("image/avif"),
+    url("/images/hero-training-1600.webp") type("image/webp"),
+    url("/images/hero-training-1600.jpg") type("image/jpeg")
+  );
   background-size: cover;
   background-position: 62% 34%;
   filter: saturate(0.48) contrast(1.06);
@@ -2239,6 +2247,16 @@ dialog::backdrop {
   }
   .hero {
     min-height: max(720px, 100svh);
+  }
+  /* A full-height crop taken 65% across the photo, the position (max-width: 800px) gives it, so it
+     frames exactly like the whole photo while the hero is at most 960/1467 as wide as it is tall. */
+  .hero-media {
+    background-image: url("/images/hero-training-960.jpg");
+    background-image: image-set(
+      url("/images/hero-training-960.avif") type("image/avif"),
+      url("/images/hero-training-960.webp") type("image/webp"),
+      url("/images/hero-training-960.jpg") type("image/jpeg")
+    );
   }
   .home-page .hero h1 {
     font-size: clamp(50px, 14.5vw, 72px);

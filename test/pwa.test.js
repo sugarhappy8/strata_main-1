@@ -527,6 +527,10 @@ test("service worker precaches only public assets and never handles account APIs
   assert.ok(harness.precache.includes("/install.html"));
   assert.ok(harness.precache.includes("/manifest.webmanifest"));
   assert.ok(harness.precache.includes(`/exercises.json?v=${BUILD}`));
+  assert.ok(
+    harness.precache.includes(`/exercise-library.json?v=${BUILD}`),
+    "Plan opens offline from the exercise library it loads first",
+  );
   for (const page of ["pricing", "contact", "policies", "terms", "privacy", "refunds", "planner"])
     assert.ok(harness.precache.includes(`/${page}.html`), `${page} must be precached`);
   assert.ok(harness.precache.includes(`/site-info.css?v=${BUILD}`));
@@ -539,13 +543,16 @@ test("service worker precaches only public assets and never handles account APIs
     "/fonts/manrope-latin.woff2",
     "/fonts/dm-mono-400-latin.woff2",
     "/fonts/dm-mono-500-latin.woff2",
-    "/images/hero-training.jpg",
   ])
     assert.ok(harness.precache.includes(asset), `${asset} must remain self-hosted and installable`);
   assert.ok(harness.precache.some((url) => url.includes("strata-512.png")));
   assert.ok(
     !harness.precache.some((url) => url.includes("strata-layers.jpg")),
     "The lazy homepage artwork must not become an eager PWA install download",
+  );
+  assert.ok(
+    !harness.precache.some((url) => url.includes("hero-training")),
+    "The homepage photo is never shown offline, so installing must not download any of its frames",
   );
 
   const paths = harness.precache.map((entry) => new URL(entry, "https://strata.test").pathname);

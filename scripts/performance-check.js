@@ -25,6 +25,28 @@ const PERFORMANCE_BUDGETS = Object.freeze({
   "storage.planCompareAndSwap": { medianMs: 10, p95Ms: 35 },
 });
 
+// What a signed-out visitor on a phone (AVIF-capable browser, empty cache) downloads before touching the page:
+// the HTML, every stylesheet and script it names, and the assets first paint needs that the markup does not name
+// (the phone frame of the homepage photo, the body font, Plan's exercise library). The homepage's exercise catalog
+// is not among them: it loads only when the free-week preview or the rankings are needed. Bytes are the bodies as
+// this server sends them gzipped, and decoded. Measured this way, 9.6 sent 692,887 / 1,156,535 bytes for the
+// homepage and 165,068 / 681,254 for Plan; the lighter pages send 164,352 / 350,767 and 111,839 / 417,145. The
+// budgets leave about 10% headroom over those.
+const PAGE_WEIGHT_BUDGETS = Object.freeze({
+  "page.home": Object.freeze({
+    path: "/",
+    assets: Object.freeze(["/images/hero-training-960.avif", "/fonts/manrope-latin.woff2"]),
+    transferredBytes: 180_000,
+    decodedBytes: 385_000,
+  }),
+  "page.planner": Object.freeze({
+    path: "/planner.html",
+    assets: Object.freeze(["/exercise-library.json", "/fonts/manrope-latin.woff2"]),
+    transferredBytes: 123_000,
+    decodedBytes: 460_000,
+  }),
+});
+
 function boundedInteger(value, fallback, min, max) {
   const parsed = Number(value ?? fallback);
   return Number.isSafeInteger(parsed) && parsed >= min && parsed <= max ? parsed : fallback;
@@ -60,6 +82,61 @@ async function checkedJson(url, options) {
       `${options?.method || "GET"} ${url} returned ${response.status}: ${JSON.stringify(body)}`,
     );
   return { response, body };
+}
+
+// The stylesheets and scripts a page's markup names, resolved against the page URL, in document order.
+function pageAssets(html, pageUrl) {
+  const urls = [];
+  for (const [tag] of String(html).matchAll(/<(?:link|script)\b[^>]*>/gi)) {
+    const source = /^<link/i.test(tag)
+      ? /\brel=["']stylesheet["']/i.test(tag) && /\bhref=["']([^"']+)["']/i.exec(tag)?.[1]
+      : /\bsrc=["']([^"']+)["']/i.exec(tag)?.[1];
+    if (source) urls.push(new URL(source, pageUrl).href);
+  }
+  return urls;
+}
+
+async function transfer(url) {
+  const response = await fetch(url, { headers: { "Accept-Encoding": "gzip" } });
+  const body = Buffer.from(await response.arrayBuffer());
+  if (!response.ok) throw new Error(`GET ${url} returned ${response.status}.`);
+  // fetch decodes gzip; Content-Length is the size that crossed the wire.
+  return { body, transferred: Number(response.headers.get("content-length")) || body.length };
+}
+
+async function pageWeightEvidence(baseUrl) {
+  const results = [];
+  for (const [name, budget] of Object.entries(PAGE_WEIGHT_BUDGETS)) {
+    const pageUrl = new URL(budget.path, baseUrl).href,
+      page = await transfer(pageUrl);
+    const urls = [
+      ...pageAssets(page.body.toString("utf8"), pageUrl),
+      ...budget.assets.map((asset) => new URL(asset, baseUrl).href),
+    ];
+    let transferredBytes = page.transferred,
+      decodedBytes = page.body.length;
+    for (const url of new Set(urls)) {
+      const asset = await transfer(url);
+      transferredBytes += asset.transferred;
+      decodedBytes += asset.body.length;
+    }
+    results.push({ name, requests: new Set(urls).size + 1, transferredBytes, decodedBytes });
+  }
+  return results;
+}
+
+function assessPageWeight(results) {
+  return results.map((result) => {
+    const budget = PAGE_WEIGHT_BUDGETS[result.name];
+    return {
+      ...result,
+      budgetTransferredBytes: budget.transferredBytes,
+      budgetDecodedBytes: budget.decodedBytes,
+      passed:
+        result.transferredBytes <= budget.transferredBytes &&
+        result.decodedBytes <= budget.decodedBytes,
+    };
+  });
 }
 
 function isolatedServerEnvironment(dataDirectory) {
@@ -240,7 +317,7 @@ async function endpointEvidence(dataDirectory) {
         planRevision = body.planUpdatedAt;
       }),
     );
-    return results;
+    return { results, pageWeight: await pageWeightEvidence(baseUrl) };
   } finally {
     await stopServer(child);
   }
@@ -367,10 +444,9 @@ async function main() {
   mkdirSync(endpointDirectory);
   mkdirSync(storageDirectory);
   try {
-    const results = assess([
-      ...(await endpointEvidence(endpointDirectory)),
-      ...(await storageEvidence(storageDirectory)),
-    ]);
+    const endpoint = await endpointEvidence(endpointDirectory);
+    const results = assess([...endpoint.results, ...(await storageEvidence(storageDirectory))]),
+      pageWeight = assessPageWeight(endpoint.pageWeight);
     if (process.argv.includes("--json")) {
       console.log(
         JSON.stringify(
@@ -384,6 +460,7 @@ async function main() {
             warmups: WARMUP_COUNT,
             storageFixtureAccounts: STORAGE_FIXTURE_ACCOUNTS,
             results,
+            pageWeight,
           },
           null,
           2,
@@ -394,8 +471,10 @@ async function main() {
       console.log(
         `Performance evidence: ${SAMPLE_COUNT} measured samples after ${WARMUP_COUNT} warmups per operation.`,
       );
+      console.table(pageWeight);
+      console.log("Page weight: first paint for a signed-out phone visitor with an empty cache.");
     }
-    const failed = results.filter((result) => !result.passed);
+    const failed = [...results, ...pageWeight].filter((result) => !result.passed);
     if (failed.length)
       throw new Error(
         `Performance budgets exceeded: ${failed.map((result) => result.name).join(", ")}.`,
@@ -413,11 +492,14 @@ if (require.main === module)
 
 module.exports = {
   PERFORMANCE_BUDGETS,
+  PAGE_WEIGHT_BUDGETS,
   SAMPLE_COUNT,
   WARMUP_COUNT,
   STORAGE_FIXTURE_ACCOUNTS,
   benchmark,
   percentile,
   assess,
+  assessPageWeight,
+  pageAssets,
   isolatedServerEnvironment,
 };

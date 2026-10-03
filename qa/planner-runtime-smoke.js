@@ -8,7 +8,9 @@ const { join } = require("node:path");
 const PROJECT_ROOT = join(__dirname, "..");
 const RELEASE = require(join(PROJECT_ROOT, "package.json"));
 const BUILD = RELEASE.strataBuild || RELEASE.version;
-const CATALOG_URL = `/exercises.json?v=${BUILD}`;
+// Plan loads the library (the catalog without long-form guidance) and the full catalog only for a setup guide.
+const CATALOG_URL = `/exercise-library.json?v=${BUILD}`;
+const GUIDANCE_URL = `/exercises.json?v=${BUILD}`;
 const readPublic = (...parts) => fs.readFileSync(join(PROJECT_ROOT, "public", ...parts), "utf8");
 const html = readPublic("pages", "planner.html");
 // The stylesheet is compared without layout whitespace, so these checks hold for dense and formatted CSS alike.
@@ -18,7 +20,8 @@ const compactCss = (css) =>
     .replace(/\s*([{}:;,>()])\s*/g, "$1")
     .replace(/;\}/g, "}");
 const plannerCss = compactCss(readPublic("styles", "planner.css"));
-const exercises = JSON.parse(readPublic("data", "exercises.json"));
+const fullCatalog = JSON.parse(readPublic("data", "exercises.json"));
+const exercises = JSON.parse(readPublic("data", "exercise-library.json"));
 const Discovery = require(join(PROJECT_ROOT, "public", "scripts", "discovery-core"));
 const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -162,6 +165,7 @@ const context = {
     fetches.push(path);
     requests.push({ path, options });
     if (path === CATALOG_URL) return { ok: true, json: async () => exercises };
+    if (path === GUIDANCE_URL) return { ok: true, json: async () => fullCatalog };
     if (path === "/api/plan")
       return {
         ok: true,
@@ -280,6 +284,38 @@ function clickSelectDay(day) {
     initialMarkup,
     /data-guide-exercise=/,
     "Every planner movement should expose its catalog-backed setup guide",
+  );
+  assert.equal(
+    fetches.includes(GUIDANCE_URL),
+    false,
+    "Plan's first paint must not download the catalog's long-form guidance",
+  );
+  assert.equal(vm.runInContext("LOGIC.hasGuidance(state.exercises[0])", context), false);
+  assert.match(
+    vm.runInContext("state.exercises[0].youtube", context),
+    /^https:\/\/www\.youtube\.com\/results\?search_query=/,
+    "library cards keep their tutorial link without the full catalog",
+  );
+  const guideId = exercises[0].id;
+  await vm.runInContext(`openExerciseGuide(${JSON.stringify(guideId)})`, context);
+  assert.equal(elements.get("exerciseGuideDialog").open, true, "a guide opens once its notes load");
+  assert.match(
+    elements.get("exerciseGuideBody").innerHTML,
+    /Technique cues[\s\S]*Caution \/ Common mistake/,
+  );
+  assert.ok(
+    elements
+      .get("exerciseGuideBody")
+      .innerHTML.includes(fullCatalog[0].cues[1].replace(/&/g, "&amp;")),
+    "the guide shows the full catalog's cues",
+  );
+  elements.get("exerciseGuideDialog").close();
+  await vm.runInContext(`openExerciseGuide(${JSON.stringify(exercises[1].id)})`, context);
+  elements.get("exerciseGuideDialog").close();
+  assert.equal(
+    fetches.filter((path) => path === GUIDANCE_URL).length,
+    1,
+    "the full catalog is fetched once, for the first guide",
   );
   for (const day of DAYS) {
     const chip = dayNavMarkup.match(
