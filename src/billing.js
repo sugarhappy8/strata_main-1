@@ -22,6 +22,8 @@ const {
   validateSubscription,
   createCustomerPortalSession,
   fullRevocationFromAdjustment,
+  planForKey,
+  planForPrice,
 } = require("./payments");
 const { MANAGE_SUBSCRIPTIONS_URL } = require("./apple-billing");
 const { cleanText } = require("./plans");
@@ -109,7 +111,7 @@ function createBillingService({
   function hasCurrentPaidAccess(userId, timestamp = now()) {
     return store.hasEntitledPaidDiscoveryAccess(
       userId,
-      paymentConfig.priceId,
+      paymentConfig.priceIds,
       paymentConfig.productId,
       timestamp,
     );
@@ -130,7 +132,7 @@ function createBillingService({
   function accessSummaryForUser(userId, timestamp = now()) {
     return store.entitledDiscoveryAccessSummary(
       userId,
-      paymentConfig.priceId,
+      paymentConfig.priceIds,
       paymentConfig.productId,
       timestamp,
     );
@@ -153,6 +155,7 @@ function createBillingService({
     return {
       id: row.subscription_id,
       status,
+      plan: planForPrice(paymentConfig, row.price_id)?.key || null,
       active,
       pastDue: status === "past_due",
       scheduledChange: row.scheduled_change_action
@@ -223,7 +226,7 @@ function createBillingService({
 
   /** @param {import("./domain-types").CheckoutClaimRow} claim @param {{retirement?:boolean}} [options] */
   async function transactionForCheckoutClaim(claim, { retirement = false } = {}) {
-    if (!retirement && claim.price_id !== paymentConfig.priceId)
+    if (!retirement && !planForPrice(paymentConfig, claim.price_id))
       throw reconciliationError(
         "STRATA could not safely validate an interrupted checkout catalog. Please contact support.",
         "PURCHASE_RECONCILIATION_INVALID",
@@ -332,7 +335,7 @@ function createBillingService({
         purchase = await store.insertPendingPurchase({
           transactionId: remote.transactionId,
           userId: claim.user_id,
-          priceId: paymentConfig.priceId,
+          priceId: claim.price_id,
           productId: paymentConfig.productId,
           paddleStatus: remote.status,
           createdAt,
@@ -354,7 +357,12 @@ function createBillingService({
       );
     let entitled = false;
     if (remote.status === "completed") {
-      if (!validateCompletedTransaction(remote.data, paymentConfig).ok)
+      if (
+        !validateCompletedTransaction(remote.data, paymentConfig, {
+          priceId: purchase.price_id,
+          productId: purchase.product_id,
+        }).ok
+      )
         throw reconciliationError(
           "STRATA could not safely validate a completed Strata+ checkout. Please contact support.",
           "PURCHASE_RECONCILIATION_INVALID",
@@ -502,7 +510,11 @@ function createBillingService({
           "STRATA could not safely validate the completed checkout catalog. Please contact support.",
           "PURCHASE_RECONCILIATION_INVALID",
         );
-      if (!validateCompletedTransaction(remote.data, paymentConfig).ok)
+      if (
+        !validateCompletedTransaction(remote.data, paymentConfig, {
+          priceId: purchase ? purchase.price_id : claim.price_id,
+        }).ok
+      )
         throw reconciliationError(
           "STRATA could not safely validate a completed Strata+ checkout. Please contact support.",
           "PURCHASE_RECONCILIATION_INVALID",
@@ -514,7 +526,7 @@ function createBillingService({
             {
               transactionId: remote.transactionId,
               userId,
-              priceId: paymentConfig.priceId,
+              priceId: claim.price_id,
               productId: paymentConfig.productId,
               paddleStatus: remote.status,
               createdAt: eventTime(remote.data.created_at, Number(claim.created_at)),
@@ -574,7 +586,10 @@ function createBillingService({
       const claimedUser = cleanText(data.custom_data?.strata_user_id, 100);
       const validation =
         purchase && currentPurchase(purchase)
-          ? validateCompletedTransaction(data, paymentConfig)
+          ? validateCompletedTransaction(data, paymentConfig, {
+              priceId: purchase.price_id,
+              productId: purchase.product_id,
+            })
           : { ok: false, reason: "catalog" };
       if (purchase && validation.ok && claimedUser === purchase.user_id) {
         const subscriptionId = cleanText(data.subscription_id, 100);
@@ -758,7 +773,7 @@ function createBillingService({
    * @param {import("./domain-types").SessionRow} session
    */
   async function beginCheckout(req, res, session) {
-    await bodyJson(req);
+    const input = /** @type {{plan?:unknown}|null} */ (await bodyJson(req));
     if ((await store.adminControls(session.id))?.checkout_blocked_at) {
       json(res, 403, {
         error: "New payment sessions are disabled for this account. Contact support.",
@@ -768,6 +783,12 @@ function createBillingService({
     }
     if (!paymentConfig.enabled) {
       json(res, 503, { error: "Checkout is not available yet.", code: "CHECKOUT_UNAVAILABLE" });
+      return;
+    }
+    // Monthly unless the member chose yearly; a plan this deployment does not sell is refused.
+    const plan = planForKey(paymentConfig, input?.plan ?? "monthly");
+    if (!plan) {
+      json(res, 400, { error: "Choose the monthly or yearly plan.", code: "PLAN_UNAVAILABLE" });
       return;
     }
     if (await store.activeAccountDeletion(session.id, now())) {
@@ -854,13 +875,13 @@ function createBillingService({
       claimId = makeId();
     const claim = await store.claimCheckoutCreation({
       userId: session.id,
-      priceId: paymentConfig.priceId,
+      priceId: plan.priceId,
       claimId,
       expiresAt: claimedAt + CHECKOUT_CREATION_CLAIM_MS,
       now: claimedAt,
     });
     if (!claim) {
-      const pending = await store.pendingPurchaseForUser(session.id, paymentConfig.priceId);
+      const pending = await store.pendingPurchaseForUser(session.id, plan.priceId);
       if (pending) {
         await sendCheckout(200, { transactionId: pending.transaction_id, reused: true });
         return;
@@ -886,18 +907,22 @@ function createBillingService({
         await alreadyEntitled(res, session.id);
         return;
       }
-      let pending = await store.pendingPurchaseForUser(session.id, paymentConfig.priceId);
+      let pending = await store.pendingPurchaseForUser(session.id, plan.priceId);
       if (pending && Number(pending.updated_at) > now() - ABANDONED_CHECKOUT_MS) {
         await sendCheckout(200, { transactionId: pending.transaction_id, reused: true });
         return;
       }
       if ((await store.pendingPurchasesForUser(session.id)) > 0) {
-        await reconcileUnsettledPurchases(session.id, { reuseDraft: true });
+        // An unpaid checkout on the other plan is switched off, so changing plans never waits.
+        await reconcileUnsettledPurchases(session.id, {
+          reuseDraft: true,
+          reusePriceId: plan.priceId,
+        });
         if (await hasCurrentAccess(session.id)) {
           await alreadyEntitled(res, session.id);
           return;
         }
-        pending = await store.pendingPurchaseForUser(session.id, paymentConfig.priceId);
+        pending = await store.pendingPurchaseForUser(session.id, plan.priceId);
         if (pending) {
           await sendCheckout(200, { transactionId: pending.transaction_id, reused: true });
           return;
@@ -918,6 +943,7 @@ function createBillingService({
       const created = await createPaddleTransaction(paymentConfig, {
         userId: session.id,
         checkoutId: claimId,
+        plan: plan.key,
       });
       releaseTransactionId = created.transactionId;
       const timestamp = now();
@@ -944,7 +970,7 @@ function createBillingService({
         storedPurchase = await store.insertPendingPurchase({
           transactionId: created.transactionId,
           userId: session.id,
-          priceId: paymentConfig.priceId,
+          priceId: plan.priceId,
           productId: paymentConfig.productId,
           paddleStatus: created.status,
           createdAt: timestamp,
@@ -961,7 +987,7 @@ function createBillingService({
           {
             transactionId: created.transactionId,
             userId: session.id,
-            priceId: paymentConfig.priceId,
+            priceId: plan.priceId,
             productId: paymentConfig.productId,
             paddleStatus: created.status,
             createdAt: timestamp,

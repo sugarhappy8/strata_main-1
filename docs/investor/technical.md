@@ -37,7 +37,7 @@ build (`architecture-policy.json`, `docs/module-architecture.md`).
 
 ## Tests
 
-- **1,355 Node tests** across unit, integration (a real server on a temporary database), and contract layers
+- **1,360 Node tests** across unit, integration (a real server on a temporary database), and contract layers
   (database adapters, architecture), with coverage floors of 90% lines, 78% branches, and 85% functions.
 - **18 browser journeys** in Chromium, Firefox, and WebKit, including accessibility checks, phone layouts, offline
   workouts, and a visitor's clean console.

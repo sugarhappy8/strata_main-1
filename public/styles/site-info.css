@@ -845,6 +845,56 @@ a {
 .purchase-panel {
   margin-top: 30px;
 }
+.plan-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  border: 0;
+}
+.plan-choice[hidden] {
+  display: none;
+}
+.plan-choice legend {
+  margin-bottom: 8px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font: 600 12px/1.4 var(--body, "Manrope", Arial, sans-serif);
+}
+.plan-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 11px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.72);
+  font: 600 12px/1.4 var(--body, "Manrope", Arial, sans-serif);
+  cursor: pointer;
+}
+.plan-option[hidden] {
+  display: none;
+}
+.plan-option:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.plan-option input {
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+.plan-option strong {
+  display: block;
+  color: #fff;
+  font: 650 14px/1.25 var(--display);
+}
+.price-alt {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-weight: 600;
+}
 .purchase-actions {
   margin-top: 0;
 }

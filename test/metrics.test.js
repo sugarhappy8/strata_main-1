@@ -4,11 +4,11 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   DAY_MS,
-  NET_PRICE,
   buildInvestorMetrics,
   csvCell,
   metricsCsv,
   metricsSince,
+  monthlyValue,
 } = require("../src/metrics");
 
 const at = (iso) => Date.parse(iso);
@@ -45,12 +45,14 @@ function source(overrides = {}) {
       {
         userId: "A",
         status: "active",
+        plan: "yearly",
         startedAt: at("2026-08-10T00:00:00Z"),
         changedAt: at("2026-09-10T00:00:00Z"),
       },
       {
         userId: "B",
         status: "canceled",
+        plan: "monthly",
         startedAt: at("2026-08-15T00:00:00Z"),
         changedAt: at("2026-09-15T00:00:00Z"),
       },
@@ -135,19 +137,34 @@ test("cohorts count activation only once its seven days have passed and only aft
   assert.ok(unrecorded.cohorts.every((row) => row.activation.eligible === 0));
 });
 
+test("each plan's monthly value: $4.99 a month, $29.99 a year spread over twelve, after each provider's fee", () => {
+  const close = (actual, expected) =>
+    assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} ≠ ${expected}`);
+  const monthly = monthlyValue("monthly", "paddle"),
+    yearly = monthlyValue("yearly", "paddle"),
+    apple = monthlyValue("monthly", "apple");
+  close(monthly.list, 4.99);
+  close(monthly.net, 4.99 - (4.99 * 0.05 + 0.5));
+  close(yearly.list, 29.99 / 12);
+  close(yearly.net, (29.99 - (29.99 * 0.05 + 0.5)) / 12);
+  close(apple.net, 4.99 * 0.85);
+});
+
 test("revenue counts paying members, lifetime access, list MRR, and MRR after provider fees", () => {
-  const { revenue, summary } = buildInvestorMetrics(source(), { now: NOW });
+  const { revenue, summary, prices } = buildInvestorMetrics(source(), { now: NOW });
+  assert.deepEqual(prices, { monthly: 4.99, yearly: 29.99 });
+  // A pays yearly through Paddle ($2.50 a month, $2.33 after fees); D pays $4.99 through Apple ($4.24 after 15%).
   assert.deepEqual(revenue, {
     accounts: 4,
     everPaid: 3,
     conversionRate: 0.75,
     payingMembers: 2,
     paddleSubscriptions: 1,
+    yearlySubscriptions: 1,
     appStoreSubscriptions: 1,
     lifetimeMembers: 1,
-    mrr: { list: 5.98, afterFees: Math.round((NET_PRICE.paddle + NET_PRICE.apple) * 100) / 100 },
+    mrr: { list: 7.49, afterFees: 6.57 },
   });
-  assert.equal(revenue.mrr.afterFees, 4.88);
   assert.equal(summary.payingMembers, 2);
   assert.equal(summary.conversionRate, 0.75);
   const lapsed = buildInvestorMetrics(
@@ -164,6 +181,7 @@ test("revenue counts paying members, lifetime access, list MRR, and MRR after pr
         {
           userId: "A",
           status: "paused",
+          plan: "yearly",
           startedAt: at("2026-08-10T00:00:00Z"),
           changedAt: at("2026-09-20T00:00:00Z"),
         },
@@ -190,7 +208,7 @@ test("monthly churn divides subscriptions that ended in a month by those paying 
     ended: 0,
     churnRate: null,
     payingAtEnd: 2,
-    mrrAtEnd: 5.98,
+    mrrAtEnd: 7.49,
   });
   assert.equal(september.payingAtStart, 2);
   assert.equal(september.started, 1);
@@ -261,10 +279,10 @@ test("the CSV has one table per figure and never lets a cell run as a spreadshee
   assert.equal(lines[0], "STRATA investor metrics");
   assert.ok(lines.includes("Generated,2026-10-03T12:00:00.000Z"));
   assert.ok(lines.includes("Internal accounts excluded,2"));
-  assert.ok(lines.includes("4,3,75.0%,2,1,1,1,5.98,4.88"));
+  assert.ok(lines.includes("4,3,75.0%,2,1,1,1,1,7.49,6.57"));
   assert.ok(lines.includes("2026-07-27,yes,2,2,1,1"));
   assert.ok(lines.includes("2026-07-27,2,2,1,50.0%,2,1,50.0%,2,1,50.0%"));
-  assert.ok(lines.includes("2026-09,yes,2,1,1,50.0%,2,5.98"));
+  assert.ok(lines.includes("2026-09,yes,2,1,1,50.0%,2,7.49"));
   assert.ok(lines.includes("2026-10,no,1,10,1000000,1000000,0.50,0.5000"));
   assert.equal(csvCell("=HYPERLINK(1)"), "'=HYPERLINK(1)");
   assert.equal(csvCell("@sum"), "'@sum");

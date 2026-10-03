@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="description" content="Strata+ keeps your next workout ready and your last one remembered for $2.99 USD per month. Exercise rankings and the weekly planner stay free." />
+    <meta name="description" content="Strata+ keeps your next workout ready and your last one remembered for $4.99 USD a month or $29.99 USD a year. Exercise rankings and the weekly planner stay free." />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="STRATA" />
     <meta property="og:title" content="Strata+ Pricing — STRATA" />
-    <meta property="og:description" content="Strata+ keeps your next workout ready and your last one remembered for $2.99 USD per month. Exercise rankings and the weekly planner stay free." />
+    <meta property="og:description" content="Strata+ keeps your next workout ready and your last one remembered for $4.99 USD a month or $29.99 USD a year. Exercise rankings and the weekly planner stay free." />
     <meta property="og:url" content="https://stratafitness.online/pricing" />
     <meta property="og:image" content="https://stratafitness.online/images/strata-og.jpg" />
     <meta property="og:image:width" content="1200" />
@@ -43,11 +43,16 @@
     <main id="main">
       <section class="info-hero" aria-labelledby="pageTitle">
         <div class="info-container info-hero-grid">
-          <div><p class="eyebrow">Strata+ · Monthly subscription</p><h1 id="pageTitle">Make next<br />time <em>easier.</em></h1></div>
+          <div><p class="eyebrow">Strata+ · Monthly or yearly</p><h1 id="pageTitle">Make next<br />time <em>easier.</em></h1></div>
           <div>
             <p class="info-lede">Your plan, your previous sets, and your workout log in one place, so every session starts with less guessing.</p>
-            <div class="hero-facts" aria-label="Strata+ subscription facts"><span><strong>$2.99 USD</strong>Per month</span><span><strong>Monthly</strong>Renews until canceled</span><span><strong>Cancel anytime</strong>From Profile</span></div>
+            <div class="hero-facts" aria-label="Strata+ subscription facts"><span><strong>$4.99 USD</strong>Per month</span><span><strong>$29.99 USD</strong>Per year · save 50%</span><span><strong>Cancel anytime</strong>Renews until canceled</span></div>
             <div class="purchase-panel hero-purchase-panel" id="purchasePanel" aria-busy="false">
+              <fieldset class="plan-choice" id="planChoice" hidden>
+                <legend>Choose a plan</legend>
+                <label class="plan-option"><input type="radio" name="plan" value="monthly" checked /><span><strong>Monthly</strong>$4.99 USD a month</span></label>
+                <label class="plan-option" id="planYearlyOption"><input type="radio" name="plan" value="yearly" /><span><strong>Yearly · save 50%</strong>$29.99 USD a year</span></label>
+              </fieldset>
               <div class="button-row purchase-actions">
                 <a class="button button-dark" id="purchaseSignup" href="/account.html?mode=signup&amp;next=pricing">Create my free account <span aria-hidden="true">→</span></a>
                 <a class="button button-light" id="purchaseLogin" href="/account.html?mode=login&amp;next=pricing">Already have an account? Sign in</a>
@@ -67,7 +72,8 @@
           <article class="price-card" aria-labelledby="discoveryPlanTitle">
             <p class="card-kicker">Strata+</p>
             <h2 class="sr-only" id="discoveryPlanTitle">Strata+</h2>
-            <div class="price" aria-label="$2.99 USD per month"><strong>$2.99</strong><span>USD / month</span></div>
+            <div class="price" aria-label="$4.99 USD per month"><strong>$4.99</strong><span>USD / month</span></div>
+            <p class="price-alt">or <strong>$29.99 USD a year</strong>, half the monthly price</p>
             <p class="price-subtitle">Everything in Free, plus:</p>
             <ul class="feature-list plus-benefits">
               <li><span><strong>Know what’s next.</strong> Overview opens your next planned session or resumes an unfinished workout.</span></li>

@@ -15,7 +15,7 @@ test("pricing pure logic validates only the configured recurring catalog boundar
     clientToken: "live_fixture",
     productId: `pro_${"a".repeat(26)}`,
     priceId: `pri_${"b".repeat(26)}`,
-    price: { amount: "2.99", currency: "USD", interval: "month", frequency: 1 },
+    price: { amount: "4.99", currency: "USD", interval: "month", frequency: 1 },
   };
   assert.equal(Logic.validateConfig(valid), valid);
   for (const patch of [
@@ -26,6 +26,39 @@ test("pricing pure logic validates only the configured recurring catalog boundar
     { price: { ...valid.price, amount: "9.99" } },
   ])
     assert.throws(() => Logic.validateConfig({ ...valid, ...patch }));
+  const monthly = {
+      key: "monthly",
+      priceId: valid.priceId,
+      amount: "4.99",
+      currency: "USD",
+      interval: "month",
+      frequency: 1,
+    },
+    yearly = {
+      key: "yearly",
+      priceId: `pri_${"y".repeat(26)}`,
+      amount: "29.99",
+      currency: "USD",
+      interval: "year",
+      frequency: 1,
+    },
+    both = { ...valid, plans: [monthly, yearly] };
+  assert.equal(Logic.validateConfig(both), both);
+  assert.equal(Logic.planAvailable(both, "yearly"), true);
+  assert.equal(Logic.planAvailable(valid, "yearly"), false);
+  assert.equal(Logic.planAvailable(valid, "monthly"), true);
+  // Each plan must cost exactly what the terms say, and the monthly plan is the configured price.
+  for (const plans of [
+    [monthly, { ...yearly, amount: "24.99" }],
+    [monthly, { ...yearly, interval: "month" }],
+    [monthly, { ...yearly, key: "weekly" }],
+    [monthly, { ...yearly, priceId: Logic.RETIRED_ONE_TIME_PRICE_ID }],
+    [{ ...monthly, priceId: yearly.priceId }, yearly],
+  ])
+    assert.throws(
+      () => Logic.validateConfig({ ...valid, plans }),
+      /\$4\.99 USD a month or \$29\.99 USD a year/,
+    );
   assert.equal(Logic.checkoutTransactionId({ transaction_id: "txn_fixture" }), "txn_fixture");
   assert.equal(
     Logic.paidAccessReady({ discovery: { accessType: "grant", subscription: null } }),

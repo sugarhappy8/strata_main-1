@@ -14,12 +14,13 @@ STRATA adds no features until V1. Each release since Build 9 has been fixes and 
 ## Build 10 — V1
 
 - **iOS app in the App Store.** Submit with the App Review account in `APPLE_SANDBOX_ACCOUNTS`, check the subscription
-  in Sandbox, then release.
+  in Sandbox, then release. The App Store sells the monthly plan only; add a yearly App Store product to match the
+  website's $29.99 yearly plan.
 - **Polar with a real account.** Polar sync has been tested only against recorded and made-up data. Connect a real
   Polar device, compare a week of nights and sessions with Polar Flow, and fix any field that does not match
   (`src/polar-mapping.js`, `POLAR_INTEGRATION.md`).
 - **Provider confirmations** that the build environment could not make: Groq Zero Data Retention switched on for the
-  account, Paddle's actual rate for a $2.99 product, and a Turso restore drill into a separate database
+  account, Paddle's actual rate for the $4.99 and $29.99 prices, and a Turso restore drill into a separate database
   ([runbook](runbook.md)).
 - **The live site on a phone** with a clean console after the 9.8.0 deploy.
 
@@ -34,11 +35,10 @@ STRATA adds no features until V1. Each release since Build 9 has been fixes and 
 
 These are product decisions, so 9.8.0 prepares the facts and leaves the choice.
 
-- **Price.** At $2.99 a month Paddle keeps 22% of each payment ([pricing maths](metrics.md#pricing-maths)). STRATA's
-  server accepts exactly one monthly $2.99 price: checkout fails closed on any other amount, and only the configured
-  price unlocks Strata+. Testing a yearly plan or a higher price means: accepting a list of prices in the server, keeping
-  current subscribers on the price they chose (or giving notice before any increase), matching App Store products, and
-  updating the pricing page, terms, and refund policy. Decide which test first, then build it as one release.
+- **Price — decided in 9.8.0.** Strata+ moved from $2.99 a month to $4.99 a month or $29.99 a year
+  ([pricing maths](metrics.md#pricing-maths)). The server accepts exactly these two Paddle prices: checkout fails
+  closed on any other amount, and only the configured prices unlock Strata+. Next: watch how many members choose
+  yearly, and add the yearly App Store product.
 - **Where sign-ups come from.** STRATA records no referrer or campaign for a sign-up today
   ([metrics](metrics.md#what-the-numbers-cannot-say)). Recording one is a new fact about each account and needs a
   privacy-policy change.
@@ -63,4 +63,4 @@ seconds, would they miss it, would they pay for it, does it look finished? Two "
 | Homepage directory, ticker, "demo console", compare tray | Repeated the navigation, read as a developer project, or put a Strata+ tool on a public page |
 | A second calendar export, Train's history boxes, build numbers in every footer | Duplicates of other screens; the build stays on Profile |
 | Admin elevation and the old Polar V3 tables | Replaced by the bound owner session and Polar V4 |
-| The old checkout code (9.6) | Four billing paths for one $2.99 plan; dead code is still attack surface |
+| The old checkout code (9.6) | Four billing paths for one plan; dead code is still attack surface |

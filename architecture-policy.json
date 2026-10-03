@@ -217,7 +217,7 @@
     "src/admin-metrics.js": {
       "role": "Owner investor-metrics route and the first-full-week milestone",
       "maxLines": 180,
-      "allowedDependencies": ["src/plans.js", "src/metrics.js"]
+      "allowedDependencies": ["src/plans.js", "src/metrics.js", "src/paddle-catalog.js"]
     },
     "src/metrics.js": {
       "role": "Pure investor-metrics figures and CSV from account-scoped rows",
@@ -292,8 +292,8 @@
       ]
     },
     "src/paddle-catalog.js": {
-      "role": "Paddle catalog, credential, and exact checkout-price policy",
-      "maxLines": 170,
+      "role": "Strata+ plans (monthly and yearly), Paddle credential, and exact checkout-price policy",
+      "maxLines": 200,
       "allowedDependencies": []
     },
     "src/paddle-checkout-retirement.js": {
@@ -304,7 +304,7 @@
     "src/paddle-subscriptions.js": {
       "role": "Recurring subscription validation and temporary customer-portal links",
       "maxLines": 300,
-      "allowedDependencies": []
+      "allowedDependencies": ["src/paddle-catalog.js"]
     },
     "src/paddle-webhooks.js": {
       "role": "Paddle signature and webhook source verification",

@@ -81,8 +81,8 @@ function installNativeMock() {
               id: "online.stratafitness.app.plus.monthly",
               displayName: "Strata+",
               description: "Monthly",
-              displayPrice: "$2.99",
-              price: "2.99",
+              displayPrice: "$4.99",
+              price: "4.99",
               currencyCode: "USD",
               period: { unit: "month", value: 1 },
             },
@@ -351,7 +351,7 @@ test(
     await page.goto("/pricing", { waitUntil: "domcontentloaded" });
     const subscribe = page.getByRole("button", { name: "Subscribe", exact: true });
     await subscribe.waitFor({ state: "visible" });
-    assert.equal(await page.locator(".app-paywall-price").textContent(), "$2.99per month");
+    assert.equal(await page.locator(".app-paywall-price").textContent(), "$4.99per month");
     for (const hidden of ["#purchasePanel", ".hero-facts", ".price-card", ".checkout-note"])
       assert.equal(await page.locator(hidden).first().isHidden(), true, hidden);
     assert.match(

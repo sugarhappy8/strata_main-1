@@ -1030,7 +1030,12 @@ async function start() {
     rateKeyAllowed,
     http: { json, bodyJson },
   });
-  adminMetrics = createAdminMetricsService({ store, http: { json }, adminEmail: ADMIN_EMAIL });
+  adminMetrics = createAdminMetricsService({
+    store,
+    http: { json },
+    adminEmail: ADMIN_EMAIL,
+    paymentConfig: PAYMENT_CONFIG,
+  });
   adminMetrics.subscribe(events);
   workouts = createWorkoutService({
     store,

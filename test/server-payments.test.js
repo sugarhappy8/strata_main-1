@@ -13,6 +13,7 @@ const PROJECT_ROOT = join(__dirname, "..");
 
 const PRODUCT_ID = "pro_01m1ky8j916ybyacs836dxbz8x";
 const PRICE_ID = "pri_01monthlyfixture00000000000000";
+const YEARLY_PRICE_ID = "pri_01yearlyfixture000000000000000";
 const PREVIOUS_PRODUCT_ID = "pro_01previousmonthly000000000000";
 const PREVIOUS_PRICE_ID = "pri_01previousmonthly0000000000000";
 const CLIENT_TOKEN = "live_browser_token_for_server_payment_test";
@@ -168,6 +169,7 @@ async function startFakePaddle() {
     transactionSequence += 1;
     const id = `txn_${String(transactionSequence).padStart(26, "0")}`;
     const now = new Date().toISOString();
+    const yearlyPrice = body?.items?.[0]?.price_id === YEARLY_PRICE_ID;
     const transaction = {
       id,
       status: "ready",
@@ -184,8 +186,8 @@ async function startFakePaddle() {
           price: {
             id: body?.items?.[0]?.price_id || null,
             product_id: PRODUCT_ID,
-            billing_cycle: { interval: "month", frequency: 1 },
-            unit_price: { amount: "299", currency_code: "USD" },
+            billing_cycle: { interval: yearlyPrice ? "year" : "month", frequency: 1 },
+            unit_price: { amount: yearlyPrice ? "2999" : "499", currency_code: "USD" },
           },
         },
       ],
@@ -233,6 +235,7 @@ async function startApp() {
       STRATA_DATA_DIR: runtimeDir,
       PADDLE_PRODUCT_ID: PRODUCT_ID,
       PADDLE_PRICE_ID: PRICE_ID,
+      PADDLE_YEARLY_PRICE_ID: YEARLY_PRICE_ID,
       PADDLE_CLIENT_TOKEN: CLIENT_TOKEN,
       PADDLE_API_KEY: API_KEY,
       PADDLE_WEBHOOK_SECRET: WEBHOOK_SECRET,
@@ -391,7 +394,7 @@ function completedEvent({
           price: { id: priceId, product_id: productId, billing_cycle: billingCycle },
         },
       ],
-      details: { totals: { subtotal: "299", discount: "299", tax: "0", total: "0" } },
+      details: { totals: { subtotal: "499", discount: "499", tax: "0", total: "0" } },
     },
   };
 }
@@ -523,7 +526,25 @@ test("live monthly checkout grants, manages, updates, and revokes Strata+ secure
     productId: PRODUCT_ID,
     priceId: PRICE_ID,
     clientToken: CLIENT_TOKEN,
-    price: { amount: "2.99", currency: "USD", interval: "month", frequency: 1 },
+    price: { amount: "4.99", currency: "USD", interval: "month", frequency: 1 },
+    plans: [
+      {
+        key: "monthly",
+        priceId: PRICE_ID,
+        amount: "4.99",
+        currency: "USD",
+        interval: "month",
+        frequency: 1,
+      },
+      {
+        key: "yearly",
+        priceId: YEARLY_PRICE_ID,
+        amount: "29.99",
+        currency: "USD",
+        interval: "year",
+        frequency: 1,
+      },
+    ],
   });
   for (const publicValue of [
     pricing.data,
@@ -656,6 +677,7 @@ test("live monthly checkout grants, manages, updates, and revokes Strata+ secure
   assert.deepEqual(subscriptionStatus.data.subscription, {
     id: subscriptionId(prepared.data.transactionId),
     status: "active",
+    plan: "monthly",
     active: true,
     pastDue: false,
     scheduledChange: null,
@@ -2221,4 +2243,101 @@ test("admin closure records a completed interrupted checkout while the payment h
     "completed",
     "settled payment must never be canceled by checkout closure",
   );
+});
+
+test("a yearly checkout bills $29.99 a year, and changing plan switches off the other plan's checkout", async () => {
+  const account = await signup({
+    name: "Yearly Tester",
+    email: "yearly-plan@example.test",
+    password: "yearly-plan-password-123",
+  });
+  const choose = (plan) =>
+    request("/api/billing/checkout", {
+      method: "POST",
+      headers: {
+        Cookie: account.cookie,
+        Origin: BASE,
+        "X-CSRF-Token": account.csrfToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ plan }),
+    });
+  const before = paddleRequests.length;
+  const unknown = await choose("weekly");
+  assert.equal(unknown.response.status, 400);
+  assert.equal(unknown.data.code, "PLAN_UNAVAILABLE");
+  assert.equal(paddleRequests.length, before, "an unknown plan never reaches Paddle");
+
+  const monthly = await choose("monthly");
+  assert.equal(monthly.response.status, 201);
+  const yearly = await choose("yearly");
+  assert.equal(yearly.response.status, 201, "changing plan does not wait for the monthly checkout");
+  assert.notEqual(yearly.data.transactionId, monthly.data.transactionId);
+  const created = paddleRequests.filter(
+    (entry) => entry.method === "POST" && entry.url === "/transactions",
+  );
+  assert.deepEqual(created.at(-1).body.items, [{ price_id: YEARLY_PRICE_ID, quantity: 1 }]);
+  assert.equal(
+    paddleTransactions.get(monthly.data.transactionId).status,
+    "canceled",
+    "the unpaid monthly checkout is switched off at Paddle",
+  );
+  const db = database();
+  try {
+    assert.equal(
+      db
+        .prepare("SELECT paddle_status FROM paddle_purchases WHERE transaction_id=?")
+        .get(monthly.data.transactionId).paddle_status,
+      "canceled",
+    );
+    assert.equal(
+      db
+        .prepare("SELECT price_id FROM paddle_purchases WHERE transaction_id=?")
+        .get(yearly.data.transactionId).price_id,
+      YEARLY_PRICE_ID,
+    );
+  } finally {
+    db.close();
+  }
+  const again = await choose("yearly");
+  assert.equal(again.response.status, 200);
+  assert.equal(again.data.transactionId, yearly.data.transactionId);
+  assert.equal(again.data.reused, true);
+
+  const year = { interval: "year", frequency: 1 };
+  const completed = await signedWebhook(
+    completedEvent({
+      id: eventId("yeardone", 1),
+      transactionId: yearly.data.transactionId,
+      userId: account.user.id,
+      priceId: YEARLY_PRICE_ID,
+      billingCycle: year,
+    }),
+  );
+  assert.equal(completed.response.status, 200);
+  assert.equal(
+    (await request("/api/me", { headers: { Cookie: account.cookie } })).data.user.discovery.active,
+    false,
+    "payment alone waits for the subscription",
+  );
+  const granted = await signedWebhook(
+    subscriptionEvent({
+      id: eventId("yearsub", 1),
+      transactionId: yearly.data.transactionId,
+      userId: account.user.id,
+      sequence: 1,
+      priceId: YEARLY_PRICE_ID,
+      billingCycle: year,
+      periodEndsAt: new Date(BILLING_CLOCK + 366 * DAY_MS).toISOString(),
+    }),
+  );
+  assert.equal(granted.response.status, 200);
+  assert.equal(granted.data.outcome, "subscription-created");
+  const status = await request("/api/billing/subscription", {
+    headers: { Cookie: account.cookie },
+  });
+  assert.equal(status.data.subscription.plan, "yearly");
+  assert.equal(status.data.subscription.active, true);
+  const me = await request("/api/me", { headers: { Cookie: account.cookie } });
+  assert.equal(me.data.user.discovery.active, true, "the yearly plan unlocks Strata+");
 });

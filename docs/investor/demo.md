@@ -34,7 +34,7 @@ Record on a phone (or the iOS app) signed in as the demo, at 390 px wide, with n
 | 0:20–0:50 | Plan: the four-day week; swap one exercise from the library | "Build a week from what you have and the days you train." |
 | 0:50–1:25 | Train: start today's session, log a set with last time's numbers beside it, finish | "Last time's sets are on screen while you lift." |
 | 1:25–1:45 | Progress and Recovery: four weeks of loads going up, last night's Polar recovery | "Your work adds up, next to how you slept." |
-| 1:45–2:00 | Pricing: Free and Strata+ at $2.99 a month | "The rankings and planner are free; Strata+ is $2.99 a month." |
+| 1:45–2:00 | Pricing: Free, and Strata+ monthly or yearly | "The rankings and planner are free; Strata+ is $4.99 a month or $29.99 a year." |
 
 Say once that the Polar nights are sample data on a demo account.
 

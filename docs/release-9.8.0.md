@@ -3,15 +3,37 @@
 Build 9.8.0 is the third of the three releases before V1 in the 9.5 fix list. An investor decides on usage numbers
 first and code second; the code was ready to be looked at, but the numbers and the story were not. This build adds a
 metrics view to Admin, a demo account, and a short pack of documents, and corrects the policies where they no longer
-matched the product. It adds no member features.
+matched the product. It also moves Strata+ from $2.99 a month to **$4.99 USD a month or $29.99 USD a year**.
 
 ## What changed
+
+### Strata+ is $4.99 a month or $29.99 a year
+- The pricing page offers two plans, monthly ($4.99 USD) and yearly ($29.99 USD, half the monthly price over a year).
+  Monthly is chosen until the member picks yearly; the choice shows with the subscribe button and is fixed while
+  checkout is open. A server without a yearly price shows monthly only.
+- `POST /api/billing/checkout` takes `{ "plan": "monthly" | "yearly" }` (monthly when absent) and answers
+  `400 PLAN_UNAVAILABLE` for any other plan. The server picks the price from its own configuration, never from the
+  browser.
+- `src/paddle-catalog.js` holds both plans. Checkout, recovery, webhooks, and entitlement accept only
+  `PADDLE_PRICE_ID` at 499 minor units billed monthly and `PADDLE_YEARLY_PRICE_ID` at 2999 billed yearly, on
+  `PADDLE_PRODUCT_ID`; a price on the wrong cycle, or a subscription whose item cycle differs from its own, grants
+  nothing.
+- Switching plans before paying switches off the unpaid checkout on the other plan; a checkout Paddle is already
+  billing is left to finish, so a payment in flight is never cancelled.
+- Account and Pricing name the member's plan ("Your yearly subscription…"). The subscription summary has `plan`.
+- Admin → Metrics counts a yearly subscription as $29.99 ÷ 12 of MRR (and after fees, Paddle's $0.50 is charged once a
+  year), and adds Yearly subscriptions to Revenue now and the CSV.
+- Terms §4, the refund policy (14 days after a monthly or yearly charge), the privacy policy, the account-deletion
+  page, the homepage, and the investor pack state the new prices. The iOS app's terms paragraph says $4.99 a month; the
+  App Store sells monthly only for now.
+- The live Paddle account has both new prices on the Strata+ product (created for this build). It had no
+  subscriptions, so no subscriber needed moving.
 
 ### Admin → Metrics
 - A Metrics tab between Overview and People. Four cards (weekly active members in the last complete week, paying
   members, MRR, free-to-paid conversion) and five tables:
   - **Revenue now:** customer accounts, ever paid, paying members by Paddle and App Store, lifetime access, MRR at the
-    $2.99 list price and after Paddle's 5% + $0.50 or Apple's 15%.
+    list price and after Paddle's 5% + $0.50 or Apple's 15%, and yearly subscriptions.
   - **Weekly:** active members and sign-ups (email or Google) for the last 12 Monday weeks, the current one "so far".
   - **Cohorts:** for each sign-up week, activation within seven days and activity in week 4 and week 8.
   - **Monthly:** subscriptions paying at the start, new, ended, churn, and MRR at the end, for six months.
@@ -49,8 +71,8 @@ matched the product. It adds no member features.
 - The stored password hash comes from `hashPassword` in `src/auth.js`, now shared with the script.
 
 ### The investor pack
-`docs/investor/`: a one-page overview; the metrics sheet with definitions and the pricing maths (a $29.99 yearly plan
-cuts Paddle's share from 22% to 7% but leaves about the same per month as $2.99 monthly); a technical one-pager; a
+`docs/investor/`: a one-page overview; the metrics sheet with definitions and the pricing maths (what $4.99 monthly
+and $29.99 yearly keep after fees, against the old $2.99); a technical one-pager; a
 runbook for rolling back, rotating every key, and restoring the database; the roadmap to V1 with what Build 9 cut and
 why and the open decisions; the demo, recording, TestFlight, and live-site guide; and answers to prepare for
 investors' questions.
@@ -66,27 +88,36 @@ investors' questions.
 - **Privacy:** describes the Metrics view and the full-week date.
 - **Refunds:** a new section says App Store purchases are refunded by Apple at reportaproblem.apple.com, as the
   terms already did.
-- **Terms:** match the product; unchanged.
+- **Terms:** §4 states the two plans; otherwise unchanged.
 - **README:** its Strata AI storage line is corrected like the privacy policy.
 
 ## Upgrade notes
 
-1. **Installed apps and returning browsers.** Every asset URL and the offline cache name advance to 9.8.0.
-2. **Database.** Migration `013-account-milestones` adds one table and a delete trigger. It is additive; 9.7.0 runs on
+1. **Before deploying — the price.** 9.8.0 sells only the new prices; on the old $2.99 price its checkout stays closed.
+   In Render set `PADDLE_PRICE_ID` to the $4.99 monthly price and `PADDLE_YEARLY_PRICE_ID` to the $29.99 yearly price
+   (both on the existing Strata+ product), and in App Store Connect set the Strata+ Monthly price to $4.99. Run
+   `npm run preflight:production` with the production settings. Keep the old $2.99 price active in Paddle until 9.8.0 has run
+   cleanly, so a rollback can use it (`docs/investor/runbook.md`), then archive it.
+2. **Installed apps and returning browsers.** Every asset URL and the offline cache name advance to 9.8.0.
+3. **Database.** Migration `013-account-milestones` adds one table and a delete trigger. It is additive; 9.7.0 runs on
    the migrated database unchanged. Back up Turso before deploying, as for any migration.
-3. **Configuration (optional).** `STRATA_INTERNAL_ACCOUNTS` (comma-separated emails left out of Metrics; the demo
+4. **Configuration (optional).** `STRATA_INTERNAL_ACCOUNTS` (comma-separated emails left out of Metrics; the demo
    script requires its address here) and `STRATA_AI_USD_PER_MILLION_TOKENS` (prices Strata AI tokens). Both are in
    `render.yaml` as `sync: false`.
-4. **Members.** No visible change. Polar members who also use Strata AI may want to know the policy now describes what
+5. **Members.** New members see the two plans. Polar members who also use Strata AI may want to know the policy now describes what
    the AI summary already contained.
-5. **After deploying:**
+6. **After deploying:**
    `STRATA_SMOKE_BASE_URL=https://your-host STRATA_EXPECTED_BUILD=9.8.0 npm run smoke:deploy`, then open Admin →
-   Metrics, create the demo account (`docs/investor/demo.md`), and grant it Strata+.
+   Metrics, create the demo account (`docs/investor/demo.md`), and grant it Strata+. Open `/pricing` signed in and
+   check both plans show; start a yearly checkout and confirm Paddle shows $29.99 a year, then close it.
 
 ## Validation
 
 The format check, release markers, both architecture policies, strict types, lint, the Node suite with coverage
-floors, runtime smokes, the performance budgets, and the browser journeys pass. New checks cover every figure against
+floors, runtime smokes, the performance budgets, and the browser journeys pass. New checks cover a yearly checkout
+end to end (Paddle bills $29.99 a year, the subscription entitles, Account names the plan), switching plans before
+paying, a yearly price that is invalid or equals the monthly one keeping checkout off, a wrong cycle or amount on
+either plan, the plan chooser, MRR from mixed monthly and yearly subscriptions, and every figure against
 a hand-worked month (activation windows, retention windows, churn, MRR after fees, AI cost), the CSV and its formula
 guard, the same rows from SQLite and Turso, migration 013 and its delete trigger, the earliest-full-week rule and the
 default target, internal accounts left out of every figure, the owner-only route end to end from a saved plan, the

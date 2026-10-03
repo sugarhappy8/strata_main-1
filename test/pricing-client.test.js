@@ -34,6 +34,7 @@ function runtime({
   meResponse = null,
   checkoutResponse = null,
   search = "",
+  yearly = true,
 } = {}) {
   const nodes = new Map(),
     listeners = {},
@@ -73,8 +74,31 @@ function runtime({
     clientToken: "live_fixture",
     productId: `pro_${"a".repeat(26)}`,
     priceId: `pri_${"b".repeat(26)}`,
-    price: { amount: "2.99", currency: "USD", interval: "month", frequency: 1 },
+    price: { amount: "4.99", currency: "USD", interval: "month", frequency: 1 },
+    plans: [
+      {
+        key: "monthly",
+        priceId: `pri_${"b".repeat(26)}`,
+        amount: "4.99",
+        currency: "USD",
+        interval: "month",
+        frequency: 1,
+      },
+      ...(yearly
+        ? [
+            {
+              key: "yearly",
+              priceId: `pri_${"y".repeat(26)}`,
+              amount: "29.99",
+              currency: "USD",
+              interval: "year",
+              frequency: 1,
+            },
+          ]
+        : []),
+    ],
   };
+  const checkoutBodies = [];
   const document = {
     visibilityState: "visible",
     getElementById: node,
@@ -108,7 +132,8 @@ function runtime({
         },
       },
     },
-    fetch: async (url) => {
+    fetch: async (url, options = {}) => {
+      if (url === "/api/billing/checkout") checkoutBodies.push(JSON.parse(options.body));
       let data,
         status = 200;
       if (url === "/api/me" && accountResponder) return accountResponder();
@@ -133,6 +158,7 @@ function runtime({
     node,
     listeners,
     checkout,
+    checkoutBodies,
     emitVisibility(value) {
       document.visibilityState = value;
       documentListeners.visibilitychange?.();
@@ -217,6 +243,48 @@ test("an open Paddle overlay closes when foreground identity changes", async () 
     false,
     "the original transaction remains available for safe confirmation after signing back into its account",
   );
+});
+
+test("members choose monthly or yearly, and checkout bills the chosen plan", async () => {
+  const r = runtime(),
+    radios = [{ value: "monthly" }, { value: "yearly" }];
+  r.node("planChoice").querySelectorAll = () => radios;
+  await flush();
+  assert.equal(r.node("planChoice").hidden, false);
+  assert.equal(r.node("planYearlyOption").hidden, false);
+  assert.deepEqual(
+    radios.map((radio) => radio.checked),
+    [true, false],
+    "monthly is chosen until the member picks yearly",
+  );
+  r.node("planChoice").change({ target: { value: "yearly" } });
+  assert.deepEqual(
+    radios.map((radio) => radio.checked),
+    [false, true],
+  );
+  r.node("buyDiscovery").click();
+  await flush();
+  assert.deepEqual(r.checkoutBodies, [{ plan: "yearly" }]);
+  assert.equal(radios[0].disabled, true, "the plan is fixed while its checkout is open");
+  // An unknown value falls back to monthly.
+  r.node("planChoice").change({ target: { value: "weekly" } });
+  assert.deepEqual(
+    radios.map((radio) => radio.checked),
+    [true, false],
+  );
+});
+
+test("a server that sells only the monthly plan hides the yearly choice", async () => {
+  const r = runtime({ yearly: false }),
+    radios = [{ value: "monthly" }, { value: "yearly" }];
+  r.node("planChoice").querySelectorAll = () => radios;
+  await flush();
+  assert.equal(r.node("planYearlyOption").hidden, true);
+  r.node("planChoice").change({ target: { value: "yearly" } });
+  assert.equal(radios[1].checked, false);
+  r.node("buyDiscovery").click();
+  await flush();
+  assert.deepEqual(r.checkoutBodies, [{ plan: "monthly" }]);
 });
 
 test("pricing never offers or requests the retired free trial", async () => {

@@ -22,6 +22,7 @@ const {
   isPaddleWebhookAddress,
   validateCompletedTransaction,
   validateSubscription,
+  publicPaymentConfig,
   createCustomerPortalSession,
   fullRevocationFromAdjustment,
 } = require("../src/payments");
@@ -82,7 +83,7 @@ function completedTransaction(overrides = {}) {
       },
     ],
     details: {
-      totals: { subtotal: "299", discount: "0", tax: "0", total: "299", grand_total: "299" },
+      totals: { subtotal: "499", discount: "0", tax: "0", total: "499", grand_total: "499" },
     },
   };
   return { ...base, ...overrides };
@@ -105,7 +106,7 @@ function checkoutTransaction(overrides = {}) {
           id: RECURRING_PRICE_ID,
           product_id: DEFAULT_PRODUCT_ID,
           billing_cycle: { interval: "month", frequency: 1 },
-          unit_price: { amount: "299", currency_code: "USD" },
+          unit_price: { amount: "499", currency_code: "USD" },
         },
       },
     ],
@@ -150,6 +151,75 @@ function adjustment(overrides = {}) {
   };
 }
 
+test("the yearly plan is optional, and a yearly price that is invalid or reused keeps checkout off", () => {
+  const YEARLY = "pri_01yearlyfixture000000000000000";
+  const monthlyOnly = getPaymentConfig(liveEnv());
+  assert.equal(monthlyOnly.configured, true);
+  assert.deepEqual(
+    monthlyOnly.plans.map((plan) => [plan.key, plan.priceId, plan.minorUnits, plan.interval]),
+    [["monthly", RECURRING_PRICE_ID, "499", "month"]],
+  );
+  const both = getPaymentConfig(liveEnv({ PADDLE_YEARLY_PRICE_ID: YEARLY }));
+  assert.equal(both.configured, true);
+  assert.deepEqual(both.priceIds, [RECURRING_PRICE_ID, YEARLY]);
+  assert.deepEqual(both.plans[1], {
+    key: "yearly",
+    amount: "29.99",
+    minorUnits: "2999",
+    currency: "USD",
+    interval: "year",
+    frequency: 1,
+    priceId: YEARLY,
+  });
+  assert.deepEqual(
+    publicPaymentConfig(both).plans.map((plan) => [plan.key, plan.amount, plan.interval]),
+    [
+      ["monthly", "4.99", "month"],
+      ["yearly", "29.99", "year"],
+    ],
+  );
+  for (const invalid of ["pri_short", RECURRING_PRICE_ID, DEFAULT_PRICE_ID]) {
+    const config = getPaymentConfig(liveEnv({ PADDLE_YEARLY_PRICE_ID: invalid }));
+    assert.equal(config.configured, false, invalid);
+    assert.equal(config.enabled, false);
+    assert.ok(config.missing.some((item) => item.includes("yearly")));
+    assert.equal(config.yearlyPriceId, "");
+  }
+  const yearlySubscription = (cycle) =>
+    subscription({
+      billing_cycle: cycle,
+      items: [
+        {
+          quantity: 1,
+          recurring: true,
+          price: { id: YEARLY, product_id: DEFAULT_PRODUCT_ID, billing_cycle: cycle },
+        },
+      ],
+    });
+  const identity = { userId: "user-1" };
+  assert.equal(
+    validateSubscription(yearlySubscription({ interval: "year", frequency: 1 }), both, identity)
+      .entitled,
+    true,
+    "a yearly subscription on the yearly price unlocks Strata+",
+  );
+  assert.equal(
+    validateSubscription(yearlySubscription({ interval: "month", frequency: 1 }), both, identity)
+      .entitled,
+    false,
+    "the yearly price billed monthly is not the yearly plan",
+  );
+  assert.equal(
+    validateSubscription(
+      yearlySubscription({ interval: "year", frequency: 1 }),
+      monthlyOnly,
+      identity,
+    ).entitled,
+    false,
+    "a deployment that does not sell yearly does not entitle it",
+  );
+});
+
 test("live configuration is fail-closed and serializes browser-safe fields only", () => {
   assert.equal(DEFAULT_PRODUCT_ID, "pro_01m1ky8j916ybyacs836dxbz8x");
   assert.equal(DEFAULT_PRICE_ID, "pri_01m1kyc2zd313d7a3ssmg02424");
@@ -193,7 +263,7 @@ test("live configuration is fail-closed and serializes browser-safe fields only"
   assert.equal(configured.productId, DEFAULT_PRODUCT_ID);
   assert.equal(configured.priceId, RECURRING_PRICE_ID);
   assert.deepEqual(configured.price, {
-    amount: "2.99",
+    amount: "4.99",
     currency: "USD",
     interval: "month",
     frequency: 1,
@@ -577,11 +647,16 @@ test("current checkout recovery requires the exact public amount and currency", 
   const config = getPaymentConfig(liveEnv()),
     createdAt = Date.parse("2026-09-05T10:00:00.000Z");
   const valid = checkoutTransaction();
-  assert.equal(exactCurrentCheckoutPrice(valid), true);
+  assert.equal(exactCurrentCheckoutPrice(valid, config), true);
+  assert.equal(
+    exactCurrentCheckoutPrice(valid),
+    false,
+    "without the deployment's plans nothing matches",
+  );
   for (const unitPrice of [
     undefined,
     { amount: "99", currency_code: "USD" },
-    { amount: "299", currency_code: "EUR" },
+    { amount: "499", currency_code: "EUR" },
   ]) {
     const transaction = checkoutTransaction({
       items: [
@@ -596,7 +671,7 @@ test("current checkout recovery requires the exact public amount and currency", 
         },
       ],
     });
-    assert.equal(exactCurrentCheckoutPrice(transaction), false);
+    assert.equal(exactCurrentCheckoutPrice(transaction, config), false);
     const recovered = await findPaddleCheckoutTransaction(
       config,
       { userId: "user-1", checkoutId: "checkout-1", createdAt },
@@ -951,7 +1026,7 @@ test("transaction creation fails closed with sanitized errors", async (t) => {
                 id: RECURRING_PRICE_ID,
                 product_id: DEFAULT_PRODUCT_ID,
                 billing_cycle: { interval: "month", frequency: 1 },
-                unit_price: { amount: "299", currency_code: "EUR" },
+                unit_price: { amount: "499", currency_code: "EUR" },
               },
             },
           ],
@@ -1180,7 +1255,7 @@ test("older monthly checkout retirement pins the durable account and purchase ca
     ["non-API origin", { origin: "web" }],
     ["subscription attached", { subscription_id: SUBSCRIPTION_ID }],
     [
-      "annual cadence",
+      "weekly cadence",
       {
         items: [
           {
@@ -1188,7 +1263,7 @@ test("older monthly checkout retirement pins the durable account and purchase ca
             price: {
               id: PREVIOUS_PRICE_ID,
               product_id: PREVIOUS_PRODUCT_ID,
-              billing_cycle: { interval: "year", frequency: 1 },
+              billing_cycle: { interval: "week", frequency: 1 },
             },
           },
         ],
@@ -1263,7 +1338,7 @@ test("completed initial subscription transactions validate against the recurring
   const promoted = completedTransaction({
     discount_id: "dsc_01m1ky8j916ybyacs836dxbz8x",
     details: {
-      totals: { subtotal: "299", discount: "299", tax: "0", total: "0", grand_total: "0" },
+      totals: { subtotal: "499", discount: "499", tax: "0", total: "0", grand_total: "0" },
     },
   });
   assert.deepEqual(validateCompletedTransaction(promoted, config), { ok: true });

@@ -192,6 +192,14 @@ function validateDeploymentEnvironment(
       validPaddlePriceId(environment.PADDLE_PRICE_ID),
       "PADDLE_PRICE_ID must identify the recurring Paddle price.",
     );
+    const yearlyPrice = clean(environment.PADDLE_YEARLY_PRICE_ID);
+    addCheck(
+      checks,
+      "payments.yearly-price",
+      !yearlyPrice ||
+        (validPaddlePriceId(yearlyPrice) && yearlyPrice !== clean(environment.PADDLE_PRICE_ID)),
+      "PADDLE_YEARLY_PRICE_ID must be empty (monthly only) or identify a separate yearly Paddle price.",
+    );
     addCheck(
       checks,
       "payments.client-token",

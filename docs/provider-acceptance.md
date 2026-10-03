@@ -17,7 +17,7 @@ node --test \
 
 | Risk | Local evidence |
 | --- | --- |
-| Checkout creation | The server fixes the product, monthly price, quantity, collection mode, account ID, and durable checkout ID; concurrent and interrupted requests cannot create an untracked duplicate. |
+| Checkout creation | The server fixes the product, the chosen plan's price, quantity, collection mode, account ID, and durable checkout ID; concurrent and interrupted requests cannot create an untracked duplicate. |
 | Initial entitlement | A completed transaction alone stays locked. Access begins only after the signed, account-bound subscription snapshot is stored. |
 | Invalid or replayed webhook | Invalid signatures, wrong source when allowlisting is enabled, wrong account/customer/catalog, stale timestamps, reused adjustment IDs, and duplicate event IDs fail closed or are idempotent. |
 | Renewal | A newer, validated `subscription.updated` event advances the current-period boundary; replaying that event records it once. |
@@ -34,7 +34,7 @@ Use a dedicated non-production deployment, isolated database, disposable test ac
 
 Before starting:
 
-- Create a sandbox product and a quantity-one, automatically collected **$2.99 USD monthly** price. Confirm the create-transaction response returns `unit_price.amount` as `299` and `unit_price.currency_code` as `USD`; STRATA rejects a newly prepared checkout when either value differs or is absent.
+- Create a sandbox product with two quantity-one, automatically collected prices: **$4.99 USD monthly** and **$29.99 USD yearly**. Confirm the create-transaction response returns `unit_price.amount` as `499` (or `2999` for yearly) and `unit_price.currency_code` as `USD`; STRATA rejects a newly prepared checkout when either value differs or is absent.
 - Configure the sandbox client token, API key, notification secret, product ID, and price ID on the isolated deployment. Keep `PADDLE_CHECKOUT_ENABLED=false` until the values and webhook URL are reviewed.
 - Register the deployment's exact `/api/paddle/webhook` HTTPS URL for transaction, subscription, and adjustment events.
 - Leave IP allowlisting off until the staging proxy is proven to preserve Paddle's source address. Signatures remain mandatory either way.
@@ -59,4 +59,4 @@ For each acceptance run, record the build, deployment URL, UTC time, operator, s
 
 Release acceptance requires all applicable steps to pass, genuine Paddle notifications to receive HTTP 2xx, and no unexplained pending checkout or entitlement state. A skipped provider step must remain explicitly marked as unverified in release readiness; local fake results must never be described as a real Paddle, Turso, or Resend verification.
 
-See [deployment](deployment.md#paddle-monthly-subscription) for production configuration and rollback guidance.
+See [deployment](deployment.md#paddle-subscriptions) for production configuration and rollback guidance.

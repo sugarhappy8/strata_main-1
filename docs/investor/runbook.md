@@ -41,8 +41,12 @@ account somewhere they can reach. With that, the steps below need nothing else.
 2. Every migration is additive, so older code runs on a newer database. 9.8.0's migration only adds a table that 9.7.0
    ignores; rolling 9.8.0 back to 9.7.0 needs no database change.
 3. If billing is involved, set `PADDLE_CHECKOUT_ENABLED=false` first.
-4. Check: sign in with a test account, open its plan, open Admin, and run the smoke check above with the old build.
-5. Installed apps pick up the rolled-back files on their next visit, because each build has its own cache name.
+4. **9.8.0 changed the price.** 9.7.0 accepts only the $2.99 monthly price, so a rollback to it also needs
+   `PADDLE_PRICE_ID` set back to that price, or its checkout stays closed. 9.7.0 does not recognise the $4.99 and
+   $29.99 prices: once anyone has subscribed on them, a rollback suspends their Strata+ until 9.8.0 is back. Prefer
+   fixing forward.
+5. Check: sign in with a test account, open its plan, open Admin, and run the smoke check above with the old build.
+6. Installed apps pick up the rolled-back files on their next visit, because each build has its own cache name.
 
 Never combine a code rollback with a database restore; they are separate decisions.
 

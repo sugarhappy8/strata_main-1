@@ -17,12 +17,11 @@ The list can be copied; the method and the data behind it are harder to copy: th
 members' ratings and logged sets that can improve the rankings over time. Be honest that the second part grows with
 usage.
 
-**Does $2.99 cover your costs as you grow?**
-The [pricing table](metrics.md#pricing-maths): Paddle keeps 22% of a $2.99 payment. Running costs are low: one
-Render server, a Turso database, and Strata AI cost per active Strata+ member from Admin → Metrics. Then your plan
-to test a yearly plan or a higher price, with the trade-off: $4.99 a month keeps $1.90 more per member each month,
-while a $29.99 yearly plan keeps about the same per month as today ($2.33 against $2.34) and gains in churn
-([roadmap](roadmap.md#open-decisions-for-the-owner)).
+**Does the price cover your costs as you grow?**
+The [pricing table](metrics.md#pricing-maths): at $4.99 a month STRATA keeps $4.24 after Paddle's fee, $1.90 more
+than the old $2.99 price; the $29.99 yearly plan keeps about $2.33 a month and trades that for twelve months without
+churn. Running costs are low: one Render server, a Turso database, and Strata AI cost per active Strata+ member from
+Admin → Metrics. Then say what share chose yearly, and what you would change if it is high or low.
 
 **You're a full-time student working alone. What if you're busy or unavailable?**
 The [runbook](runbook.md) (roll back, rotate keys, restore the database), the deployment guide, more than 1,350 automated

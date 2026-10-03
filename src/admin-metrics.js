@@ -2,6 +2,7 @@
 "use strict";
 
 const { defaultPreferences } = require("./plans");
+const { planForPrice } = require("./paddle-catalog");
 const { buildInvestorMetrics, metricsCsv, metricsSince } = require("./metrics");
 
 /** @param {unknown} value */
@@ -40,6 +41,7 @@ function createAdminMetricsService({
   store,
   http,
   adminEmail = "",
+  paymentConfig = { plans: [] },
   environment = process.env,
   now = Date.now,
 }) {
@@ -101,6 +103,11 @@ function createAdminMetricsService({
           status: String(row.status),
           startedAt: Number(row.created_at),
           changedAt: Number(row.changed_at),
+          // An earlier or unknown price counts as monthly.
+          plan:
+            planForPrice(paymentConfig, row.price_id)?.key === "yearly"
+              ? /** @type {"yearly"} */ ("yearly")
+              : /** @type {"monthly"} */ ("monthly"),
         })),
         apple: rows.apple.filter(customer).map((row) => ({
           userId: String(row.user_id),

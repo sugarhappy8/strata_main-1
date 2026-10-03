@@ -30,7 +30,7 @@ The rankings with their guides, a weekly planner that works without an account a
 profile, and the account itself. STRATA is useful before anyone pays, and a member's plan stays theirs if they stop
 paying.
 
-## Strata+ — $2.99 USD a month
+## Strata+ — $4.99 USD a month or $29.99 USD a year
 
 Everything in Free, plus:
 

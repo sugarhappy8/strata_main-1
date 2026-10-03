@@ -81,7 +81,9 @@ function subscriptionStateRank(status) {
   return `CASE ${status} WHEN 'canceled' THEN 4 WHEN 'paused' THEN 3 WHEN 'past_due' THEN 2 WHEN 'trialing' THEN 1 ELSE 0 END`;
 }
 const ACTIVE_ENTITLEMENT = activeEntitlement();
-const ENTITLED_RECURRING_CATALOG = "subscription_id IS NULL OR (price_id=? AND product_id=?)";
+// Bound to the two plans' price IDs (monthly, then yearly or the monthly ID again) and the product ID.
+const ENTITLED_RECURRING_CATALOG =
+  "subscription_id IS NULL OR (price_id IN (?,?) AND product_id=?)";
 const BILLING_DELETION_BLOCKER = `((p.completed_at IS NULL AND p.paddle_status<>'canceled' AND p.access_revoked_at IS NULL) OR (p.subscription_id IS NOT NULL AND (NOT EXISTS (SELECT 1 FROM paddle_subscriptions s WHERE s.subscription_id=p.subscription_id) OR EXISTS (SELECT 1 FROM paddle_subscriptions s WHERE s.subscription_id=p.subscription_id AND s.user_id=p.user_id AND s.status IN ('active','trialing','past_due','paused')))))`;
 
 const BILLING_SQL = {
@@ -204,7 +206,7 @@ const BILLING_SQL = {
   hasCurrentDiscoveryAccess: withEntitlementClock(
     `SELECT 1 AS active
     FROM paddle_purchases
-    WHERE user_id=? AND (subscription_id IS NULL OR (price_id=? AND product_id=?))
+    WHERE user_id=? AND (${ENTITLED_RECURRING_CATALOG})
       AND ${ACTIVE_ENTITLEMENT}
     LIMIT 1`,
   ),
@@ -222,9 +224,9 @@ const BILLING_SQL = {
   ),
   currentDiscoveryAccessSummary: withEntitlementClock(
     `SELECT COUNT(*) AS purchase_count,
-      COALESCE(SUM(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (subscription_id IS NULL OR (price_id=? AND product_id=?)) THEN 1 ELSE 0 END),0) AS active_purchase_count,
+      COALESCE(SUM(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (${ENTITLED_RECURRING_CATALOG}) THEN 1 ELSE 0 END),0) AS active_purchase_count,
       COALESCE(SUM(CASE WHEN paddle_status<>'canceled' AND completed_at IS NULL AND access_revoked_at IS NULL THEN 1 ELSE 0 END),0) AS pending_purchase_count,
-      MAX(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (subscription_id IS NULL OR (price_id=? AND product_id=?)) THEN completed_at ELSE NULL END) AS latest_active_purchase_at,
+      MAX(CASE WHEN ${ACTIVE_ENTITLEMENT} AND (${ENTITLED_RECURRING_CATALOG}) THEN completed_at ELSE NULL END) AS latest_active_purchase_at,
       MAX(completed_at) AS latest_completed_at,MAX(access_revoked_at) AS latest_revoked_at
     FROM paddle_purchases
     WHERE user_id=?`,

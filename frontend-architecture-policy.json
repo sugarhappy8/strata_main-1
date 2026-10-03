@@ -491,7 +491,7 @@
           "file": "public/scripts/pricing-logic.js",
           "role": "logic",
           "global": "StrataPricingLogic",
-          "maxLines": 170
+          "maxLines": 190
         },
         {
           "file": "public/scripts/pricing-state.js",

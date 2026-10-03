@@ -146,7 +146,7 @@ test("serves rankings and gates private account pages", async () => {
   );
   assert.equal(billing.data.priceId, "", "a recurring Paddle price must be explicitly configured");
   assert.deepEqual(billing.data.price, {
-    amount: "2.99",
+    amount: "4.99",
     currency: "USD",
     interval: "month",
     frequency: 1,
@@ -187,7 +187,7 @@ test("serves rankings and gates private account pages", async () => {
 
 test("serves public pricing, contact, and policy pages at friendly routes", async () => {
   const pages = {
-    pricing: /Monthly subscription/i,
+    pricing: /Monthly or yearly/i,
     contact: /Talk to/,
     policies: /Public policies/,
     terms: /Terms of/,

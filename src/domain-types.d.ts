@@ -9,14 +9,33 @@ export type FetchLike = typeof globalThis.fetch;
 export interface PaymentPrice {
   amount: string;
   currency: string;
-  interval: "month";
+  interval: "month" | "year";
   frequency: 1;
+}
+
+/** One Strata+ plan as src/paddle-catalog.js defines it. */
+export interface PlanDefinition {
+  readonly key: "monthly" | "yearly";
+  readonly amount: string;
+  readonly minorUnits: string;
+  readonly currency: string;
+  readonly interval: "month" | "year";
+  readonly frequency: 1;
+}
+/** A plan this deployment sells, with its Paddle price ID. */
+export interface ConfiguredPlan extends PlanDefinition {
+  readonly priceId: string;
 }
 
 export interface PaymentConfig {
   readonly environment: "live" | "sandbox";
   readonly productId: string;
+  /** The monthly plan's price ID. */
   readonly priceId: string;
+  /** The yearly plan's price ID, or "" when this deployment sells monthly only. */
+  readonly yearlyPriceId: string;
+  readonly plans: readonly ConfiguredPlan[];
+  readonly priceIds: readonly string[];
   readonly clientToken: string;
   readonly price: PaymentPrice;
   readonly requestedEnabled: boolean;
@@ -33,6 +52,7 @@ export interface PublicPaymentConfig {
   priceId: string;
   clientToken: string;
   price: PaymentPrice;
+  plans: Array<PaymentPrice & { key: "monthly" | "yearly"; priceId: string }>;
 }
 
 export interface PaddleSecrets {
@@ -105,6 +125,8 @@ export interface CheckoutIdentity {
   checkoutId?: unknown;
   priceId?: unknown;
   productId?: unknown;
+  /** The plan a new checkout is for ("monthly" or "yearly"); its price ID comes from configuration. */
+  plan?: unknown;
 }
 
 export interface CheckoutRecoveryIdentity extends CheckoutIdentity {
@@ -322,6 +344,8 @@ export interface BillingWebhookEvent {
 export interface SubscriptionSummary {
   id: string;
   status: SubscriptionStatus;
+  /** The current plan the subscription is on, or null for an earlier price. */
+  plan: "monthly" | "yearly" | null;
   active: boolean;
   pastDue: boolean;
   scheduledChange: { action: ScheduledSubscriptionAction; effectiveAt: number | null } | null;
@@ -343,25 +367,25 @@ export interface BillingStore {
   hasPaidDiscoveryAccess(userId: string, priceId?: string | null, now?: number): Promise<boolean>;
   hasCurrentPaidDiscoveryAccess(
     userId: string,
-    priceId: string,
+    priceId: string | readonly string[],
     productId: string,
     now?: number,
   ): Promise<boolean>;
   hasEntitledPaidDiscoveryAccess(
     userId: string,
-    priceId: string,
+    priceId: string | readonly string[],
     productId: string,
     now?: number,
   ): Promise<boolean>;
   currentDiscoveryAccessSummary(
     userId: string,
-    priceId: string,
+    priceId: string | readonly string[],
     productId: string,
     now?: number,
   ): Promise<DiscoveryAccessSummary>;
   entitledDiscoveryAccessSummary(
     userId: string,
-    priceId: string,
+    priceId: string | readonly string[],
     productId: string,
     now?: number,
   ): Promise<DiscoveryAccessSummary>;
@@ -476,6 +500,7 @@ export interface BillingService {
     userId: string,
     options?: {
       reuseDraft?: boolean;
+      reusePriceId?: string;
       includeFresh?: boolean;
       checkSubscription?: boolean;
       transactionIds?: string[];
@@ -1603,7 +1628,13 @@ export interface InvestorMetricsRows {
     internal: number;
   }>;
   activeDays: Array<{ user_id: string; day: number; plus: number }>;
-  paddle: Array<{ user_id: string; status: string; created_at: number; changed_at: number }>;
+  paddle: Array<{
+    user_id: string;
+    status: string;
+    price_id: string;
+    created_at: number;
+    changed_at: number;
+  }>;
   apple: Array<{ user_id: string; started_at: number; ends_at: number; revoked_at: number | null }>;
   lifetime: Array<{ user_id: string }>;
   aiUsage: Array<{ user_id: string; month: string; requests: number; tokens: number }>;
@@ -1618,6 +1649,8 @@ export interface MetricsStore {
 export interface AdminMetricsServiceDependencies {
   store: MetricsStore & { preferences(userId: string): Promise<unknown> };
   http: Pick<HttpHelpers, "json">;
+  /** The plans checkout sells, to tell a yearly Paddle subscription from a monthly one. */
+  paymentConfig?: Pick<PaymentConfig, "plans">;
   adminEmail?: string;
   environment?: NodeJS.ProcessEnv;
   now?: () => number;

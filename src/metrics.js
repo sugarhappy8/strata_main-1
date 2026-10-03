@@ -1,7 +1,7 @@
 // @ts-check
 "use strict";
 
-const { CURRENT_PRICE_AMOUNT } = require("./paddle-catalog");
+const { PLANS } = require("./paddle-catalog");
 
 // Investor metrics from account-scoped records. The store supplies plain rows; this module turns them into weekly,
 // cohort, revenue, and Strata AI figures and one CSV. It reads nothing itself, so every figure is reproducible from
@@ -13,24 +13,31 @@ const MONTHS = 6;
 const AI_MONTHS = 3;
 const ACTIVATION_DAYS = 7;
 const RETENTION_WEEKS = Object.freeze([4, 8]);
-const LIST_PRICE = Number(CURRENT_PRICE_AMOUNT);
-// What one $2.99 charge leaves after the provider's fee: Paddle 5% + $0.50; Apple 15% (Small Business Program).
-const NET_PRICE = Object.freeze({
-  paddle: LIST_PRICE - (LIST_PRICE * 0.05 + 0.5),
-  apple: LIST_PRICE * 0.85,
-});
+/**
+ * What one subscription brings in per month at list price, and after the provider's fee per charge: Paddle 5% +
+ * $0.50, Apple 15% (Small Business Program). A yearly plan is spread over twelve months. App Store subscriptions are
+ * valued at the monthly plan's US price.
+ * @param {"monthly"|"yearly"} planKey @param {"paddle"|"apple"} provider
+ */
+function monthlyValue(planKey, provider) {
+  const plan = planKey === "yearly" ? PLANS.yearly : PLANS.monthly,
+    amount = Number(plan.amount),
+    months = plan.interval === "year" ? 12 : 1,
+    net = provider === "apple" ? amount * 0.85 : amount - (amount * 0.05 + 0.5);
+  return { list: amount / months, net: net / months };
+}
 const ENDED_PADDLE_STATUSES = Object.freeze(["canceled", "paused"]);
 
 /**
  * @typedef {{id:string,createdAt:number,method:"email"|"google",fullWeekAt:number|null}} MetricsAccount
  * @typedef {{userId:string,day:number,plus:boolean}} MetricsActiveDay
- * @typedef {{userId:string,status:string,startedAt:number,changedAt:number}} MetricsPaddleSubscription
+ * @typedef {{userId:string,status:string,startedAt:number,changedAt:number,plan:"monthly"|"yearly"}} MetricsPaddleSubscription
  * @typedef {{userId:string,startedAt:number,endsAt:number,revokedAt:number|null}} MetricsAppleSubscription
  * @typedef {{userId:string,month:string,requests:number,tokens:number}} MetricsAiUsage
  * @typedef {{accounts:MetricsAccount[],activeDays:MetricsActiveDay[],paddle:MetricsPaddleSubscription[],
  *   apple:MetricsAppleSubscription[],lifetimeUserIds:string[],aiUsage:MetricsAiUsage[],activationSince:number|null,
  *   internalAccounts:number}} MetricsSource
- * @typedef {{provider:"paddle"|"apple",userId:string,start:number,end:number|null}} PaidInterval
+ * @typedef {{provider:"paddle"|"apple",plan:"monthly"|"yearly",userId:string,start:number,end:number|null}} PaidInterval
  */
 
 /** @param {number} ms */
@@ -166,12 +173,14 @@ function paidIntervals(source, now) {
   return [
     ...source.paddle.map((row) => ({
       provider: /** @type {"paddle"} */ ("paddle"),
+      plan: row.plan,
       userId: row.userId,
       start: row.startedAt,
       end: ENDED_PADDLE_STATUSES.includes(row.status) ? row.changedAt : null,
     })),
     ...source.apple.map((row) => ({
       provider: /** @type {"apple"} */ ("apple"),
+      plan: /** @type {"monthly"} */ ("monthly"),
       userId: row.userId,
       start: row.startedAt,
       end: row.revokedAt ?? (row.endsAt <= now ? row.endsAt : null),
@@ -186,11 +195,10 @@ function payingAt(intervals, at) {
 
 /** @param {PaidInterval[]} intervals */
 function recurringRevenue(intervals) {
-  const paddle = intervals.filter((item) => item.provider === "paddle").length,
-    apple = intervals.length - paddle;
+  const values = intervals.map((item) => monthlyValue(item.plan, item.provider));
   return {
-    list: cents((paddle + apple) * LIST_PRICE),
-    afterFees: cents(paddle * NET_PRICE.paddle + apple * NET_PRICE.apple),
+    list: cents(values.reduce((sum, value) => sum + value.list, 0)),
+    afterFees: cents(values.reduce((sum, value) => sum + value.net, 0)),
   };
 }
 
@@ -260,7 +268,7 @@ function buildInvestorMetrics(source, { now, usdPerMillionTokens = null }) {
     internalAccountsExcluded: source.internalAccounts,
     activationRecordedSince:
       source.activationSince === null ? null : new Date(source.activationSince).toISOString(),
-    listPrice: LIST_PRICE,
+    prices: { monthly: Number(PLANS.monthly.amount), yearly: Number(PLANS.yearly.amount) },
     summary: {
       weeklyActiveMembers: lastComplete?.activeMembers ?? 0,
       payingMembers: payingUsers.size,
@@ -275,6 +283,7 @@ function buildInvestorMetrics(source, { now, usdPerMillionTokens = null }) {
       conversionRate: ratio(everPaid.size, accountIds.size),
       payingMembers: payingUsers.size,
       paddleSubscriptions: paying.filter((item) => item.provider === "paddle").length,
+      yearlySubscriptions: paying.filter((item) => item.plan === "yearly").length,
       appStoreSubscriptions: paying.filter((item) => item.provider === "apple").length,
       lifetimeMembers: new Set(source.lifetimeUserIds.filter((id) => !payingUsers.has(id))).size,
       mrr: recurringRevenue(paying),
@@ -314,13 +323,15 @@ function metricsCsv(metrics) {
       "Paying members",
       "Paddle subscriptions",
     ].concat([
+      "Yearly subscriptions",
       "App Store subscriptions",
       "Lifetime members",
       "MRR (USD list)",
       "MRR after fees (USD est.)",
     ]),
     [revenue.accounts, revenue.everPaid, percent(revenue.conversionRate), revenue.payingMembers]
-      .concat([revenue.paddleSubscriptions, revenue.appStoreSubscriptions, revenue.lifetimeMembers])
+      .concat([revenue.paddleSubscriptions, revenue.yearlySubscriptions])
+      .concat([revenue.appStoreSubscriptions, revenue.lifetimeMembers])
       .concat([revenue.mrr.list.toFixed(2), revenue.mrr.afterFees.toFixed(2)]),
     [],
     [
@@ -398,10 +409,10 @@ function metricsCsv(metrics) {
 module.exports = {
   ACTIVATION_DAYS,
   DAY_MS,
-  NET_PRICE,
   WEEKS,
   buildInvestorMetrics,
   csvCell,
   metricsCsv,
   metricsSince,
+  monthlyValue,
 };

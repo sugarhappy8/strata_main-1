@@ -475,7 +475,7 @@ test("admin metrics render every figure as text and say what is missing", () => 
     summary: {
       weeklyActiveMembers: 2,
       payingMembers: 1,
-      mrr: { list: 2.99, afterFees: 2.34 },
+      mrr: { list: 4.99, afterFees: 4.24 },
       conversionRate: 0.5,
     },
     revenue: {
@@ -483,7 +483,8 @@ test("admin metrics render every figure as text and say what is missing", () => 
       everPaid: 1,
       conversionRate: 0.5,
       payingMembers: 1,
-      mrr: { list: 2.99, afterFees: 2.34 },
+      yearlySubscriptions: 0,
+      mrr: { list: 4.99, afterFees: 4.24 },
     },
     weekly: [
       {
@@ -515,7 +516,7 @@ test("admin metrics render every figure as text and say what is missing", () => 
         ended: 0,
         churnRate: 0,
         payingAtEnd: 1,
-        mrrAtEnd: 2.99,
+        mrrAtEnd: 4.99,
       },
     ],
     ai: {
@@ -534,8 +535,8 @@ test("admin metrics render every figure as text and say what is missing", () => 
       ],
     },
   });
-  assert.equal(nodes.get("metricsMrrStat").textContent, "$2.99");
-  assert.equal(nodes.get("metricsMrrNote").textContent, "After provider fees: $2.34");
+  assert.equal(nodes.get("metricsMrrStat").textContent, "$4.99");
+  assert.equal(nodes.get("metricsMrrNote").textContent, "After provider fees: $4.24");
   assert.equal(nodes.get("metricsConversionStat").textContent, "50.0%");
   const tables = nodes.get("metricsTables").children;
   assert.equal(tables.length, 5);
@@ -547,6 +548,13 @@ test("admin metrics render every figure as text and say what is missing", () => 
   );
   const firstRow = (wrap) =>
     wrap.children[0].children[2].children[0].children.map((cell) => cell.textContent);
+  const revenueRows = tables[0].children[0].children[2].children.map((row) =>
+    row.children.map((cell) => cell.textContent),
+  );
+  assert.deepEqual(
+    revenueRows.find(([label]) => label === "Yearly subscriptions"),
+    ["Yearly subscriptions", "0"],
+  );
   assert.deepEqual(firstRow(tables[1]), ["2026-09-28 (so far)", "2", "1", "1", "0"]);
   assert.deepEqual(firstRow(tables[2]), ["2026-09-28", "1", "—", "—", "—"]);
   assert.deepEqual(firstRow(tables[4]), ["2026-10 (so far)", "1", "2", "300", "300", "—", "—"]);

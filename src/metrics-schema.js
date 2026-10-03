@@ -44,7 +44,8 @@ const METRICS_SQL = Object.freeze({
       WHERE kind='chat' AND requests>0 AND scope<>'global' AND usage_date>=?
     )
     GROUP BY user_id,day`,
-  metricsPaddleSubscriptions: `SELECT user_id,status,created_at,COALESCE(event_occurred_at,updated_at) AS changed_at
+  metricsPaddleSubscriptions: `SELECT user_id,status,price_id,created_at,
+      COALESCE(event_occurred_at,updated_at) AS changed_at
     FROM paddle_subscriptions`,
   // App Store Sandbox purchases are tests, never revenue.
   metricsAppleSubscriptions: `SELECT user_id,COALESCE(original_purchased_at,purchased_at,created_at) AS started_at,

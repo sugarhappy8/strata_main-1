@@ -3,6 +3,15 @@
 const { ACCESS_CONTROLS_SQL } = require("./access-controls-schema");
 const { BILLING_SQL } = require("./billing-schema");
 
+/**
+ * The entitled catalog's arguments: both plans' price IDs (one ID stands for both) and the product ID.
+ * @param {string|readonly string[]} priceIds @param {string} productId
+ */
+function catalogArgs(priceIds, productId) {
+  const [monthly = "", yearly = monthly] = typeof priceIds === "string" ? [priceIds] : priceIds;
+  return [monthly, yearly, productId];
+}
+
 /** @param {import("./domain-types").JsonObject|null} row @returns {import("./domain-types").DiscoveryAccessSummary} */
 function accessSummary(row) {
   const purchaseCount = Number(row?.purchase_count || 0);
@@ -268,10 +277,14 @@ function createLocalBillingMethods({ db, statements, plainRow }) {
       return Boolean(statements.hasDiscoveryAccess.get(now, userId, priceId, priceId));
     },
     async hasCurrentPaidDiscoveryAccess(userId, priceId, productId, now = Date.now()) {
-      return Boolean(statements.hasCurrentDiscoveryAccess.get(now, userId, priceId, productId));
+      return Boolean(
+        statements.hasCurrentDiscoveryAccess.get(now, userId, ...catalogArgs(priceId, productId)),
+      );
     },
     async hasEntitledPaidDiscoveryAccess(userId, priceId, productId, now = Date.now()) {
-      return Boolean(statements.hasEntitledDiscoveryAccess.get(now, userId, priceId, productId));
+      return Boolean(
+        statements.hasEntitledDiscoveryAccess.get(now, userId, ...catalogArgs(priceId, productId)),
+      );
     },
     async hasDiscoveryAccess(userId, priceId = null, now = Date.now()) {
       return Boolean(
@@ -289,10 +302,8 @@ function createLocalBillingMethods({ db, statements, plainRow }) {
         plainRow(
           statements.currentDiscoveryAccessSummary.get(
             now,
-            priceId,
-            productId,
-            priceId,
-            productId,
+            ...catalogArgs(priceId, productId),
+            ...catalogArgs(priceId, productId),
             userId,
           ),
         ),
@@ -303,10 +314,8 @@ function createLocalBillingMethods({ db, statements, plainRow }) {
         plainRow(
           statements.entitledDiscoveryAccessSummary.get(
             now,
-            priceId,
-            productId,
-            priceId,
-            productId,
+            ...catalogArgs(priceId, productId),
+            ...catalogArgs(priceId, productId),
             userId,
           ),
         ),
@@ -508,12 +517,20 @@ function createTursoBillingMethods({ client, first, run, all, plainRow }) {
     },
     async hasCurrentPaidDiscoveryAccess(userId, priceId, productId, now = Date.now()) {
       return Boolean(
-        await first(BILLING_SQL.hasCurrentDiscoveryAccess, [now, userId, priceId, productId]),
+        await first(BILLING_SQL.hasCurrentDiscoveryAccess, [
+          now,
+          userId,
+          ...catalogArgs(priceId, productId),
+        ]),
       );
     },
     async hasEntitledPaidDiscoveryAccess(userId, priceId, productId, now = Date.now()) {
       return Boolean(
-        await first(BILLING_SQL.hasEntitledDiscoveryAccess, [now, userId, priceId, productId]),
+        await first(BILLING_SQL.hasEntitledDiscoveryAccess, [
+          now,
+          userId,
+          ...catalogArgs(priceId, productId),
+        ]),
       );
     },
     async hasDiscoveryAccess(userId, priceId = null, now = Date.now()) {
@@ -532,10 +549,8 @@ function createTursoBillingMethods({ client, first, run, all, plainRow }) {
       return accessSummary(
         await first(BILLING_SQL.currentDiscoveryAccessSummary, [
           now,
-          priceId,
-          productId,
-          priceId,
-          productId,
+          ...catalogArgs(priceId, productId),
+          ...catalogArgs(priceId, productId),
           userId,
         ]),
       );
@@ -544,10 +559,8 @@ function createTursoBillingMethods({ client, first, run, all, plainRow }) {
       return accessSummary(
         await first(BILLING_SQL.entitledDiscoveryAccessSummary, [
           now,
-          priceId,
-          productId,
-          priceId,
-          productId,
+          ...catalogArgs(priceId, productId),
+          ...catalogArgs(priceId, productId),
           userId,
         ]),
       );

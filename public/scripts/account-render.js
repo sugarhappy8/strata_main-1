@@ -195,12 +195,15 @@
         el("accountBillingTitle").textContent = "Lifetime access";
         el("accountBillingBadge").textContent = "Grandfathered";
         el("accountBillingDetail").textContent =
-          "Your prior lifetime purchase remains active under its original terms. It has no monthly renewal and does not need a subscription.";
+          "Your prior lifetime purchase remains active under its original terms. It never renews and does not need a subscription.";
         return;
       }
       const status = String(subscription.status || ""),
-        scheduled = subscription.scheduledChange;
-      el("accountBillingTitle").textContent = "Monthly subscription";
+        scheduled = subscription.scheduledChange,
+        yearly = subscription.plan === "yearly";
+      el("accountBillingTitle").textContent = yearly
+        ? "Yearly subscription"
+        : "Monthly subscription";
       el("accountBillingBadge").textContent =
         status === "paused"
           ? "Paused"
@@ -234,11 +237,11 @@
           `The subscription pauses ${logic.billingDate(scheduled.effectiveAt)}. Access remains available until then and stops when the pause takes effect.`;
       else if (status === "past_due")
         el("accountBillingDetail").textContent = app
-          ? "The latest monthly payment could not be collected. Strata+ remains available for now."
-          : "Paddle could not collect the latest monthly payment. Update the payment method to avoid losing Strata+ access.";
+          ? "The latest payment could not be collected. Strata+ remains available for now."
+          : "Paddle could not collect the latest payment. Update the payment method to avoid losing Strata+ access.";
       else
         el("accountBillingDetail").textContent =
-          `Your monthly subscription is active. The next renewal is ${logic.billingDate(subscription.currentPeriodEndsAt)} unless you cancel.`;
+          `Your ${yearly ? "yearly" : "monthly"} subscription is active. The next renewal is ${logic.billingDate(subscription.currentPeriodEndsAt)} unless you cancel.`;
       if (app) {
         el("accountBillingWebNote").hidden = false;
         return;

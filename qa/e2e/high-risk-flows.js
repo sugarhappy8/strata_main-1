@@ -130,7 +130,7 @@ async function handleProviderRequest(req, res) {
             id: body?.items?.[0]?.price_id || null,
             product_id: PRODUCT_ID,
             billing_cycle: { interval: "month", frequency: 1 },
-            unit_price: { amount: "299", currency_code: "USD" },
+            unit_price: { amount: "499", currency_code: "USD" },
           },
         },
       ],

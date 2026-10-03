@@ -371,7 +371,7 @@ function completedEvent(transactionId, userId, label = "complete") {
           },
         },
       ],
-      details: { totals: { subtotal: "299", discount: "0", tax: "0", total: "299" } },
+      details: { totals: { subtotal: "499", discount: "0", tax: "0", total: "499" } },
     },
   };
 }
@@ -497,7 +497,7 @@ function paddleTransactionFixture({
           id: priceId,
           product_id: productId,
           billing_cycle: billingCycle,
-          unit_price: { amount: "299", currency_code: "USD" },
+          unit_price: { amount: "499", currency_code: "USD" },
         },
       },
     ],
