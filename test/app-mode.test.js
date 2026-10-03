@@ -522,12 +522,12 @@ test("Profile keeps Strata+, support, and legal pages one tap away", () => {
   const accountPage = fakeNode("accountPage");
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
-    selector === "body > footer > span" ? { textContent: "About STRATA · Build 9.6.0" } : null;
+    selector === "body > footer > span" ? { textContent: "About STRATA · Build 9.7.0" } : null;
   page.ready();
   const more = accountPage.html[0].html;
   for (const href of ["/pricing", "/contact", "/policies", "/terms", "/privacy"])
     assert.match(more, new RegExp(`href="${href}"`));
-  assert.match(more, /About STRATA · Build 9\.6\.0/);
+  assert.match(more, /About STRATA · Build 9\.7\.0/);
 });
 
 test("on /pricing the app loads its App Store paywall, and the website never loads Paddle there", () => {
@@ -535,7 +535,7 @@ test("on /pricing the app loads its App Store paywall, and the website never loa
   page.insertBody();
   page.ready();
   assert.equal(page.document.head.children.length, 1);
-  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=9.6.0");
+  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=9.7.0");
   const pricing = read("public/scripts/pricing.js");
   assert.match(
     pricing,
@@ -784,17 +784,17 @@ test("Profile names the app build when the app can say", async () => {
   });
   page.insertBody();
   const accountPage = fakeNode("accountPage"),
-    line = { textContent: "About STRATA · Build 9.6.0" };
+    line = { textContent: "About STRATA · Build 9.7.0" };
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
     selector === "body > footer > span"
-      ? { textContent: "About STRATA · Build 9.6.0" }
+      ? { textContent: "About STRATA · Build 9.7.0" }
       : selector === ".app-more-build"
         ? line
         : null;
   page.ready();
   for (let index = 0; index < 5; index += 1) await new Promise(setImmediate);
-  assert.equal(line.textContent, "About STRATA · Build 9.6.0 · App 1.2 (34)");
+  assert.equal(line.textContent, "About STRATA · Build 9.7.0 · App 1.2 (34)");
 });
 
 test("downloads keep their file for a minute, so the app's share sheet can still read it, and the app says where it goes", () => {

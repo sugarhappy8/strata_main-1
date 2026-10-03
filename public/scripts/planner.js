@@ -477,8 +477,8 @@ const loadGuidance = API.createGuidanceLoader({
   request: (path) => api(path),
   documentImpl: document,
   hasBuilder: () => Boolean(globalThis.StrataDiscovery?.exerciseGuidance),
-  catalogPath: "/exercises.json?v=9.6.0",
-  builderPath: "/discovery-core.js?v=9.6.0",
+  catalogPath: "/exercises.json?v=9.7.0",
+  builderPath: "/discovery-core.js?v=9.7.0",
 });
 async function openExerciseGuide(id, trigger = null) {
   const listed = exerciseById(id);
@@ -1346,7 +1346,7 @@ async function init({ guestOnly = false } = {}) {
     html`<div class="planner-load-state">Loading your weekly plan…</div>`,
   );
   try {
-    const exercises = LOGIC.libraryExercises(await api("/exercise-library.json?v=9.6.0"));
+    const exercises = LOGIC.libraryExercises(await api("/exercise-library.json?v=9.7.0"));
     if (!exercises) throw new Error("STRATA returned an incomplete exercise library.");
     state.exercises = exercises;
     let result = null;
