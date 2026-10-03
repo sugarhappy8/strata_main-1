@@ -1,15 +1,15 @@
 // @ts-check
 "use strict";
 
-const { defaultPreferences } = require("./plans");
+const { cleanText, defaultPreferences, planStats } = require("./plans");
 const { planForPrice } = require("./paddle-catalog");
 const { buildInvestorMetrics, metricsCsv, metricsSince } = require("./metrics");
 
-/** @param {unknown} value */
+/** Comma-separated addresses, normalized as sign-in normalizes an email. @param {unknown} value */
 function emailList(value) {
   return String(value || "")
     .split(",")
-    .map((item) => item.trim().toLowerCase())
+    .map((item) => cleanText(item, 254).toLowerCase())
     .filter((item) => item.includes("@"));
 }
 
@@ -21,14 +21,16 @@ function tokenRate(value) {
 }
 
 /**
- * Days with at least one exercise. A saved plan is already sanitized; anything else counts as empty.
+ * Days with at least one exercise, as the planner counts them. A saved plan is already sanitized; anything else counts
+ * as empty.
  * @param {unknown} plan
  */
 function trainingDays(plan) {
-  const days = /** @type {{days?:Record<string,unknown>}} */ (plan || {}).days;
-  return days && typeof days === "object"
-    ? Object.values(days).filter((list) => Array.isArray(list) && list.length > 0).length
-    : 0;
+  try {
+    return planStats(/** @type {any} */ (plan)).workoutDays;
+  } catch {
+    return 0;
+  }
 }
 
 /**
@@ -61,12 +63,17 @@ function createAdminMetricsService({
     ]),
   ];
   const usdPerMillionTokens = tokenRate(environment.STRATA_AI_USD_PER_MILLION_TOKENS);
+  // Accounts whose first full week this process has recorded. Later saves cannot move it earlier, so they skip the
+  // profile read and the write (the store still keeps the earliest time if two saves race).
+  const recorded = new Set();
 
   /** @param {{userId?:unknown,updatedAt?:unknown,plan?:unknown}} payload */
   async function fullWeekSaved(payload) {
     const userId = String(payload?.userId || ""),
       at = Number(payload?.updatedAt);
-    if (!userId || !Number.isSafeInteger(at) || at < 1) return;
+    if (!userId || !Number.isSafeInteger(at) || at < 1 || recorded.has(userId)) return;
+    const days = trainingDays(payload.plan);
+    if (days === 0) return;
     const row = /** @type {{preferences_json?:string}|null} */ (await store.preferences(userId));
     let target = defaultPreferences().days;
     try {
@@ -74,7 +81,9 @@ function createAdminMetricsService({
     } catch {
       /* an unreadable profile keeps the default target */
     }
-    if (trainingDays(payload.plan) >= target) await store.recordFullWeek(userId, at);
+    if (days < target) return;
+    await store.recordFullWeek(userId, at);
+    recorded.add(userId);
   }
 
   /** @param {{res:import("./domain-types").HttpResponse}} context */

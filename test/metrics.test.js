@@ -2,7 +2,10 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 const {
+  AI_USAGE_DAYS,
   DAY_MS,
   buildInvestorMetrics,
   csvCell,
@@ -137,6 +140,38 @@ test("cohorts count activation only once its seven days have passed and only aft
   assert.ok(unrecorded.cohorts.every((row) => row.activation.eligible === 0));
 });
 
+test("week-N retention counts an account only once its week-N window has ended", () => {
+  // E signed up on 30 August: week 4 is 27 September to 3 October, the day NOW falls on.
+  const withE = (activeDays = []) =>
+    source({
+      accounts: [
+        ...source().accounts,
+        { id: "E", createdAt: at("2026-08-30T10:00:00Z"), method: "email", fullWeekAt: null },
+      ],
+      activeDays: [...source().activeDays, ...activeDays],
+    });
+  const cohort = (metrics) => metrics.cohorts.find((row) => row.weekStart === "2026-08-24");
+  assert.deepEqual(
+    cohort(buildInvestorMetrics(withE(), { now: NOW })).retention[0],
+    { week: 4, eligible: 0, retained: 0, rate: null },
+    "the last day of the window is still running",
+  );
+  const nextDay = at("2026-10-04T08:00:00Z");
+  assert.deepEqual(cohort(buildInvestorMetrics(withE(), { now: nextDay })).retention[0], {
+    week: 4,
+    eligible: 1,
+    retained: 0,
+    rate: 0,
+  });
+  const active = withE([{ userId: "E", day: day("2026-10-03"), plus: false }]);
+  assert.deepEqual(cohort(buildInvestorMetrics(active, { now: nextDay })).retention[0], {
+    week: 4,
+    eligible: 1,
+    retained: 1,
+    rate: 1,
+  });
+});
+
 test("each plan's monthly value: $4.99 a month, $29.99 a year spread over twelve, after each provider's fee", () => {
   const close = (actual, expected) =>
     assert.ok(Math.abs(actual - expected) < 1e-9, `${actual} ≠ ${expected}`);
@@ -244,6 +279,21 @@ test("AI cost per active Strata+ member uses the configured token rate, and stay
   assert.equal(idle.ai.months.at(-1).costPerMember, null);
 });
 
+test("Strata AI shows only months whose every day is still kept", () => {
+  assert.equal(AI_USAGE_DAYS, 90);
+  assert.match(
+    fs.readFileSync(path.join(__dirname, "../src/server.js"), "utf8"),
+    new RegExp(`aiQuota\\.cleanup\\(${AI_USAGE_DAYS}\\)`),
+    "the server deletes Strata AI usage after the same number of days",
+  );
+  const months = (iso) =>
+    buildInvestorMetrics(source(), { now: at(iso) }).ai.months.map((row) => row.month);
+  assert.deepEqual(months("2026-10-03T12:00:00Z"), ["2026-08", "2026-09", "2026-10"]);
+  // On 31 October usage before 2 August is gone, so August would be missing its first day.
+  assert.deepEqual(months("2026-10-31T12:00:00Z"), ["2026-09", "2026-10"]);
+  assert.deepEqual(months("2026-11-01T00:30:00Z"), ["2026-09", "2026-10", "2026-11"]);
+});
+
 test("an empty database reports zeros, not errors", () => {
   const empty = buildInvestorMetrics(
     {
@@ -266,9 +316,14 @@ test("an empty database reports zeros, not errors", () => {
 
 test("the activity query starts at the oldest week or month a figure reads", () => {
   assert.equal(new Date(metricsSince(NOW)).toISOString(), "2026-07-13T00:00:00.000Z");
-  // At the end of October the oldest AI month (August) starts before the oldest week (10 August).
+  // At the end of October August's AI usage is no longer whole, so the oldest week (10 August) bounds the query.
   assert.equal(
     new Date(metricsSince(at("2026-10-31T12:00:00Z"))).toISOString(),
+    "2026-08-10T00:00:00.000Z",
+  );
+  // Mid-month, the oldest AI month starts first.
+  assert.equal(
+    new Date(metricsSince(at("2026-10-20T12:00:00Z"))).toISOString(),
     "2026-08-01T00:00:00.000Z",
   );
 });

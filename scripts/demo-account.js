@@ -375,15 +375,18 @@ function parseArgs(argv) {
   return options;
 }
 
+const TURSO_CONFIRMATION =
+  "This writes to the Turso database in TURSO_DATABASE_URL. Run again with --yes to continue.";
+
 async function main(argv = process.argv.slice(2), env = process.env) {
   const options = parseArgs(argv);
+  // Connecting to Turso already runs the schema migrations, so the confirmation comes before any connection.
+  if (String(env.TURSO_DATABASE_URL || "").trim() && !options.yes)
+    throw new Error(TURSO_CONFIRMATION);
   const { createStore } = require("../src/database");
   const store = await createStore(join(__dirname, ".."));
   try {
-    if (store.kind === "turso" && !options.yes)
-      throw new Error(
-        "This writes to the Turso database in TURSO_DATABASE_URL. Run again with --yes to continue.",
-      );
+    if (store.kind === "turso" && !options.yes) throw new Error(TURSO_CONFIRMATION);
     const generated = !env.STRATA_DEMO_PASSWORD,
       password = env.STRATA_DEMO_PASSWORD || randomBytes(12).toString("base64url");
     const result = await createDemoAccount({

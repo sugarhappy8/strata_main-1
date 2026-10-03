@@ -515,7 +515,7 @@
     },
     "src/data-layer-schema.js": {
       "role": "Training-link, Daily Snapshot, and plan-change storage schema",
-      "maxLines": 80,
+      "maxLines": 90,
       "allowedDependencies": []
     },
     "src/data-layer-store.js": {

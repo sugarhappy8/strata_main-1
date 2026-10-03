@@ -26,9 +26,6 @@ const PLANS = Object.freeze({
     frequency: 1,
   }),
 });
-const CURRENT_PRICE_AMOUNT = PLANS.monthly.amount;
-const CURRENT_PRICE_MINOR_UNITS = PLANS.monthly.minorUnits;
-const CURRENT_PRICE_CURRENCY = PLANS.monthly.currency;
 
 /** @param {unknown} value */
 function clean(value) {
@@ -156,9 +153,6 @@ module.exports = {
   DEFAULT_PRODUCT_ID,
   DEFAULT_PRICE_ID,
   PLANS,
-  CURRENT_PRICE_AMOUNT,
-  CURRENT_PRICE_MINOR_UNITS,
-  CURRENT_PRICE_CURRENCY,
   clean,
   validPaddleEnvironment,
   validPaddleProductId,

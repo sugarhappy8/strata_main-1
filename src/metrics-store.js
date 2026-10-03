@@ -14,7 +14,7 @@ async function readMetricsRows(query, since, internalEmails) {
   const sinceDate = new Date(since).toISOString().slice(0, 10);
   const [accounts, activeDays, paddle, apple, lifetime, aiUsage, ledger] = await Promise.all([
     query("metricsAccounts", [JSON.stringify(internalEmails)]),
-    query("metricsActiveDays", [since, since, since, since, sinceDate]),
+    query("metricsActiveDays", [since, since, since, sinceDate, since, sinceDate]),
     query("metricsPaddleSubscriptions", []),
     query("metricsAppleSubscriptions", []),
     query("metricsLifetimePurchases", []),

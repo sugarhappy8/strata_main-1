@@ -68,11 +68,11 @@
         throw new Error("Sandbox checkout could not initialize safely.");
       globalThis.Paddle.Environment.set("sandbox");
     }
+    // Paddle.js starts Paddle Retain (ProfitWell) for every live checkout unless it is already loaded. STRATA does not
+    // use Retain and its content policy blocks that third-party script, so mark it loaded and Paddle.js never asks.
+    if (!globalThis.profitwell) globalThis.profitwell = Object.assign(() => {}, { isLoaded: true });
     globalThis.Paddle.Initialize({
       token: state.config.clientToken,
-      // STRATA does not know a Paddle customer ID before a first subscription.
-      // An empty object is Paddle's documented safe Retain value.
-      pwCustomer: {},
       eventCallback: (event) => {
         void handleCheckoutEvent(event);
       },
@@ -302,7 +302,7 @@
         state.currentTransactionId = "";
         setStatus(
           logic.subscriptionFor(state.user)
-            ? "Your monthly Strata+ subscription is confirmed."
+            ? "Your Strata+ subscription is confirmed."
             : "Strata+ is unlocked on this account.",
           "good",
           { focus },

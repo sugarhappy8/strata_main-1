@@ -110,7 +110,12 @@ test("privacy copy and the content policy describe and enforce same-origin asset
       .map(([name, ...sources]) => [name, sources]),
   );
   assert.deepEqual(directives["font-src"], ["'self'"]);
-  assert.deepEqual(directives["style-src"], ["'self'", "'unsafe-inline'"]);
+  // Paddle's overlay stylesheet comes from the same CDN as Paddle.js; no font or image host is allowed.
+  assert.deepEqual(directives["style-src"], [
+    "'self'",
+    "'unsafe-inline'",
+    "https://cdn.paddle.com",
+  ]);
   assert.deepEqual(directives["img-src"], ["'self'", "https://*.paddle.com", "data:"]);
   assert.doesNotMatch(csp, /fonts\s*\.googleapis|fonts\s*\.gstatic|images\s*\.unsplash/i);
 });

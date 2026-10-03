@@ -218,6 +218,36 @@ test("the yearly plan is optional, and a yearly price that is invalid or reused 
     false,
     "a deployment that does not sell yearly does not entitle it",
   );
+  // A checkout is judged by the price STRATA recorded for it, or by any current plan; never by a monthly default.
+  const yearlyCheckout = checkoutTransaction({
+    items: [
+      {
+        quantity: 1,
+        price: {
+          id: YEARLY,
+          product_id: DEFAULT_PRODUCT_ID,
+          billing_cycle: { interval: "year", frequency: 1 },
+          unit_price: { amount: "2999", currency_code: "USD" },
+        },
+      },
+    ],
+  });
+  const reference = { userId: "user-1", checkoutId: "checkout-1" };
+  for (const validate of [validateCheckoutTransaction, validateCheckoutRecoveryTransaction]) {
+    assert.deepEqual(validate(yearlyCheckout, both, reference), { ok: true }, validate.name);
+    assert.deepEqual(validate(yearlyCheckout, both, { ...reference, priceId: YEARLY }), {
+      ok: true,
+    });
+    assert.deepEqual(
+      validate(yearlyCheckout, both, { ...reference, priceId: RECURRING_PRICE_ID }),
+      { ok: false, reason: "price" },
+      "a checkout recorded as monthly cannot come back as yearly",
+    );
+    assert.deepEqual(validate(yearlyCheckout, monthlyOnly, reference), {
+      ok: false,
+      reason: "price",
+    });
+  }
 });
 
 test("live configuration is fail-closed and serializes browser-safe fields only", () => {

@@ -974,8 +974,8 @@ function localStore(root) {
         throw error;
       }
     },
-    async adminOverview(now) {
-      return plainRow(statements.adminOverview.get(now, now, now));
+    async adminOverview(now, yearlyPriceId = "") {
+      return plainRow(statements.adminOverview.get(now, now, now, yearlyPriceId));
     },
     async adminUserById(userId, now) {
       return plainRow(statements.adminUserById.get(now, now, now, now, userId));
@@ -1845,7 +1845,8 @@ async function tursoStore(url, authToken, tursoClientFactory) {
         boundNow: Boolean(inserted),
       };
     },
-    adminOverview: (now) => first(SQL.adminOverview, [now, now, now]),
+    adminOverview: (now, yearlyPriceId = "") =>
+      first(SQL.adminOverview, [now, now, now, yearlyPriceId]),
     adminUserById: (userId, now) => first(SQL.adminUserById, [now, now, now, now, userId]),
     async adminUsers(query, limit, offset, now) {
       const search = adminSearchArgs(query);

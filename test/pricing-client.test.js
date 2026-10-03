@@ -121,6 +121,8 @@ function runtime({
     Paddle: {
       Initialize(options) {
         checkout.event = options.eventCallback;
+        checkout.options = options;
+        checkout.retainLoaded = context.profitwell?.isLoaded;
       },
       Checkout: {
         open() {
@@ -285,6 +287,13 @@ test("a server that sells only the monthly plan hides the yearly choice", async 
   r.node("buyDiscovery").click();
   await flush();
   assert.deepEqual(r.checkoutBodies, [{ plan: "monthly" }]);
+});
+
+test("Paddle checkout starts without Paddle Retain, which STRATA does not use", async () => {
+  const r = runtime();
+  await flush();
+  assert.equal(r.checkout.retainLoaded, true, "Retain counts as loaded before Paddle.Initialize");
+  assert.equal("pwCustomer" in r.checkout.options, false);
 });
 
 test("pricing never offers or requests the retired free trial", async () => {

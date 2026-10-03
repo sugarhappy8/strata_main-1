@@ -32,7 +32,7 @@ nothing is mistaken for finished.
 | Grant the demo account Strata+ in Admin → People | Founder |
 | Add the demo account to `APPLE_SANDBOX_ACCOUNTS` for TestFlight | Founder (see [Demo](demo.md) for the trade-off) |
 | Record the two-minute screen recording | Founder |
-| Check the live site on a phone with a clean console | Founder, after deploying 9.8.0 |
+| Check the live site on a phone with a clean console | Done after the 9.8.0 deploy: every public page, in the browser and as the app; the Pricing console errors were fixed in 9.8.1 |
 | Fill in the real numbers from Admin → Metrics | Founder, the week of the meeting |
 | "What would you spend the money on?" | Founder (see [Questions](questions.md)) |
 | Give a trusted person emergency access to Render, Turso, Paddle, and GitHub | Founder (see [Runbook](runbook.md)) |

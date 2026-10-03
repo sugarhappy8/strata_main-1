@@ -32,11 +32,16 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
       Boolean(planForPrice(paymentConfig, purchase.price_id))
     );
   }
-  // A draft or ready checkout must also carry its plan's exact public price, not only the price ID.
-  /** @param {import("./domain-types").PaddleFetchedTransactionResult} remote @param {string} userId @param {string} checkoutId */
-  function currentCheckout(remote, userId, checkoutId) {
+  // A draft or ready checkout must also carry its plan's exact public price, not only the price ID. The price is the
+  // one STRATA recorded when the checkout began, so a yearly checkout is checked as yearly.
+  /** @param {import("./domain-types").PaddleFetchedTransactionResult} remote @param {string} userId @param {string} checkoutId @param {string} priceId */
+  function currentCheckout(remote, userId, checkoutId, priceId) {
     return (
-      validateCheckoutRecoveryTransaction(remote.data, paymentConfig, { userId, checkoutId }).ok &&
+      validateCheckoutRecoveryTransaction(remote.data, paymentConfig, {
+        userId,
+        checkoutId,
+        priceId,
+      }).ok &&
       (!["draft", "ready"].includes(remote.status) ||
         exactCurrentCheckoutPrice(remote.data, paymentConfig))
     );
@@ -82,7 +87,7 @@ function createCheckoutReconciliation({ store, paymentConfig, now, authService }
             ? " It can still resume billing, so cancel it from subscription management first."
             : " Cancel it from subscription management first.";
       throw authService().accountActionError(
-        `Your Strata+ monthly subscription has not ended.${scheduled} Nothing was deleted.`,
+        `Your Strata+ subscription has not ended.${scheduled} Nothing was deleted.`,
         409,
         "SUBSCRIPTION_ACTIVE",
       );

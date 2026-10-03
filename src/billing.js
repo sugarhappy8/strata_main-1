@@ -261,7 +261,12 @@ function createBillingService({
     const alreadyRetired =
       claim.transaction_id === remote.transactionId &&
       validateRetiredPaddleCheckoutTransaction(remote.data).ok;
-    const currentCatalogValid = currentCheckout(remote, claim.user_id, claim.claim_id);
+    const currentCatalogValid = currentCheckout(
+      remote,
+      claim.user_id,
+      claim.claim_id,
+      claim.price_id,
+    );
     if (
       retirement
         ? !currentCatalogValid && !retirementValidation.ok && !alreadyRetired
@@ -836,7 +841,9 @@ function createBillingService({
     const interrupted = await store.checkoutCreationForUser(session.id);
     if (interrupted) {
       const recovery = await recoverCheckoutCreation(interrupted);
-      if (recovery.state === "transaction") {
+      // An interrupted checkout is reused only for the plan the member chose now. One on the other plan is now an
+      // ordinary unpaid checkout, which the plan switch below switches off before the chosen plan's checkout opens.
+      if (recovery.state === "transaction" && interrupted.price_id === plan.priceId) {
         await sendCheckout(200, {
           transactionId: recovery.transactionId,
           reused: true,
@@ -1067,7 +1074,7 @@ function createBillingService({
         return;
       }
       json(res, 404, {
-        error: "No Strata+ monthly subscription was found for this account.",
+        error: "No Strata+ subscription was found for this account.",
         code: "SUBSCRIPTION_NOT_FOUND",
       });
       return;

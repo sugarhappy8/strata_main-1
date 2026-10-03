@@ -1,5 +1,16 @@
 # Changelog
 
+## 9.8.1 — Final checks
+
+- An interrupted yearly checkout is recovered as yearly; before, the retry checked it against the monthly price and refused it every time. Checkout validators without a recorded price accept any current plan instead of assuming monthly.
+- An interrupted checkout is reused only for the plan the member chose; one on the other plan is switched off and the chosen plan's checkout opens. Yearly subscribers' messages no longer say "monthly".
+- Metrics: plan history also keeps the latest save of each day for 120 days, and a nutrition entry counts on the day it is for, so earlier active days no longer vanish; week-4 and week-8 retention counts an account only once that week is over; Strata AI shows only months whose every day is still kept (usage is kept 90 days). Admin → Overview counts a yearly subscription as renewed only after its first year.
+- The full-week reaction counts training days as the planner does and skips work for empty weeks and recorded accounts. `npm run demo:account` asks for `--yes` before it connects to Turso.
+- Pricing has a clean console: the content policy allows Paddle's overlay stylesheet from `https://cdn.paddle.com`, and Paddle Retain (ProfitWell), which STRATA does not use, is never started. `/account` and `/workout` open their pages instead of 404.
+- Advance every asset version and the offline cache to 9.8.1.
+
+See the [9.8.1 release guide](docs/release-9.8.1.md).
+
 ## 9.8.0 — Investor pack
 
 - Strata+ moves from $2.99 a month to **$4.99 USD a month or $29.99 USD a year**. The pricing page offers both plans; `POST /api/billing/checkout` takes `{ "plan": "monthly" | "yearly" }` and the server picks the price. Checkout, recovery, webhooks, and entitlement accept only `PADDLE_PRICE_ID` (499 USD minor units, monthly) and the new optional `PADDLE_YEARLY_PRICE_ID` (2999, yearly), each on its own cycle. Switching plans before paying switches off the unpaid checkout on the other plan. Account and Pricing name the member's plan, Metrics counts yearly subscriptions at $29.99 ÷ 12, and the terms, refund and privacy policies, homepage, and docs state the new prices. Set both price IDs in Render and $4.99 in App Store Connect before deploying.

@@ -18,7 +18,7 @@ function securityHeaders(production = process.env.NODE_ENV === "production") {
   return {
     ...(production ? { "Strict-Transport-Security": "max-age=31536000" } : {}),
     "Content-Security-Policy":
-      "default-src 'self'; img-src 'self' https://*.paddle.com data:; style-src 'self' 'unsafe-inline'; font-src 'self'; script-src 'self' https://cdn.paddle.com; connect-src 'self' https://*.paddle.com; manifest-src 'self'; worker-src 'self'; frame-src https://*.paddle.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'",
+      "default-src 'self'; img-src 'self' https://*.paddle.com data:; style-src 'self' 'unsafe-inline' https://cdn.paddle.com; font-src 'self'; script-src 'self' https://cdn.paddle.com; connect-src 'self' https://*.paddle.com; manifest-src 'self'; worker-src 'self'; frame-src https://*.paddle.com; object-src 'none'; base-uri 'self'; form-action 'self' https://accounts.google.com; frame-ancestors 'none'",
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
     "Referrer-Policy": "strict-origin-when-cross-origin",

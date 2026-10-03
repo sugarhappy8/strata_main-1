@@ -246,7 +246,7 @@ test("refuses exactly what the emailed link refuses, and deletes nothing", async
       {
         purchases: Object.assign(
           new Error(
-            "Your Strata+ monthly subscription has not ended. Cancel it from subscription management first. Nothing was deleted.",
+            "Your Strata+ subscription has not ended. Cancel it from subscription management first. Nothing was deleted.",
           ),
           { status: 409, code: "SUBSCRIPTION_ACTIVE" },
         ),
@@ -269,7 +269,7 @@ test("refuses exactly what the emailed link refuses, and deletes nothing", async
   }
   const subscription = harness({
     purchases: Object.assign(
-      new Error("Your Strata+ monthly subscription has not ended. Nothing was deleted."),
+      new Error("Your Strata+ subscription has not ended. Nothing was deleted."),
       { status: 409, code: "SUBSCRIPTION_ACTIVE" },
     ),
   });

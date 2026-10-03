@@ -3,6 +3,12 @@
 
 const { DATA_LAYER_SQL } = require("./data-layer-schema");
 
+// Plan history keeps the latest 50 changes, plus the latest change of each day for this long: longer than any
+// window the owner's metrics read (12 weeks of activity, 8-week retention).
+const PLAN_CHANGE_DAYS = 120;
+/** @param {{createdAt:number}} change */
+const dailySince = (change) => Number(change.createdAt) - PLAN_CHANGE_DAYS * 24 * 60 * 60 * 1000;
+
 /** @param {{statements:Record<string,import("./domain-types").PreparedStatementLike>,plainRow:(row:any)=>any}} dependencies @returns {import("./domain-types").DataLayerStore} */
 function createLocalDataLayerMethods({ statements, plainRow }) {
   /** @param {string} name */
@@ -66,7 +72,7 @@ function createLocalDataLayerMethods({ statements, plainRow }) {
         change.createdAt,
         userId,
       );
-      statement("prunePlanChanges").run(userId, userId, keep);
+      statement("prunePlanChanges").run(userId, userId, keep, userId, dailySince(change));
     },
     async planChanges(userId, limit) {
       return statement("planChanges")
@@ -128,7 +134,13 @@ function createTursoDataLayerMethods({ all, run }) {
         change.createdAt,
         userId,
       ]);
-      await run(DATA_LAYER_SQL.prunePlanChanges, [userId, userId, keep]);
+      await run(DATA_LAYER_SQL.prunePlanChanges, [
+        userId,
+        userId,
+        keep,
+        userId,
+        dailySince(change),
+      ]);
     },
     planChanges: (userId, limit) => all(DATA_LAYER_SQL.planChanges, [userId, limit]),
   };

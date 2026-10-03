@@ -390,7 +390,7 @@ test("Paddle members keep today's checkout and portal answers", async () => {
   const missing = await portal(browser);
   assert.equal(missing.response.status, 404);
   assert.deepEqual(missing.data, {
-    error: "No Strata+ monthly subscription was found for this account.",
+    error: "No Strata+ subscription was found for this account.",
     code: "SUBSCRIPTION_NOT_FOUND",
   });
   const started = await checkout(browser);
