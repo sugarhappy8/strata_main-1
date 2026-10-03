@@ -135,7 +135,9 @@
       documentImpl.body?.classList.remove("account-signed-in");
     }
 
+    // The tab names the page a visitor sees: Sign in until an account is open, then Profile.
     function showAccess({ message = "", mode, requestedMode, preferredPanel }) {
+      documentImpl.title = "Sign in — STRATA";
       clearPrivateData();
       el("accountLoading").hidden = true;
       el("accountAccess").hidden = false;
@@ -257,6 +259,7 @@
     }
 
     function showSignedIn(user) {
+      documentImpl.title = "Profile — STRATA";
       documentImpl.body?.classList.add("account-signed-in");
       el("accountLoading").hidden = true;
       el("accountAccess").hidden = true;

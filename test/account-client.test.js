@@ -231,6 +231,7 @@ function createPage({ search = "", route, app = null }) {
     vm.runInContext(moduleScript.source, context, { filename: `${moduleScript.name}.js` });
   vm.runInContext(script, context, { filename: "account.js" });
   return {
+    document,
     elements,
     requests,
     navigations,
@@ -2105,4 +2106,45 @@ test("the deletion dialog closes with Escape or Cancel without deleting, holds w
     browser.elements.get("accountSecurityStatus").textContent,
     /^A deletion confirmation link was sent to a\*\*\*@example\.test\./,
   );
+});
+
+test("the tab says Sign in to a visitor and Profile once an account is open", async () => {
+  const visitor = createPage({
+    route: async (path) => {
+      if (path === "/api/status") return jsonResponse(200, { persistent: true });
+      if (path === "/healthz") return jsonResponse(200, { ok: true });
+      if (path === "/api/me") return jsonResponse(401, { error: "Not signed in." });
+      throw new Error(`Unexpected route ${path}`);
+    },
+  });
+  await settle();
+  assert.equal(visitor.document.title, "Sign in — STRATA");
+  assert.match(
+    html,
+    /<title>Sign in — STRATA<\/title>/,
+    "the page is titled Sign in before any script runs",
+  );
+
+  const user = memberFixture({
+    discovery: { active: false, accessType: null, pendingPurchaseCount: 0 },
+  });
+  const member = createPage({
+    route: async (path) => {
+      if (path === "/api/status") return jsonResponse(200, { persistent: true });
+      if (path === "/healthz") return jsonResponse(200, { ok: true });
+      if (path === "/api/me") return jsonResponse(200, { csrfToken: "csrf-title", user });
+      if (path === "/api/plan")
+        return jsonResponse(200, {
+          csrfToken: "csrf-title",
+          user,
+          plan: planFixture(),
+          planUpdatedAt: 0,
+        });
+      if (path === "/api/account/sessions")
+        return jsonResponse(200, { userId: user.id, sessions: [], otherCount: 0 });
+      throw new Error(`Unexpected route ${path}`);
+    },
+  });
+  await settle();
+  assert.equal(member.document.title, "Profile — STRATA");
 });
