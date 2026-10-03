@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  // Inside the iOS app Strata+ is sold through the App Store (app-paywall.js); Paddle never loads or opens there.
+  // Inside the STRATA app Strata+ is sold by the App Store or Google Play (app-paywall.js); Paddle never opens there.
   if (globalThis.StrataApp) return;
   const PADDLE_SCRIPT = "https://cdn.paddle.com/paddle/v2/paddle.js";
   const logic = globalThis.StrataPricingLogic;
@@ -238,6 +238,7 @@
       if (
         error.code === "ALREADY_ENTITLED" ||
         error.code === "ALREADY_ENTITLED_APP_STORE" ||
+        error.code === "ALREADY_ENTITLED_GOOGLE_PLAY" ||
         error.code === "DISCOVERY_ALREADY_ACTIVE" ||
         error.code === "CHECKOUT_PENDING_CONFIRMATION"
       ) {

@@ -119,7 +119,7 @@ test("the app shell tells the iPhone app from the Android app by the web view's 
 test("inside the iOS app the app's stylesheet and chrome script are written into the head, render-blocking and in order", () => {
   const page = harness();
   assert.deepEqual(page.written, [
-    '<link rel="stylesheet" href="/app-mode.css?v=10.0.0" /><script src="/app-mode.js?v=10.0.0"></script>',
+    '<link rel="stylesheet" href="/app-mode.css?v=10.1.0" /><script src="/app-mode.js?v=10.1.0"></script>',
   ]);
   assert.deepEqual(
     harness({ pathname: "/install" }).written,
@@ -133,7 +133,7 @@ test("inside the iOS app the app's stylesheet and chrome script are written into
   for (const asset of ["/app-mode.js", "/app-mode.css", "/app-paywall.js"])
     assert.match(
       read("public/service-worker.js"),
-      new RegExp(`"${asset.replace(/[.]/g, "\\.")}\\?v=10\\.0\\.0"`),
+      new RegExp(`"${asset.replace(/[.]/g, "\\.")}\\?v=10\\.1\\.0"`),
     );
   assert.match(
     read("scripts/release-version.js"),
@@ -196,7 +196,7 @@ test("every page loads html.js and then the app shell first in its head, and the
     // app-mode.js, which app-shell.js writes in, builds markup with html.js.
     assert.deepEqual(
       scripts.slice(0, 2),
-      ["/html.js?v=10.0.0", "/app-shell.js?v=10.0.0"],
+      ["/html.js?v=10.1.0", "/app-shell.js?v=10.1.0"],
       `${page} must load html.js and then app-shell.js before any other script`,
     );
     for (const name of ["html", "app-shell"])
@@ -211,8 +211,8 @@ test("every page loads html.js and then the app shell first in its head, and the
     /\[\s*"app-shell\s*\.js"\s*,\s*"scripts\/app-shell\s*\.js"\s*,?\s*\]/,
   );
   assert.match(read("src/server.js"), /\[\s*"html\.js"\s*,\s*"scripts\/html\.js"\s*,?\s*\]/);
-  assert.match(read("public/service-worker.js"), /"\/app-shell\.js\?v=10\.0\.0"/);
-  assert.match(read("public/service-worker.js"), /"\/html\.js\?v=10\.0\.0"/);
+  assert.match(read("public/service-worker.js"), /"\/app-shell\.js\?v=10\.1\.0"/);
+  assert.match(read("public/service-worker.js"), /"\/html\.js\?v=10\.1\.0"/);
   assert.match(
     read("public/styles/tokens.css"),
     /:\s*root\s*\[\s*data-app\s*\]\s*a\s*\[\s*href\^\s*=\s*"\/install"\s*,?\s*\]\s*\{\s*display\s*:\s*none\s*!\s*important\s*;\s*[;,]?\s*\}/,

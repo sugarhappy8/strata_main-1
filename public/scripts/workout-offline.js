@@ -262,7 +262,10 @@
       link = document.createElement("a");
     link.href = url;
     link.download = `strata-workout-${state.record.workout.date}-${state.record.workout.id}.json`;
+    link.hidden = true;
+    document.body.append(link);
     link.click();
+    link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60_000);
   }
   function repairNotice(repairs) {
@@ -294,7 +297,7 @@
     state.context = restored.context;
     state.record = restored.record;
     try {
-      const response = await fetch("/exercises.json?v=10.0.0");
+      const response = await fetch("/exercises.json?v=10.1.0");
       if (response.ok) {
         const catalog = await response.json();
         state.catalog = new Map(catalog.map((item) => [item.id, item]));

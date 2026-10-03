@@ -1,8 +1,10 @@
 # STRATA — Exercise Rankings and Workout Planning
 
-STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 10.0.0 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, Polar connections and Strata AI on Groq for Strata+ members, and a private owner dashboard.
+STRATA is an evidence-informed workout index with server-backed, email-verified accounts, a private Strata+ studio, and weekly and monthly workout planning. It includes 320 resistance-training exercises—including 71 bodyweight options—across 8 muscle groups and 26 sub-muscle targets. Build 10.1.0 is an installable Progressive Web App (PWA) with Training Memory, Resend-powered account email, Paddle-powered Strata+ subscriptions, Polar connections and Strata AI on Groq for Strata+ members, and a private owner dashboard.
 
-**Build 10.0.0 is V1: the website and the iOS app are one system.** Strata+ is the same two plans however it is bought: $4.99 USD a month or $29.99 USD a year, through Paddle on the web or the App Store in the app, where the paywall now offers both. The app's tabs follow who is signed in, as the website's navigation does. The app uses the website's wordmark and mark, pill buttons, and headline type. A mistyped address opens a STRATA page with the navigation. See the [10.0.0 release guide](docs/release-10.0.0.md).
+**Build 10.1.0 is the Android release.** The STRATA Android app opens the same site as the iPhone app and sells the same Strata+ through Google Play Billing: $4.99 USD a month or $29.99 USD a year. STRATA's server checks every Google Play purchase with Google, acknowledges it, and follows renewals, cancellations, and refunds through Google's notifications, so Strata+ is one subscription whether it was bought on the web, on iPhone, or on Android. Account, deletion, the export, the policies, and the admin desk know Google Play subscriptions. See the [10.1.0 release guide](docs/release-10.1.0.md).
+
+The [10.0.0 release](docs/release-10.0.0.md) was V1: the website and the iOS app became one system. Strata+ became the same two plans however it is bought, through Paddle on the web or the App Store in the app, where the paywall offers both. The app's tabs follow who is signed in, as the website's navigation does, and the app uses the website's wordmark and mark, pill buttons, and headline type. A mistyped address opens a STRATA page with the navigation.
 
 The [9.8.1 release](docs/release-9.8.1.md) was the final check before V1. It fixed what a review of 9.8.0 and the live site found: interrupted yearly checkouts, plan switches after an interrupted checkout, metrics that could lose earlier active days, and two console errors on Pricing.
 
@@ -44,7 +46,7 @@ The [7.8.7 release](docs/release-7.8.7.md) expanded the library to 320 movements
 
 **Build 7.8.3 restored STRATA's established visual identity and clarified Strata+.** The weekly plan is again the clear center of Plan, secondary tools are progressively disclosed, Today now distinguishes no-plan, next-scheduled, and active-session states, Train handles an empty selected day explicitly, and Progress never presents blank statistics as results. The 7.8.2 performance-based weight progression remains intact. See the [7.8.3 release guide](docs/release-7.8.3.md) for behavior and validation.
 
-The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 10.0.0 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
+The [7.8.0 release](docs/release-7.8.0.md) established the training loop from week preview through account verification, a deliberate seven-day no-card trial, Plan review, training, and completed-workout evidence. Its Paddle lifecycle protections and enforced logic, state, API, rendering, event, and coordinator boundaries remain in place across the seven largest browser surfaces; Build 10.1.0 also preserves the direct sole-owner Admin workflow from 7.8.4, the interrupted-checkout deletion recovery from 7.8.5, and the previous releases' Plan/comparison, coaching, and food-option refinements. See [release readiness](docs/release-readiness.md) and the [founder plan](docs/founder-plan.md).
 
 STRATA also includes a login-free local weekly planner, account-synced plans, week templates with import and export, a deterministic 31-day workspace, community ratings, printable exports, and a private administrator help desk. Strata+ is a recurring subscription at **$4.99 USD per month or $29.99 USD per year**; subscribing always requires explicit checkout. There is no free trial: Build 8.9.0 retired it. Paddle is the merchant of record, and the server grants paid access only after a matching transaction is provider-verified and linked to validated signed subscription state. Prior lifetime buyers remain grandfathered with no recurring charge.
 
@@ -70,7 +72,7 @@ Copy `.env.example` to `.env` and fill in the required values when testing email
 
 ## Project structure
 
-Build 10.0.0 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
+Build 10.1.0 separates browser files from private server code while preserving every public URL used by visitors, Paddle, Render, and installed PWAs:
 
 ```text
 server.js          Stable npm/Render bootstrap
@@ -139,7 +141,7 @@ Account APIs, authentication routes, and health checks bypass the service worker
 
 ## Public pricing, support, and policies
 
-Build 10.0.0 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly or yearly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
+Build 10.1.0 has public, mobile-friendly pages at `/pricing`, `/contact`, `/policies`, `/terms`, `/privacy`, and `/refunds`. The Policies directory is the single public entry point for legal documents and the founder story. The published refund window is 14 calendar days after an eligible monthly or yearly charge. Subscription cancellation and refunds are separate actions. Support is available through the Contact form and at `stratafitness.official@gmail.com`.
 
 Paddle receives payment information; STRATA does not receive or store full payment-card or bank-account details. Do not change the displayed amounts or renewal intervals independently of the live Paddle catalog. Members open short-lived Paddle portal links from Account to manage payment or cancellation. Before accepting payments, make sure the public operator details match the identity required by Paddle and applicable law rather than inventing missing legal information.
 
