@@ -320,6 +320,26 @@ test("access follows Google's state, a renewal not yet heard of, and the test-pu
     testPurchase: false,
   });
   assert.equal(googlePlaySubscriptionSummary([], now), null);
+  // A purchase still in progress is shown before an old one that ended, though it has no expiry yet.
+  const pending = googlePlaySubscriptionSummary(
+    [
+      {
+        ...row({ state: "EXPIRED", expires_at: now - 90 * DAY }),
+        product_id: PRODUCT,
+        base_plan_id: "monthly",
+        updated_at: 5,
+      },
+      {
+        ...row({ state: "PENDING", expires_at: null }),
+        product_id: PRODUCT,
+        base_plan_id: "yearly",
+        updated_at: 1,
+      },
+    ],
+    now,
+  );
+  assert.equal(pending.state, "PENDING");
+  assert.equal(pending.pending, true);
 });
 
 for (const kind of KINDS) {
@@ -471,6 +491,101 @@ for (const kind of KINDS) {
       );
       assert.deepEqual(await retry.service.refreshDue(), { checked: 1, failed: 0 });
       assert.equal(Number((await store.googlePlaySubscription("token-ack")).acknowledged), 1);
+    });
+  });
+
+  test(`${kind}: a subscription Google keeps failing on waits, so the refresh still reaches the others`, async () => {
+    await withStore(kind, "google-play", async (store) => {
+      const member = await addUser(store);
+      let clock = Date.now();
+      const soon = () => clock + 10 * 60 * 1000;
+      const failing = Array.from(
+        { length: 25 },
+        (_, index) => `a-fails-${String(index).padStart(2, "0")}`,
+      );
+      const api = fakeApi(
+        Object.fromEntries(
+          [...failing, "z-renews"].map((token) => [
+            token,
+            playSubscription({ accountId: member, expiresAt: soon(), acknowledged: true }),
+          ]),
+        ),
+      );
+      const { auth, buy, service, logs } = harness(store, api, { now: () => clock });
+      auth.session = session(member);
+      assert.equal((await buy([...failing.slice(0, 20)])).status, 200);
+      assert.equal((await buy([...failing.slice(20), "z-renews"])).status, 200);
+      for (const token of failing)
+        api.answers[token] = Object.assign(new Error("busy"), {
+          code: "GOOGLE_PLAY_UNAVAILABLE",
+          status: 503,
+        });
+      api.answers["z-renews"] = playSubscription({
+        accountId: member,
+        expiresAt: clock + 30 * DAY,
+        acknowledged: true,
+      });
+      api.reads.length = 0;
+      // The oldest answers come first, so the first run spends itself on the failing ones.
+      assert.deepEqual(await service.refreshDue(), { checked: 25, failed: 25 });
+      assert.ok(!api.reads.includes("z-renews"));
+      assert.ok(logs.some((log) => log.event === "google_play.lookup_failed"));
+      // Ten minutes later they wait their turn and the renewal is read.
+      clock += 10 * 60 * 1000;
+      api.reads.length = 0;
+      assert.deepEqual(await service.refreshDue(), { checked: 1, failed: 0 });
+      assert.deepEqual(api.reads, ["z-renews"]);
+      assert.equal(
+        Number((await store.googlePlaySubscription("z-renews")).expires_at) > clock + DAY,
+        true,
+      );
+      // After the wait they are tried again.
+      clock += 31 * 60 * 1000;
+      api.reads.length = 0;
+      assert.deepEqual(await service.refreshDue(), { checked: 25, failed: 25 });
+    });
+  });
+
+  test(`${kind}: a subscription bought for an account that no longer exists can be restored to the member's new one`, async () => {
+    await withStore(kind, "google-play", async (store) => {
+      const member = await addUser(store),
+        other = await addUser(store),
+        deleted = randomUUID();
+      const api = fakeApi({
+        "token-orphan": playSubscription({ accountId: deleted }),
+        "token-held": playSubscription({ accountId: deleted }),
+      });
+      const { auth, buy } = harness(store, api);
+      // Another, existing account already holds one of them: it stays there.
+      await store.upsertGooglePlaySubscription(
+        {
+          purchaseToken: "token-held",
+          userId: other,
+          productId: PRODUCT,
+          basePlanId: "monthly",
+          state: "ACTIVE",
+          testPurchase: false,
+          linkedPurchaseToken: null,
+          latestOrderId: null,
+          startedAt: Date.now() - DAY,
+          expiresAt: Date.now() + 30 * DAY,
+          autoRenew: true,
+          acknowledged: true,
+          checkedAt: Date.now() - 1000,
+          createdAt: Date.now() - 1000,
+          updatedAt: Date.now() - 1000,
+        },
+        null,
+      );
+      auth.session = session(member);
+      const restored = await buy(["token-orphan"]);
+      assert.equal(restored.status, 200);
+      assert.deepEqual(restored.body.accepted, ["token-orphan"]);
+      assert.equal((await store.googlePlaySubscription("token-orphan")).user_id, member);
+      const held = await buy(["token-held"]);
+      assert.equal(held.status, 403);
+      assert.equal(held.body.code, "GOOGLE_PLAY_ACCOUNT_MISMATCH");
+      assert.equal((await store.googlePlaySubscription("token-held")).user_id, other);
     });
   });
 

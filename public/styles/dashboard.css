@@ -39,8 +39,10 @@
   font: 650 clamp(28px, 3.4vw, 40px)/1.08 var(--display);
   letter-spacing: -0.035em;
 }
+/* The round arrow sits in the card's bottom-right corner; the text keeps clear of it. */
 .dashboard-choice span:not(.dashboard-choice-kicker) {
   max-width: 36ch;
+  padding-right: 56px;
   color: var(--muted);
   font-size: 15px;
   line-height: 1.6;

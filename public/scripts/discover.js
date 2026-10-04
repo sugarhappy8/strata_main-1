@@ -1700,7 +1700,9 @@ async function printMonthlyPlan() {
           jobName: state.monthlyPlan.title || "STRATA 31-day plan",
         }))
       )
-        showToast("Update STRATA from the App Store to print or save a PDF.");
+        showToast(
+          `Update STRATA from ${globalThis.StrataApp.platform === "android" ? "Google Play" : "the App Store"} to print or save a PDF.`,
+        );
     } catch {
       showToast("Printing is unavailable right now.");
     } finally {

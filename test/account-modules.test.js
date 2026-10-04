@@ -42,7 +42,7 @@ test("account pure logic explains every grant, subscription, and legacy access s
     logic.accountAccessSummary(
       discovery({ active: true, adminGrant: { active: true, expiresAt: null } }),
     ).detail,
-    "Until revoked",
+    "No end date",
   );
   assert.match(
     logic.accountAccessSummary(
@@ -194,6 +194,23 @@ test("account pure logic explains Google Play subscriptions and how to manage th
   );
   assert.equal(
     logic.accountAccessSummary(play({ active: false, state: "EXPIRED" })).state,
+    "Ended",
+  );
+  // A license tester's purchase that STRATA keeps locked has not ended; once its period is over, it has.
+  const locked = logic.accountAccessSummary(
+    play({
+      active: false,
+      state: "ACTIVE",
+      testPurchase: true,
+      expiresAt: Date.now() + 86_400_000,
+    }),
+  );
+  assert.equal(locked.state, "Test purchase");
+  assert.match(locked.message, /Google Play test purchase\. Test purchases do not unlock Strata\+/);
+  assert.equal(
+    logic.accountAccessSummary(
+      play({ active: false, state: "ACTIVE", testPurchase: true, expiresAt: Date.now() - 1000 }),
+    ).state,
     "Ended",
   );
   assert.equal(logic.googlePlayMayBill(play({ active: true })), true);

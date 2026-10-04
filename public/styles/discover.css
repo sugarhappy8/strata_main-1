@@ -5532,7 +5532,8 @@ html {
   overflow-wrap: anywhere;
   color: var(--accent);
   font: 700 clamp(1.7rem, 3vw, 2.4rem)/1 var(--body);
-  letter-spacing: -0.04em;
+  /* Tighter tracking closes the space in "13.9K kg". */
+  letter-spacing: -0.02em;
 }
 .progress-metric-grid p {
   margin: 0;

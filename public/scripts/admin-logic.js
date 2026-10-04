@@ -268,12 +268,12 @@
     const states = {
       ACTIVE: "Active",
       IN_GRACE_PERIOD: "Active · billing grace period",
-      CANCELED: "Active · cancelled, not renewing",
+      CANCELED: "Active · canceled, not renewing",
       ON_HOLD: "On hold (payment failed)",
       PAUSED: "Paused",
       PENDING: "Pending payment",
       EXPIRED: "Expired",
-      PENDING_PURCHASE_CANCELED: "Pending payment cancelled",
+      PENDING_PURCHASE_CANCELED: "Pending payment canceled",
     };
     return [
       [

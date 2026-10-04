@@ -553,6 +553,7 @@ button:disabled {
   gap: 6px;
   overflow-x: auto;
   padding: 8px 34px 10px 20px;
+  scroll-padding-inline: 20px 34px;
   scroll-snap-type: x proximity;
   scrollbar-color: var(--orange) transparent;
   scrollbar-width: thin;
@@ -1241,13 +1242,17 @@ button:disabled {
   height: 44px;
   padding: 0;
   border: 1px solid var(--line);
-  color: var(--muted);
+  color: var(--ink);
   background: transparent;
   text-decoration: none;
-  font-size: 11px;
+  font-size: 12.5px;
+  font-weight: 700;
 }
 .card-actions a {
   color: var(--orange);
+}
+.card-actions [data-remove-item] {
+  color: var(--muted);
 }
 .card-actions button:hover {
   color: var(--white);
@@ -1278,18 +1283,24 @@ button:disabled {
   font: 500 12.5px var(--body, "Manrope", Arial, sans-serif);
   font-variant-numeric: tabular-nums;
 }
+/* The day picker keeps its full day name: in a narrow week column the move buttons wrap below it. */
 .card-move {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   align-items: end;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--line);
 }
+.card-move > label {
+  flex: 1 1 128px;
+  min-width: 0;
+}
 .move-buttons {
   display: flex;
   gap: 4px;
+  margin-left: auto;
 }
 .move-buttons button {
   display: grid;
@@ -1623,9 +1634,6 @@ button:disabled {
   .summary-stat {
     padding: 11px;
   }
-  .library-panel {
-    height: clamp(560px, 72svh, 740px);
-  }
   .planner-day-chips {
     grid-template-columns: repeat(4, minmax(44px, 1fr));
   }
@@ -1727,9 +1735,15 @@ html {
     min-height: 44px;
     padding-inline: 7px;
   }
+  /* On phones the page scrolls the library, a page of cards at a time (Load more), instead of a short box inside it. */
   .library-panel {
     top: auto;
-    height: clamp(560px, 72svh, 740px);
+    height: auto;
+    overflow: visible;
+  }
+  .library-list {
+    flex: none;
+    overflow: visible;
   }
   .library-heading {
     padding-left: max(20px, env(safe-area-inset-left));
@@ -1765,9 +1779,6 @@ html {
   }
 }
 @media (max-width: 480px) {
-  .library-panel {
-    height: clamp(560px, 72svh, 740px);
-  }
   .planner-day-chips {
     grid-template-columns: repeat(4, minmax(44px, 1fr));
   }
@@ -2481,9 +2492,11 @@ html {
 .planner-primary-nav a:hover {
   color: var(--accent);
 }
+/* The current tab is bright text over a short accent underline, as on every other page's navigation. */
 .planner-primary-nav a[aria-current="page"] {
-  color: var(--ink);
-  background: var(--accent);
+  color: #fff;
+  background: linear-gradient(var(--accent), var(--accent)) center bottom 4px / calc(100% - 24px)
+    2px no-repeat;
 }
 .user-menu {
   grid-column: 3;

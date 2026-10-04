@@ -356,8 +356,13 @@ function clickSelectDay(day) {
   );
   assert.match(
     plannerCss,
-    /@media\(max-width:480px\)\{[^}]*\.library-panel\{[^}]*72svh[^}]*\}\.planner-day-chips\{grid-template-columns:repeat\(4,minmax\(44px,1fr\)\)/,
-    "Small screens should expose four full-size day targets per row and enough room to read library results",
+    /@media\(max-width:480px\)\{\.planner-day-chips\{grid-template-columns:repeat\(4,minmax\(44px,1fr\)\)/,
+    "Small screens should expose four full-size day targets per row",
+  );
+  assert.match(
+    plannerCss,
+    /@media\(max-width:760px\)\{[^@]*\.library-panel\{[^}]*height:auto[^}]*overflow:visible[^}]*\}\.library-list\{[^}]*overflow:visible/,
+    "On phones the page scrolls the library instead of a short box inside it",
   );
   assert.match(
     plannerCss,

@@ -188,11 +188,6 @@ select:focus-visible,
   font: 600 12px var(--body, "Manrope", Arial, sans-serif);
   letter-spacing: 0;
 }
-.account-link {
-  display: inline-grid;
-  place-items: center;
-  text-decoration: none;
-}
 .account-create {
   display: inline-grid;
   place-items: center;
@@ -209,13 +204,6 @@ select:focus-visible,
 .account-button.account-create:hover {
   color: var(--ink);
   background: var(--white);
-}
-.account-button.signed-in {
-  color: var(--ink);
-  background: var(--white);
-}
-.account-button.signed-in:hover {
-  background: var(--accent);
 }
 .session-button {
   text-decoration: none;
@@ -2078,11 +2066,16 @@ dialog::backdrop {
     align-self: end;
     margin-top: 45px;
   }
+  /* Side by side, the figures are divided by rules between them only. */
   .hero-data div {
     grid-template-columns: 1fr;
     gap: 4px;
     border-right: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 0;
     padding: 12px;
+  }
+  .hero-data div:last-child {
+    border-right: 0;
   }
   .hero-data strong {
     font-size: 32px;
@@ -2511,9 +2504,6 @@ html {
   .header-actions .session-button {
     display: none !important;
   }
-  .header-actions .account-link {
-    display: inline-grid !important;
-  }
 }
 
 @media (max-width: 560px) {
@@ -2528,16 +2518,6 @@ html {
   .account-button {
     min-width: 44px;
     max-width: 78px;
-  }
-  /* The homepage has no Profile link in its navigation, so the signed-in name stays, capped to fit the header. */
-  .header-actions .account-button.signed-in {
-    display: inline-block !important;
-    max-width: 132px;
-    line-height: 44px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    padding-inline: 14px !important;
   }
   .search-field input,
   .select-wrap select,

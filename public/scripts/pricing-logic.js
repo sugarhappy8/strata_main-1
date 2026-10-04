@@ -74,6 +74,19 @@
       ? play
       : null;
   }
+  // A Google Play subscription that is paused or on hold: no access, but it bills again once it resumes, so the member
+  // resumes it in Google Play instead of buying a second subscription here.
+  function googlePlayHeld(user) {
+    const play = user?.discovery?.googlePlay;
+    if (!play || typeof play !== "object" || play.testPurchase === true) return null;
+    const message =
+      play.onHold === true
+        ? "Your Strata+ subscription through Google Play is on hold because Google could not collect a payment. Update your payment method in Google Play instead of subscribing again."
+        : play.paused === true
+          ? "Your Strata+ subscription through Google Play is paused. Resume it in Google Play instead of subscribing again."
+          : "";
+    return message ? { play, message } : null;
+  }
   function googlePlayStatus(play) {
     const date = Number(play?.expiresAt) > 0 ? billingDate(play.expiresAt) : "";
     if (play?.inGracePeriod === true)
@@ -189,6 +202,7 @@
     appleStatus,
     PLAY_MANAGE_URL,
     googlePlayAccess,
+    googlePlayHeld,
     googlePlayStatus,
     billingDate,
     checkoutTransactionId,

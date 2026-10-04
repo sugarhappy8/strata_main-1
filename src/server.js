@@ -278,6 +278,8 @@ const PAGE_ALIASES = new Map([
   ["/admin", "admin.html"],
   ["/ai", "ai.html"],
   ["/dashboard", "dashboard.html"],
+  ["/discover", "discover.html"],
+  ["/onboarding", "onboarding.html"],
 ]);
 // The member-aware sections. Rankings and Recovery open the Strata+ studio for members; everyone else gets the
 // public rankings and the Strata+ plan that includes Recovery. Dashboard is a two-choice page (Plan or the Strata+

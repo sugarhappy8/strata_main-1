@@ -14,8 +14,11 @@
   white-space: nowrap;
 }
 
+/* The current tab is bright text over a short accent underline, as on every other page's navigation. */
 .account-header .product-nav [aria-current="page"] {
-  color: var(--accent);
+  color: #fff;
+  background: linear-gradient(var(--accent), var(--accent)) center bottom 4px / calc(100% - 16px)
+    2px no-repeat;
 }
 
 @media (max-width: 600px) {

@@ -1059,7 +1059,7 @@ test("signed-in Profile distinguishes access and billing states", async () => {
         subscription: null,
       },
       access: "Complimentary",
-      detail: /Until revoked/i,
+      detail: /No end date/i,
       grantMessage: /did not create a paid subscription/i,
       grantMessageNot: /manage it below/i,
       primary: "Build your week",
@@ -1635,7 +1635,7 @@ test("in the app, an App Store subscriber manages Strata+ on Apple's own sheet",
   assert.equal(page.elements.get("accountBillingBadge").textContent, "Active");
   assert.match(
     page.elements.get("accountBillingDetail").textContent,
-    /^Billed to your Apple Account through the App Store\. It renews Nov 1, 2026 unless cancelled at least 24 hours before\.$/,
+    /^Billed to your Apple Account through the App Store\. It renews Nov 1, 2026 unless canceled at least 24 hours before\.$/,
   );
   for (const id of [
     "accountManageSubscription",

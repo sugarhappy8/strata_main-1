@@ -63,7 +63,8 @@
       );
       const paused = subscriptionStatus === "paused",
         canceled = subscriptionStatus === "canceled";
-      const canSubscribe = signedIn && !active && !paused;
+      const held = active ? null : logic.googlePlayHeld(state.user);
+      const canSubscribe = signedIn && !active && !paused && !held;
       const checkoutBlocked = state.user?.discovery?.checkoutBlocked === true;
       const checkoutAccountChanged =
         Boolean(state.currentCheckoutUserId) &&
@@ -77,8 +78,8 @@
       loginLink.hidden = signedIn;
       buyButton.hidden = !canSubscribe;
       openLink.hidden = !signedIn || !active;
-      manageLink.hidden = !signedIn || (!subscription && !apple && !play);
-      if (apple || play) {
+      manageLink.hidden = !signedIn || (!subscription && !apple && !play && !held);
+      if (apple || play || held) {
         manageLink.href = apple ? logic.APPLE_MANAGE_URL : logic.PLAY_MANAGE_URL;
         manageLink.target = "_blank";
         manageLink.rel = "noopener noreferrer";
@@ -173,7 +174,7 @@
                   ? "Your grandfathered lifetime access remains separate and does not renew."
                   : "It did not create a paid subscription.";
           setStatus(
-            `You have complimentary Strata+ ${grant?.expiresAt == null ? "until an administrator revokes it" : `until ${new Date(grant.expiresAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`}. This grant never charges you. ${coexistence}`,
+            `You have complimentary Strata+ ${grant?.expiresAt == null ? "with no end date" : `until ${new Date(grant.expiresAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}`}. This grant never charges you. ${coexistence}`,
             "good",
           );
           return;
@@ -215,6 +216,10 @@
             ? `${note} Create an account or sign in, then subscribe to ${featureReason ? "use it" : "continue"}.`
             : "Create an account or sign in to subscribe, so access follows you across devices.";
         setStatus(message);
+        return;
+      }
+      if (held) {
+        setStatus(held.message, "warn");
         return;
       }
       if (paused) {

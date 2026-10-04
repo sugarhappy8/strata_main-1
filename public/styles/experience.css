@@ -482,16 +482,6 @@ dialog::backdrop {
   .section-heading h2 {
     font-size: clamp(40px, 10vw, 56px);
   }
-  .header-actions .account-button {
-    padding-inline: 7px;
-  }
-  .header-actions .account-button.signed-in {
-    display: inline-grid;
-    max-width: 96px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -177,9 +177,11 @@ function createGooglePlayApi({
     return `${API_ROOT}/${encodeURIComponent(packageName)}`;
   }
 
+  // 400 (a token Google rejects as malformed), 404, and 410 (a purchase too old to read) will not get better by asking
+  // again; Pub/Sub and the purchase route treat them as an invalid purchase rather than an outage.
   /** @param {Response} response */
   function failure(response) {
-    if (response.status === 404 || response.status === 410)
+    if (response.status === 400 || response.status === 404 || response.status === 410)
       return playError(
         "GOOGLE_PLAY_PURCHASE_INVALID",
         "Google Play does not know this purchase for STRATA.",

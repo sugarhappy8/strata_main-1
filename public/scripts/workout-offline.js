@@ -297,7 +297,7 @@
     state.context = restored.context;
     state.record = restored.record;
     try {
-      const response = await fetch("/exercises.json?v=10.1.0");
+      const response = await fetch("/exercises.json?v=10.1.1");
       if (response.ok) {
         const catalog = await response.json();
         state.catalog = new Map(catalog.map((item) => [item.id, item]));

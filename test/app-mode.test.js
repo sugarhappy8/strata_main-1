@@ -10,6 +10,8 @@ const { loadHtml } = require("./support/browser-html");
 const ROOT = path.join(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(ROOT, file), "utf8");
 const SOURCE = read("public/scripts/app-mode.js");
+// Asset URLs carry the release version (npm run release:version).
+const VERSION = JSON.parse(read("package.json")).version;
 const CSS = read("public/styles/app-mode.css");
 
 function jsonResponse(status, data) {
@@ -139,8 +141,8 @@ function realm({
     performance: { getEntriesByType: () => [{ type: navigationType }] },
     matchMedia: () => ({ matches: false }),
     scrollTo: (options) => scrolled.push(options),
-    setTimeout: () => {
-      calls.push(["setTimeout"]);
+    setTimeout: (callback) => {
+      calls.push(["setTimeout", callback]);
       return 0;
     },
     addEventListener(type, handler) {
@@ -604,12 +606,12 @@ test("Profile keeps Strata+, support, and legal pages one tap away", () => {
   const accountPage = fakeNode("accountPage");
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
-    selector === "body > footer > span" ? { textContent: "About STRATA · Build 10.1.0" } : null;
+    selector === "body > footer > span" ? { textContent: `About STRATA · Build ${VERSION}` } : null;
   page.ready();
   const more = accountPage.html[0].html;
   for (const href of ["/pricing", "/contact", "/policies", "/terms", "/privacy"])
     assert.match(more, new RegExp(`href="${href}"`));
-  assert.match(more, /About STRATA · Build 10\.1\.0/);
+  assert.ok(more.includes(`About STRATA · Build ${VERSION}`));
 });
 
 test("on /pricing the app loads its store's paywall, and the website never loads Paddle there", () => {
@@ -617,7 +619,7 @@ test("on /pricing the app loads its store's paywall, and the website never loads
   page.insertBody();
   page.ready();
   assert.equal(page.document.head.children.length, 1);
-  assert.equal(page.document.head.children[0].src, "/app-paywall.js?v=10.1.0");
+  assert.equal(page.document.head.children[0].src, `/app-paywall.js?v=${VERSION}`);
   const pricing = read("public/scripts/pricing.js");
   assert.match(
     pricing,
@@ -866,17 +868,17 @@ test("Profile names the app build when the app can say", async () => {
   });
   page.insertBody();
   const accountPage = fakeNode("accountPage"),
-    line = { textContent: "About STRATA · Build 10.1.0" };
+    line = { textContent: `About STRATA · Build ${VERSION}` };
   page.document.getElementById = (id) => (id === "accountPage" ? accountPage : null);
   page.document.querySelector = (selector) =>
     selector === "body > footer > span"
-      ? { textContent: "About STRATA · Build 10.1.0" }
+      ? { textContent: `About STRATA · Build ${VERSION}` }
       : selector === ".app-more-build"
         ? line
         : null;
   page.ready();
   for (let index = 0; index < 5; index += 1) await new Promise(setImmediate);
-  assert.equal(line.textContent, "About STRATA · Build 10.1.0 · App 1.2 (34)");
+  assert.equal(line.textContent, `About STRATA · Build ${VERSION} · App 1.2 (34)`);
 });
 
 test("downloads keep their file for a minute, so the app's share sheet can still read it, and the app says where it goes", () => {
@@ -1134,6 +1136,22 @@ test("current entitlements sync once per launch for signed-in members", async ()
   });
   assert.equal(await offline.billing.syncEntitlements(), "rejected");
   assert.equal(offline.storage.values.size, 0, "a network failure retries on the next page");
+  for (const [status, retried] of [
+    [503, true],
+    [429, true],
+    [400, false],
+  ]) {
+    const answered = billingRealm({
+      plugin,
+      routes: [ME(), async () => jsonResponse(status, { code: "X" })],
+    });
+    assert.equal(await answered.billing.syncEntitlements(), "rejected");
+    assert.equal(
+      answered.storage.values.size === 0,
+      retried,
+      `${status}: ${retried ? "a busy store is retried on the next page" : "a refused purchase is not sent again"}`,
+    );
+  }
   const empty = billingRealm({
     plugin: { currentEntitlements: async () => ({ signedTransactions: [] }) },
     routes: [ME()],
@@ -1141,6 +1159,27 @@ test("current entitlements sync once per launch for signed-in members", async ()
   assert.equal(await empty.billing.syncEntitlements(), "empty");
   const oldBuild = billingRealm({ plugin: {}, routes: [] });
   assert.equal(await oldBuild.billing.syncEntitlements(), "skipped");
+});
+
+test("while a text field has the keyboard, the app's tab bar steps aside", () => {
+  const page = realm({ pathname: "/dashboard", readyState: "complete" });
+  const field = (matches) => ({ matches: () => matches });
+  const focus = (type, target) => {
+    for (const handler of page.documentListeners[type] || []) handler({ target });
+  };
+  focus("focusin", field(false));
+  assert.equal(page.html.dataset.appKeyboard, undefined, "a checkbox or button keeps the tab bar");
+  focus("focusin", field(true));
+  assert.equal(page.html.dataset.appKeyboard, "open");
+  focus("focusout", field(true));
+  page.calls
+    .filter((call) => call[0] === "setTimeout")
+    .at(-1)[1]();
+  assert.equal(page.html.dataset.appKeyboard, undefined, "it returns once the field lets go");
+  assert.match(
+    read("public/styles/app-mode.css"),
+    /:root\[data-app\]\[data-app-keyboard\] \.app-tabbar \{\s*display: none;/,
+  );
 });
 
 test("on every page in the app, transaction updates are posted and finished, and entitlements sync after load", async () => {

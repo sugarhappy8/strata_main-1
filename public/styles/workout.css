@@ -2672,9 +2672,23 @@ footer a {
   cursor: pointer;
   font: 600 0.78rem/1.4 var(--body, "Manrope", Arial, sans-serif);
   letter-spacing: 0;
+  list-style: none;
 }
 .plan-preview-details[open] > summary {
   color: var(--lime);
+}
+/* The same open and close mark as the calendar's weekly reminder. */
+.plan-preview-details > summary::-webkit-details-marker {
+  display: none;
+}
+.plan-preview-details > summary::after {
+  content: "+";
+  margin-left: auto;
+  color: var(--lime);
+  font-weight: 700;
+}
+.plan-preview-details[open] > summary::after {
+  content: "\2212";
 }
 .plan-preview-details .plan-preview {
   padding-top: 4px;

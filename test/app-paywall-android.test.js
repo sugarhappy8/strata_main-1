@@ -303,9 +303,35 @@ test("members see where their Strata+ is billed, and lapsed Google Play subscrip
     },
   });
   await held.controller.load();
-  assert.match(
-    held.view().status,
-    /Strata\+ is on hold\. Update your payment method in Google Play/,
+  // On hold, Google bills again once it collects the payment: no second purchase is offered.
+  assert.match(held.html(), /on hold because Google could not collect a payment/);
+  assert.doesNotMatch(held.html(), /data-paywall-action="subscribe"/);
+  assert.equal(held.view().status, "");
+  // A license tester's purchase that STRATA keeps locked says so, not that it ended.
+  const tester = paywall({
+    user: {
+      id: USER_ID,
+      discovery: {
+        active: false,
+        accessType: null,
+        googlePlay: { ...PLAY, active: false, testPurchase: true },
+      },
+    },
+  });
+  await tester.controller.load();
+  assert.equal(
+    tester.view().status,
+    "This was a Google Play test purchase. Test purchases do not unlock Strata+.",
   );
+  // Without a signed-in Play Store, Google Play's own reason is shown.
+  const noPlay = paywall({
+    native: {
+      getProducts: async () => {
+        throw Object.assign(new Error("no"), { code: "BILLING_UNAVAILABLE" });
+      },
+    },
+  });
+  await noPlay.controller.load();
+  assert.match(noPlay.view().status, /Google Play can’t take payments on this device/);
   await settle();
 });

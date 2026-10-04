@@ -313,18 +313,19 @@
     recoveryView.render();
   }
   function updateWeeklyCalendar() {
-    const alarm = Number($("calendarWeeklyAlarm").value) || 0,
+    const native = nativeCalendar(),
+      alarm = calendarAlarm(),
       schedule = C.weeklySchedule(state.plan, W.DAYS, {
         time: $("calendarWeeklyTime").value || "18:00",
         alarmMinutes: alarm,
       });
     $("calendarWeekly").hidden = !schedule;
     if (!schedule) return;
+    $("calendarWeeklyAlarm").closest?.("label")?.toggleAttribute("hidden", !calendarReminders());
     const time = new Date(
         `2026-01-05T${$("calendarWeeklyTime").value || "18:00"}:00`,
       ).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }),
-      days = new Intl.ListFormat(undefined, { type: "conjunction" }).format(schedule.days),
-      native = nativeCalendar();
+      days = new Intl.ListFormat(undefined, { type: "conjunction" }).format(schedule.days);
     if (native) $("calendarWeeklyLink").textContent = "Add to Calendar";
     $("calendarWeeklyLink").href = schedule.href;
     $("calendarWeeklyLink").download = schedule.filename;
@@ -335,12 +336,19 @@
   function nativeCalendar() {
     return Boolean(globalThis.StrataAppMode?.has?.("addWeeklyToCalendar"));
   }
+  // Android's calendar opens the new event without a reminder, so the Android app leaves reminders to Calendar.
+  function calendarReminders() {
+    return !(nativeCalendar() && globalThis.StrataApp?.platform === "android");
+  }
+  function calendarAlarm() {
+    return calendarReminders() ? Number($("calendarWeeklyAlarm").value) || 0 : 0;
+  }
   async function addWeeklyToCalendar(event) {
     const options =
       nativeCalendar() &&
       C.nativeWeekly(state.plan, W.DAYS, {
         time: $("calendarWeeklyTime").value || "18:00",
-        alarmMinutes: Number($("calendarWeeklyAlarm").value) || 0,
+        alarmMinutes: calendarAlarm(),
       });
     if (!options) return;
     event.preventDefault();

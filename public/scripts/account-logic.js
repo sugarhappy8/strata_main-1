@@ -172,11 +172,28 @@
       message = typeof notice?.message === "string" ? notice.message.trim() : "";
     return message ? { message, manageUrl: safeAppleManageUrl(notice.manageUrl) } : null;
   }
+  const expired = (summary) =>
+    Number(summary?.expiresAt) > 0 && Number(summary.expiresAt) <= Date.now();
+  // A store's test purchase that STRATA keeps locked (the account is not on its test list).
+  const TEST_PURCHASE = (store) => ({
+    state: "Test purchase",
+    detail: `${store} test · locked`,
+    message: `This was a ${store} test purchase. Test purchases do not unlock Strata+. Your free Rankings and weekly Plan remain available.`,
+  });
+
   function appleAccessSummary(apple, app) {
     const date = billingDate(apple.expiresAt),
       known = Number(apple.expiresAt) > 0,
       // An App Store summary from an older server has no plan; Strata+ Monthly was the only product then.
       plan = apple.plan === "yearly" ? "Yearly" : "Monthly";
+    // A TestFlight or App Review purchase that is still running but kept locked has not ended.
+    if (
+      apple.active !== true &&
+      apple.environment === "Sandbox" &&
+      !apple.revoked &&
+      !expired(apple)
+    )
+      return TEST_PURCHASE("App Store");
     if (apple.active !== true)
       return apple.revoked === true
         ? {
@@ -201,7 +218,7 @@
       return {
         state: "Canceling",
         detail: `Access through ${date}`,
-        message: `Your App Store subscription is cancelled and ends on ${date}. Strata+ stays active until then.`,
+        message: `Your App Store subscription is canceled and ends on ${date}. Strata+ stays active until then.`,
       };
     return {
       state: "Active",
@@ -241,6 +258,13 @@
     const date = billingDate(play.expiresAt),
       known = Number(play.expiresAt) > 0,
       plan = play.plan === "yearly" ? "Yearly" : "Monthly";
+    if (
+      play.active !== true &&
+      play.testPurchase === true &&
+      ["ACTIVE", "IN_GRACE_PERIOD", "CANCELED"].includes(play.state) &&
+      !expired(play)
+    )
+      return TEST_PURCHASE("Google Play");
     if (play.active !== true)
       return play.onHold === true
         ? {
@@ -277,7 +301,7 @@
       return {
         state: "Canceling",
         detail: `Access through ${date}`,
-        message: `Your Google Play subscription is cancelled and ends on ${date}. Strata+ stays active until then.`,
+        message: `Your Google Play subscription is canceled and ends on ${date}. Strata+ stays active until then.`,
       };
     return {
       state: "Active",
@@ -304,15 +328,15 @@
       const coexistence = subscription
         ? `Your existing ${planName(subscription)} subscription remains separate and is not canceled by this grant; review its billing state below.`
         : apple?.active === true
-          ? `Your App Store subscription remains separate and is not cancelled by this grant; manage it in ${APPLE_SETTINGS}.`
+          ? `Your App Store subscription remains separate and is not canceled by this grant; manage it in ${APPLE_SETTINGS}.`
           : play?.active === true
-            ? `Your Google Play subscription remains separate and is not cancelled by this grant; manage it in ${PLAY_SETTINGS}.`
+            ? `Your Google Play subscription remains separate and is not canceled by this grant; manage it in ${PLAY_SETTINGS}.`
             : grandfatheredAccess(user)
               ? "Your grandfathered lifetime access remains separate and does not renew."
               : "It did not create a paid subscription.";
       return {
         state: "Complimentary",
-        detail: grant.expiresAt == null ? "Until revoked" : `Until ${billingDate(grant.expiresAt)}`,
+        detail: grant.expiresAt == null ? "No end date" : `Until ${billingDate(grant.expiresAt)}`,
         message: `An administrator granted you free Strata+ access. This grant never renews or charges you. ${coexistence}`,
       };
     }

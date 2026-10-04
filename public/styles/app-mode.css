@@ -28,6 +28,10 @@
 :root[data-app] .app-tabbar {
   view-transition-name: app-tabbar;
 }
+/* A text field has the keyboard (app-mode.js): the tab bar steps aside until it closes. */
+:root[data-app][data-app-keyboard] .app-tabbar {
+  display: none;
+}
 ::view-transition-group(app-tabbar) {
   animation: none;
 }
@@ -641,14 +645,15 @@ body:has(.account-delete-dialog[open]) {
   outline-offset: 2px;
 }
 
-/* Pricing in the app is the App Store paywall (app-paywall.js). The website's checkout panel, static USD prices,
-   and Paddle notes never show here; the plan card's benefits move into the paywall. */
+/* Pricing in the app is the store's paywall (app-paywall.js). The website's checkout panel, static USD prices,
+   and Paddle notes never show here; the plan card's benefits move into the paywall. The free plan's card (installing
+   the website, a second planner link, and the policies) is the website's pitch, so the paywall ends the page. */
 :root[data-app-screen="pricing"]
-  :is(#purchasePanel, .hero-facts, .price-card, .pricing-page noscript) {
+  :is(#purchasePanel, .hero-facts, .pricing-grid, .pricing-page noscript) {
   display: none !important;
 }
-:root[data-app-screen="pricing"] .pricing-grid {
-  grid-template-columns: minmax(0, 1fr);
+:root[data-app-screen="pricing"] .info-main {
+  padding-block: 0;
 }
 :root[data-app-screen="pricing"] :is(.info-hero-grid > div:first-child, .info-lede) {
   display: none !important;

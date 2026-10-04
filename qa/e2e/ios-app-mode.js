@@ -13,6 +13,8 @@ const ROOT = join(__dirname, "..", ".."),
   ORIGIN = "http://strata-app.test";
 const APP_UA =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 StrataApp/1";
+const ANDROID_UA =
+  "Mozilla/5.0 (Linux; Android 15; Pixel 8 Build/AP3A.241005.015; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/141.0.0.0 Mobile Safari/537.36 StrataApp/1";
 const ALIASES = new Map([
   ["/", "index.html"],
   ["/pricing", "pricing.html"],
@@ -139,6 +141,7 @@ async function fixture(
     signedIn = false,
     discovery = { active: false, accessType: null, apple: null },
     api = null,
+    userAgent = APP_UA,
   } = {},
 ) {
   const context = await browser.newContext({
@@ -148,7 +151,7 @@ async function fixture(
     isMobile: true,
     hasTouch: true,
     reducedMotion: "reduce",
-    ...(app ? { userAgent: APP_UA } : {}),
+    ...(app ? { userAgent } : {}),
   });
   t.after(() => context.close());
   context.setDefaultTimeout(10_000);
@@ -397,7 +400,13 @@ test(
       await page.locator(".app-paywall-terms").textContent(),
       /auto-renewing yearly subscription at \$29\.99 per year/,
     );
-    for (const hidden of ["#purchasePanel", ".hero-facts", ".price-card", ".checkout-note"])
+    for (const hidden of [
+      "#purchasePanel",
+      ".hero-facts",
+      ".price-card",
+      ".checkout-note",
+      ".free-card",
+    ])
       assert.equal(await page.locator(hidden).first().isHidden(), true, hidden);
     assert.match(
       await page.locator(".app-paywall-terms").textContent(),
@@ -661,6 +670,42 @@ test(
     ]);
     assert.deepEqual(state.external, []);
     assert.deepEqual(state.errors, []);
+  },
+);
+
+test(
+  "in the Android app the week goes to Calendar without a reminder, which Android's calendar cannot set",
+  { timeout: 30_000 },
+  async (t) => {
+    const { page } = await fixture(t, {
+      signedIn: true,
+      userAgent: ANDROID_UA,
+      discovery: {
+        active: true,
+        accessType: "grant",
+        adminGrant: { active: true, expiresAt: null },
+        subscription: null,
+        apple: null,
+      },
+      api: workoutApi(),
+    });
+    await page.goto("/workout.html?day=Monday", { waitUntil: "domcontentloaded" });
+    await page.locator("#startWorkout").waitFor({ state: "visible" });
+    assert.equal(await page.evaluate(() => document.documentElement.dataset.app), "android");
+    await page.locator("#calendarWeekly > summary").click();
+    assert.equal(
+      (await page.locator("#calendarWeeklyLink").textContent()).trim(),
+      "Add to Calendar",
+    );
+    assert.equal(await page.locator("#calendarWeeklyAlarm").isHidden(), true);
+    assert.doesNotMatch(await page.locator("#calendarWeeklySummary").textContent(), /reminder/);
+    await page.locator("#calendarWeeklyLink").click();
+    const calendar = await (
+      await page.waitForFunction(
+        () => window.__nativeCalls.find((call) => call[0] === "addWeeklyToCalendar")?.[1],
+      )
+    ).jsonValue();
+    assert.equal(calendar.alarmMinutesBefore, null);
   },
 );
 

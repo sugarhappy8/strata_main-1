@@ -1,5 +1,6 @@
-/* The STRATA app for iPhone and Android (repository sugarhappy8/strata-fitness-ios) is a native shell around this
-   site. Its web view appends "StrataApp/<shell version>" to the user agent (its capacitor.config.json). This script
+/* The STRATA apps for iPhone (repository sugarhappy8/strata-fitness-ios) and Android
+   (sugarhappy8/strata-fitness-android) are native shells around this site. Their web views append
+   "StrataApp/<shell version>" to the user agent (each app's capacitor.config.json). This script
    runs in <head>, before the page paints, so pages can adapt with `:root[data-app]` styles (data-app is "ios" or
    "android"). Installing the site makes no sense inside the installed app, so Install links and the install page are
    removed there. Only the app loads its chrome (app-mode.css and app-mode.js: tab bar, top bar, motion, and the
@@ -28,7 +29,7 @@
   document.write(
     // A constant written while the page parses (see above), not markup built from data.
     // eslint-disable-next-line no-restricted-syntax
-    '<link rel="stylesheet" href="/app-mode.css?v=10.1.0" /><script src="/app-mode.js?v=10.1.0"></script>',
+    '<link rel="stylesheet" href="/app-mode.css?v=10.1.1" /><script src="/app-mode.js?v=10.1.1"></script>',
   );
 
   function removeInstallLinks() {

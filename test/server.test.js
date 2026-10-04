@@ -105,7 +105,7 @@ test.before(startServer);
 test.after(stopServer);
 
 test("serves rankings and gates private account pages", async () => {
-  assert.equal(BUILD, "10.1.0");
+  assert.equal(BUILD, "10.1.1");
   const home = await request("/");
   assert.equal(home.response.status, 200);
   assert.equal(home.response.headers.get("cache-control"), "private, no-store");
@@ -181,6 +181,13 @@ test("serves rankings and gates private account pages", async () => {
   const discover = await request("/discover.html", { redirect: "manual" });
   assert.equal(discover.response.status, 302);
   assert.equal(discover.response.headers.get("location"), "/account.html?mode=login&next=discover");
+  // The friendly routes guard the same pages.
+  for (const slug of ["discover", "onboarding"])
+    for (const path of [`/${slug}`, `/${slug}/`]) {
+      const page = await request(path, { redirect: "manual" });
+      assert.equal(page.response.status, 302, path);
+      assert.equal(page.response.headers.get("location"), `/account.html?mode=login&next=${slug}`);
+    }
   const discoveryApi = await request("/api/discovery");
   assert.equal(discoveryApi.response.status, 401);
 });

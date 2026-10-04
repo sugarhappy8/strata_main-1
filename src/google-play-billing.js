@@ -27,6 +27,11 @@ const RENEWAL_MARGIN_MS = 2 * 60 * 60 * 1000;
 const REFRESH_AHEAD_MS = 60 * 60 * 1000;
 const RECHECK_MS = 24 * 60 * 60 * 1000;
 const REFRESH_BATCH = 25;
+// A subscription Google keeps failing on waits longer before the next try (30 minutes, doubling up to a day), so it
+// never holds up the others in the oldest-first queue.
+const RETRY_FIRST_MS = 30 * 60 * 1000;
+const RETRY_MAX_MS = 24 * 60 * 60 * 1000;
+const RETRY_TRACKED = 1000;
 const STORE_IDENTIFIER = /^[a-z0-9][a-z0-9._]{0,149}$/;
 const PACKAGE_NAME = /^[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+$/;
 const BASE_PLAN = /^[a-z0-9][a-z0-9-]{0,62}$/;
@@ -45,6 +50,7 @@ const STATES = new Set([
 // Entitled while paid through a future expiry: active, in its grace period (Google extends the expiry), or canceled but
 // not yet run out. Paused, on hold, pending, and expired subscriptions are not.
 const ENTITLED_STATES = new Set(["ACTIVE", "IN_GRACE_PERIOD", "CANCELED"]);
+const ENDED_STATES = new Set(["EXPIRED", "PENDING_PURCHASE_CANCELED"]);
 
 /**
  * A base plan whose id names a year ("yearly", "annual") is the yearly plan; every other one monthly.
@@ -184,9 +190,13 @@ function googlePlayRowActive(row, now, user = null, settings = null) {
 function googlePlaySubscriptionSummary(rows, now, user = null, settings = null) {
   /** @param {import("./domain-types").GooglePlaySubscriptionRow} row */
   const active = (row) => googlePlayRowActive(row, now, user, settings);
+  /** @param {import("./domain-types").GooglePlaySubscriptionRow} row */
+  const open = (row) => !ENDED_STATES.has(String(row.state));
+  // The subscription giving access, else one still in progress (pending, on hold, paused), else the latest that ended.
   const row = [...rows].sort(
     (a, b) =>
       Number(active(b)) - Number(active(a)) ||
+      Number(open(b)) - Number(open(a)) ||
       Number(b.expires_at || 0) - Number(a.expires_at || 0) ||
       Number(b.updated_at) - Number(a.updated_at),
   )[0];
@@ -291,7 +301,16 @@ function createGooglePlayBillingService({
   /** Google's current answer for a token, checked against this app's Strata+ products. @param {string} purchaseToken */
   async function lookup(purchaseToken) {
     const checkedAt = now();
-    const data = await requireApi().subscription(settings.packageName, purchaseToken);
+    let data;
+    try {
+      data = await requireApi().subscription(settings.packageName, purchaseToken);
+    } catch (error) {
+      // A refused service account (GOOGLE_PLAY_NOT_CONFIGURED) or an outage would otherwise show only as a 503.
+      logger.warn("google_play.lookup_failed", {
+        code: String(/** @type {any} */ (error)?.code || "UNKNOWN"),
+      });
+      throw error;
+    }
     const result = validateGooglePlaySubscription(data, purchaseToken, settings);
     if (!result.ok)
       throw playError(
@@ -355,6 +374,16 @@ function createGooglePlayBillingService({
     return linked ? String(linked.user_id).toLowerCase() : null;
   }
 
+  // A subscription bought for a STRATA account that has since been deleted keeps billing the same Google Account. Its
+  // purchase token only reaches a phone signed in to that Google Account, so the member restoring it there may attach it
+  // to their new STRATA account, as long as no other account holds it.
+  /** @param {string} token @param {string} account */
+  async function claimable(token, account) {
+    if (await store.userById(account)) return false;
+    const existing = await store.googlePlaySubscription(token);
+    return !existing || !(await store.userById(String(existing.user_id)));
+  }
+
   /**
    * @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res
    * @param {import("./domain-types").SessionRow} session
@@ -397,7 +426,7 @@ function createGooglePlayBillingService({
           400,
           "GOOGLE_PLAY_PURCHASE_INVALID",
         );
-      if (account !== userId)
+      if (account !== userId && !(await claimable(token, account)))
         throw playError(
           "This Google Play purchase belongs to a different STRATA account.",
           403,
@@ -498,20 +527,40 @@ function createGooglePlayBillingService({
 
   // Background check (src/server.js runs it every few minutes): subscriptions near or past their expiry, ones not
   // acknowledged yet, and every other open one once a day.
+  /** @type {Map<string, {attempts:number,retryAt:number}>} */
+  const retries = new Map();
+  /** @param {string} token @param {number} timestamp */
+  function retryLater(token, timestamp) {
+    const attempts = (retries.get(token)?.attempts || 0) + 1;
+    retries.delete(token);
+    retries.set(token, {
+      attempts,
+      retryAt: timestamp + Math.min(RETRY_FIRST_MS * 2 ** (attempts - 1), RETRY_MAX_MS),
+    });
+    if (retries.size > RETRY_TRACKED) retries.delete(String(retries.keys().next().value));
+  }
+
   async function refreshDue() {
     if (!api || !settings.configured) return { checked: 0, failed: 0 };
     const timestamp = now();
-    const due = await store.googlePlaySubscriptionsDue(
-      timestamp + REFRESH_AHEAD_MS,
-      timestamp - RECHECK_MS,
-      REFRESH_BATCH,
-    );
+    const due = (
+      await store.googlePlaySubscriptionsDue(
+        timestamp + REFRESH_AHEAD_MS,
+        timestamp - RECHECK_MS,
+        REFRESH_BATCH * 4,
+      )
+    )
+      .filter((row) => !(Number(retries.get(String(row.purchase_token))?.retryAt) > timestamp))
+      .slice(0, REFRESH_BATCH);
     let failed = 0;
     for (const row of due) {
+      const token = String(row.purchase_token);
       try {
-        await refresh(String(row.purchase_token));
+        await refresh(token);
+        retries.delete(token);
       } catch (error) {
         failed += 1;
+        retryLater(token, timestamp);
         logger.warn("google_play.refresh_failed", {
           code: String(/** @type {any} */ (error)?.code || "UNKNOWN"),
         });
@@ -566,16 +615,13 @@ function createGooglePlayBillingService({
 }
 
 module.exports = {
-  DEFAULT_PACKAGE_NAME,
   DEFAULT_PRODUCT_IDS,
   DELETION_NOTICE,
-  ENTITLED_STATES,
   MANAGE_SUBSCRIPTIONS_URL,
   RENEWAL_MARGIN_MS,
   createGooglePlayBillingService,
   googlePlayBillingSettings,
   googlePlayPlan,
-  googlePlayRecord,
   googlePlayRowActive,
   googlePlaySubscriptionSummary,
   validateGooglePlaySubscription,

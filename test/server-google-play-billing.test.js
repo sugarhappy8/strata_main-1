@@ -216,6 +216,27 @@ test("an expired Google Play subscription unlocks nothing", async () => {
   assert.equal((await request("/workout.html", { cookie: lapsed.cookie })).response.status, 302);
 });
 
+test("a paused or on-hold Google Play subscription is resumed in Google Play, never bought again", async () => {
+  for (const [state, words] of [
+    ["PAUSED", /paused\. Resume it in Google Play/],
+    ["ON_HOLD", /on hold because Google could not collect a payment/],
+  ]) {
+    const held = await member(state);
+    playSubscription(held, { state });
+    const me = await request("/api/me", { cookie: held.cookie });
+    assert.equal(me.data.user.discovery.active, false, state);
+    const checkout = await request("/api/billing/checkout", {
+      method: "POST",
+      cookie: held.cookie,
+      csrf: held.csrf,
+      body: {},
+    });
+    assert.equal(checkout.response.status, 409, state);
+    assert.equal(checkout.data.code, "GOOGLE_PLAY_SUBSCRIPTION_HELD");
+    assert.match(checkout.data.error, words);
+  }
+});
+
 test("the purchase and notification routes keep their guards while Google Play is not set up", async () => {
   const buyer = await member("Guarded");
   const body = {

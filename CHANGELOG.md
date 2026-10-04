@@ -1,5 +1,14 @@
 # Changelog
 
+## 10.1.1 — Polish
+
+- Google Play: a token Google does not know (400, 404, 410) is refused with `400 GOOGLE_PLAY_PURCHASE_INVALID` instead of `503`; the 10-minute refresh backs off a subscription Google keeps failing on (30 minutes, doubling to a day) and logs failed lookups; a subscription bought for a since-deleted account can be restored onto the member's new account when no existing account holds it; the summary prefers a subscription in progress over one that ended. A paused or on-hold Google Play subscription is resumed in Google Play: Paddle checkout answers `409 GOOGLE_PLAY_SUBSCRIPTION_HELD`, and Pricing and the Android paywall link to Google Play. `npm run preflight:production` checks the Google Play settings.
+- The apps' paywall explains Screen Time (`PURCHASE_NOT_ALLOWED`) and an unreachable store, says nothing when Restore is canceled, names test purchases, and keeps focus on its heading. In both apps the tab bar hides while typing; in the Android app the calendar offers no reminder and printing names Google Play; the website's free-plan card no longer follows the paywall.
+- Home follows who is signed in and no longer repeats Sign in or Profile in its header; the planner's cards read Guide, Video, and Remove, its day picker keeps full names, its phone library scrolls with the page, and rest days say "Rest day"; the current tab is marked alike on every page; onboarding no longer scrolls sideways on a phone; Dashboard, Workout, Progress, Pricing, and Account visual fixes; `/discover` and `/onboarding` work as addresses; complimentary access with no end date says so; the copy uses US "canceled".
+- Advance every asset version and the offline cache to 10.1.1.
+
+See the [10.1.1 release guide](docs/release-10.1.1.md).
+
 ## 10.1.0 — Android
 
 - Strata+ in the STRATA Android app (repository `sugarhappy8/strata-fitness-android`) is sold through Google Play Billing: the subscription `online.stratafitness.app.plus` with base plans `monthly` ($4.99) and `yearly` ($29.99). The app sends each purchase token to `POST /api/billing/google/purchases`; the server reads the subscription from the Google Play Developer API as a service account (`GOOGLE_PLAY_SERVICE_ACCOUNT`), checks the product and that the purchase carries the signed-in STRATA account, stores it in `google_play_subscriptions`, and acknowledges it. Real-time developer notifications arrive through Pub/Sub at `POST /api/billing/google/notifications?token=…` (`GOOGLE_PLAY_NOTIFICATION_TOKEN`) and are answered by reading the token from Google again; every 10 minutes the server also re-reads subscriptions near their expiry, not yet acknowledged, or not checked for a day.
