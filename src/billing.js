@@ -787,6 +787,22 @@ function createBillingService({
       });
   }
 
+  // A Google Play subscription that is paused or on hold gives no access but still bills once Google resumes it or
+  // collects the payment, so it is resumed in Google Play rather than bought a second time here.
+  /** @param {string} userId @returns {Promise<string>} */
+  async function heldGooglePlaySubscription(userId) {
+    const rows = await store.googlePlaySubscriptionsForUser(userId);
+    const held = rows.find(
+      (row) =>
+        (row.state === "ON_HOLD" || row.state === "PAUSED") &&
+        (Number(row.test_purchase) !== 1 || googlePlayTest.allowTestPurchases),
+    );
+    if (!held) return "";
+    return held.state === "ON_HOLD"
+      ? "Your Strata+ subscription through Google Play is on hold because Google could not collect a payment. Update your payment method in Google Play instead of subscribing again."
+      : "Your Strata+ subscription through Google Play is paused. Resume it in Google Play instead of subscribing again.";
+  }
+
   /**
    * @param {import("./domain-types").HttpRequest} req @param {import("./domain-types").HttpResponse} res
    * @param {import("./domain-types").SessionRow} session
@@ -823,6 +839,11 @@ function createBillingService({
     }
     if (await hasCurrentAccess(session.id)) {
       await alreadyEntitled(res, session.id);
+      return;
+    }
+    const held = await heldGooglePlaySubscription(session.id);
+    if (held) {
+      json(res, 409, { error: held, code: "GOOGLE_PLAY_SUBSCRIPTION_HELD" });
       return;
     }
     /** @param {number} status @param {import("./domain-types").JsonObject} data */

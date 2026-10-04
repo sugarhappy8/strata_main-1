@@ -107,6 +107,7 @@ test("Google's answers become STRATA's error codes, and acknowledging twice is f
   const statuses = {
     "gone-token": 410,
     "unknown-token": 404,
+    "malformed-token": 400,
     "denied-token": 403,
     "busy-token": 503,
   };
@@ -135,6 +136,11 @@ test("Google's answers become STRATA's error codes, and acknowledging twice is f
     status: 400,
   });
   assert.deepEqual(await failure("unknown-token"), {
+    code: "GOOGLE_PLAY_PURCHASE_INVALID",
+    status: 400,
+  });
+  // A token Google rejects as malformed is not an outage: Pub/Sub must not retry it for a week.
+  assert.deepEqual(await failure("malformed-token"), {
     code: "GOOGLE_PLAY_PURCHASE_INVALID",
     status: 400,
   });

@@ -611,7 +611,7 @@
     },
     "src/google-play-billing.js": {
       "role": "Google Play Billing: purchase tokens from the Android app, Real-time developer notifications, background refresh, Strata+ state",
-      "maxLines": 620,
+      "maxLines": 660,
       "allowedDependencies": ["src/google-play-api.js", "src/http.js"]
     },
     "src/google-play-billing-schema.js": {

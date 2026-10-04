@@ -187,6 +187,26 @@ test("pricing rendering gives a member without Strata+ a single subscribe action
   assert.equal(nodes.signupLink.hidden, true);
   assert.equal(nodes.openLink.hidden, true);
   assert.doesNotMatch(nodes.statusNode.textContent, /trial/i);
+  // A Google Play subscription that is paused or on hold is resumed in Google Play, never bought again with Paddle.
+  for (const [hold, words] of [
+    [{ onHold: true, state: "ON_HOLD" }, /on hold because Google could not collect a payment/],
+    [{ paused: true, state: "PAUSED" }, /paused\. Resume it in Google Play/],
+  ]) {
+    state.user = {
+      id: "member",
+      discovery: {
+        active: false,
+        accessType: null,
+        subscription: null,
+        googlePlay: { active: false, testPurchase: false, ...hold },
+      },
+    };
+    renderer.renderPurchaseState();
+    assert.equal(nodes.buyButton.hidden, true);
+    assert.equal(nodes.manageLink.hidden, false);
+    assert.equal(nodes.manageLink.href, Logic.PLAY_MANAGE_URL);
+    assert.match(nodes.statusNode.textContent, words);
+  }
 });
 
 test("pricing events keep user input wiring outside the orchestrator", () => {

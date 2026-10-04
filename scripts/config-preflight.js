@@ -1,6 +1,7 @@
 "use strict";
 
 const { devicesSettings } = require("../src/devices-config");
+const { googlePlayBillingSettings } = require("../src/google-play-billing");
 const { SOCIAL_PROVIDER_IDS, socialAuthSettings } = require("../src/social-auth-config");
 const { mailboxAddress, validEmailVerificationSecret, validResendApiKey } = require("../src/email");
 const {
@@ -260,6 +261,36 @@ function validateDeploymentEnvironment(
   if (!signIn.enabled.length)
     warnings.push("Sign in with Google is off; members sign up with email and password only.");
 
+  // Google Play Billing (the Android app) is optional. A value the server cannot parse stops it at boot, so a bad one
+  // fails here first; a service account without the notification token works, but renewals then wait for the refresh.
+  let googlePlay = null,
+    googlePlayProblem = "";
+  try {
+    googlePlay = googlePlayBillingSettings(environment);
+  } catch (error) {
+    googlePlayProblem = error instanceof Error ? error.message : String(error);
+  }
+  if (
+    googlePlayProblem ||
+    ["GOOGLE_PLAY_SERVICE_ACCOUNT", "GOOGLE_PLAY_NOTIFICATION_TOKEN"].some((key) =>
+      configured(environment[key]),
+    )
+  )
+    addCheck(
+      checks,
+      "google-play",
+      !googlePlayProblem,
+      googlePlayProblem || "Google Play Billing settings are valid.",
+    );
+  if (googlePlay?.configured && !googlePlay.notificationToken)
+    warnings.push(
+      "GOOGLE_PLAY_NOTIFICATION_TOKEN is not set, so Google Play's notifications are refused and renewals, cancellations, and refunds wait for the 10-minute refresh.",
+    );
+  else if (!googlePlay?.configured)
+    warnings.push(
+      "Google Play Billing is off; the Android app cannot sell Strata+ until GOOGLE_PLAY_SERVICE_ACCOUNT is set.",
+    );
+
   const secrets = [
     clean(environment.TURSO_AUTH_TOKEN),
     clean(environment.RESEND_API_KEY),
@@ -271,6 +302,7 @@ function validateDeploymentEnvironment(
     clean(environment.DEVICE_TOKEN_KEY),
     clean(environment.DEVICE_TOKEN_KEY_PREVIOUS),
     clean(environment.GOOGLE_SIGN_IN_CLIENT_SECRET),
+    clean(environment.GOOGLE_PLAY_NOTIFICATION_TOKEN),
   ].filter(Boolean);
   addCheck(
     checks,

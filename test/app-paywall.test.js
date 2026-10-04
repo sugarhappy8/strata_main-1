@@ -154,7 +154,7 @@ test("the paywall shows StoreKit's price and period, what Strata+ includes, and 
   const html = page.html();
   assert.match(
     html,
-    /<h2 id="appPaywallTitle">Unlock Strata\+<\/h2><p class="app-paywall-price"><strong>4,99 €<\/strong><span>per month<\/span><\/p>/,
+    /<h2 id="appPaywallTitle" tabindex="-1">Unlock Strata\+<\/h2><p class="app-paywall-price"><strong>4,99 €<\/strong><span>per month<\/span><\/p>/,
   );
   assert.match(
     html,

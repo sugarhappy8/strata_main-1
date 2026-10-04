@@ -90,7 +90,6 @@ const GOOGLE_PLAY_BILLING_SQL = Object.freeze({
 module.exports = {
   GOOGLE_PLAY_BILLING_SCHEMA,
   GOOGLE_PLAY_BILLING_SQL,
-  GOOGLE_PLAY_SUBSCRIPTION_COLUMNS,
   RENEWAL_MARGIN_MS,
   activeGooglePlaySubscription,
 };

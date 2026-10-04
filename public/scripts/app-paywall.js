@@ -77,13 +77,19 @@
     return saving >= 5 ? saving : 0;
   }
 
-  // What stops a new App Store purchase on this account, as the website's checkout does.
+  // What stops a new store purchase on this account, as the website's checkout does. A Google Play subscription that is
+  // paused or on hold gives no access but bills again once it resumes, so it is resumed rather than bought twice.
   function purchaseBlocked(user) {
-    const discovery = user?.discovery || {};
+    const discovery = user?.discovery || {},
+      play = discovery.googlePlay;
     if (discovery.checkoutBlocked === true)
       return "New Strata+ purchases are turned off for this account. Contact STRATA from Profile for help.";
     if (discovery.subscription?.status === "paused")
       return "Your Strata+ subscription is paused. Resume it where you bought it rather than subscribing again.";
+    if (play?.onHold === true && play.testPurchase !== true)
+      return "Your Strata+ subscription through Google Play is on hold because Google could not collect a payment. Update your payment method in Google Play instead of subscribing again.";
+    if (play?.paused === true && play.testPurchase !== true)
+      return "Your Strata+ subscription through Google Play is paused. Resume it in Google Play instead of subscribing again.";
     return "";
   }
 
@@ -133,7 +139,7 @@
         }
       },
       terms: (lead) =>
-        `${lead} Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless it is cancelled at least 24 hours before the end of the current period, and your Apple Account is charged for the renewal within 24 hours before the period ends. Manage or cancel it anytime in ${MANAGE_PATH}.`,
+        `${lead} Payment is charged to your Apple Account when you confirm the purchase. The subscription renews automatically unless it is canceled at least 24 hours before the end of the current period, and your Apple Account is charged for the renewal within 24 hours before the period ends. Manage or cancel it anytime in ${MANAGE_PATH}.`,
     }),
     google: Object.freeze({
       accessType: "google",
@@ -225,6 +231,10 @@
       return `Strata+ is not available from ${store.name} right now. Try again later.`;
     if (error?.code === "VERIFICATION_FAILED")
       return `${name} could not verify this purchase, so nothing was unlocked. Try again, or contact STRATA from Profile.`;
+    if (error?.code === "PURCHASE_NOT_ALLOWED")
+      return "Purchases are turned off on this iPhone (Screen Time › Content & Privacy Restrictions). Ask whoever manages it, then try again.";
+    if (error?.code === "PRODUCTS_FAILED")
+      return `${name} could not be reached. Check your connection, then try again.`;
     if (error?.code === "BILLING_UNAVAILABLE")
       return "Google Play can’t take payments on this device right now. Check that the Play Store is installed and signed in, then try again.";
     if (error?.code === "ALREADY_OWNED")
@@ -303,7 +313,8 @@
         native?.getProducts ? native.getProducts(store.request()) : Promise.resolve(null),
       ]);
       if (account.status === "fulfilled") model.user = account.value.user;
-      const found = products.status === "fulfilled" ? products.value?.products || [] : [];
+      const found = products.status === "fulfilled" ? products.value?.products || [] : [],
+        summary = store.summary(model.user?.discovery);
       model.products = store.plans(found);
       select(model.plan);
       model.phase = "ready";
@@ -315,9 +326,14 @@
       else if (!native && !ownership(model.user))
         say(`Update STRATA from ${store.name} to subscribe.`, "warn");
       else if (native && !model.product && !ownership(model.user))
-        say(`Strata+ is not available from ${store.name} right now. Try again later.`, "warn");
-      else if (store.summary(model.user?.discovery) && !ownership(model.user))
-        say(store.ended(store.summary(model.user.discovery)), "warn");
+        say(
+          ["BILLING_UNAVAILABLE", "PRODUCTS_FAILED"].includes(products.reason?.code)
+            ? storeMessage(products.reason, store)
+            : `Strata+ is not available from ${store.name} right now. Try again later.`,
+          "warn",
+        );
+      else if (summary && !ownership(model.user) && !purchaseBlocked(model.user))
+        say(store.lockedTest(summary) ? store.testText : store.ended(summary), "warn");
       else emit();
     }
 
@@ -418,8 +434,18 @@
         let found;
         try {
           found = await store.found(native);
-        } catch {
-          say("Restoring did not finish. Try again.", "error");
+        } catch (error) {
+          // The member closed the store's sign-in: nothing went wrong.
+          if (error?.code === "RESTORE_CANCELLED") {
+            say("");
+            return "cancelled";
+          }
+          say(
+            error?.code === "RESTORE_FAILED"
+              ? `${store.name.replace(/^the /, "The ")} could not be reached. Check your connection, then try again.`
+              : "Restoring did not finish. Try again.",
+            "error",
+          );
           return "failed";
         }
         if (!found.length) {
@@ -536,7 +562,7 @@
       !owned && view.nativeAvailable
         ? html`<button class="app-paywall-restore" type="button" data-paywall-action="restore"${view.busy ? " disabled" : ""}>Restore Purchases</button>`
         : "";
-    return html`${view.note ? html`<p class="app-paywall-note">${view.note}</p>` : ""}<p class="app-paywall-kicker">Strata+</p><h2 id="appPaywallTitle">${owned ? "You have Strata+" : "Unlock Strata+"}</h2>${owned ? "" : price}${detail ? html`<p class="app-paywall-detail">${detail}</p>` : ""}<div class="app-paywall-actions">${actions}${restore}</div>`;
+    return html`${view.note ? html`<p class="app-paywall-note">${view.note}</p>` : ""}<p class="app-paywall-kicker">Strata+</p><h2 id="appPaywallTitle" tabindex="-1">${owned ? "You have Strata+" : "Unlock Strata+"}</h2>${owned ? "" : price}${detail ? html`<p class="app-paywall-detail">${detail}</p>` : ""}<div class="app-paywall-actions">${actions}${restore}</div>`;
   }
   // Each benefit is markup read back from the page's own list.
   const benefitsHtml = (benefits) =>
@@ -575,9 +601,13 @@
       included.hidden = Boolean(view.owned);
       terms.textContent =
         view.owned || !view.nativeAvailable ? "" : disclosure(view.product, view.store);
-      if (focused)
-        body.querySelector(`[data-paywall-action="${focused}"]`)?.focus({ preventScroll: true });
-      else if (focusedPlan)
+      if (focused) {
+        // A control that went away or is busy (Subscribe after a purchase) hands focus to the heading, not the page.
+        const target = body.querySelector(`[data-paywall-action="${focused}"]`);
+        (target && !target.disabled ? target : body.querySelector("#appPaywallTitle"))?.focus({
+          preventScroll: true,
+        });
+      } else if (focusedPlan)
         body.querySelector(`[data-paywall-plan="${view.plan}"]`)?.focus({ preventScroll: true });
     }
     const controller = createController({

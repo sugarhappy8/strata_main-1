@@ -25,13 +25,20 @@ body {
 :where(.desktop-nav, .studio-nav) a[aria-current] {
   color: #d4f578;
 }
-/* One navigation on every page. Each tab names the audiences it serves (data-audience): visitor (signed out),
-   member, or plus (Strata+). app-shell.js marks the page's audience on <html> before the first paint; with no
-   mark, the page is a visitor's. */
+/* One navigation on every page. Each tab, and any call to action or sentence written for one audience, names the
+   audiences it serves (data-audience): visitor (signed out), member, or plus (Strata+). app-shell.js marks the page's
+   audience on <html> before the first paint; with no mark, the page is a visitor's. */
 :root:not([data-audience="member"]):not([data-audience="plus"])
-  a[data-audience]:not([data-audience~="visitor"]),
-:root[data-audience="member"] a[data-audience]:not([data-audience~="member"]),
-:root[data-audience="plus"] a[data-audience]:not([data-audience~="plus"]) {
+  [data-audience]:not([data-audience~="visitor"]),
+:root[data-audience="member"] [data-audience]:not([data-audience~="member"]),
+:root[data-audience="plus"] [data-audience]:not([data-audience~="plus"]) {
+  display: none !important;
+}
+/* The navigation carries Sign in and Profile on every page, so the home page's header does not repeat them: its
+   account link stays in the page, hidden, because home-render.js and app-mode.js keep the signed-in state on it. The
+   planner's header keeps its own Sign in, which returns to the planner, in place of the navigation's. */
+.home-page .header-actions .account-link,
+.planner-page .planner-primary-nav [data-nav="signin"] {
   display: none !important;
 }
 :where(.button, .small-button, .account-button, .dark-button, .outline-button) {

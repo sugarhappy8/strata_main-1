@@ -815,8 +815,10 @@ footer a {
     grid-template-columns: 1fr;
     gap: 22px;
   }
+  /* Not sticky in one column, but still the box that clips its decorative ring (no sideways scroll on phones). */
   .week-preview {
-    position: static;
+    position: relative;
+    top: auto;
   }
 }
 @media (max-width: 800px) {

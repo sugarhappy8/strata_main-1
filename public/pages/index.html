@@ -23,15 +23,15 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icons/strata-icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
-    <link rel="stylesheet" href="/fonts.css?v=10.1.0" />
-    <link rel="stylesheet" href="/tokens.css?v=10.1.0" />
-    <link rel="stylesheet" href="styles.css?v=10.1.0" />
-    <link rel="stylesheet" href="/product-signals.css?v=10.1.0" />
-    <link rel="stylesheet" href="/experience.css?v=10.1.0" />
-    <script src="/html.js?v=10.1.0"></script>
-    <script src="/app-shell.js?v=10.1.0"></script>
-    <script src="/motion.js?v=10.1.0"></script>
-    <link rel="stylesheet" href="/site-experience.css?v=10.1.0" />
+    <link rel="stylesheet" href="/fonts.css?v=10.1.1" />
+    <link rel="stylesheet" href="/tokens.css?v=10.1.1" />
+    <link rel="stylesheet" href="styles.css?v=10.1.1" />
+    <link rel="stylesheet" href="/product-signals.css?v=10.1.1" />
+    <link rel="stylesheet" href="/experience.css?v=10.1.1" />
+    <script src="/html.js?v=10.1.1"></script>
+    <script src="/app-shell.js?v=10.1.1"></script>
+    <script src="/motion.js?v=10.1.1"></script>
+    <link rel="stylesheet" href="/site-experience.css?v=10.1.1" />
   </head>
   <body class="home-page">
     <a class="skip-link" href="#preview">Skip to training preview</a>
@@ -67,10 +67,13 @@
               Build a week around your equipment and your time. With Strata+, log your sets and see exactly what you did last time—right when you need it.
             </p>
             <div class="hero-actions">
-              <a class="button button-accent" href="#preview">Build my free week <span aria-hidden="true">↘</span></a>
-              <a class="text-link" href="/pricing">Meet Strata+ · $4.99 / month <span aria-hidden="true">→</span></a>
+              <a class="button button-accent" href="#preview" data-audience="visitor">Build my free week <span aria-hidden="true">↘</span></a>
+              <a class="button button-accent" href="/planner.html" data-audience="member">Open my week <span aria-hidden="true">→</span></a>
+              <a class="button button-accent" href="/dashboard" data-audience="plus">Open Dashboard <span aria-hidden="true">→</span></a>
+              <a class="text-link" href="/pricing" data-audience="visitor member">Meet Strata+ · $4.99 / month <span aria-hidden="true">→</span></a>
+              <a class="text-link" href="/workout.html" data-audience="plus">Start today’s workout <span aria-hidden="true">→</span></a>
             </div>
-            <p class="hero-note">No account needed to preview your week.</p>
+            <p class="hero-note" data-audience="visitor">No account needed to preview your week.</p>
           </div>
           <div class="hero-data" aria-label="Database statistics">
             <div><strong id="catalogTotal">320</strong><span>Ranked<br />movements</span></div>
@@ -90,7 +93,7 @@
               <p class="kicker kicker-light">Start with your week</p>
               <h2 id="preview-title">A plan that<br /><em>fits your life.</em></h2>
             </div>
-            <p>Pick a starting point or choose your own settings. See every workout and recovery day before creating an account.</p>
+            <p>Pick a starting point or choose your own settings. See every workout and recovery day<span data-audience="visitor"> before creating an account</span>.</p>
           </div>
 
           <div class="proof-workspace" data-reveal>
@@ -126,7 +129,7 @@
               <ol class="preview-results" id="quickPreviewResults">
                 <li class="preview-placeholder"><span>01</span><div><strong>Recommendation</strong><p>Its strongest reason and clearest trade-off will appear here.</p></div></li>
                 <li class="preview-placeholder"><span>02</span><div><strong>Recommendation</strong><p>The result will explain itself instead of asking for blind trust.</p></div></li>
-                <li class="preview-placeholder"><span>03</span><div><strong>Recommendation</strong><p>You can continue into the complete rankings without signing up.</p></div></li>
+                <li class="preview-placeholder"><span>03</span><div><strong>Recommendation</strong><p>You can continue into the complete rankings<span data-audience="visitor"> without signing up</span>.</p></div></li>
               </ol>
               <section class="quick-week-preview" id="quickWeekPreview" aria-labelledby="quickWeekTitle" hidden>
                 <div class="quick-week-heading"><div><span>Complete week</span><h3 id="quickWeekTitle">Your seven-day preview.</h3></div><p id="quickWeekMeta"></p></div>
@@ -293,19 +296,19 @@
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <script src="/pwa.js?v=10.1.0"></script>
-    <script src="/product-signals.js?v=10.1.0"></script>
-    <script src="/entitlements.js?v=10.1.0"></script>
-    <script src="/discovery-core.js?v=10.1.0"></script>
-    <script src="/preview-core.js?v=10.1.0"></script>
-    <script src="/onboarding-core.js?v=10.1.0"></script>
-    <script src="/activation-core.js?v=10.1.0"></script>
-    <script src="/activation-home.js?v=10.1.0"></script>
-    <script src="/home-logic.js?v=10.1.0"></script>
-    <script src="/home-state.js?v=10.1.0"></script>
-    <script src="/home-api.js?v=10.1.0"></script>
-    <script src="/home-render.js?v=10.1.0"></script>
-    <script src="/home-events.js?v=10.1.0"></script>
-    <script src="app.js?v=10.1.0"></script>
+    <script src="/pwa.js?v=10.1.1"></script>
+    <script src="/product-signals.js?v=10.1.1"></script>
+    <script src="/entitlements.js?v=10.1.1"></script>
+    <script src="/discovery-core.js?v=10.1.1"></script>
+    <script src="/preview-core.js?v=10.1.1"></script>
+    <script src="/onboarding-core.js?v=10.1.1"></script>
+    <script src="/activation-core.js?v=10.1.1"></script>
+    <script src="/activation-home.js?v=10.1.1"></script>
+    <script src="/home-logic.js?v=10.1.1"></script>
+    <script src="/home-state.js?v=10.1.1"></script>
+    <script src="/home-api.js?v=10.1.1"></script>
+    <script src="/home-render.js?v=10.1.1"></script>
+    <script src="/home-events.js?v=10.1.1"></script>
+    <script src="app.js?v=10.1.1"></script>
   </body>
 </html>

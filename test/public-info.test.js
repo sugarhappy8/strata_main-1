@@ -188,12 +188,12 @@ test("the editorial homepage and the five-section navigation remain canonical", 
     assert.match(
       css,
       new RegExp(
-        `:root\\[data-audience="${audience}"\\] a\\[data-audience\\]:not\\(\\[data-audience~="${audience}"\\]\\)`,
+        `:root\\[data-audience="${audience}"\\] \\[data-audience\\]:not\\(\\[data-audience~="${audience}"\\]\\)`,
       ),
     );
   assert.match(
     css,
-    /:root:not\(\[data-audience="member"\]\):not\(\[data-audience="plus"\]\)\s*a\[data-audience\]:not\(\[data-audience~="visitor"\]\)/,
+    /:root:not\(\[data-audience="member"\]\):not\(\[data-audience="plus"\]\)\s*\[data-audience\]:not\(\[data-audience~="visitor"\]\)/,
     "with no audience mark, a page shows the visitor's tabs",
   );
 });
@@ -249,7 +249,7 @@ test("core footers use the policy directory instead of repeating every legal pag
 });
 
 test("published Strata+ price and refund promise are exact and consistent", () => {
-  assert.equal(BUILD, "10.1.0");
+  assert.equal(BUILD, "10.1.1");
   const pricingHtml = read("pricing.html"),
     pricing = text("pricing.html"),
     refunds = text("refunds.html"),

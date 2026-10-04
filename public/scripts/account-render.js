@@ -167,7 +167,7 @@
       el("accountBillingDetail").textContent =
         apple.active !== true
           ? "This App Store subscription no longer provides Strata+. You can subscribe again in the STRATA app."
-          : `Billed to your Apple Account through the App Store. ${apple.inGracePeriod === true ? "Apple could not collect the latest payment; update your payment method to keep Strata+." : apple.autoRenew === false ? (date ? `It ends ${date} and will not renew.` : "It will not renew.") : date ? `It renews ${date} unless cancelled at least 24 hours before.` : `It renews ${apple.plan === "yearly" ? "yearly" : "monthly"} until cancelled.`}${app ? "" : " Manage it in Settings › Apple Account › Subscriptions on your iPhone."}`;
+          : `Billed to your Apple Account through the App Store. ${apple.inGracePeriod === true ? "Apple could not collect the latest payment; update your payment method to keep Strata+." : apple.autoRenew === false ? (date ? `It ends ${date} and will not renew.` : "It will not renew.") : date ? `It renews ${date} unless canceled at least 24 hours before.` : `It renews ${apple.plan === "yearly" ? "yearly" : "monthly"} until cancelled.`}${app ? "" : " Manage it in Settings › Apple Account › Subscriptions on your iPhone."}`;
       el("accountManageApple").hidden = false;
     }
 
@@ -199,7 +199,7 @@
               : play.pending === true
                 ? "Google Play is still processing the payment. Strata+ unlocks on its own once it goes through."
                 : "This Google Play subscription no longer provides Strata+. You can subscribe again in the STRATA app."
-          : `Billed to your Google Account through Google Play. ${play.inGracePeriod === true ? "Google could not collect the latest payment; update your payment method to keep Strata+." : play.autoRenew === false ? (date ? `It ends ${date} and will not renew.` : "It will not renew.") : date ? `It renews ${date} unless cancelled before then.` : `It renews ${play.plan === "yearly" ? "yearly" : "monthly"} until cancelled.`}${app ? "" : " Manage it in Google Play › Payments & subscriptions › Subscriptions."}`;
+          : `Billed to your Google Account through Google Play. ${play.inGracePeriod === true ? "Google could not collect the latest payment; update your payment method to keep Strata+." : play.autoRenew === false ? (date ? `It ends ${date} and will not renew.` : "It will not renew.") : date ? `It renews ${date} unless canceled before then.` : `It renews ${play.plan === "yearly" ? "yearly" : "monthly"} until cancelled.`}${app ? "" : " Manage it in Google Play › Payments & subscriptions › Subscriptions."}`;
       el("accountManageGooglePlay").hidden = false;
     }
 

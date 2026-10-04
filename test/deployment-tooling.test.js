@@ -2,6 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { generateKeyPairSync } = require("node:crypto");
 const {
   parseOptions: parsePreflightOptions,
   productionBaseUrl,
@@ -73,6 +74,47 @@ test("production configuration preflight requires complete separated provider bo
     new RegExp(shared),
     "preflight output must never include secret values",
   );
+});
+
+test("preflight checks Google Play Billing only once it is configured, and never prints its key", () => {
+  const off = validateDeploymentEnvironment(productionEnvironment(), {
+    requireEmail: true,
+    requirePayments: true,
+  });
+  assert.equal(
+    off.checks.some(({ name }) => name === "google-play"),
+    false,
+  );
+  assert.ok(off.warnings.some((warning) => /Google Play Billing is off/.test(warning)));
+  const { privateKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+  const key = JSON.stringify({
+    type: "service_account",
+    client_email: "play@strata.iam.gserviceaccount.com",
+    private_key: privateKey.export({ type: "pkcs8", format: "pem" }),
+    token_uri: "https://oauth2.googleapis.com/token",
+  });
+  const noToken = validateDeploymentEnvironment(
+    productionEnvironment({ GOOGLE_PLAY_SERVICE_ACCOUNT: key }),
+    { requireEmail: true, requirePayments: true },
+  );
+  assert.equal(noToken.ok, true);
+  assert.equal(noToken.checks.find(({ name }) => name === "google-play").passed, true);
+  assert.ok(
+    noToken.warnings.some((warning) => /GOOGLE_PLAY_NOTIFICATION_TOKEN is not set/.test(warning)),
+  );
+  const broken = validateDeploymentEnvironment(
+    productionEnvironment({
+      GOOGLE_PLAY_SERVICE_ACCOUNT: key,
+      GOOGLE_PLAY_NOTIFICATION_TOKEN: "short",
+    }),
+    { requireEmail: true, requirePayments: true },
+  );
+  assert.equal(broken.ok, false);
+  assert.match(
+    broken.failures.find(({ name }) => name === "google-play").detail,
+    /GOOGLE_PLAY_NOTIFICATION_TOKEN/,
+  );
+  assert.doesNotMatch(JSON.stringify([noToken, broken]), /PRIVATE KEY/);
 });
 
 test("preflight checks Polar connected devices only once they are configured", () => {

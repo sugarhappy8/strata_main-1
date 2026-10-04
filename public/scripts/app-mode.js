@@ -516,7 +516,9 @@
           setFlag();
           return "synced";
         } catch (error) {
-          if (error.status) setFlag();
+          // STRATA refused them: trying again this launch would not help. A busy or unreachable store is retried on
+          // the next page.
+          if (error.status >= 400 && error.status < 500 && error.status !== 429) setFlag();
           return "rejected";
         }
       })()
@@ -607,6 +609,23 @@
       if (event.persisted) html.dataset.appNav = "none";
     });
     if (screen.chrome === "none") return;
+
+    // While a text field has the keyboard, the tab bar steps aside, as in a native app (on Android it would otherwise
+    // ride above the keyboard and cover what is being typed).
+    const typing = (target) =>
+      Boolean(
+        target?.matches?.(
+          'textarea, [contenteditable=""], [contenteditable="true"], input:not([type="checkbox"], [type="radio"], [type="range"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"], [type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"], [type="hidden"])',
+        ),
+      );
+    document.addEventListener("focusin", (event) => {
+      if (typing(event.target)) html.dataset.appKeyboard = "open";
+    });
+    document.addEventListener("focusout", () => {
+      root.setTimeout(() => {
+        if (!typing(document.activeElement)) delete html.dataset.appKeyboard;
+      }, 0);
+    });
 
     let tabBar = null,
       title = null;
@@ -720,7 +739,7 @@
       }
       if (screen.id === "pricing") {
         const script = document.createElement("script");
-        script.src = "/app-paywall.js?v=10.1.0";
+        script.src = "/app-paywall.js?v=10.1.1";
         document.head.append(script);
       }
       const native = plugin();

@@ -72,7 +72,7 @@
       installStatus.textContent = "Installation started. STRATA will appear with your other apps.";
     else if (result?.outcome === "dismissed")
       installStatus.textContent =
-        "Installation was cancelled. You can try again whenever you are ready.";
+        "Installation was canceled. You can try again whenever you are ready.";
     updateInstallState();
   });
 
